@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Asteroid Belt</title>
+<style>
+html,body{margin:0;background:#000;color:#fff;font-family:monospace;height:100%;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+#wrap{position:relative;width:min(100vw,100vh*1.5);height:min(100vh,66.6667vw);background:#000}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+#hud{position:absolute;top:10px;left:14px;right:14px;display:flex;justify-content:space-between;font-size:16px;pointer-events:none}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+#msg div{font-size:24px;line-height:1.6;text-shadow:0 0 8px #fff}
+#controls{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:space-between;padding:0 18px;pointer-events:none}
+.pad{display:flex;gap:8px;pointer-events:auto}
+button{width:58px;height:48px;background:#111;color:#fff;border:1px solid #777;border-radius:7px;font:bold 18px monospace;touch-action:none}
+#fire{width:82px}
+@media(min-width:800px){#controls{display:none}}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="game" width="900" height="600"></canvas>
+<div id="hud"><span id="score">SCORE 00000</span><span id="lives">LIVES 3</span></div>
+<div id="msg"><div>ASTEROID BELT<br><small>PRESS SPACE / TAP FIRE</small></div></div>
+<div id="controls">
+  <div class="pad"><button data-k="ArrowLeft">◀</button><button data-k="ArrowUp">▲</button><button data-k="ArrowRight">▶</button></div>
+  <button id="fire">FIRE</button>
+</div>
+</div>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=c.width,H=c.height,TAU=Math.PI*2;
+let keys={},running=false,gameOver=false,score=0,lives=3,last=0,spawnTimer=0;
+let ship,rocks=[],shots=[],stars=[],particles=[];
+
+for(let i=0;i<100;i++) stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*1.5+.3});
+
+function reset(){
+ score=0;lives=3;shots=[];particles=[];rocks=[];spawnTimer=0;
+ ship={x:W/2,y:H/2,a:-Math.PI/2,vx:0,vy:0,r:15,cool:0,inv:2};
+ for(let i=0;i<4;i++) addRock(75+i*70);
+ updateHud(); gameOver=false;running=true;
+ document.getElementById('msg').style.display='none';
+}
+function addRock(dist){
+ let a=Math.random()*TAU, r=dist||80;
+ let px=W/2+Math.cos(a)*r,py=H/2+Math.sin(a)*r;
+ let speed=.35+Math.random()*.55, va=(Math.random()-.5)*.012;
+ let n=9,pts=[];
+ for(let i=0;i<n;i++){let q=i/n*TAU;let rr=25+Math.random()*17;pts.push({x:Math.cos(q)*rr,y:Math.sin(q)*rr})}
+ rocks.push({x:px,y:py,vx:Math.cos(a+Math.PI/2)*speed,vy:Math.sin(a+Math.PI/2)*speed,r:30,pts,rot:Math.random()*TAU,vr:va});
+}
+function shoot(){
+ if(!running)return;
+ if(ship.cool>0)return;
+ ship.cool=.18;
+ let s=8;
+ shots.push({x:ship.x+Math.cos(ship.a)*18,y:ship.y+Math.sin(ship.a)*18,
+ vx:ship.vx+Math.cos(ship.a)*s,vy:ship.vy+Math.sin(ship.a)*s,life:1.0});
+}
+function wrap(o){if(o.x<0)o.x+=W;if(o.x>W)o.x-=W;if(o.y<0)o.y+=H;if(o.y>H)o.y-=H}
+function explode(px,py,count=10){
+ for(let i=0;i<count;i++){let a=Math.random()*TAU,s=Math.random()*2.5+1;
+ particles.push({x:px,y:py,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.5})}
+}
+function split(r){
+ explode(r.x,r.y,12);score+=100;
+ if(r.r>18){
+   for(let j=0;j<2;j++){
+    let a=Math.random()*TAU,nr=r.r*.58;
+    rocks.push({x:r.x,y:r.y,vx:r.vx+Math.cos(a)*.7,vy:r.vy+Math.sin(a)*.7,
+      r:nr,pts:r.pts.map(p=>({x:p.x*(nr/r.r),y:p.y*(nr/r.r)})),rot:r.rot,vr:-r.vr*1.4+(Math.random()-.5)*.02});
+   }
+ }
+}
+function update(dt){
+ if(!running)return;
+ let rot=0;
+ if(keys.ArrowLeft||keys.a)rot=-1;
+ if(keys.ArrowRight||keys.d)rot=1;
+ ship.a+=rot*.075*dt*60;
+ if(keys.ArrowUp||keys.w){
+   ship.vx+=Math.cos(ship.a)*.055*dt*60;
+   ship.vy+=Math.sin(ship.a)*.055*dt*60;
+ }
+ ship.vx*=Math.pow(.992,dt*60);ship.vy*=Math.pow(.992,dt*60);
+ ship.x+=ship.vx*dt*60;ship.y+=ship.vy*dt*60;wrap(ship);
+ ship.cool-=dt;ship.inv-=dt;
+ if(keys[' ']||keys.Enter)shoot();
+
+ for(let s of shots){s.x+=s.vx*dt*60;s.y+=s.vy*dt*60;s.life-=dt;wrap(s)}
+ shots=shots.filter(s=>s.life>0);
+
+ for(let r of rocks){r.x+=r.vx*dt*60;r.y+=r.vy*dt*60;r.rot+=r.vr*dt*60;wrap(r)}
+ for(let p of particles){p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.life-=dt}
+ particles=particles.filter(p=>p.life>0);
+
+ for(let i=rocks.length-1;i>=0;i--){
+  let r=rocks[i],hit=false;
+  for(let j=shots.length-1;j>=0;j--){
+   let s=shots[j],dx=s.x-r.x,dy=s.y-r.y;
+   if(dx*dx+dy*dy<(r.r+3)**2){shots.splice(j,1);rocks.splice(i,1);split(r);hit=true;break}
+  }
+  if(hit)continue;
+  if(ship.inv<=0){
+   let dx=ship.x-r.x,dy=ship.y-r.y;
+   if(dx*dx+dy*dy<(r.r+ship.r-4)**2){
+    rocks.splice(i,1);explode(ship.x,ship.y,20);lives--;ship.inv=2;ship.x=W/2;ship.y=H/2;ship.vx=ship.vy=0;
+    if(lives<=0){running=false;gameOver=true;document.getElementById('msg').innerHTML='<div>GAME OVER<br><small>PRESS SPACE TO RESTART</small></div>';document.getElementById('msg').style.display='flex'}
+   }
+  }
+ }
+ if(rocks.length===0){for(let i=0;i<4;i++)addRock(70);score+=500}
+ updateHud();
+}
+function updateHud(){
+ document.getElementById('score').textContent='SCORE '+String(score).padStart(5,'0');
+ document.getElementById('lives').textContent='LIVES '+lives;
+}
+function draw(){
+ x.fillStyle='#000';x.fillRect(0,0,W,H);
+ x.fillStyle='#fff';for(let s of stars){x.globalAlpha=s.s/2;x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
+ // rocks
+ for(let r of rocks){
+  x.save();x.translate(r.x,r.y);x.rotate(r.rot);x.strokeStyle='#fff';x.lineWidth=2;
+  x.beginPath();r.pts.forEach((p,i)=>i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));x.closePath();x.stroke();x.restore();
+ }
+ // shots
+ x.fillStyle='#fff';for(let s of shots)x.fillRect(s.x-2,s.y-2,4,4);
+ // particles
+ for(let p of particles){x.globalAlpha=Math.max(0,p.life*1.5);x.fillRect(p.x,p.y,2,2)}x.globalAlpha=1;
+ if(ship&&(running||!gameOver)){
+  if(ship.inv>0&&Math.floor(ship.inv*10)%2===0)return;
+  x.save();x.translate(ship.x,ship.y);x.rotate(ship.a);
+  x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();x.moveTo(18,0);x.lineTo(-12,-11);x.lineTo(-7,0);x.lineTo(-12,11);x.closePath();x.stroke();
+  if(keys.ArrowUp||keys.w){x.beginPath();x.moveTo(-10,-5);x.lineTo(-20,0);x.lineTo(-10,5);x.stroke()}
+  x.restore();
+ }
+}
+function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}
+window.addEventListener('keydown',e=>{keys[e.key]=true;if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();if(e.key===' '&&!running)reset()});
+window.addEventListener('keyup',e=>keys[e.key]=false);
+document.querySelectorAll('[data-k]').forEach(b=>{
+ b.addEventListener('pointerdown',e=>{keys[b.dataset.k]=true;e.preventDefault()});
+ b.addEventListener('pointerup',e=>{keys[b.dataset.k]=false;e.preventDefault()});
+ b.addEventListener('pointerleave',()=>keys[b.dataset.k]=false);
+});
+document.getElementById('fire').addEventListener('pointerdown',e=>{keys[' ']=true;shoot();e.preventDefault()});
+document.getElementById('fire').addEventListener('pointerup',()=>keys[' ']=false);
+document.getElementById('msg').addEventListener('click',()=>{if(!running)reset()});
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
