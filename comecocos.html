@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Comecocos</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#050505;color:#fff;font-family:Arial,sans-serif;display:flex;justify-content:center;min-height:100vh;overflow:hidden}
+  #game{width:min(96vw,560px);padding:10px;text-align:center}
+  h1{margin:4px 0 6px;color:#ffd900;font-size:28px;letter-spacing:2px}
+  #info{display:flex;justify-content:space-between;font-weight:bold;font-size:16px;margin:4px 8px 8px}
+  canvas{width:100%;aspect-ratio:19/21;background:#000;border:2px solid #183dff;border-radius:8px;image-rendering:pixelated}
+  #message{height:28px;margin:7px;font-weight:bold;color:#ffd900}
+  button{background:#ffd900;border:0;border-radius:10px;padding:10px 20px;font-weight:bold;font-size:16px}
+  #controls{margin:10px auto 0;width:210px;display:grid;grid-template-columns:70px 70px 70px;grid-template-rows:55px 55px}
+  #controls button{font-size:24px;padding:0}
+  #up{grid-column:2}.ctrl-left{grid-column:1;grid-row:2}.ctrl-down{grid-column:2;grid-row:2}.ctrl-right{grid-column:3;grid-row:2}
+  @media (min-width:700px){#controls{display:none}}
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>COMECocos</h1>
+  <div id="info"><span>Puntos: <span id="score">0</span></span><span>Vidas: <span id="lives">3</span></span></div>
+  <canvas id="canvas" width="380" height="420"></canvas>
+  <div id="message">Usa las flechas o WASD</div>
+  <button id="restart">Nueva partida</button>
+  <div id="controls">
+    <button id="up">▲</button>
+    <button class="ctrl-left">◀</button>
+    <button class="ctrl-down">▼</button>
+    <button class="ctrl-right">▶</button>
+  </div>
+</div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), msg=document.getElementById('message');
+const W=19,H=21,T=20;
+const map=[
+"###################",
+"#........#........#",
+"#.###.##.#.##.###.#",
+"#o###.##.#.##.###o#",
+"#.................#",
+"#.###.#.#####.#.###",
+"#.....#...#...#...#",
+"#####.### # ###.###".replaceAll(' ',''),
+"#...#..... .....#.#".replaceAll(' ',''),
+"#.#.#.###   ###.#.#".replaceAll(' ',''),
+"#.#.....   .....#.#".replaceAll(' ',''),
+"#.#.#.###   ###.#.#".replaceAll(' ',''),
+"#...#..... .....#.#".replaceAll(' ',''),
+"#####.### # ###.###".replaceAll(' ',''),
+"#.....#...#...#...#",
+"#.###.#.#####.#.###",
+"#........#........#",
+"#.###.##.#.##.###.#",
+"#o..#........#..o.#",
+"#.................#",
+"###################"
+].map(r=>r.padEnd(W,'#').slice(0,W));
+
+let player, ghosts, score, lives, pellets, running, won, last=0, tick=0;
+const dirs={left:{x:-1,y:0},right:{x:1,y:0},up:{x:0,y:-1},down:{x:0,y:1}};
+function wall(x,y){return x<0||x>=W||y<0||y>=H||map[y][x]==='#'}
+function resetPellets(){pellets=new Set();for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(map[y][x]==='.'||map[y][x]==='o')pellets.add(x+','+y)}
+function init(){
+ score=0;lives=3;running=true;won=false;resetPellets();
+ player={x:9,y:15,dir:dirs.left,next:dirs.left};
+ ghosts=[
+  {x:8,y:10,dir:dirs.left,color:'#ff4b5c'},
+  {x:9,y:10,dir:dirs.up,color:'#ff9de2'},
+  {x:10,y:10,dir:dirs.right,color:'#48e0ff'},
+  {x:9,y:9,dir:dirs.down,color:'#ffb84d'}
+ ];
+ scoreEl.textContent=score;livesEl.textContent=lives;msg.textContent='Usa las flechas o WASD';last=performance.now();requestAnimationFrame(loop);
+}
+function canMove(o,d){return !wall(o.x+d.x,o.y+d.y)}
+function movePlayer(){
+ if(canMove(player,player.next)) player.dir=player.next;
+ if(canMove(player,player.dir)){
+   player.x+=player.dir.x;player.y+=player.dir.y;
+ }
+ const k=player.x+','+player.y;
+ if(pellets.has(k)){pellets.delete(k);score+=map[player.y][player.x]==='o'?50:10;scoreEl.textContent=score}
+ if(pellets.size===0){running=false;won=true;msg.textContent='¡GANASTE! 🎉'}
+}
+function moveGhost(g){
+ let choices=Object.values(dirs).filter(d=>canMove(g,d));
+ if(choices.length>2 && canMove(g,g.dir)) choices=choices.filter(d=>!(d.x===-g.dir.x&&d.y===-g.dir.y));
+ if(!canMove(g,g.dir)||Math.random()<.25){
+   let best=choices[0],bestDist=1e9;
+   for(const d of choices){
+     const nx=g.x+d.x,ny=g.y+d.y;
+     const dist=Math.abs(nx-player.x)+Math.abs(ny-player.y);
+     if(dist<bestDist && Math.random()<.65){best=d;bestDist=dist}
+   }
+   g.dir=best;
+ }
+ if(canMove(g,g.dir)){g.x+=g.dir.x;g.y+=g.dir.y}
+}
+function collision(){
+ for(const g of ghosts) if(g.x===player.x&&g.y===player.y){
+   lives--;livesEl.textContent=lives;
+   if(lives<=0){running=false;msg.textContent='GAME OVER — pulsa Nueva partida'}
+   else{player.x=9;player.y=15;player.dir=dirs.left;player.next=dirs.left;ghosts.forEach((g,i)=>{g.x=8+i%3;g.y=10;g.dir=dirs.left})}
+   return;
+ }
+}
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+   if(map[y][x]==='#'){ctx.fillStyle='#173dff';ctx.fillRect(x*T+3,y*T+3,T-6,T-6)}
+ }
+ for(const k of pellets){
+   const [x,y]=k.split(',').map(Number);
+   ctx.fillStyle=map[y][x]==='o'?'#fff':'#ffdca8';
+   const r=map[y][x]==='o'?5:2.2;
+   ctx.beginPath();ctx.arc(x*T+T/2,y*T+T/2,r,0,Math.PI*2);ctx.fill();
+ }
+ drawPacman();ghosts.forEach(drawGhost);
+}
+function drawPacman(){
+ const cx=player.x*T+10,cy=player.y*T+10,ang=Math.atan2(player.dir.y,player.dir.x);
+ const mouth=.28+Math.abs(Math.sin(tick*.18))*.18;
+ ctx.fillStyle='#ffd900';ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,8,ang+mouth,ang+Math.PI*2-mouth);ctx.closePath();ctx.fill();
+}
+function drawGhost(g){
+ const cx=g.x*T+10,cy=g.y*T+10;
+ ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(cx,cy-1,8,Math.PI,0);ctx.lineTo(cx+8,cy+8);ctx.lineTo(cx+4,cy+5);ctx.lineTo(cx,cy+8);ctx.lineTo(cx-4,cy+5);ctx.lineTo(cx-8,cy+8);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx-3,cy-2,2.5,0,7);ctx.arc(cx+3,cy-2,2.5,0,7);ctx.fill();
+ ctx.fillStyle='#1746a2';ctx.beginPath();ctx.arc(cx-3,cy-2,1.2,0,7);ctx.arc(cx+3,cy-2,1.2,0,7);ctx.fill();
+}
+function loop(now){
+ tick++; if(running && now-last>115){last=now;movePlayer();if(running){ghosts.forEach(moveGhost);collision()}}
+ draw();if(running)requestAnimationFrame(loop);
+}
+document.addEventListener('keydown',e=>{
+ const m={ArrowLeft:dirs.left,ArrowRight:dirs.right,ArrowUp:dirs.up,ArrowDown:dirs.down,a:dirs.left,d:dirs.right,w:dirs.up,s:dirs.down};
+ if(m[e.key]){e.preventDefault();player.next=m[e.key]}
+});
+document.querySelector('.ctrl-left').onclick=()=>player.next=dirs.left;
+document.querySelector('.ctrl-right').onclick=()=>player.next=dirs.right;
+document.querySelector('#up').onclick=()=>player.next=dirs.up;
+document.querySelector('.ctrl-down').onclick=()=>player.next=dirs.down;
+document.getElementById('restart').onclick=init;
+init();
+</script>
+</body>
+</html>
