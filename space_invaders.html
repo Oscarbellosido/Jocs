@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Space Invaders Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+#wrap{width:min(100vw,700px);height:100vh;display:flex;flex-direction:column;align-items:center}
+#hud{width:94%;display:flex;justify-content:space-between;padding:10px 0 4px;font-size:16px}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:94%;max-height:72vh;border:1px solid #333;background:#000}
+#controls{display:flex;gap:18px;margin-top:12px}
+button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none}
+#msg{position:absolute;text-align:center;font-size:20px;line-height:1.7;display:none}
+small{font-size:12px;color:#aaa}
+#back{position:fixed;top:8px;left:10px;background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:5px 12px;border-radius:6px;font-family:monospace;cursor:pointer;z-index:99}
+</style>
+</head>
+<body>
+<button id="back" onclick="location.href='index.html'">← Tornar</button>
+<div id="wrap">
+  <div id="hud"><span>SCORE <b id="score">0</b></span><span>LEVEL <b id="level">1</b></span><span>LIVES <b id="lives">3</b></span></div>
+  <canvas id="game" width="480" height="600"></canvas>
+  <div id="controls">
+    <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small>← → / A D &nbsp; disparar: ESPAI &nbsp; pausa: P</small>
+</div>
+<script>
+
+// ===== CLASSIC ARCADE SOUND ENGINE =====
+let audioCtx=null, master=null, stepSound=0;
+function audioInit(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    master=audioCtx.createGain(); master.gain.value=.12; master.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==="suspended") audioCtx.resume();
+}
+function tone(freq,dur,type="square",vol=.35,slide=0){
+  if(!audioCtx)return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain(), now=audioCtx.currentTime;
+  o.type=type; o.frequency.setValueAtTime(freq,now);
+  if(slide) o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(0.0001,now); g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g); g.connect(master); o.start(now); o.stop(now+dur+.02);
+}
+function noise(dur=.12,vol=.25){
+  if(!audioCtx)return;
+  const n=audioCtx.sampleRate*dur, b=audioCtx.createBuffer(1,n,audioCtx.sampleRate);
+  const d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),now=audioCtx.currentTime;
+  src.buffer=b; g.gain.setValueAtTime(vol,now); g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  src.connect(g);g.connect(master);src.start();src.stop(now+dur);
+}
+function sndStart(){audioInit();tone(220,.08,"square",.3);setTimeout(()=>tone(330,.08,"square",.3),90);setTimeout(()=>tone(440,.16,"square",.3),180)}
+function sndShoot(){audioInit();tone(720,.06,"sawtooth",.22,-520)}
+function sndHit(){audioInit();noise(.16,.3);tone(110,.14,"square",.22,-70)}
+function sndPlayerHit(){audioInit();tone(180,.08,"sawtooth",.25,-140);setTimeout(()=>tone(80,.25,"square",.3,-50),80)}
+function sndUfo(){audioInit();tone(880,.08,"square",.22,-220);setTimeout(()=>tone(660,.08,"square",.22,-180),85)}
+function sndUfoHit(){audioInit();noise(.22,.35);tone(300,.18,"square",.28,-250)}
+function sndStep(){
+  audioInit();
+  const f=[110,130,155,175][stepSound%4]; stepSound++;
+  tone(f,.055,"square",.22);
+}
+function sndGameOver(){audioInit();tone(300,.15,"square",.25,-80);setTimeout(()=>tone(180,.3,"square",.25,-80),160)}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=600;
+let score=0,level=1,lives=3,gameOver=false,paused=false;
+let player,aliens,bullets,enemyBullets,barriers,dir,stepTimer,stepDelay,enemyShootTimer;
+const keys={left:false,right:false,fire:false};
+
+function rect(px,py,w,h,col='#fff'){x.fillStyle=col;x.fillRect(Math.round(px),Math.round(py),w,h)}
+function resetPlayer(){player={x:W/2-16,y:H-48,w:32,h:14,cool:0}}
+function makeAliens(){
+  aliens=[]; dir=1; stepTimer=0; stepDelay=Math.max(180-level*12,65);
+  const cols=11, rows=5, sx=34, sy=30;
+  for(let r=0;r<rows;r++)for(let col=0;col<cols;col++)
+    aliens.push({x:68+col*sx,y:75+r*sy,w:22,h:16,row:r,alive:true});
+}
+function makeBarriers(){
+  barriers=[];
+  for(let b=0;b<4;b++){
+    const bx=48+b*120, by=H-135;
+    // chunky classic bunker shape
+    const shape=[
+      "  ########  ","############","############","###      ###",
+      "##        ##","##        ##"
+    ];
+    for(let yy=0;yy<shape.length;yy++)for(let xx=0;xx<12;xx++)
+      if(shape[yy][xx]==="#") barriers.push({x:bx+xx*4,y:by+yy*4,w:4,h:4});
+  }
+}
+function start(){
+  score=0;level=1;lives=3;gameOver=false;paused=false;
+  resetPlayer();makeAliens();makeBarriers();bullets=[];enemyBullets=[];enemyShootTimer=0;
+  updateHUD(); hideMsg();
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('level').textContent=level;
+  document.getElementById('lives').textContent=lives;
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function shoot(){
+  if(player.cool<=0){audioInit(); sndShoot(); bullets.push({x:player.x+15,y:player.y-8,w:2,h:10});player.cool=330}
+}
+function enemyShoot(){
+  const alive=aliens.filter(a=>a.alive);
+  if(!alive.length)return;
+  const cols={};
+  alive.forEach(a=>cols[Math.round(a.x)]=a);
+  const arr=Object.values(cols);
+  const a=arr[Math.floor(Math.random()*arr.length)];
+  enemyBullets.push({x:a.x+10,y:a.y+17,w:3,h:9}); sndShoot();
+}
+
+function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function update(dt){
+  if(gameOver||paused)return;
+  if(keys.left)player.x-=0.25*dt;
+  if(keys.right)player.x+=0.25*dt;
+  player.x=Math.max(10,Math.min(W-player.w-10,player.x));
+  if(keys.fire)shoot();
+  player.cool-=dt;
+
+  bullets.forEach(b=>b.y-=0.55*dt);
+  enemyBullets.forEach(b=>b.y+=0.28*dt);
+  bullets=bullets.filter(b=>b.y>-20);
+  enemyBullets=enemyBullets.filter(b=>b.y<H+20);
+
+  stepTimer+=dt;
+  if(stepTimer>=stepDelay){
+    stepTimer=0; sndStep();
+    let edge=false;
+    aliens.filter(a=>a.alive).forEach(a=>{
+      a.x+=dir*10;
+      if(a.x<12||a.x+a.w>W-12)edge=true;
+    });
+    if(edge){dir*=-1;aliens.forEach(a=>{if(a.alive)a.y+=12})}
+    if(aliens.filter(a=>a.alive).length<20)stepDelay=Math.max(90,stepDelay-4);
+  }
+  enemyShootTimer+=dt;
+  if(enemyShootTimer>Math.max(500,1200-level*70)){enemyShoot();enemyShootTimer=0}
+
+  for(const b of bullets){
+    for(const a of aliens){
+      if(a.alive&&hit(b,a)){a.alive=false;b.y=-99;score+=a.row===0?30:a.row<3?20:10;sndHit();break}
+    }
+    for(const q of barriers){
+      if(b.y>q.y-2&&b.y<q.y+q.h&&b.x<q.x+q.w&&b.x+b.w>q.x){q.w=0;b.y=-99;score+=1;break}
+    }
+  }
+  bullets=bullets.filter(b=>b.y>-50);
+  for(const b of enemyBullets){
+    for(const q of barriers){
+      if(q.w&&hit(b,q)){q.w=0;b.y=H+99;break}
+    }
+    if(hit(b,player)){b.y=H+99;lives--;sndPlayerHit();updateHUD();if(lives<=0){gameOver=true;sndGameOver();msg("GAME OVER<br><small>Prem REINICIAR</small>")}else{resetPlayer()}}
+  }
+  enemyBullets=enemyBullets.filter(b=>b.y<H+50);
+  if(aliens.some(a=>a.alive&&a.y+a.h>=player.y-5)){gameOver=true;sndGameOver();msg("INVADERS HAN ARRIBAT!<br><small>Prem REINICIAR</small>")}
+  if(!aliens.some(a=>a.alive)){
+    level++;updateHUD();makeAliens();bullets=[];enemyBullets=[];makeBarriers();
+  }
+  updateHUD();
+}
+
+function drawAlien(a){
+  const patterns=[
+    ["  ##      ##  ","   ########   "," ## ###### ## ","##############","##  ######  ##","## ##    ## ##"],
+    ["    ####    ","  ########  ","############","##  ####  ##","## ##  ## ##","   ##  ##   "],
+    ["   ######   ","############","##  ####  ##","############","  ##    ##  "," ##      ## "]
+  ];
+  const p=patterns[a.row%3], sx=2,sy=2;
+  p.forEach((s,yy)=>[...s].forEach((ch,xx)=>{if(ch==="#")rect(a.x+xx*sx,a.y+yy*sy,sx,sy)}));
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  // stars / classic sparse background
+  rect(0,0,W,H,'#000');
+  for(const a of aliens)if(a.alive)drawAlien(a);
+  // player
+  rect(player.x+13,player.y-5,6,5);rect(player.x+9,player.y,14,5);rect(player.x,player.y+5,32,5);
+  bullets.forEach(b=>rect(b.x,b.y,b.w,b.h));
+  enemyBullets.forEach(b=>{rect(b.x,b.y,3,4);rect(b.x-2,b.y+4,7,3);rect(b.x+1,b.y+7,3,3)});
+  barriers.forEach(q=>{if(q.w)rect(q.x,q.y,q.w,q.h)});
+  // ground
+  rect(0,H-18,W,2);
+}
+let last=performance.now();
+document.addEventListener('pointerdown', audioInit, {once:false});
+document.addEventListener('keydown', audioInit, {once:false});
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+function bind(id,k){
+ const e=document.getElementById(id);
+ e.addEventListener('pointerdown',ev=>{ev.preventDefault();keys[k]=true});
+ e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+ e.addEventListener('pointercancel',()=>keys[k]=false);
+ e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');bind('fire','fire');
+
+document.addEventListener('keydown',e=>{
+ if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+ if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+ if(e.code==='Space'){e.preventDefault();keys.fire=true}
+ if(e.code==='KeyP'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+ if(e.code==='Enter'&&gameOver){audioInit();sndStart();start();}
+});
+document.addEventListener('keyup',e=>{
+ if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+ if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+ if(e.code==='Space')keys.fire=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(gameOver){audioInit();sndStart();start()}});
+start();
+</script>
+</body>
+</html>

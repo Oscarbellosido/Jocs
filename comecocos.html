@@ -13,7 +13,7 @@
   canvas{width:100%;aspect-ratio:19/21;background:#000;border:2px solid #183dff;border-radius:8px;image-rendering:pixelated}
   #message{height:28px;margin:7px;font-weight:bold;color:#ffd900}
   button{background:#ffd900;border:0;border-radius:10px;padding:10px 20px;font-weight:bold;font-size:16px}
-  #back{background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:6px 14px;margin-bottom:4px}
+  #back{position:fixed;top:8px;left:10px;background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:5px 12px;border-radius:6px;z-index:99}
   #controls{margin:10px auto 0;width:210px;display:grid;grid-template-columns:70px 70px 70px;grid-template-rows:55px 55px}
   #controls button{font-size:24px;padding:0}
   #up{grid-column:2}.ctrl-left{grid-column:1;grid-row:2}.ctrl-down{grid-column:2;grid-row:2}.ctrl-right{grid-column:3;grid-row:2}
@@ -36,6 +36,15 @@
   </div>
 </div>
 <script>
+// === SOUND ENGINE ===
+let AC=null,MG=null,eatTog=0;
+function aInit(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.13;MG.connect(AC.destination)}if(AC.state==='suspended')AC.resume()}
+function tone(f,d,type='square',vol=.3,slide=0){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;o.type=type;o.frequency.setValueAtTime(f,n);if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);g.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02)}
+function sndEat(){aInit();eatTog=!eatTog;tone(eatTog?600:480,.05,'square',.18)}
+function sndPower(){aInit();[300,400,500,660].forEach((f,i)=>setTimeout(()=>tone(f,.08,'square',.22),i*55))}
+function sndDie(){aInit();[480,440,400,360,320,280,240,200,160].forEach((f,i)=>setTimeout(()=>tone(f,.07,'square',.25),i*65))}
+function sndWin(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.22),i*90))}
+// ===================
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), msg=document.getElementById('message');
 const W=19,H=21,T=20;
@@ -85,8 +94,8 @@ function movePlayer(){
    player.x+=player.dir.x;player.y+=player.dir.y;
  }
  const k=player.x+','+player.y;
- if(pellets.has(k)){pellets.delete(k);score+=map[player.y][player.x]==='o'?50:10;scoreEl.textContent=score}
- if(pellets.size===0){running=false;won=true;msg.textContent='¡GANASTE! 🎉'}
+ if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower()}else{score+=10;sndEat()}scoreEl.textContent=score}
+ if(pellets.size===0){running=false;won=true;sndWin();msg.textContent='¡GANASTE! 🎉'}
 }
 function moveGhost(g){
  let choices=Object.values(dirs).filter(d=>canMove(g,d));
@@ -104,7 +113,7 @@ function moveGhost(g){
 }
 function collision(){
  for(const g of ghosts) if(g.x===player.x&&g.y===player.y){
-   lives--;livesEl.textContent=lives;
+   lives--;livesEl.textContent=lives;sndDie();
    if(lives<=0){running=false;msg.textContent='GAME OVER — pulsa Nueva partida'}
    else{player.x=9;player.y=15;player.dir=dirs.left;player.next=dirs.left;ghosts.forEach((g,i)=>{g.x=8+i%3;g.y=10;g.dir=dirs.left})}
    return;
@@ -139,7 +148,7 @@ function loop(now){
  tick++; if(running && now-last>115){last=now;movePlayer();gtick++;if(running){if(gtick%2===0)ghosts.forEach(moveGhost);collision()}}
  draw();if(running)requestAnimationFrame(loop);
 }
-document.addEventListener('keydown',e=>{
+document.addEventListener('keydown',e=>{aInit();
  const m={ArrowLeft:dirs.left,ArrowRight:dirs.right,ArrowUp:dirs.up,ArrowDown:dirs.down,a:dirs.left,d:dirs.right,w:dirs.up,s:dirs.down};
  if(m[e.key]){e.preventDefault();player.next=m[e.key]}
 });
@@ -147,7 +156,7 @@ document.querySelector('.ctrl-left').onclick=()=>player.next=dirs.left;
 document.querySelector('.ctrl-right').onclick=()=>player.next=dirs.right;
 document.querySelector('#up').onclick=()=>player.next=dirs.up;
 document.querySelector('.ctrl-down').onclick=()=>player.next=dirs.down;
-document.getElementById('restart').onclick=init;
+document.getElementById('restart').onclick=()=>{aInit();init()};
 init();
 </script>
 </body>
