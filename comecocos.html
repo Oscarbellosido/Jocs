@@ -13,6 +13,7 @@
   canvas{width:100%;aspect-ratio:19/21;background:#000;border:2px solid #183dff;border-radius:8px;image-rendering:pixelated}
   #message{height:28px;margin:7px;font-weight:bold;color:#ffd900}
   button{background:#ffd900;border:0;border-radius:10px;padding:10px 20px;font-weight:bold;font-size:16px}
+  #back{background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:6px 14px;margin-bottom:4px}
   #controls{margin:10px auto 0;width:210px;display:grid;grid-template-columns:70px 70px 70px;grid-template-rows:55px 55px}
   #controls button{font-size:24px;padding:0}
   #up{grid-column:2}.ctrl-left{grid-column:1;grid-row:2}.ctrl-down{grid-column:2;grid-row:2}.ctrl-right{grid-column:3;grid-row:2}
@@ -21,6 +22,7 @@
 </head>
 <body>
 <div id="game">
+  <button id="back" onclick="location.href='index.html'">← Tornar</button>
   <h1>COMECocos</h1>
   <div id="info"><span>Puntos: <span id="score">0</span></span><span>Vidas: <span id="lives">3</span></span></div>
   <canvas id="canvas" width="380" height="420"></canvas>
@@ -61,7 +63,7 @@ const map=[
 "###################"
 ].map(r=>r.padEnd(W,'#').slice(0,W));
 
-let player, ghosts, score, lives, pellets, running, won, last=0, tick=0;
+let player, ghosts, score, lives, pellets, running, won, last=0, tick=0, gtick=0;
 const dirs={left:{x:-1,y:0},right:{x:1,y:0},up:{x:0,y:-1},down:{x:0,y:1}};
 function wall(x,y){return x<0||x>=W||y<0||y>=H||map[y][x]==='#'}
 function resetPellets(){pellets=new Set();for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(map[y][x]==='.'||map[y][x]==='o')pellets.add(x+','+y)}
@@ -134,7 +136,7 @@ function drawGhost(g){
  ctx.fillStyle='#1746a2';ctx.beginPath();ctx.arc(cx-3,cy-2,1.2,0,7);ctx.arc(cx+3,cy-2,1.2,0,7);ctx.fill();
 }
 function loop(now){
- tick++; if(running && now-last>115){last=now;movePlayer();if(running){ghosts.forEach(moveGhost);collision()}}
+ tick++; if(running && now-last>115){last=now;movePlayer();gtick++;if(running){if(gtick%2===0)ghosts.forEach(moveGhost);collision()}}
  draw();if(running)requestAnimationFrame(loop);
 }
 document.addEventListener('keydown',e=>{
