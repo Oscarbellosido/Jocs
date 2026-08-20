@@ -72,12 +72,12 @@ const map=[
 "###################"
 ].map(r=>r.padEnd(W,'#').slice(0,W));
 
-let player, ghosts, score, lives, pellets, running, won, last=0, tick=0, gtick=0;
+let player, ghosts, score, lives, pellets, running, won, last=0, tick=0, gtick=0, frightTimer=0;
 const dirs={left:{x:-1,y:0},right:{x:1,y:0},up:{x:0,y:-1},down:{x:0,y:1}};
 function wall(x,y){return x<0||x>=W||y<0||y>=H||map[y][x]==='#'}
 function resetPellets(){pellets=new Set();for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(map[y][x]==='.'||map[y][x]==='o')pellets.add(x+','+y)}
 function init(){
- score=0;lives=3;running=true;won=false;resetPellets();
+ score=0;lives=3;running=true;won=false;frightTimer=0;resetPellets();
  player={x:9,y:15,dir:dirs.left,next:dirs.left};
  ghosts=[
   {x:8,y:10,dir:dirs.left,color:'#ff4b5c'},
@@ -94,13 +94,15 @@ function movePlayer(){
    player.x+=player.dir.x;player.y+=player.dir.y;
  }
  const k=player.x+','+player.y;
- if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower()}else{score+=10;sndEat()}scoreEl.textContent=score}
+ if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower();frightTimer=40;ghosts.forEach(g=>g.frightened=true)}else{score+=10;sndEat()}scoreEl.textContent=score}
  if(pellets.size===0){running=false;won=true;sndWin();msg.textContent='¡GANASTE! 🎉'}
 }
 function moveGhost(g){
  let choices=Object.values(dirs).filter(d=>canMove(g,d));
  if(choices.length>2 && canMove(g,g.dir)) choices=choices.filter(d=>!(d.x===-g.dir.x&&d.y===-g.dir.y));
- if(!canMove(g,g.dir)||Math.random()<.25){
+ if(g.frightened){
+   g.dir=choices[Math.floor(Math.random()*choices.length)];
+ } else if(!canMove(g,g.dir)||Math.random()<.25){
    let best=choices[0],bestDist=1e9;
    for(const d of choices){
      const nx=g.x+d.x,ny=g.y+d.y;
@@ -113,10 +115,13 @@ function moveGhost(g){
 }
 function collision(){
  for(const g of ghosts) if(g.x===player.x&&g.y===player.y){
-   lives--;livesEl.textContent=lives;sndDie();
-   if(lives<=0){running=false;msg.textContent='GAME OVER — pulsa Nueva partida'}
-   else{player.x=9;player.y=15;player.dir=dirs.left;player.next=dirs.left;ghosts.forEach((g,i)=>{g.x=8+i%3;g.y=10;g.dir=dirs.left})}
-   return;
+   if(g.frightened){g.frightened=false;g.x=9;g.y=10;g.dir=dirs.up;score+=200;scoreEl.textContent=score;tone(600,.05,'square',.25);setTimeout(()=>tone(900,.08,'square',.25),60)}
+   else{
+     lives--;livesEl.textContent=lives;sndDie();
+     if(lives<=0){running=false;msg.textContent='GAME OVER — pulsa Nueva partida'}
+     else{player.x=9;player.y=15;player.dir=dirs.left;player.next=dirs.left;ghosts.forEach((g,i)=>{g.x=8+i%3;g.y=10;g.dir=dirs.left;g.frightened=false});frightTimer=0}
+     return;
+   }
  }
 }
 function draw(){
@@ -140,12 +145,18 @@ function drawPacman(){
 }
 function drawGhost(g){
  const cx=g.x*T+10,cy=g.y*T+10;
- ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(cx,cy-1,8,Math.PI,0);ctx.lineTo(cx+8,cy+8);ctx.lineTo(cx+4,cy+5);ctx.lineTo(cx,cy+8);ctx.lineTo(cx-4,cy+5);ctx.lineTo(cx-8,cy+8);ctx.closePath();ctx.fill();
- ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx-3,cy-2,2.5,0,7);ctx.arc(cx+3,cy-2,2.5,0,7);ctx.fill();
- ctx.fillStyle='#1746a2';ctx.beginPath();ctx.arc(cx-3,cy-2,1.2,0,7);ctx.arc(cx+3,cy-2,1.2,0,7);ctx.fill();
+ const flash=frightTimer>0&&frightTimer<14&&Math.floor(frightTimer/3)%2===0;
+ const col=g.frightened?(flash?'#fff':'#2222ff'):g.color;
+ ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy-1,8,Math.PI,0);ctx.lineTo(cx+8,cy+8);ctx.lineTo(cx+4,cy+5);ctx.lineTo(cx,cy+8);ctx.lineTo(cx-4,cy+5);ctx.lineTo(cx-8,cy+8);ctx.closePath();ctx.fill();
+ if(!g.frightened){
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx-3,cy-2,2.5,0,7);ctx.arc(cx+3,cy-2,2.5,0,7);ctx.fill();
+   ctx.fillStyle='#1746a2';ctx.beginPath();ctx.arc(cx-3,cy-2,1.2,0,7);ctx.arc(cx+3,cy-2,1.2,0,7);ctx.fill();
+ } else {
+   ctx.fillStyle='#fff';ctx.fillRect(cx-5,cy-1,3,2);ctx.fillRect(cx+2,cy-1,3,2);
+ }
 }
 function loop(now){
- tick++; if(running && now-last>115){last=now;movePlayer();gtick++;if(running){if(gtick%2===0)ghosts.forEach(moveGhost);collision()}}
+ tick++; if(running && now-last>115){last=now;movePlayer();gtick++;if(running){if(gtick%2===0){ghosts.forEach(moveGhost);if(frightTimer>0){frightTimer--;if(frightTimer===0)ghosts.forEach(g=>g.frightened=false)}}collision()}}
  draw();if(running)requestAnimationFrame(loop);
 }
 document.addEventListener('keydown',e=>{aInit();
