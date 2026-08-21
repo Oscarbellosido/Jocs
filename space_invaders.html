@@ -8,19 +8,18 @@
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
 body{display:flex;align-items:center;justify-content:center}
 #wrap{width:min(100vw,700px);height:100vh;display:flex;flex-direction:column;align-items:center}
-#hud{width:94%;display:flex;justify-content:space-between;padding:10px 0 4px 90px;font-size:16px}
+#hud{width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:14px;gap:6px}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:94%;max-height:72vh;border:1px solid #333;background:#000}
 #controls{display:flex;gap:18px;margin-top:12px}
 button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none}
 #msg{position:absolute;text-align:center;font-size:20px;line-height:1.7;display:none}
 small{font-size:12px;color:#aaa}
-#back{position:fixed;top:8px;left:10px;background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:5px 12px;border-radius:6px;font-family:monospace;cursor:pointer;z-index:99}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0}
 </style>
 </head>
 <body>
-<button id="back" onclick="location.href='index.html'">← Tornar</button>
 <div id="wrap">
-  <div id="hud"><span>SCORE <b id="score">0</b></span><span>LEVEL <b id="level">1</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
   <canvas id="game" width="480" height="600"></canvas>
   <div id="controls">
     <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
@@ -183,7 +182,7 @@ function update(dt){
   ufoTimer-=dt;
   if(ufoTimer<=0&&!ufo){
     const fromLeft=Math.random()<.5;
-    ufo={x:fromLeft?-40:W+40, y:42, vx:fromLeft?1.2:-1.2, sndT:0};
+    ufo={x:fromLeft?-40:W+40, y:42, vx:fromLeft?0.4:-0.4, sndT:0};
     ufoTimer=15000+Math.random()*15000;
   }
   if(ufo){
@@ -211,8 +210,10 @@ function drawAlien(a){
     ["    ####    ","  ########  ","############","##  ####  ##","## ##  ## ##","   ##  ##   "],
     ["   ######   ","############","##  ####  ##","############","  ##    ##  "," ##      ## "]
   ];
+  const colors=['#55ffff','#55ffff','#55ff55','#55ff55','#ff5555'];
+  const col=colors[Math.min(a.row,4)];
   const p=patterns[a.row%3], sx=2,sy=2;
-  p.forEach((s,yy)=>[...s].forEach((ch,xx)=>{if(ch==="#")rect(a.x+xx*sx,a.y+yy*sy,sx,sy)}));
+  p.forEach((s,yy)=>[...s].forEach((ch,xx)=>{if(ch==="#")rect(a.x+xx*sx,a.y+yy*sy,sx,sy,col)}));
 }
 function draw(){
   x.clearRect(0,0,W,H);
