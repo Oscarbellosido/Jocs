@@ -24,7 +24,7 @@
 <div id="game">
   <button id="back" onclick="location.href='index.html'">← Tornar</button>
   <h1>COMECocos</h1>
-  <div id="info"><span>Puntos: <span id="score">0</span></span><span>Vidas: <span id="lives">3</span></span></div>
+  <div id="info"><span>Puntos: <span id="score">0</span></span><span style="color:#ff0">Rècord: <span id="best">0</span></span><span>Vidas: <span id="lives">3</span></span></div>
   <canvas id="canvas" width="380" height="420"></canvas>
   <div id="message">Usa las flechas o WASD</div>
   <button id="restart">Nueva partida</button>
@@ -46,7 +46,10 @@ function sndDie(){aInit();[480,440,400,360,320,280,240,200,160].forEach((f,i)=>s
 function sndWin(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.22),i*90))}
 // ===================
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
-const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), msg=document.getElementById('message');
+const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), msg=document.getElementById('message'), bestEl=document.getElementById('best');
+let bestScore=parseInt(localStorage.getItem('best_comecocos')||'0');
+bestEl.textContent=bestScore;
+function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_comecocos',bestScore);bestEl.textContent=bestScore}}
 const W=19,H=21,T=20;
 const map=[
 "###################",
@@ -94,7 +97,7 @@ function movePlayer(){
    player.x+=player.dir.x;player.y+=player.dir.y;
  }
  const k=player.x+','+player.y;
- if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower();frightTimer=40;ghosts.forEach(g=>g.frightened=true)}else{score+=10;sndEat()}scoreEl.textContent=score}
+ if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower();frightTimer=40;ghosts.forEach(g=>g.frightened=true)}else{score+=10;sndEat()}scoreEl.textContent=score;saveBest()}
  if(pellets.size===0){running=false;won=true;sndWin();msg.textContent='¡GANASTE! 🎉'}
 }
 function moveGhost(g){

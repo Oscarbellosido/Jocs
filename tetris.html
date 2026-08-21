@@ -86,7 +86,7 @@
     <button id="pauseBtn">⏸</button>
     <button id="resetBtn2">⟲</button>
   </div>
-  <div id="score-wrap">SCORE <span id="scoreDisplay">0</span></div>
+  <div id="score-wrap">SCORE <span id="scoreDisplay">0</span> &nbsp; <span style="color:#ff0">BEST <span id="bestDisplay">0</span></span></div>
 </div>
 
 <div id="canvas-wrap">
@@ -114,7 +114,10 @@
   const COLORS=['#0e121f','#55d6f0','#f7e476','#b484e0','#6fcf97','#e6675a','#f0a55a','#5a8ce0'];
 
   const canvas=document.getElementById('tetrisCanvas'), ctx=canvas.getContext('2d');
-  const scoreSpan=document.getElementById('scoreDisplay');
+  const scoreSpan=document.getElementById('scoreDisplay'), bestSpan=document.getElementById('bestDisplay');
+  let bestScore=parseInt(localStorage.getItem('best_tetris')||'0');
+  bestSpan.textContent=bestScore;
+  function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_tetris',bestScore);bestSpan.textContent=bestScore}}
   const overlay=document.getElementById('msg-overlay'), msgContent=document.getElementById('msg-content');
 
   // Responsive canvas sizing for mobile
@@ -162,7 +165,7 @@
       if(board[row].every(v=>v)){for(let r=row;r>0;r--)board[r]=board[r-1].slice();board[0]=Array(COLS).fill(0);lines++}
       else row--;
     }
-    if(lines){score+=lines===1?100:lines===2?300:lines===3?500:800;scoreSpan.textContent=score}
+    if(lines){score+=lines===1?100:lines===2?300:lines===3?500:800;scoreSpan.textContent=score;saveBest()}
   }
   function move(dx,dy){
     if(paused||gameOver)return false;

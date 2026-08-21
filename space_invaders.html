@@ -20,7 +20,7 @@ small{font-size:12px;color:#aaa}
 <body>
 <button id="back" onclick="location.href='index.html'">← Tornar</button>
 <div id="wrap">
-  <div id="hud"><span>SCORE <b id="score">0</b></span><span>LEVEL <b id="level">1</b></span><span>LIVES <b id="lives">3</b></span></div>
+  <div id="hud"><span>SCORE <b id="score">0</b></span><span>LEVEL <b id="level">1</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
   <canvas id="game" width="480" height="600"></canvas>
   <div id="controls">
     <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
@@ -68,11 +68,17 @@ function sndStep(){
   tone(f,.055,"square",.22);
 }
 function sndGameOver(){audioInit();tone(300,.15,"square",.25,-80);setTimeout(()=>tone(180,.3,"square",.25,-80),160)}
+function sndUfo(){audioInit();tone(880,.055,"square",.14,-200);setTimeout(()=>tone(660,.055,"square",.14,-160),60)}
+function sndUfoHit(){audioInit();noise(.2,.35);tone(320,.15,"square",.25,-250)}
 
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=600;
 let score=0,level=1,lives=3,gameOver=false,paused=false;
+let bestScore=parseInt(localStorage.getItem('best_invaders')||'0');
+document.getElementById('best').textContent=bestScore;
+function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_invaders',bestScore);document.getElementById('best').textContent=bestScore}}
 let player,aliens,bullets,enemyBullets,barriers,dir,stepTimer,stepDelay,enemyShootTimer;
+let ufo=null, ufoTimer=0;
 const keys={left:false,right:false,fire:false};
 
 function rect(px,py,w,h,col='#fff'){x.fillStyle=col;x.fillRect(Math.round(px),Math.round(py),w,h)}
@@ -99,12 +105,14 @@ function makeBarriers(){
 function start(){
   score=0;level=1;lives=3;gameOver=false;paused=false;
   resetPlayer();makeAliens();makeBarriers();bullets=[];enemyBullets=[];enemyShootTimer=0;
+  ufo=null;ufoTimer=15000+Math.random()*15000;
   updateHUD(); hideMsg();
 }
 function updateHUD(){
   document.getElementById('score').textContent=score;
   document.getElementById('level').textContent=level;
   document.getElementById('lives').textContent=lives;
+  saveBest();
 }
 function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
 function hideMsg(){document.getElementById('msg').style.display='none'}
@@ -170,6 +178,30 @@ function update(dt){
   if(!aliens.some(a=>a.alive)){
     level++;updateHUD();makeAliens();bullets=[];enemyBullets=[];makeBarriers();
   }
+
+  // UFO mystery ship
+  ufoTimer-=dt;
+  if(ufoTimer<=0&&!ufo){
+    const fromLeft=Math.random()<.5;
+    ufo={x:fromLeft?-40:W+40, y:42, vx:fromLeft?1.2:-1.2, sndT:0};
+    ufoTimer=15000+Math.random()*15000;
+  }
+  if(ufo){
+    ufo.x+=ufo.vx*dt;
+    ufo.sndT-=dt;
+    if(ufo.sndT<=0){sndUfo();ufo.sndT=500}
+    if(ufo.x<-50||ufo.x>W+50)ufo=null;
+    // player bullet vs ufo
+    if(ufo){
+      for(const b of bullets){
+        if(b.y<ufo.y+10&&b.y>ufo.y-10&&b.x>ufo.x-20&&b.x<ufo.x+20){
+          const pts=[50,100,150,300][Math.floor(Math.random()*4)];
+          score+=pts;b.y=-99;sndUfoHit();ufo=null;updateHUD();break;
+        }
+      }
+    }
+  }
+
   updateHUD();
 }
 
@@ -192,6 +224,14 @@ function draw(){
   bullets.forEach(b=>rect(b.x,b.y,b.w,b.h));
   enemyBullets.forEach(b=>{rect(b.x,b.y,3,4);rect(b.x-2,b.y+4,7,3);rect(b.x+1,b.y+7,3,3)});
   barriers.forEach(q=>{if(q.w)rect(q.x,q.y,q.w,q.h)});
+  // UFO mystery ship
+  if(ufo){
+    rect(ufo.x-20,ufo.y,40,10,'#f00');
+    rect(ufo.x-12,ufo.y-7,24,8,'#f00');
+    rect(ufo.x-6,ufo.y-12,12,6,'#f00');
+    // windows
+    rect(ufo.x-14,ufo.y+2,5,5,'#fff');rect(ufo.x-3,ufo.y+2,5,5,'#fff');rect(ufo.x+8,ufo.y+2,5,5,'#fff');
+  }
   // ground
   rect(0,H-18,W,2);
 }
