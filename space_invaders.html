@@ -109,7 +109,7 @@ function start(){
 }
 function updateHUD(){
   document.getElementById('score').textContent=score;
-  document.getElementById('level').textContent=level;
+  const lel=document.getElementById('level'); if(lel)lel.textContent=level;
   document.getElementById('lives').textContent=lives;
   saveBest();
 }
