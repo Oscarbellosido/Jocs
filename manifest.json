@@ -1,7 +1,7 @@
 {
   "name": "Jocs Clàssics",
   "short_name": "Jocs",
-  "description": "Tetris, Comecocos, Space Invaders, Asteroid Belt, Breakout i Missile Command",
+  "description": "Tetris, Comecocos, Space Invaders, Asteroid Belt, Breakout, Missile Command i Galaxian",
   "start_url": "/Jocs/",
   "display": "standalone",
   "background_color": "#0b0e1a",
