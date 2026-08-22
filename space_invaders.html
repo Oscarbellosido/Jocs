@@ -6,21 +6,25 @@
 <title>Space Invaders Classic</title>
 <style>
 html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
-body{display:flex;align-items:center;justify-content:center}
-#wrap{width:min(100vw,700px);height:100vh;display:flex;flex-direction:column;align-items:center}
-#hud{width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:14px;gap:6px}
-canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:94%;max-height:72vh;border:1px solid #333;background:#000}
-#controls{display:flex;gap:18px;margin-top:12px}
+/* alineat a dalt: mai retalla el HUD encara que el contingut no hi capiga */
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:14px;gap:6px}
+/* el canvas s'ajusta a l'espai que sobra, mantenint la proporcio */
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:94%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000}
+#controls{flex:none;display:flex;gap:18px;margin-top:10px}
 button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none}
-#msg{position:absolute;text-align:center;font-size:20px;line-height:1.7;display:none}
-small{font-size:12px;color:#aaa}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;font-size:12px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0}
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
-  <canvas id="game" width="480" height="600"></canvas>
+  <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
   </div>
