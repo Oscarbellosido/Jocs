@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v6';
+const CACHE = 'jocs-v7';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -9,6 +9,8 @@ const FILES = [
   '/Jocs/breakout.html',
   '/Jocs/missile_command.html',
   '/Jocs/galaxian.html',
+  '/Jocs/frogger.html',
+  '/Jocs/battlezone.html',
   '/Jocs/icon-192.png',
   '/Jocs/icon-512.png'
 ];

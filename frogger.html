@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Frogger Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:96%;height:100%;object-fit:contain;background:#000;touch-action:none}
+#controls{flex:none;margin:6px auto 0;display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:46px 46px;gap:4px}
+#controls button{font-size:22px;padding:0;background:#111;color:#fff;border:1px solid #777;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none}
+#controls button:active{background:#333}
+#up{grid-column:2}.c-left{grid-column:1;grid-row:2}.c-down{grid-column:2;grid-row:2}.c-right{grid-column:3;grid-row:2}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#888;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>NIV <b id="level">1</b></span><span>GRANOTES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="screen"><canvas id="game" width="416" height="448"></canvas></div>
+  <div id="controls">
+    <button id="up">▲</button><button class="c-left">◀</button><button class="c-down">▼</button><button class="c-right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small>fletxes o WASD · llisca el dit · pausa: P</small>
+</div>
+<script>
+
+// ===== CLASSIC ARCADE SOUND ENGINE =====
+let audioCtx=null,master=null;
+function audioInit(){
+  if(!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    master=audioCtx.createGain();master.gain.value=.12;master.connect(audioCtx.destination)}
+  if(audioCtx.state==="suspended")audioCtx.resume();
+}
+function tone(f,d,type="square",vol=.3,slide=0){
+  if(!audioCtx)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain(),n=audioCtx.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(master);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.2,vol=.3){
+  if(!audioCtx)return;
+  const n=audioCtx.sampleRate*d,b=audioCtx.createBuffer(1,n,audioCtx.sampleRate);
+  const dd=b.getChannelData(0);for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=audioCtx.createBufferSource(),g=audioCtx.createGain(),now=audioCtx.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(master);s.start();s.stop(now+d);
+}
+function sndHop(){audioInit();tone(420,.06,"square",.22,260)}
+function sndHome(){audioInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.1,"square",.24),i*80))}
+function sndSquash(){audioInit();noise(.22,.3);tone(160,.2,"sawtooth",.24,-110)}
+function sndDrown(){audioInit();tone(500,.22,"sine",.22,-420);setTimeout(()=>noise(.18,.2),120)}
+function sndFly(){audioInit();[880,1180].forEach((f,i)=>setTimeout(()=>tone(f,.08,"square",.24),i*70))}
+function sndLevel(){audioInit();[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,"square",.24),i*90))}
+function sndOver(){audioInit();[330,262,196,131].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-50),i*250))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const CELL=32,COLS=13,ROWS=13,W=COLS*CELL,H=ROWS*CELL,BAR=32;
+// files: 0 caselles d'arribada · 1-5 riu · 6 mitjana · 7-11 carretera · 12 sortida
+const HOME_COLS=[0,3,6,9,12];
+const rowY=r=>r*CELL;
+
+// carrils: al riu s'hi puja a sobre, a la carretera t'atropellen
+const LANES=[
+  {row:1, kind:'log',    len:3, dir: 1, sp:0.035, n:4},
+  {row:2, kind:'turtle', len:3, dir:-1, sp:0.042, n:4, dive:true},
+  {row:3, kind:'log',    len:6, dir: 1, sp:0.028, n:3},
+  {row:4, kind:'log',    len:2, dir: 1, sp:0.055, n:4},
+  {row:5, kind:'turtle', len:2, dir:-1, sp:0.048, n:5, dive:true},
+  {row:7, kind:'truck',  len:2, dir:-1, sp:0.050, n:3},
+  {row:8, kind:'car',    len:1, dir: 1, sp:0.070, n:3},
+  {row:9, kind:'car',    len:1, dir:-1, sp:0.060, n:4},
+  {row:10,kind:'dozer',  len:1, dir: 1, sp:0.030, n:3},
+  {row:11,kind:'car',    len:1, dir:-1, sp:0.045, n:3}
+];
+const CARCOL={car:['#ffe000','#00e0ff','#ff7000'],truck:['#dddddd'],dozer:['#ffd000']};
+
+let score=0,level=1,lives=3,state='play',paused=false,extraGiven=false;
+let homes,frog,timeLeft,maxRow,fly,lanes,startTime;
+
+let bestScore=parseInt(localStorage.getItem('best_frogger')||'0');
+document.getElementById('best').textContent=bestScore;
+function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_frogger',bestScore);document.getElementById('best').textContent=bestScore}}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('level').textContent=level;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  if(!extraGiven&&score>=20000){extraGiven=true;lives++}   // granota extra als 20.000
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function laneSpeed(l){return l.sp*(1+(level-1)*0.12)*l.dir}
+function trackLen(){return W+CELL*4}
+function laneObjs(l){
+  const L=trackLen(),sp=L/l.n,out=[];
+  for(let i=0;i<l.n;i++){
+    let px=(l.phase+i*sp)%L; if(px<0)px+=L;
+    out.push({x:px-CELL*2,w:l.len*CELL,i:i});
+  }
+  return out;
+}
+function turtleDown(l,i){
+  if(!l.dive||i%2)return 0;                 // nomes es submergeix una tortuga de cada dues
+  const p=((performance.now()/1000)+i*1.9)%7;
+  return p>5.6?2:p>4.8?1:0;                 // 2 sota l'aigua, 1 a punt de submergir-se
+}
+
+function resetFrog(){
+  frog={x:W/2,row:12,hop:null,dead:0};
+  maxRow=12;timeLeft=Math.max(18,32-level*1.5);
+}
+function newLevel(){
+  homes=[false,false,false,false,false];
+  lanes=LANES.map(l=>({...l,phase:Math.random()*trackLen()}));
+  fly=null;resetFrog();state='play';updateHUD();
+}
+function start(){
+  score=0;level=1;lives=3;extraGiven=false;paused=false;
+  newLevel();hideMsg();
+}
+
+function die(reason){
+  if(state!=='play')return;
+  state='dying';frog.dead=0;
+  reason==='water'?sndDrown():sndSquash();
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';sndOver();msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+    else{resetFrog();state='play'}
+  },900);
+}
+function reachHome(idx){
+  homes[idx]=true;
+  addScore(50+Math.floor(timeLeft)*10);       // 50 punts i 10 per segon que sobra
+  if(fly&&fly.idx===idx){addScore(200);fly=null;sndFly()}
+  sndHome();
+  if(homes.every(h=>h)){
+    addScore(1000);                            // totes cinc plenes
+    level++;sndLevel();
+    msg("NIVELL "+level);
+    setTimeout(()=>{hideMsg();newLevel()},1400);
+    state='wait';
+  }else resetFrog();
+}
+
+function hop(dx,dy){
+  if(state!=='play'||paused||frog.hop)return;
+  const nrow=frog.row+dy, nx=frog.x+dx*CELL;
+  if(nrow>12||nrow<0||nx<CELL/2-1||nx>W-CELL/2+1)return;
+  frog.hop={fx:frog.x,fy:rowY(frog.row),tx:nx,ty:rowY(nrow),t:0,row:nrow};
+  sndHop();
+}
+function landing(){
+  frog.row=frog.hop.row;frog.x=frog.hop.tx;frog.hop=null;
+  if(frog.row<maxRow){maxRow=frog.row;addScore(10)}   // 10 punts per fila guanyada
+  if(frog.row===0){
+    // nomes val si cau dins d'una caseta lliure
+    const idx=HOME_COLS.findIndex(cc=>Math.abs(frog.x-(cc*CELL+CELL/2))<CELL*0.6);
+    if(idx<0||homes[idx])die('squash'); else reachHome(idx);
+  }
+}
+function update(dt){
+  if(state==='over'||paused)return;
+  for(const l of lanes)l.phase+=laneSpeed(l)*dt*(1000/1000);
+  if(state==='dying'){frog.dead+=dt;return}
+  if(state!=='play')return;
+
+  if(frog.hop){
+    frog.hop.t+=dt;
+    const k=Math.min(1,frog.hop.t/130);
+    if(k>=1)landing();
+  }else{
+    timeLeft-=dt/1000;
+    if(timeLeft<=0){die('time');return}
+  }
+  const row=frog.hop?frog.hop.row:frog.row;
+  const lane=lanes.find(l=>l.row===row);
+
+  // al riu: o vas a sobre d'alguna cosa o t'ofegues
+  if(row>=1&&row<=5){
+    let on=null;
+    if(lane)for(const o of laneObjs(lane)){
+      if(lane.kind==='turtle'&&turtleDown(lane,o.i)===2)continue;
+      if(frog.x>o.x&&frog.x<o.x+o.w){on=o;break}
+    }
+    if(!frog.hop){
+      if(!on){die('water');return}
+      frog.x+=laneSpeed(lane)*dt;
+      if(frog.x<CELL/2-2||frog.x>W-CELL/2+2){die('water');return}   // t'ha tret de la pantalla
+    }
+  }
+  // a la carretera: qualsevol vehicle et xafa
+  if(row>=7&&row<=11&&lane&&!frog.hop){
+    for(const o of laneObjs(lane)){
+      if(frog.x+9>o.x&&frog.x-9<o.x+o.w){die('squash');return}
+    }
+  }
+  // la mosca apareix en una caseta lliure
+  if(!fly&&Math.random()<dt/9000){
+    const free=homes.map((h,i)=>h?-1:i).filter(i=>i>=0);
+    if(free.length)fly={idx:free[Math.floor(Math.random()*free.length)],t:5000};
+  }
+  if(fly){fly.t-=dt;if(fly.t<=0)fly=null}
+}
+
+// ===== DIBUIX =====
+function drawFrog(px,py,squash){
+  if(squash){
+    x.fillStyle='#ff4040';x.beginPath();x.arc(px,py+16,10,0,6.283);x.fill();
+    x.fillStyle='#fff';x.font='12px monospace';x.textAlign='center';x.fillText('✱',px,py+20);
+    return;
+  }
+  const g='#4ad830';
+  x.fillStyle=g;
+  x.fillRect(px-9,py+9,18,14);          // cos
+  x.fillRect(px-13,py+11,4,5);x.fillRect(px+9,py+11,4,5);   // potes davanteres
+  x.fillRect(px-13,py+19,4,6);x.fillRect(px+9,py+19,4,6);   // potes del darrere
+  x.fillStyle='#9fff70';x.fillRect(px-6,py+12,12,7);
+  x.fillStyle='#fff';x.fillRect(px-6,py+7,5,5);x.fillRect(px+1,py+7,5,5);
+  x.fillStyle='#000';x.fillRect(px-5,py+9,3,3);x.fillRect(px+2,py+9,3,3);
+}
+function draw(){
+  // fons per zones
+  x.fillStyle='#000';x.fillRect(0,0,W,H+BAR);
+  x.fillStyle='#0d2b8a';x.fillRect(0,rowY(1),W,CELL*5);      // riu
+  x.fillStyle='#1d7a2a';x.fillRect(0,rowY(6),W,CELL);        // mitjana
+  x.fillStyle='#333';x.fillRect(0,rowY(7),W,CELL*5);         // carretera
+  x.fillStyle='#1d7a2a';x.fillRect(0,rowY(12),W,CELL);       // sortida
+  // marques de la carretera
+  x.fillStyle='#666';
+  for(let r=8;r<=11;r++)for(let i=0;i<COLS*2;i++)x.fillRect(i*20+4,rowY(r)-1,10,2);
+  // casetes d'arribada
+  x.fillStyle='#123d12';x.fillRect(0,0,W,CELL);
+  for(let i=0;i<5;i++){
+    const cx=HOME_COLS[i]*CELL;
+    x.fillStyle='#0a0a2a';x.fillRect(cx+2,4,CELL-4,CELL-6);
+    if(homes[i])drawFrog(cx+CELL/2,-2,false);
+    else if(fly&&fly.idx===i){
+      x.fillStyle='#ff40ff';x.fillRect(cx+CELL/2-5,14,10,7);
+      x.fillStyle='#fff';x.fillRect(cx+CELL/2-8,13,4,3);x.fillRect(cx+CELL/2+4,13,4,3);
+    }
+  }
+  // objectes de cada carril
+  for(const l of lanes){
+    for(const o of laneObjs(l)){
+      const y=rowY(l.row);
+      if(l.kind==='log'){
+        x.fillStyle='#7a4a1e';x.fillRect(o.x,y+5,o.w,CELL-10);
+        x.fillStyle='#5c3616';for(let i=0;i<o.w;i+=16)x.fillRect(o.x+i+3,y+8,2,CELL-16);
+      }else if(l.kind==='turtle'){
+        const d=turtleDown(l,o.i);
+        if(d===2)continue;
+        for(let i=0;i<l.len;i++){
+          const tx=o.x+i*CELL+CELL/2;
+          x.fillStyle=d===1?'#2a7a4a':'#3fbf6a';
+          x.beginPath();x.arc(tx,y+CELL/2,11,0,6.283);x.fill();
+          x.fillStyle=d===1?'#1d5c36':'#2a8f4e';
+          x.beginPath();x.arc(tx,y+CELL/2,6,0,6.283);x.fill();
+          x.fillStyle=d===1?'#2a7a4a':'#3fbf6a';x.fillRect(tx-13,y+CELL/2-3,4,6);
+        }
+      }else{
+        const col=CARCOL[l.kind][o.i%CARCOL[l.kind].length];
+        x.fillStyle=col;x.fillRect(o.x,y+6,o.w,CELL-12);
+        x.fillStyle='#000';x.fillRect(o.x+3,y+9,o.w-6,4);
+        x.fillStyle='#222';x.fillRect(o.x+2,y+CELL-8,6,4);x.fillRect(o.x+o.w-8,y+CELL-8,6,4);
+      }
+    }
+  }
+  // granota
+  if(state!=='over'){
+    const px=frog.hop?frog.hop.fx+(frog.hop.tx-frog.hop.fx)*Math.min(1,frog.hop.t/130):frog.x;
+    const py=frog.hop?frog.hop.fy+(frog.hop.ty-frog.hop.fy)*Math.min(1,frog.hop.t/130):rowY(frog.row);
+    drawFrog(px,py,state==='dying');
+  }
+  // barra de temps
+  x.fillStyle='#111';x.fillRect(0,H,W,BAR);
+  const total=Math.max(18,32-level*1.5), frac=Math.max(0,timeLeft/total);
+  x.fillStyle=frac<0.3?'#ff3030':'#30ff30';
+  x.fillRect(W-8-(W-90)*frac,H+10,(W-90)*frac,12);
+  x.fillStyle='#fff';x.font='12px monospace';x.textAlign='left';x.fillText('TEMPS',6,H+21);
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function dir(dx,dy){audioInit();if(state==='over'){start();return}hop(dx,dy)}
+document.querySelector('#up').addEventListener('pointerdown',e=>{e.preventDefault();dir(0,-1)});
+document.querySelector('.c-down').addEventListener('pointerdown',e=>{e.preventDefault();dir(0,1)});
+document.querySelector('.c-left').addEventListener('pointerdown',e=>{e.preventDefault();dir(-1,0)});
+document.querySelector('.c-right').addEventListener('pointerdown',e=>{e.preventDefault();dir(1,0)});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+const KEYS={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+            w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
+document.addEventListener('keydown',e=>{
+  audioInit();
+  if(KEYS[e.key]){e.preventDefault();dir(...KEYS[e.key])}
+  if(e.key==='p'||e.key==='P'){if(state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}}
+  if(e.key==='Enter'&&state==='over')start();
+});
+let sw=null;
+c.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();
+  if(state==='over'){start();return}
+  sw={x:e.clientX,y:e.clientY}});
+c.addEventListener('pointermove',e=>{
+  if(!sw)return;
+  const dx=e.clientX-sw.x,dy=e.clientY-sw.y;
+  if(Math.hypot(dx,dy)<24)return;
+  Math.abs(dx)>Math.abs(dy)?hop(dx>0?1:-1,0):hop(0,dy>0?1:-1);
+  sw=null;
+});
+c.addEventListener('pointerup',()=>sw=null);
+c.addEventListener('pointercancel',()=>sw=null);
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){audioInit();start()}});
+
+start();
+</script>
+</body>
+</html>
