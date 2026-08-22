@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Breakout Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+#wrap{width:min(100vw,700px);height:100vh;display:flex;flex-direction:column;align-items:center}
+#hud{width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:14px;gap:6px}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:94%;max-height:72vh;border:1px solid #333;background:#000;touch-action:none}
+#controls{display:flex;gap:18px;margin-top:12px}
+button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#msg{position:absolute;text-align:center;font-size:20px;line-height:1.7;display:none;text-shadow:0 0 10px #000}
+small{font-size:12px;color:#aaa;text-align:center}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>BALLS <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <canvas id="game" width="480" height="620"></canvas>
+  <div id="controls">
+    <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small>← → / A D &nbsp; llançar: ESPAI &nbsp; pausa: P<br>o arrossega el dit sobre la pantalla</small>
+</div>
+<script>
+
+// ===== CLASSIC ARCADE SOUND ENGINE =====
+let audioCtx=null, master=null;
+function audioInit(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    master=audioCtx.createGain(); master.gain.value=.12; master.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==="suspended") audioCtx.resume();
+}
+function tone(freq,dur,type="square",vol=.35,slide=0){
+  if(!audioCtx)return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain(), now=audioCtx.currentTime;
+  o.type=type; o.frequency.setValueAtTime(freq,now);
+  if(slide) o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(0.0001,now); g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g); g.connect(master); o.start(now); o.stop(now+dur+.02);
+}
+function noise(dur=.12,vol=.25){
+  if(!audioCtx)return;
+  const n=audioCtx.sampleRate*dur, b=audioCtx.createBuffer(1,n,audioCtx.sampleRate);
+  const d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),now=audioCtx.currentTime;
+  src.buffer=b; g.gain.setValueAtTime(vol,now); g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  src.connect(g);g.connect(master);src.start();src.stop(now+dur);
+}
+// el Breakout original: un simple "bip" de to diferent segons on rebota
+function sndWall(){audioInit();tone(226,.045,"square",.24)}
+function sndPaddle(){audioInit();tone(180,.05,"square",.28)}
+function sndBrick(row){audioInit();tone([784,784,659,659,523,523,440,440][row]||440,.05,"square",.26)}
+function sndLaunch(){audioInit();tone(330,.06,"square",.25,180)}
+function sndLose(){audioInit();tone(200,.1,"square",.28,-120);setTimeout(()=>tone(90,.28,"square",.28,-40),110)}
+function sndStart(){audioInit();tone(220,.08,"square",.3);setTimeout(()=>tone(330,.08,"square",.3),90);setTimeout(()=>tone(440,.16,"square",.3),180)}
+function sndScreen(){audioInit();[440,554,659,880].forEach((f,i)=>setTimeout(()=>tone(f,.12,"square",.26),i*95))}
+function sndWin(){audioInit();[523,659,784,1046,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.16,"square",.28),i*150))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=620,WALL=10;
+const COLS=14,ROWS=8,BTOP=120,BH=18;
+const BW=(W-WALL*2)/COLS;
+// files de dalt a baix: 2 vermelles, 2 taronges, 2 verdes, 2 grogues (Atari 1976)
+const ROWCOL=['#cb4032','#cb4032','#d17b28','#d17b28','#3f9c3a','#3f9c3a','#c9bb2e','#c9bb2e'];
+const ROWPTS=[7,7,5,5,3,3,1,1];
+const SPEEDS=[0.20,0.245,0.30,0.365,0.44];
+const PW=68,PH=10,BS=8;
+
+let score=0,lives=3,screen=1,gameOver=false,win=false,paused=false;
+let bricks=[],paddle,ball,hits=0,speedIdx=0,hitOrange=false,hitRed=false,paddleHalved=false;
+const keys={left:false,right:false};
+
+let bestScore=parseInt(localStorage.getItem('best_breakout')||'0');
+document.getElementById('best').textContent=bestScore;
+function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_breakout',bestScore);document.getElementById('best').textContent=bestScore}}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function makeBricks(){
+  bricks=[];
+  for(let r=0;r<ROWS;r++)for(let col=0;col<COLS;col++)
+    bricks.push({x:WALL+col*BW,y:BTOP+r*BH,row:r,alive:true});
+}
+function resetBall(){
+  ball={x:paddle.x+paddle.w/2-BS/2,y:paddle.y-BS-2,vx:0,vy:0,live:false};
+}
+function start(){
+  score=0;lives=3;screen=1;gameOver=false;win=false;paused=false;
+  hits=0;speedIdx=0;hitOrange=false;hitRed=false;paddleHalved=false;
+  paddle={x:W/2-PW/2,y:H-56,w:PW,h:PH};
+  makeBricks();resetBall();updateHUD();hideMsg();
+}
+function launch(){
+  if(gameOver||win||paused||ball.live)return;
+  const s=SPEEDS[speedIdx], ang=(Math.random()*0.7-0.35);
+  ball.vx=s*Math.sin(ang); ball.vy=-s*Math.cos(ang); ball.live=true;
+  sndLaunch();
+}
+function setSpeed(){
+  const s=SPEEDS[speedIdx], m=Math.hypot(ball.vx,ball.vy)||1;
+  ball.vx=ball.vx/m*s; ball.vy=ball.vy/m*s;
+}
+function bumpSpeed(){
+  if(speedIdx<SPEEDS.length-1){speedIdx++;setSpeed()}
+}
+function loseBall(){
+  lives--;updateHUD();sndLose();
+  if(lives<=0){gameOver=true;ball.live=false;msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+  else resetBall();
+}
+function stepBall(d){
+  ball.x+=ball.vx*d; ball.y+=ball.vy*d;
+  // parets laterals i sostre
+  if(ball.x<=WALL){ball.x=WALL;ball.vx=Math.abs(ball.vx);sndWall()}
+  if(ball.x+BS>=W-WALL){ball.x=W-WALL-BS;ball.vx=-Math.abs(ball.vx);sndWall()}
+  if(ball.y<=WALL){
+    ball.y=WALL;ball.vy=Math.abs(ball.vy);sndWall();
+    // clàssic: en tocar el sostre la pala es redueix a la meitat
+    if(!paddleHalved){paddleHalved=true;paddle.w=PW/2;paddle.x=Math.min(paddle.x,W-WALL-paddle.w)}
+  }
+  // maons
+  for(const b of bricks){
+    if(!b.alive)continue;
+    if(ball.x+BS>b.x&&ball.x<b.x+BW&&ball.y+BS>b.y&&ball.y<b.y+BH){
+      const ox=Math.min(ball.x+BS-b.x,b.x+BW-ball.x);
+      const oy=Math.min(ball.y+BS-b.y,b.y+BH-ball.y);
+      if(ox<oy)ball.vx=-ball.vx; else ball.vy=-ball.vy;
+      b.alive=false; score+=ROWPTS[b.row]; hits++; sndBrick(b.row); updateHUD();
+      if(hits===4||hits===12)bumpSpeed();
+      if(b.row<2&&!hitRed){hitRed=true;bumpSpeed()}
+      if(b.row>=2&&b.row<4&&!hitOrange){hitOrange=true;bumpSpeed()}
+      if(!bricks.some(q=>q.alive)){
+        if(screen===1){screen=2;makeBricks();resetBall();sndScreen();msg("PANTALLA 2<br><small>Prem ESPAI</small>");setTimeout(hideMsg,1400)}
+        else{win=true;sndWin();msg("HAS TRENCAT LA PARET!<br><small>Prem ENTER o toca aquí</small>")}
+      }
+      break;
+    }
+  }
+  if(!ball.live)return;
+  // pala
+  if(ball.vy>0&&ball.y+BS>=paddle.y&&ball.y<=paddle.y+paddle.h&&ball.x+BS>paddle.x&&ball.x<paddle.x+paddle.w){
+    let rel=((ball.x+BS/2)-(paddle.x+paddle.w/2))/(paddle.w/2);
+    rel=Math.max(-1,Math.min(1,rel));
+    const ang=rel*(Math.PI/3), s=SPEEDS[speedIdx];
+    ball.vx=s*Math.sin(ang); ball.vy=-s*Math.cos(ang);
+    ball.y=paddle.y-BS-0.5;
+    sndPaddle();
+  }
+  if(ball.y>H)loseBall();
+}
+function update(dt){
+  if(gameOver||win||paused)return;
+  if(keys.left)paddle.x-=0.45*dt;
+  if(keys.right)paddle.x+=0.45*dt;
+  paddle.x=Math.max(WALL,Math.min(W-WALL-paddle.w,paddle.x));
+  if(!ball.live){ball.x=paddle.x+paddle.w/2-BS/2;ball.y=paddle.y-BS-2;return}
+  const steps=Math.max(1,Math.ceil(Math.max(Math.abs(ball.vx),Math.abs(ball.vy))*dt/4));
+  for(let i=0;i<steps&&ball.live;i++)stepBall(dt/steps);
+}
+
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // parets
+  x.fillStyle='#555';
+  x.fillRect(0,0,WALL,H); x.fillRect(W-WALL,0,WALL,H); x.fillRect(0,0,W,WALL);
+  // maons
+  for(const b of bricks){
+    if(!b.alive)continue;
+    x.fillStyle=ROWCOL[b.row];
+    x.fillRect(Math.round(b.x)+1,b.y+1,Math.round(BW)-2,BH-2);
+  }
+  // marcador gran estil arcade
+  x.fillStyle='#444';x.font='bold 34px monospace';x.textAlign='center';
+  x.fillText(String(score).padStart(3,'0'),W/2,80);
+  // pala
+  x.fillStyle='#c95a3d';x.fillRect(Math.round(paddle.x),paddle.y,Math.round(paddle.w),paddle.h);
+  // bola
+  x.fillStyle='#fff';x.fillRect(Math.round(ball.x),Math.round(ball.y),BS,BS);
+  // boles restants
+  x.fillStyle='#888';
+  for(let i=0;i<lives-1;i++)x.fillRect(W-WALL-22-i*14,H-18,8,8);
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();audioInit();keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');
+document.getElementById('fire').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();audioInit();
+  if(gameOver||win){sndStart();start()} else launch();
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+// arrossegar sobre el canvas mou la pala
+let dragging=false;
+function movePaddle(ev){
+  const r=c.getBoundingClientRect();
+  const px=(ev.clientX-r.left)*W/r.width;
+  paddle.x=Math.max(WALL,Math.min(W-WALL-paddle.w,px-paddle.w/2));
+}
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();audioInit();dragging=true;
+  if(gameOver||win){sndStart();start();return}
+  movePaddle(ev);launch();
+});
+c.addEventListener('pointermove',ev=>{
+  if(dragging||ev.pointerType==='mouse'){ev.preventDefault();movePaddle(ev)}
+});
+c.addEventListener('pointerup',()=>dragging=false);
+c.addEventListener('pointercancel',()=>dragging=false);
+
+document.addEventListener('keydown',e=>{
+  audioInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+  if(e.code==='Space'){e.preventDefault();launch()}
+  if(e.code==='KeyP'&&!gameOver&&!win){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&(gameOver||win)){sndStart();start()}
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(gameOver||win){audioInit();sndStart();start()}});
+
+start();
+</script>
+</body>
+</html>
