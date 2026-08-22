@@ -1,177 +1,424 @@
-<!DOCTYPE html>
-<html lang="es">
+<!doctype html>
+<html lang="ca">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Comecocos</title>
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;background:#050505;color:#fff;font-family:Arial,sans-serif;display:flex;justify-content:center;min-height:100vh;overflow:hidden}
-  #game{width:min(96vw,560px);padding:10px;text-align:center}
-  h1{margin:4px 0 6px;color:#ffd900;font-size:28px;letter-spacing:2px}
-  #info{display:flex;justify-content:space-between;font-weight:bold;font-size:16px;margin:4px 8px 8px}
-  canvas{width:100%;aspect-ratio:19/21;background:#000;border:2px solid #183dff;border-radius:8px;image-rendering:pixelated}
-  #message{height:28px;margin:7px;font-weight:bold;color:#ffd900}
-  button{background:#ffd900;border:0;border-radius:10px;padding:10px 20px;font-weight:bold;font-size:16px}
-  #back{position:fixed;top:8px;left:10px;background:transparent;border:1px solid #555;color:#aaa;font-size:13px;padding:5px 12px;border-radius:6px;z-index:99}
-  #controls{margin:10px auto 0;width:210px;display:grid;grid-template-columns:70px 70px 70px;grid-template-rows:55px 55px}
-  #controls button{font-size:24px;padding:0}
+  *{box-sizing:border-box;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  html,body{margin:0;height:100%;background:#050505;color:#fff;font-family:monospace;overflow:hidden}
+  /* alineat a dalt: mai retalla el HUD encara que el contingut no hi capiga */
+  body{display:flex;align-items:flex-start;justify-content:center}
+  #wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  #hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+  /* el canvas s'ajusta a l'espai que sobra, mantenint la proporcio */
+  #screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
+  /* omple l'espai disponible sense deformar-se: object-fit centra i escala el laberint */
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:96%;height:100%;object-fit:contain;background:#000;touch-action:none}
+  #message{flex:none;height:20px;font-weight:bold;color:#ffd900;font-size:14px;text-align:center;padding-top:4px}
+  #controls{flex:none;margin:6px auto 0;display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:48px 48px;gap:4px}
+  #controls button{font-size:22px;padding:0;background:#111;color:#fff;border:1px solid #777;border-radius:8px;touch-action:none}
+  #controls button:active{background:#333}
   #up{grid-column:2}.ctrl-left{grid-column:1;grid-row:2}.ctrl-down{grid-column:2;grid-row:2}.ctrl-right{grid-column:3;grid-row:2}
-  @media (min-width:700px){#controls{display:none}}
+  #restart{flex:none;margin-top:6px;background:#111;border:1px solid #777;border-radius:8px;color:#ffd900;font:12px monospace;padding:6px 14px}
+  #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  small{flex:none;max-width:94%;font-size:11px;color:#888;text-align:center;padding:4px 0 6px}
 </style>
 </head>
 <body>
-<div id="game">
-  <button id="back" onclick="location.href='index.html'">← Tornar</button>
-  <h1>COMECocos</h1>
-  <div id="info"><span>Puntos: <span id="score">0</span></span><span style="color:#ff0">Rècord: <span id="best">0</span></span><span>Vidas: <span id="lives">3</span></span></div>
-  <canvas id="canvas" width="380" height="420"></canvas>
-  <div id="message">Usa las flechas o WASD</div>
-  <button id="restart">Nueva partida</button>
+<div id="wrap">
+  <div id="hud">
+    <button id="back" onclick="location.href='index.html'">← Tornar</button>
+    <span>PUNTS <b id="score">0</b></span>
+    <span>NIV <b id="level">1</b></span>
+    <span>VIDES <b id="lives">3</b></span>
+    <span style="color:#ff0">BEST <b id="best">0</b></span>
+  </div>
+  <div id="screen"><canvas id="canvas" width="224" height="248"></canvas></div>
+  <div id="message">READY!</div>
   <div id="controls">
     <button id="up">▲</button>
     <button class="ctrl-left">◀</button>
     <button class="ctrl-down">▼</button>
     <button class="ctrl-right">▶</button>
   </div>
+  <button id="restart">NOVA PARTIDA</button>
+  <small>fletxes o WASD · llisca el dit sobre el laberint · pausa: P</small>
 </div>
 <script>
 // === SOUND ENGINE ===
 let AC=null,MG=null,eatTog=0;
 function aInit(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.13;MG.connect(AC.destination)}if(AC.state==='suspended')AC.resume()}
 function tone(f,d,type='square',vol=.3,slide=0){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;o.type=type;o.frequency.setValueAtTime(f,n);if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);g.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02)}
-function sndEat(){aInit();eatTog=!eatTog;tone(eatTog?600:480,.05,'square',.18)}
+function sndEat(){aInit();eatTog=!eatTog;tone(eatTog?600:480,.045,'square',.16)}
 function sndPower(){aInit();[300,400,500,660].forEach((f,i)=>setTimeout(()=>tone(f,.08,'square',.22),i*55))}
+function sndGhost(){aInit();[400,600,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,.06,'square',.24),i*50))}
+function sndFruit(){aInit();[660,880,1100].forEach((f,i)=>setTimeout(()=>tone(f,.07,'square',.22),i*60))}
 function sndDie(){aInit();[480,440,400,360,320,280,240,200,160].forEach((f,i)=>setTimeout(()=>tone(f,.07,'square',.25),i*65))}
 function sndWin(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.22),i*90))}
-// ===================
+function sndExtra(){aInit();[880,1100,1320].forEach((f,i)=>setTimeout(()=>tone(f,.09,'square',.24),i*70))}
+function sndSiren(t){aInit();tone(t?220:180,.09,'square',.05)}
+
+// ===== LABERINT ORIGINAL (28x31, 240 punts + 4 pastilles) =====
+const T=8, MW=28, MH=31;
+const MAP=[
+"############################",
+"#............##............#",
+"#.####.#####.##.#####.####.#",
+"#o####.#####.##.#####.####o#",
+"#.####.#####.##.#####.####.#",
+"#..........................#",
+"#.####.##.########.##.####.#",
+"#.####.##.########.##.####.#",
+"#......##....##....##......#",
+"######.##### ## #####.######",
+"     #.##### ## #####.#     ",
+"     #.##          ##.#     ",
+"     #.## ###--### ##.#     ",
+"######.## #      # ##.######",
+"          #      #          ",
+"######.## #      # ##.######",
+"     #.## ######## ##.#     ",
+"     #.##          ##.#     ",
+"     #.## ######## ##.#     ",
+"######.## ######## ##.######",
+"#............##............#",
+"#.####.#####.##.#####.####.#",
+"#.####.#####.##.#####.####.#",
+"#o..##................##..o#",
+"###.##.##.########.##.##.###",
+"###.##.##.########.##.##.###",
+"#......##....##....##......#",
+"#.##########.##.##########.#",
+"#.##########.##.##########.#",
+"#..........................#",
+"############################"];
+
+const U={x:0,y:-1},L={x:-1,y:0},D={x:0,y:1},R={x:1,y:0};
+const ORDER=[U,L,D,R];               // prioritat de l'original en cas d'empat
+const BASE=75.76;                     // pixels per segon al 100%
+const DOOR_OUT={x:108,y:92}, DOOR_IN={x:108,y:116};
+// fases de retirada i persecucio, en segons (taula de l'original)
+const PHASES=[[7,'scatter'],[20,'chase'],[7,'scatter'],[20,'chase'],[5,'scatter'],[20,'chase'],[5,'scatter'],[1e9,'chase']];
+const FRUITS=[['🍒',100,'#f00'],['🍓',300,'#f66'],['🍊',500,'#f90'],['🍊',500,'#f90'],
+              ['🍎',700,'#e00'],['🍎',700,'#e00'],['🍈',1000,'#6d0'],['🍈',1000,'#6d0']];
+
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
-const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), msg=document.getElementById('message'), bestEl=document.getElementById('best');
+const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),
+      bestEl=document.getElementById('best'),levelEl=document.getElementById('level'),msgEl=document.getElementById('message');
+
 let bestScore=parseInt(localStorage.getItem('best_comecocos')||'0');
 bestEl.textContent=bestScore;
 function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_comecocos',bestScore);bestEl.textContent=bestScore}}
-const W=19,H=21,T=20;
-const map=[
-"###################",
-"#........#........#",
-"#.###.##.#.##.###.#",
-"#o###.##.#.##.###o#",
-"#.................#",
-"#.###.#.#####.#.###",
-"#.....#...#...#...#",
-"#####.### # ###.###".replaceAll(' ',''),
-"#...#..... .....#.#".replaceAll(' ',''),
-"#.#.#.###   ###.#.#".replaceAll(' ',''),
-"#.#.....   .....#.#".replaceAll(' ',''),
-"#.#.#.###   ###.#.#".replaceAll(' ',''),
-"#...#..... .....#.#".replaceAll(' ',''),
-"#####.### # ###.###".replaceAll(' ',''),
-"#.....#...#...#...#",
-"#.###.#.#####.#.###",
-"#........#........#",
-"#.###.##.#.##.###.#",
-"#o..#........#..o.#",
-"#.................#",
-"###################"
-].map(r=>r.padEnd(W,'#').slice(0,W));
 
-let player, ghosts, score, lives, pellets, running, won, last=0, tick=0, gtick=0, frightTimer=0;
-const dirs={left:{x:-1,y:0},right:{x:1,y:0},up:{x:0,y:-1},down:{x:0,y:1}};
-function wall(x,y){return x<0||x>=W||y<0||y>=H||map[y][x]==='#'}
-function resetPellets(){pellets=new Set();for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(map[y][x]==='.'||map[y][x]==='o')pellets.add(x+','+y)}
-function init(){
- score=0;lives=3;running=true;won=false;frightTimer=0;resetPellets();
- player={x:9,y:15,dir:dirs.left,next:dirs.left};
- ghosts=[
-  {x:8,y:10,dir:dirs.left,color:'#ff4b5c'},
-  {x:9,y:10,dir:dirs.up,color:'#ff9de2'},
-  {x:10,y:10,dir:dirs.right,color:'#48e0ff'},
-  {x:9,y:9,dir:dirs.down,color:'#ffb84d'}
- ];
- scoreEl.textContent=score;livesEl.textContent=lives;msg.textContent='Usa las flechas o WASD';last=performance.now();requestAnimationFrame(loop);
+let dots,dotsLeft,dotsEaten,score,lives,level,state,stateTimer,paused;
+let pac,ghosts,mode,phase,phaseTimer,frightTimer,frightFlash,ghostChain,fruit,extraGiven,sirenT;
+
+function tileChar(tx,ty){return (ty<0||ty>=MH||tx<0||tx>=MW)?' ':MAP[ty][tx]}
+// '-' es la porta del cau: nomes hi passen els ulls dels fantasmes menjats
+function isWall(tx,ty,who){
+  if(ty<0||ty>=MH)return true;
+  if(tx<0||tx>=MW)return false;            // tunel lateral
+  const ch=MAP[ty][tx];
+  if(ch==='#')return true;
+  if(ch==='-')return who!=='eyes';
+  return false;
 }
-function canMove(o,d){return !wall(o.x+d.x,o.y+d.y)}
-function movePlayer(){
- if(canMove(player,player.next)) player.dir=player.next;
- if(canMove(player,player.dir)){
-   player.x+=player.dir.x;player.y+=player.dir.y;
- }
- const k=player.x+','+player.y;
- if(pellets.has(k)){pellets.delete(k);if(map[player.y][player.x]==='o'){score+=50;sndPower();frightTimer=40;ghosts.forEach(g=>g.frightened=true)}else{score+=10;sndEat()}scoreEl.textContent=score;saveBest()}
- if(pellets.size===0){running=false;won=true;sndWin();msg.textContent='¡GANASTE! 🎉'}
+function tileOf(v){return Math.floor(v/T)}
+function center(t){return t*T+T/2}
+
+function resetDots(){
+  dots=[];dotsLeft=0;
+  for(let y=0;y<MH;y++){dots[y]=[];for(let x=0;x<MW;x++){
+    const ch=MAP[y][x];
+    dots[y][x]=ch==='.'?1:ch==='o'?2:0;
+    if(dots[y][x])dotsLeft++;
+  }}
 }
-function moveGhost(g){
- let choices=Object.values(dirs).filter(d=>canMove(g,d));
- if(choices.length>2 && canMove(g,g.dir)) choices=choices.filter(d=>!(d.x===-g.dir.x&&d.y===-g.dir.y));
- if(g.frightened){
-   g.dir=choices[Math.floor(Math.random()*choices.length)];
- } else if(!canMove(g,g.dir)||Math.random()<.25){
-   let best=choices[0],bestDist=1e9;
-   for(const d of choices){
-     const nx=g.x+d.x,ny=g.y+d.y;
-     const dist=Math.abs(nx-player.x)+Math.abs(ny-player.y);
-     if(dist<bestDist && Math.random()<.65){best=d;bestDist=dist}
-   }
-   g.dir=best;
- }
- if(canMove(g,g.dir)){g.x+=g.dir.x;g.y+=g.dir.y}
+function mkGhost(name,color,corner,tx,ty,dir,release){
+  return {name,color,corner,x:center(tx),y:center(ty),dir,acc:0,
+          state:name==='blinky'?'out':'house',fright:false,release,bob:1};
 }
-function collision(){
- for(const g of ghosts) if(g.x===player.x&&g.y===player.y){
-   if(g.frightened){g.frightened=false;g.x=9;g.y=10;g.dir=dirs.up;score+=200;scoreEl.textContent=score;tone(600,.05,'square',.25);setTimeout(()=>tone(900,.08,'square',.25),60)}
-   else{
-     lives--;livesEl.textContent=lives;sndDie();
-     if(lives<=0){running=false;msg.textContent='GAME OVER — pulsa Nueva partida'}
-     else{player.x=9;player.y=15;player.dir=dirs.left;player.next=dirs.left;ghosts.forEach((g,i)=>{g.x=8+i%3;g.y=10;g.dir=dirs.left;g.frightened=false});frightTimer=0}
-     return;
-   }
- }
+function placeActors(){
+  pac={x:center(13),y:center(23),dir:L,want:L,acc:0,mouth:0,dead:0};
+  ghosts=[
+    mkGhost('blinky','#ff0000',[25,0],13,11,L,0),
+    mkGhost('pinky','#ffb8ff',[2,0],13,14,U,0),
+    mkGhost('inky','#00ffff',[11,14],11,14,U,30),
+    mkGhost('clyde','#ffb851',[0,30],15,14,U,60)
+  ];
+  ghosts[2].corner=[27,30];ghosts[3].corner=[0,30];
+  mode='scatter';phase=0;phaseTimer=PHASES[0][0];frightTimer=0;ghostChain=0;
 }
+function newLevel(){
+  resetDots();dotsEaten=0;fruit=null;placeActors();
+  state='ready';stateTimer=1.9;msgEl.textContent='READY!';
+  levelEl.textContent=level;updateHUD();
+}
+function newGame(){
+  score=0;lives=3;level=1;extraGiven=false;paused=false;sirenT=0;
+  newLevel();
+}
+function updateHUD(){scoreEl.textContent=score;livesEl.textContent=lives;saveBest()}
+function addScore(n){
+  score+=n;
+  if(!extraGiven&&score>=10000){extraGiven=true;lives++;sndExtra()}
+  updateHUD();
+}
+
+// ===== VELOCITATS (percentatges de l'original segons el nivell) =====
+function pacSpeed(){const p=level===1?0.80:level<5?0.90:1.00;return BASE*(frightTimer>0?p+0.10:p)}
+function ghostSpeed(g){
+  if(g.state==='eyes')return BASE*1.40;
+  if(g.state==='house'||g.state==='leaving'||g.state==='entering')return BASE*0.50;
+  if(g.fright)return BASE*0.50;
+  const ty=tileOf(g.y),tx=tileOf(g.x);
+  if(ty===14&&(tx<6||tx>21))return BASE*0.40;   // mes lents dins el tunel
+  return BASE*(level===1?0.75:level<5?0.85:0.95);
+}
+function frightTime(){const t=[6,5,4,3,2,5,2,2,1,5,2,1,1,3,1,1,0,1,0];return t[Math.min(level-1,t.length-1)]}
+
+// ===== OBJECTIU DE CADA FANTASMA (les quatre personalitats) =====
+function ghostTarget(g){
+  if(g.state==='eyes')return[13,11];
+  if(mode==='scatter')return g.corner;
+  const px=tileOf(pac.x),py=tileOf(pac.y);
+  if(g.name==='blinky')return[px,py];
+  if(g.name==='pinky'){
+    // 4 caselles per davant; amunt hereta el desbordament de l'original
+    let tx=px+4*pac.dir.x,ty=py+4*pac.dir.y;
+    if(pac.dir===U)tx-=4;
+    return[tx,ty];
+  }
+  if(g.name==='inky'){
+    let ax=px+2*pac.dir.x,ay=py+2*pac.dir.y;
+    if(pac.dir===U)ax-=2;
+    const b=ghosts[0],bx=tileOf(b.x),by=tileOf(b.y);
+    return[ax+(ax-bx),ay+(ay-by)];       // el vector de Blinky, doblat
+  }
+  const d=Math.hypot(tileOf(g.x)-px,tileOf(g.y)-py);
+  return d>8?[px,py]:g.corner;           // Clyde fuig quan s'acosta
+}
+function ghostDecide(g,tx,ty){
+  const who=g.state==='eyes'?'eyes':'ghost';
+  let opts=ORDER.filter(d=>!isWall(tx+d.x,ty+d.y,who)&&!(d.x===-g.dir.x&&d.y===-g.dir.y));
+  if(!opts.length){g.dir={x:-g.dir.x,y:-g.dir.y};return}
+  if(g.fright&&g.state==='out'){g.dir=opts[Math.floor(Math.random()*opts.length)];return}
+  const[gx,gy]=ghostTarget(g);
+  let best=opts[0],bd=1e9;
+  for(const d of opts){const nx=tx+d.x,ny=ty+d.y,dd=(nx-gx)**2+(ny-gy)**2;if(dd<bd){bd=dd;best=d}}
+  g.dir=best;
+}
+function reverseAll(){
+  for(const g of ghosts)if(g.state==='out')g.dir={x:-g.dir.x,y:-g.dir.y};
+}
+
+// ===== MOVIMENT (passos exactes d'1 px: mai es perd l'alineacio) =====
+function step1(e,who,decide){
+  const tx=tileOf(e.x),ty=tileOf(e.y);
+  if(e.x===center(tx)&&e.y===center(ty)){
+    decide(e,tx,ty);
+    if(isWall(tx+e.dir.x,ty+e.dir.y,who))return;
+  }
+  e.x+=e.dir.x;e.y+=e.dir.y;
+  if(e.x<-T/2)e.x=MW*T+T/2; else if(e.x>MW*T+T/2)e.x=-T/2;
+}
+function moveBy(e,speed,dt,who,decide){
+  e.acc+=speed*dt;
+  while(e.acc>=1){e.acc-=1;step1(e,who,decide)}
+}
+// dins el cau el moviment es guiat, no pel laberint
+function moveHouse(g,dt){
+  const sp=ghostSpeed(g)*dt;
+  if(g.state==='house'){
+    g.y+=g.bob*sp;
+    if(g.y>DOOR_IN.y+4){g.y=DOOR_IN.y+4;g.bob=-1}
+    if(g.y<DOOR_IN.y-4){g.y=DOOR_IN.y-4;g.bob=1}
+    if(dotsEaten>=g.release){g.state='leaving'}
+  }else if(g.state==='leaving'){
+    if(Math.abs(g.x-DOOR_OUT.x)>0.5){g.x+=Math.sign(DOOR_OUT.x-g.x)*Math.min(sp,Math.abs(DOOR_OUT.x-g.x))}
+    else{g.x=DOOR_OUT.x;g.y-=Math.min(sp,g.y-DOOR_OUT.y);
+      if(g.y<=DOOR_OUT.y){g.y=DOOR_OUT.y;g.state='out';g.dir=L;g.acc=0;g.fright=frightTimer>0}}
+  }else if(g.state==='entering'){
+    if(Math.abs(g.x-DOOR_IN.x)>0.5){g.x+=Math.sign(DOOR_IN.x-g.x)*Math.min(sp,Math.abs(DOOR_IN.x-g.x))}
+    else{g.x=DOOR_IN.x;g.y+=Math.min(sp,DOOR_IN.y-g.y);
+      if(g.y>=DOOR_IN.y){g.y=DOOR_IN.y;g.state='house';g.fright=false;g.release=0;g.bob=1}}
+  }
+}
+
+function eatAt(tx,ty){
+  const d=dots[ty][tx];
+  if(!d)return;
+  dots[ty][tx]=0;dotsLeft--;dotsEaten++;
+  if(d===2){
+    addScore(50);sndPower();ghostChain=0;
+    if(frightTime()>0){
+      frightTimer=frightTime();
+      for(const g of ghosts)if(g.state==='out'){g.fright=true;g.dir={x:-g.dir.x,y:-g.dir.y}}
+    }
+  }else{addScore(10);sndEat()}
+  if(dotsEaten===70||dotsEaten===170)fruit={t:9+Math.random()*1};
+  if(dotsLeft===0){state='clear';stateTimer=2;msgEl.textContent='NIVELL SUPERAT!';sndWin()}
+}
+
+function collide(){
+  for(const g of ghosts){
+    if(g.state!=='out')continue;
+    if(Math.hypot(g.x-pac.x,g.y-pac.y)<7){
+      if(g.fright){
+        ghostChain++;
+        addScore([200,400,800,1600][Math.min(ghostChain-1,3)]);
+        g.fright=false;g.state='eyes';g.acc=0;sndGhost();
+      }else{
+        state='dying';stateTimer=1.8;pac.dead=0;sndDie();msgEl.textContent='';
+      }
+      return;
+    }
+  }
+}
+
+function update(dt){
+  if(paused)return;
+  if(state==='ready'){stateTimer-=dt;if(stateTimer<=0){state='play';msgEl.textContent=''}return}
+  if(state==='dying'){
+    stateTimer-=dt;pac.dead+=dt;
+    if(stateTimer<=0){
+      lives--;updateHUD();
+      if(lives<=0){state='over';msgEl.textContent='GAME OVER — prem NOVA PARTIDA'}
+      else{placeActors();state='ready';stateTimer=1.6;msgEl.textContent='READY!'}
+    }
+    return;
+  }
+  if(state==='clear'){
+    stateTimer-=dt;
+    if(stateTimer<=0){level++;newLevel()}
+    return;
+  }
+  if(state==='over')return;
+
+  // fases de retirada/persecucio (aturades mentre duren les pastilles)
+  if(frightTimer>0){
+    frightTimer-=dt;
+    frightFlash=frightTimer<2;
+    if(frightTimer<=0){frightTimer=0;for(const g of ghosts)g.fright=false}
+  }else{
+    phaseTimer-=dt;
+    if(phaseTimer<=0&&phase<PHASES.length-1){
+      phase++;mode=PHASES[phase][1];phaseTimer=PHASES[phase][0];reverseAll();
+    }
+  }
+  // sirena de fons
+  sirenT-=dt; if(sirenT<=0){sndSiren(Math.floor(performance.now()/400)%2);sirenT=.4}
+
+  moveBy(pac,pacSpeed(),dt,'pac',(p,tx,ty)=>{
+    if(p.want&&!isWall(tx+p.want.x,ty+p.want.y,'pac'))p.dir=p.want;
+  });
+  pac.mouth+=dt*12;
+  const ptx=tileOf(pac.x),pty=tileOf(pac.y);
+  if(pac.x===center(ptx)&&pac.y===center(pty))eatAt(ptx,pty);
+
+  for(const g of ghosts){
+    if(g.state==='out'||g.state==='eyes'){
+      moveBy(g,ghostSpeed(g),dt,g.state==='eyes'?'eyes':'ghost',ghostDecide);
+      if(g.state==='eyes'&&Math.abs(g.x-DOOR_OUT.x)<1&&Math.abs(g.y-DOOR_OUT.y)<1){g.state='entering'}
+    }else moveHouse(g,dt);
+  }
+  if(fruit){fruit.t-=dt;if(fruit.t<=0)fruit=null}
+  if(fruit&&Math.hypot(pac.x-center(13),pac.y-center(17))<7){
+    addScore(FRUITS[Math.min(level-1,FRUITS.length-1)][1]);fruit=null;sndFruit();
+  }
+  collide();
+}
+
+// ===== DIBUIX =====
 function draw(){
- ctx.clearRect(0,0,canvas.width,canvas.height);
- ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
- for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-   if(map[y][x]==='#'){ctx.fillStyle='#173dff';ctx.fillRect(x*T+3,y*T+3,T-6,T-6)}
- }
- for(const k of pellets){
-   const [x,y]=k.split(',').map(Number);
-   ctx.fillStyle=map[y][x]==='o'?'#fff':'#ffdca8';
-   const r=map[y][x]==='o'?5:2.2;
-   ctx.beginPath();ctx.arc(x*T+T/2,y*T+T/2,r,0,Math.PI*2);ctx.fill();
- }
- drawPacman();ghosts.forEach(drawGhost);
-}
-function drawPacman(){
- const cx=player.x*T+10,cy=player.y*T+10,ang=Math.atan2(player.dir.y,player.dir.x);
- const mouth=.28+Math.abs(Math.sin(tick*.18))*.18;
- ctx.fillStyle='#ffd900';ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,8,ang+mouth,ang+Math.PI*2-mouth);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#000';ctx.fillRect(0,0,224,248);
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    const ch=MAP[y][x];
+    if(ch==='#'){ctx.fillStyle='#1919c8';ctx.fillRect(x*T,y*T,T,T)}
+    else if(ch==='-'){ctx.fillStyle='#ffb8ff';ctx.fillRect(x*T,y*T+3,T,2)}
+  }
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    if(!dots[y][x])continue;
+    ctx.fillStyle='#ffdca8';
+    if(dots[y][x]===2){
+      if(Math.floor(performance.now()/180)%2){ctx.beginPath();ctx.arc(center(x),center(y),3.4,0,7);ctx.fill()}
+    }else ctx.fillRect(center(x)-1,center(y)-1,2,2);
+  }
+  if(fruit){
+    const f=FRUITS[Math.min(level-1,FRUITS.length-1)];
+    ctx.fillStyle=f[2];ctx.beginPath();ctx.arc(center(13),center(17),4,0,7);ctx.fill();
+    ctx.fillStyle='#0a0';ctx.fillRect(center(13)-1,center(17)-6,2,3);
+  }
+  // Pac-Man
+  if(state==='dying'){
+    const a=Math.min(pac.dead/1.4,1)*Math.PI;
+    if(a<Math.PI){ctx.fillStyle='#ffd900';ctx.beginPath();ctx.moveTo(pac.x,pac.y);
+      ctx.arc(pac.x,pac.y,6,-Math.PI/2+a,Math.PI*1.5-a);ctx.closePath();ctx.fill()}
+  }else{
+    const ang=Math.atan2(pac.dir.y,pac.dir.x);
+    const m=state==='play'?(.02+Math.abs(Math.sin(pac.mouth))*.30):.25;
+    ctx.fillStyle='#ffd900';ctx.beginPath();ctx.moveTo(pac.x,pac.y);
+    ctx.arc(pac.x,pac.y,6,ang+m,ang+Math.PI*2-m);ctx.closePath();ctx.fill();
+  }
+  if(state!=='dying')for(const g of ghosts)drawGhost(g);
 }
 function drawGhost(g){
- const cx=g.x*T+10,cy=g.y*T+10;
- const flash=frightTimer>0&&frightTimer<14&&Math.floor(frightTimer/3)%2===0;
- const col=g.frightened?(flash?'#fff':'#2222ff'):g.color;
- ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy-1,8,Math.PI,0);ctx.lineTo(cx+8,cy+8);ctx.lineTo(cx+4,cy+5);ctx.lineTo(cx,cy+8);ctx.lineTo(cx-4,cy+5);ctx.lineTo(cx-8,cy+8);ctx.closePath();ctx.fill();
- if(!g.frightened){
-   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx-3,cy-2,2.5,0,7);ctx.arc(cx+3,cy-2,2.5,0,7);ctx.fill();
-   ctx.fillStyle='#1746a2';ctx.beginPath();ctx.arc(cx-3,cy-2,1.2,0,7);ctx.arc(cx+3,cy-2,1.2,0,7);ctx.fill();
- } else {
-   ctx.fillStyle='#fff';ctx.fillRect(cx-5,cy-1,3,2);ctx.fillRect(cx+2,cy-1,3,2);
- }
+  const x=g.x,y=g.y;
+  if(g.state!=='eyes'){
+    const flash=g.fright&&frightFlash&&Math.floor(performance.now()/150)%2===0;
+    ctx.fillStyle=g.fright?(flash?'#fff':'#2121de'):g.color;
+    ctx.beginPath();ctx.arc(x,y-1,6,Math.PI,0);
+    ctx.lineTo(x+6,y+6);ctx.lineTo(x+3,y+3.5);ctx.lineTo(x,y+6);ctx.lineTo(x-3,y+3.5);ctx.lineTo(x-6,y+6);
+    ctx.closePath();ctx.fill();
+  }
+  if(g.fright&&g.state!=='eyes'){
+    ctx.fillStyle=frightFlash&&Math.floor(performance.now()/150)%2===0?'#f00':'#fff';
+    ctx.fillRect(x-4,y-2,2,2);ctx.fillRect(x+2,y-2,2,2);
+  }else{
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x-2.5,y-1.5,2.2,0,7);ctx.arc(x+2.5,y-1.5,2.2,0,7);ctx.fill();
+    ctx.fillStyle='#1746a2';
+    ctx.beginPath();ctx.arc(x-2.5+g.dir.x*1.1,y-1.5+g.dir.y*1.1,1.1,0,7);
+    ctx.arc(x+2.5+g.dir.x*1.1,y-1.5+g.dir.y*1.1,1.1,0,7);ctx.fill();
+  }
 }
+
+let last=performance.now();
 function loop(now){
- tick++; if(running && now-last>115){last=now;movePlayer();gtick++;if(running){if(gtick%2===0){ghosts.forEach(moveGhost);if(frightTimer>0){frightTimer--;if(frightTimer===0)ghosts.forEach(g=>g.frightened=false)}}collision()}}
- draw();if(running)requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  update(dt);draw();requestAnimationFrame(loop);
 }
-document.addEventListener('keydown',e=>{aInit();
- const m={ArrowLeft:dirs.left,ArrowRight:dirs.right,ArrowUp:dirs.up,ArrowDown:dirs.down,a:dirs.left,d:dirs.right,w:dirs.up,s:dirs.down};
- if(m[e.key]){e.preventDefault();player.next=m[e.key]}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function setDir(d){aInit();pac.want=d}
+const KEYS={ArrowLeft:L,ArrowRight:R,ArrowUp:U,ArrowDown:D,a:L,d:R,w:U,s:D,A:L,D:R,W:U,S:D};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(KEYS[e.key]){e.preventDefault();setDir(KEYS[e.key])}
+  if(e.key==='p'||e.key==='P'){if(state==='play'||paused){paused=!paused;msgEl.textContent=paused?'PAUSA':''}}
 });
-document.querySelector('.ctrl-left').onclick=()=>player.next=dirs.left;
-document.querySelector('.ctrl-right').onclick=()=>player.next=dirs.right;
-document.querySelector('#up').onclick=()=>player.next=dirs.up;
-document.querySelector('.ctrl-down').onclick=()=>player.next=dirs.down;
-document.getElementById('restart').onclick=()=>{aInit();init()};
-init();
+function bindBtn(sel,d){
+  const el=document.querySelector(sel);
+  el.addEventListener('pointerdown',ev=>{ev.preventDefault();setDir(d)});
+}
+bindBtn('#up',U);bindBtn('.ctrl-left',L);bindBtn('.ctrl-down',D);bindBtn('.ctrl-right',R);
+document.getElementById('restart').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();newGame()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// lliscar el dit sobre el laberint
+let sw=null;
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();aInit();sw={x:e.clientX,y:e.clientY}});
+canvas.addEventListener('pointermove',e=>{
+  if(!sw)return;
+  const dx=e.clientX-sw.x,dy=e.clientY-sw.y;
+  if(Math.hypot(dx,dy)<18)return;
+  setDir(Math.abs(dx)>Math.abs(dy)?(dx>0?R:L):(dy>0?D:U));
+  sw={x:e.clientX,y:e.clientY};
+});
+canvas.addEventListener('pointerup',()=>sw=null);
+canvas.addEventListener('pointercancel',()=>sw=null);
+
+newGame();
 </script>
 </body>
 </html>
