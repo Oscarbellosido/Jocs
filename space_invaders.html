@@ -77,6 +77,7 @@ function sndUfoHit(){audioInit();noise(.2,.35);tone(320,.15,"square",.25,-250)}
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=600;
 let score=0,level=1,lives=3,gameOver=false,paused=false;
+let extraGiven=false;
 let bestScore=parseInt(localStorage.getItem('best_invaders')||'0');
 document.getElementById('best').textContent=bestScore;
 function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_invaders',bestScore);document.getElementById('best').textContent=bestScore}}
@@ -106,12 +107,13 @@ function makeBarriers(){
   }
 }
 function start(){
-  score=0;level=1;lives=3;gameOver=false;paused=false;
+  score=0;level=1;lives=3;gameOver=false;paused=false;extraGiven=false;animFrame=0;
   resetPlayer();makeAliens();makeBarriers();bullets=[];enemyBullets=[];enemyShootTimer=0;
   ufo=null;ufoTimer=15000+Math.random()*15000;
   updateHUD(); hideMsg();
 }
 function updateHUD(){
+  if(!extraGiven&&score>=1500){extraGiven=true;lives++;sndUfo()}   // nau extra als 1500
   document.getElementById('score').textContent=score;
   const lel=document.getElementById('level'); if(lel)lel.textContent=level;
   document.getElementById('lives').textContent=lives;
@@ -121,7 +123,8 @@ function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.dis
 function hideMsg(){document.getElementById('msg').style.display='none'}
 
 function shoot(){
-  if(player.cool<=0){audioInit(); sndShoot(); bullets.push({x:player.x+15,y:player.y-8,w:2,h:10});player.cool=330}
+  // a l'original nomes hi pot haver un tret teu a la pantalla alhora
+  if(bullets.length===0&&player.cool<=0){audioInit(); sndShoot(); bullets.push({x:player.x+15,y:player.y-8,w:2,h:10});player.cool=120}
 }
 function enemyShoot(){
   const alive=aliens.filter(a=>a.alive);
@@ -149,7 +152,7 @@ function update(dt){
 
   stepTimer+=dt;
   if(stepTimer>=stepDelay){
-    stepTimer=0; sndStep();
+    stepTimer=0; sndStep(); animFrame=animFrame?0:1;
     let edge=false;
     aliens.filter(a=>a.alive).forEach(a=>{
       a.x+=dir*10;
@@ -166,7 +169,7 @@ function update(dt){
       if(a.alive&&hit(b,a)){a.alive=false;b.y=-99;score+=a.row===0?30:a.row<3?20:10;sndHit();break}
     }
     for(const q of barriers){
-      if(b.y>q.y-2&&b.y<q.y+q.h&&b.x<q.x+q.w&&b.x+b.w>q.x){q.w=0;b.y=-99;score+=1;break}
+      if(b.y>q.y-2&&b.y<q.y+q.h&&b.x<q.x+q.w&&b.x+b.w>q.x){q.w=0;b.y=-99;break}
     }
   }
   bullets=bullets.filter(b=>b.y>-50);
@@ -208,15 +211,21 @@ function update(dt){
   updateHUD();
 }
 
+// calamar (30 punts) a dalt, cranc (20) al mig, pop (10) a baix; dos fotogrames cadascun
+const SPRITES=[
+  [["    ####    ","  ########  ","############","##  ####  ##","## ##  ## ##","   ##  ##   "],
+   ["    ####    ","  ########  ","############","##  ####  ##"," # ##  ## # ","#  #    #  #"]],
+  [["  ##      ##  ","   ########   "," ## ###### ## ","##############","##  ######  ##","## ##    ## ##"],
+   ["  ##      ##  ","   ########   "," ## ###### ## ","##############","##  ######  ##","  # ##  ## #  "]],
+  [["   ######   ","############","##  ####  ##","############","  ##    ##  "," ##      ## "],
+   ["   ######   ","############","##  ####  ##","############"," ##      ## ","##        ##"]]
+];
+const ROW_TYPE=[0,1,1,2,2];   // fila 0 calamar, 1-2 cranc, 3-4 pop
+let animFrame=0;
 function drawAlien(a){
-  const patterns=[
-    ["  ##      ##  ","   ########   "," ## ###### ## ","##############","##  ######  ##","## ##    ## ##"],
-    ["    ####    ","  ########  ","############","##  ####  ##","## ##  ## ##","   ##  ##   "],
-    ["   ######   ","############","##  ####  ##","############","  ##    ##  "," ##      ## "]
-  ];
   const colors=['#55ffff','#55ffff','#55ff55','#55ff55','#ff5555'];
   const col=colors[Math.min(a.row,4)];
-  const p=patterns[a.row%3], sx=2,sy=2;
+  const p=SPRITES[ROW_TYPE[Math.min(a.row,4)]][animFrame], sx=2,sy=2;
   p.forEach((s,yy)=>[...s].forEach((ch,xx)=>{if(ch==="#")rect(a.x+xx*sx,a.y+yy*sy,sx,sy,col)}));
 }
 function draw(){

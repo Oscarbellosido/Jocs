@@ -9,10 +9,14 @@
     html, body { margin: 0; height: 100%; background: #0b0e1a; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
 
     /* === MOBILE LAYOUT (default) === */
-    #hud {
+    #hudbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      background: rgba(11,14,26,0.95);
+      padding-top: env(safe-area-inset-top);
+    }
+    #hud {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 12px; background: rgba(11,14,26,0.9);
+      padding: 8px 12px 2px;
     }
     #hud-left { display: flex; gap: 8px; }
     #back { background: transparent; border: 1px solid #555; color: #aaa; font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
@@ -20,8 +24,16 @@
     #score-wrap { font-size: 14px; color: #b7c7e8; }
     #scoreDisplay { font-weight: 700; font-size: 18px; color: #fff; }
 
+    #hud2 {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 12px 5px;
+      font-size: 12px; color: #b7c7e8;
+    }
+    #hud2 b { color: #fff; font-size: 14px }
+    #nextCanvas { vertical-align: middle; margin-left: 4px }
+
     #canvas-wrap {
-      position: fixed; top: 44px; left: 0; right: 0; bottom: 130px;
+      position: fixed; top: 68px; left: 0; right: 0; bottom: 130px; /* top el fixa resizeCanvas() */
       display: flex; justify-content: center; align-items: center;
     }
     canvas#tetrisCanvas {
@@ -80,6 +92,7 @@
 <body>
 
 <!-- MOBILE UI -->
+<div id="hudbar">
 <div id="hud">
   <div id="hud-left">
     <button id="back" onclick="location.href='index.html'">← Tornar</button>
@@ -87,6 +100,11 @@
     <button id="resetBtn2">⟲</button>
   </div>
   <div id="score-wrap">SCORE <span id="scoreDisplay">0</span> &nbsp; <span style="color:#ff0">BEST <span id="bestDisplay">0</span></span></div>
+</div>
+<div id="hud2">
+  <span>SEGÜENT <canvas id="nextCanvas" width="44" height="24"></canvas></span>
+  <span>LÍNIES <b id="linesDisplay">0</b> &nbsp; NIVELL <b id="levelDisplay">0</b></span>
+</div>
 </div>
 
 <div id="canvas-wrap">
@@ -111,7 +129,8 @@
 (function(){
   const COLS=10, ROWS=20, BS=30;
   const SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]]];
-  const COLORS=['#0e121f','#55d6f0','#f7e476','#b484e0','#6fcf97','#e6675a','#f0a55a','#5a8ce0'];
+  // I cian, O groc, T lila, S verd, Z vermell, J blau, L taronja
+  const COLORS=['#0e121f','#55d6f0','#f7e476','#b484e0','#6fcf97','#e6675a','#5a8ce0','#f0a55a'];
 
   const canvas=document.getElementById('tetrisCanvas'), ctx=canvas.getContext('2d');
   const scoreSpan=document.getElementById('scoreDisplay'), bestSpan=document.getElementById('bestDisplay');
@@ -124,7 +143,9 @@
   function resizeCanvas(){
     const isMobile=window.innerWidth<700;
     if(isMobile){
-      const availH=window.innerHeight-44-130; // hud + pad
+      const top=document.getElementById('hudbar').offsetHeight;
+      document.getElementById('canvas-wrap').style.top=top+'px';
+      const availH=window.innerHeight-top-130; // barra superior + comandament
       const availW=window.innerWidth-16;
       // maintain 1:2 ratio (300:600)
       let w=Math.min(availW, availH/2);
@@ -138,7 +159,16 @@
   resizeCanvas();
 
   let board=Array(ROWS).fill().map(()=>Array(COLS).fill(0));
-  let score=0, gameOver=false, paused=false, dropInterval=500, intervalId=null;
+  // fotogrames per fila a cada nivell (taula original, a 60 imatges/s)
+  const GRAV=[48,43,38,33,28,23,18,13,8,6,5,5,5,4,4,4,3,3,3,2,2,2,2,2,2,2,2,2,2,1];
+  let score=0, lines=0, level=0, gameOver=false, paused=false, intervalId=null;
+  const linesSpan=document.getElementById('linesDisplay'), levelSpan=document.getElementById('levelDisplay');
+  const nextCanvas=document.getElementById('nextCanvas'), nctx=nextCanvas.getContext('2d');
+  function dropMs(){return GRAV[Math.min(level,GRAV.length-1)]*1000/60}
+  function startTimer(){
+    if(intervalId)clearInterval(intervalId);
+    intervalId=setInterval(()=>{if(!paused&&!gameOver)move(0,1)},dropMs());
+  }
   let cur={shape:[],colorIdx:1,x:0,y:0}, nxt={shape:[],colorIdx:1};
 
   function rnd(){const t=Math.floor(Math.random()*SHAPES.length);return{shape:SHAPES[t].map(r=>r.slice()),colorIdx:t+1}}
@@ -160,16 +190,25 @@
     cur.shape.forEach((row,r)=>row.forEach((v,c)=>{if(v&&cur.y+r>=0)board[cur.y+r][cur.x+c]=cur.colorIdx}));
   }
   function clearRows(){
-    let lines=0;
+    let n=0;
     for(let row=ROWS-1;row>=0;){
-      if(board[row].every(v=>v)){for(let r=row;r>0;r--)board[r]=board[r-1].slice();board[0]=Array(COLS).fill(0);lines++}
+      if(board[row].every(v=>v)){for(let r=row;r>0;r--)board[r]=board[r-1].slice();board[0]=Array(COLS).fill(0);n++}
       else row--;
     }
-    if(lines){score+=lines===1?100:lines===2?300:lines===3?500:800;scoreSpan.textContent=score;saveBest()}
+    if(n){
+      // puntuacio original: 40/100/300/1200 multiplicat pel nivell+1
+      score+=(level+1)*[40,100,300,1200][n-1];
+      lines+=n;
+      const nl=Math.min(Math.floor(lines/10),29);
+      if(nl!==level){level=nl;startTimer()}      // cada 10 linies, mes rapid
+      scoreSpan.textContent=score;linesSpan.textContent=lines;levelSpan.textContent=level;saveBest();
+    }
   }
-  function move(dx,dy){
+  function move(dx,dy,soft){
     if(paused||gameOver)return false;
-    if(!collide(cur.shape,cur.x+dx,cur.y+dy)){cur.x+=dx;cur.y+=dy;render();return true}
+    if(!collide(cur.shape,cur.x+dx,cur.y+dy)){cur.x+=dx;cur.y+=dy;
+      if(soft){score+=1;scoreSpan.textContent=score;saveBest()}
+      render();return true}
     if(dy===1){merge();clearRows();spawn()}
     return false;
   }
@@ -192,7 +231,16 @@
     if(cur.shape&&!gameOver)cur.shape.forEach((row,r)=>row.forEach((v,c)=>{if(v){ctx.fillStyle=COLORS[cur.colorIdx];ctx.fillRect((cur.x+c)*BS,(cur.y+r)*BS,BS-1,BS-1);ctx.fillStyle='rgba(255,255,255,0.2)';ctx.fillRect((cur.x+c)*BS+2,(cur.y+r)*BS+2,6,4)}}));
     if(paused&&!gameOver){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,300,600);ctx.fillStyle='#dbe4f5';ctx.font='bold 28px sans-serif';ctx.textAlign='center';ctx.fillText('⏸ PAUSA',150,310);ctx.textAlign='left'}
   }
-  function render(){drawBoard()}
+  function drawNext(){
+    nctx.fillStyle='#0e121f';nctx.fillRect(0,0,44,24);
+    if(!nxt.shape||!nxt.shape.length)return;
+    const cell=6,w=nxt.shape[0].length*cell,h=nxt.shape.length*cell;
+    const ox=(44-w)/2,oy=(24-h)/2;
+    nxt.shape.forEach((row,r)=>row.forEach((v,c)=>{
+      if(v){nctx.fillStyle=COLORS[nxt.colorIdx];nctx.fillRect(ox+c*cell,oy+r*cell,cell-1,cell-1)}
+    }));
+  }
+  function render(){drawBoard();drawNext()}
   function showMsg(text,btnText){
     msgContent.innerHTML=`<b style="font-size:26px">${text}</b><br><button onclick="resetGame()">${btnText}</button>`;
     overlay.style.display='flex';
@@ -202,9 +250,9 @@
   window.resetGame=function(){
     if(intervalId){clearInterval(intervalId);intervalId=null}
     board=Array(ROWS).fill().map(()=>Array(COLS).fill(0));
-    score=0;gameOver=false;paused=false;scoreSpan.textContent=0;hideMsg();
-    nxt=rnd();spawn();render();
-    intervalId=setInterval(()=>{if(!paused&&!gameOver)move(0,1)},dropInterval);
+    score=0;lines=0;level=0;gameOver=false;paused=false;
+    scoreSpan.textContent=0;linesSpan.textContent=0;levelSpan.textContent=0;hideMsg();
+    nxt=rnd();spawn();render();startTimer();
   }
   function togglePause(){
     if(gameOver)return;paused=!paused;
@@ -245,7 +293,7 @@
   document.addEventListener('keydown',e=>{
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
     if(e.key==='ArrowLeft')move(-1,0);else if(e.key==='ArrowRight')move(1,0);
-    else if(e.key==='ArrowDown')move(0,1);else if(e.key==='ArrowUp')rotate();
+    else if(e.key==='ArrowDown')move(0,1,true);else if(e.key==='ArrowUp')rotate();
     else if(e.key===' ')hardDrop();else if(e.key==='p'||e.key==='P')togglePause();
   });
 
