@@ -12,42 +12,50 @@
 <meta name="apple-mobile-web-app-title" content="Jocs">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
+  html { height: 100%; }
+  /* alineat a dalt: si la llista no hi cap, sobreix cap avall i es pot
+     fer scroll. Amb justify-content:center la meitat quedava per sobre
+     de la pantalla i no s'hi podia arribar. */
   body {
     background: #000;
     color: #fff;
     font-family: monospace;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 2rem;
-    min-height: 100vh;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    padding: calc(1rem + env(safe-area-inset-top)) 0 calc(1.2rem + env(safe-area-inset-bottom));
   }
   h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
     letter-spacing: 0.2em;
     text-shadow: 0 0 12px #fff;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
   }
   .games {
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
     width: 100%;
-    max-width: 360px;
-    padding: 0 1.5rem;
+    max-width: 380px;
+    padding: 0 1.2rem;
+  }
+  /* en pantalles amples, dues columnes: s'hi veuen tots d'un cop */
+  @media (min-width: 560px) {
+    .games { grid-template-columns: 1fr 1fr; max-width: 720px; }
   }
   a.btn {
     display: block;
     text-decoration: none;
     text-align: center;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 0.8rem;
     border: 2px solid #aaa;
     border-radius: 8px;
     background: #111;
     color: #fff;
-    font: bold 1.1rem monospace;
+    font: bold 1rem monospace;
     letter-spacing: 0.08em;
     transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   }
@@ -61,7 +69,7 @@
     font-size: 0.72rem;
     font-weight: normal;
     color: #aaa;
-    margin-top: 0.3rem;
+    margin-top: 0.15rem;
     letter-spacing: 0.04em;
   }
 </style>
@@ -91,7 +99,7 @@
     </a>
     <a class="btn" href="missile_command.html">
       MISSILE COMMAND
-      <small>Defensa les ciutats · intercepta els míssils</small>
+      <small>Defensa les ciutats dels míssils</small>
     </a>
     <a class="btn" href="galaxian.html">
       GALAXIAN
@@ -115,7 +123,7 @@
     </a>
   </div>
 <script>
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
