@@ -33,6 +33,15 @@
     letter-spacing: 0.2em;
     text-shadow: 0 0 12px #fff;
     margin-bottom: 0;
+    white-space: nowrap;
+  }
+  /* la signatura, discreta i al costat del titol */
+  h1 .by {
+    font-size: 0.5em;
+    letter-spacing: 0.14em;
+    color: #8a8a8a;
+    text-shadow: none;
+    vertical-align: 0.22em;
   }
   .games {
     display: grid;
@@ -83,7 +92,7 @@
 </style>
 </head>
 <body>
-  <h1>★ JOCS ★</h1>
+  <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
   <div class="games">
     <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span></a>
     <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span></a>
