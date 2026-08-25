@@ -1,0 +1,11 @@
+{
+  // Configuracio del Worker jocs-records.
+  // "main" ha de coincidir amb el nom del fitxer de codi que hi hagi a
+  // l'editor de Cloudflare (sovint index.js o worker.js).
+  "name": "jocs-records",
+  "main": "index.js",
+  "compatibility_date": "2026-08-25",
+  "kv_namespaces": [
+    { "binding": "RECORDS", "id": "fa810f2cccb8468699052fcb1aa00755" }
+  ]
+}
