@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Centipede Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:6px;margin-top:8px}
+/* cinc botons han de cabre fins i tot en un mobil estret */
+button{font:17px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:54px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="wave">1</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="512"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="up">▲</button><button id="down">▼</button><button id="right">▶</button><button id="fire">●</button>
+  </div>
+  <div id="msg"></div>
+  <small>arrossega el dit per moure't i disparar · fletxes + ESPAI · pausa: P</small>
+</div>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(f,d,type='square',vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),dd=b.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+d);
+}
+function sndShoot(){aInit();tone(1500,.035,'square',.14,-900)}
+function sndMush(){aInit();tone(300,.03,'square',.12)}
+function sndSeg(){aInit();noise(.09,.22);tone(500,.06,'square',.18,-300)}
+function sndHead(){aInit();noise(.14,.28);[700,900].forEach((f,i)=>setTimeout(()=>tone(f,.05,'square',.22),i*45))}
+function sndSpider(){aInit();tone(180+Math.random()*120,.05,'sawtooth',.1)}
+function sndBug(){aInit();[900,1200,1500].forEach((f,i)=>setTimeout(()=>tone(f,.05,'square',.2),i*45))}
+function sndDie(){aInit();noise(.5,.36);[400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.16,'sawtooth',.24,-90),i*130))}
+function sndWave(){aInit();[392,523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.11,'square',.22),i*90))}
+function sndExtra(){aInit();[880,1100,1320].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.22),i*70))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const CELL=16,COLS=30,ROWS=32,W=COLS*CELL,H=ROWS*CELL;
+const PTOP=26;                          // el canó només es mou per les sis files de baix
+const PAL=[['#e04a2a','#4ae04a'],['#c04ae0','#e0c04a'],['#4a9ae0','#e04a9a'],['#4ae0c0','#e0e04a']];
+
+let mh,mp,chains,player,bullet,spider,flea,scorpion,booms;
+let score,lives,wave,state,paused,extraGiven,stepT,fleaT,spiderT,scorpT,pal;
+const keys={left:false,right:false,up:false,down:false,fire:false};
+
+let bestScore=parseInt(localStorage.getItem('best_centipede')||'0');
+document.getElementById('best').textContent=bestScore;
+function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_centipede',bestScore);document.getElementById('best').textContent=bestScore}}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('wave').textContent=wave;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  if(!extraGiven&&score>=12000){extraGiven=true;lives++;sndExtra()}   // vida extra als 12.000
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function newField(){
+  mh=[];mp=[];
+  for(let r=0;r<ROWS;r++){mh.push(new Array(COLS).fill(0));mp.push(new Array(COLS).fill(false))}
+  for(let i=0;i<42;i++){
+    const r=2+Math.floor(Math.random()*(ROWS-6)),cc=Math.floor(Math.random()*COLS);
+    if(r>=ROWS-2)continue;
+    mh[r][cc]=4;                        // cada bolet aguanta quatre trets
+  }
+}
+function spawnWave(){
+  chains=[];
+  const n=Math.max(1,12-(wave-1));
+  const segs=[];
+  for(let i=0;i<n;i++)segs.push({r:0,c:Math.floor(COLS/2)-i});
+  chains.push({segs,dir:1,vdir:1,diving:false,t:0});
+  // a partir de la segona onada baixen caps solts a banda
+  for(let i=0;i<Math.min(wave-1,11);i++){
+    chains.push({segs:[{r:0,c:2+i*2}],dir:Math.random()<.5?1:-1,vdir:1,diving:false,t:i*120});
+  }
+  pal=PAL[(wave-1)%PAL.length];
+  stepT=0;fleaT=4000;spiderT=3000+Math.random()*3000;scorpT=wave>1?6000+Math.random()*6000:1e9;
+}
+function resetPlayer(){player={x:W/2,y:H-CELL*2,cool:0}}
+function newLife(){
+  // en perdre una vida els bolets tocats es refan
+  for(let r=0;r<ROWS;r++)for(let cc=0;cc<COLS;cc++){if(mh[r][cc]>0){mh[r][cc]=4;mp[r][cc]=false}}
+  spider=null;flea=null;scorpion=null;bullet=null;booms=[];
+  spawnWave();resetPlayer();
+}
+function start(){
+  score=0;lives=3;wave=1;extraGiven=false;paused=false;state='play';
+  booms=[];spider=null;flea=null;scorpion=null;bullet=null;
+  newField();spawnWave();resetPlayer();updateHUD();hideMsg();
+}
+
+const cellOf=(px,py)=>({r:Math.floor(py/CELL),c:Math.floor(px/CELL)});
+const cx=cc=>cc*CELL+CELL/2, cy=r=>r*CELL+CELL/2;
+function mushAt(r,cc){return r>=0&&r<ROWS&&cc>=0&&cc<COLS&&mh[r][cc]>0}
+function boom(px,py,col){booms.push({x:px,y:py,t:0,col:col||'#fff'})}
+
+// ===== CENTPEU =====
+function stepChain(ch){
+  const h=ch.segs[0];
+  const prev=ch.segs.map(s=>({r:s.r,c:s.c}));
+  let nr=h.r,nc=h.c;
+  if(ch.diving){
+    nr=h.r+1;
+    if(nr>ROWS-1){nr=ROWS-1;ch.diving=false;ch.vdir=-1}
+  }else{
+    nc=h.c+ch.dir;
+    if(nc<0||nc>=COLS||mushAt(h.r,nc)){
+      // un bolet enverinat el fa capbussar-se en vertical
+      if(nc>=0&&nc<COLS&&mushAt(h.r,nc)&&mp[h.r][nc]){ch.diving=true;nc=h.c;nr=h.r+1}
+      else{
+        ch.dir*=-1;nc=h.c;nr=h.r+ch.vdir;
+        if(nr>ROWS-1){ch.vdir=-1;nr=h.r+ch.vdir}
+        else if(nr<PTOP&&ch.vdir===-1){ch.vdir=1;nr=h.r+ch.vdir}
+        if(nr<0)nr=0;
+      }
+    }
+  }
+  h.r=nr;h.c=nc;
+  for(let i=1;i<ch.segs.length;i++){ch.segs[i].r=prev[i-1].r;ch.segs[i].c=prev[i-1].c}
+}
+function hitSegment(ci,si){
+  const ch=chains[ci],s=ch.segs[si];
+  mh[s.r][s.c]=4;mp[s.r][s.c]=false;      // el tros mort es converteix en bolet
+  addScore(si===0?100:10);
+  si===0?sndHead():sndSeg();
+  boom(cx(s.c),cy(s.r),pal[0]);
+  const a=ch.segs.slice(0,si), b=ch.segs.slice(si+1);
+  const nou=[];
+  if(a.length)nou.push({segs:a,dir:ch.dir,vdir:ch.vdir,diving:ch.diving,t:ch.t});
+  if(b.length)nou.push({segs:b,dir:ch.dir,vdir:ch.vdir,diving:false,t:ch.t});
+  chains.splice(ci,1,...nou);
+}
+
+// ===== BITXOS =====
+function spawnSpider(){
+  const l=Math.random()<.5;
+  spider={x:l?-10:W+10,y:cy(PTOP+2+Math.floor(Math.random()*3)),
+          vx:(l?1:-1)*(0.055+wave*0.004),vy:0.06,t:0};
+}
+function spawnFlea(){
+  flea={x:cx(Math.floor(Math.random()*COLS)),y:-8,v:0.13,hits:0};
+}
+function spawnScorpion(){
+  const l=Math.random()<.5;
+  scorpion={x:l?-16:W+16,y:cy(4+Math.floor(Math.random()*14)),vx:(l?1:-1)*0.08};
+}
+function playerMushCount(){
+  let n=0;
+  for(let r=PTOP;r<ROWS;r++)for(let cc=0;cc<COLS;cc++)if(mh[r][cc]>0)n++;
+  return n;
+}
+
+function die(){
+  if(state!=='play')return;
+  state='dying';sndDie();boom(player.x,player.y,'#fff');
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+    else{newLife();state='play'}
+  },1100);
+}
+function shoot(){
+  if(state!=='play'||paused||bullet||player.cool>0)return;
+  bullet={x:player.x,y:player.y-10};player.cool=90;sndShoot();
+}
+
+function update(dt){
+  if(state==='over'||paused)return;
+  booms.forEach(b=>b.t+=dt);booms=booms.filter(b=>b.t<260);
+  if(state==='dying')return;
+
+  // canó: es mou lliurement per la seva zona, sense travessar bolets
+  const sp=0.30*dt;
+  let nx=player.x+(keys.right?sp:0)-(keys.left?sp:0);
+  let ny=player.y+(keys.down?sp:0)-(keys.up?sp:0);
+  nx=Math.max(CELL/2,Math.min(W-CELL/2,nx));
+  ny=Math.max(cy(PTOP),Math.min(H-CELL/2,ny));
+  let cc=cellOf(nx,player.y);
+  if(!mushAt(cc.r,cc.c))player.x=nx;
+  cc=cellOf(player.x,ny);
+  if(!mushAt(cc.r,cc.c))player.y=ny;
+  player.cool-=dt;
+  if(keys.fire)shoot();
+
+  // el tret
+  if(bullet){
+    let hit=false;
+    for(let k=0;k<6&&!hit;k++){
+      bullet.y-=0.16*dt;
+      if(bullet.y<0){bullet=null;break}
+      const b=cellOf(bullet.x,bullet.y);
+      for(let ci=0;ci<chains.length&&!hit;ci++){
+        const si=chains[ci].segs.findIndex(s=>s.r===b.r&&s.c===b.c);
+        if(si>=0){hitSegment(ci,si);hit=true}
+      }
+      if(!hit&&flea&&Math.abs(flea.x-bullet.x)<9&&Math.abs(flea.y-bullet.y)<10){
+        flea.hits++;
+        if(flea.hits>=2){addScore(200);boom(flea.x,flea.y,'#fff');flea=null;sndBug()}
+        else flea.v*=2;                         // el primer tret només l'accelera
+        hit=true;
+      }
+      if(!hit&&spider&&Math.abs(spider.x-bullet.x)<11&&Math.abs(spider.y-bullet.y)<11){
+        const d=Math.abs(spider.y-player.y)/CELL;
+        addScore(d<2?900:d<4?600:300);        // val més com més a prop el mates
+        boom(spider.x,spider.y,'#fff');spider=null;sndBug();hit=true;
+      }
+      if(!hit&&scorpion&&Math.abs(scorpion.x-bullet.x)<14&&Math.abs(scorpion.y-bullet.y)<10){
+        addScore(1000);boom(scorpion.x,scorpion.y,'#fff');scorpion=null;sndBug();hit=true;
+      }
+      if(!hit&&mushAt(b.r,b.c)){
+        mh[b.r][b.c]--;sndMush();
+        if(mh[b.r][b.c]<=0){mp[b.r][b.c]=false;addScore(1)}
+        hit=true;
+      }
+    }
+    if(hit)bullet=null;
+  }
+
+  // centpeu
+  const interval=Math.max(55,190-wave*11);
+  for(const ch of chains){
+    ch.t+=dt;
+    while(ch.t>=interval){ch.t-=interval;stepChain(ch)}
+  }
+  const pc=cellOf(player.x,player.y);
+  for(const ch of chains)for(const s of ch.segs)
+    if(s.r===pc.r&&s.c===pc.c){die();return}
+
+  if(!chains.length){wave++;sndWave();spawnWave();updateHUD();msg("ONADA "+wave);setTimeout(hideMsg,1100)}
+
+  // aranya: es menja bolets i et mata si et toca
+  spiderT-=dt;
+  if(spiderT<=0&&!spider){spawnSpider();spiderT=5000+Math.random()*6000}
+  if(spider){
+    spider.t+=dt;
+    spider.x+=spider.vx*dt;
+    spider.y+=spider.vy*dt;
+    const top=cy(PTOP),bot=H-CELL/2;
+    if(spider.y<top){spider.y=top;spider.vy=Math.abs(spider.vy)}
+    if(spider.y>bot){spider.y=bot;spider.vy=-Math.abs(spider.vy)}
+    if(Math.random()<dt/400)spider.vy=-spider.vy;
+    const sc=cellOf(spider.x,spider.y);
+    if(mushAt(sc.r,sc.c)){mh[sc.r][sc.c]=0;mp[sc.r][sc.c]=false}
+    if(Math.random()<dt/900)sndSpider();
+    if(Math.abs(spider.x-player.x)<12&&Math.abs(spider.y-player.y)<12){die();return}
+    if(spider.x<-20||spider.x>W+20)spider=null;
+  }
+  // puça: baixa quan queden pocs bolets a la teva zona i en va deixant
+  fleaT-=dt;
+  if(!flea&&fleaT<=0&&playerMushCount()<5){spawnFlea();fleaT=3000}
+  if(flea){
+    const py=flea.y;
+    flea.y+=flea.v*dt;
+    const fc=cellOf(flea.x,flea.y);
+    if(Math.floor(py/CELL)!==fc.r&&fc.r>=0&&fc.r<ROWS-1&&!mushAt(fc.r,fc.c)&&Math.random()<.6)mh[fc.r][fc.c]=4;
+    if(Math.abs(flea.x-player.x)<11&&Math.abs(flea.y-player.y)<11){die();return}
+    if(flea.y>H+10){flea=null;fleaT=2500}
+  }
+  // escorpí: enverina els bolets que toca
+  scorpT-=dt;
+  if(scorpT<=0&&!scorpion){spawnScorpion();scorpT=9000+Math.random()*9000}
+  if(scorpion){
+    scorpion.x+=scorpion.vx*dt;
+    const sc=cellOf(scorpion.x,scorpion.y);
+    if(mushAt(sc.r,sc.c))mp[sc.r][sc.c]=true;
+    if(scorpion.x<-30||scorpion.x>W+30)scorpion=null;
+  }
+}
+
+// ===== DIBUIX =====
+function drawMush(r,cc){
+  const h=mh[r][cc];if(!h)return;
+  const px=cx(cc),py=cy(r);
+  x.fillStyle=mp[r][cc]?'#c040ff':pal[1];
+  const w=[0,4,6,7,7][h];
+  x.fillRect(px-w,py-6,w*2,5);
+  if(h>=3)x.fillRect(px-w+1,py-1,w*2-2,3);
+  if(h>=2)x.fillRect(px-2,py+2,4,4);
+  if(h===4){x.fillStyle='#000';x.fillRect(px-4,py-5,2,2);x.fillRect(px+2,py-5,2,2)}
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // línia de la zona del canó
+  x.fillStyle='#222';x.fillRect(0,cy(PTOP)-CELL/2,W,1);
+  for(let r=0;r<ROWS;r++)for(let cc=0;cc<COLS;cc++)drawMush(r,cc);
+  // centpeu
+  for(const ch of chains)ch.segs.forEach((s,i)=>{
+    const px=cx(s.c),py=cy(s.r);
+    x.fillStyle=i===0?'#fff':pal[0];
+    x.beginPath();x.arc(px,py,6.5,0,6.283);x.fill();
+    x.fillStyle=pal[0];
+    x.fillRect(px-8,py-1,3,2);x.fillRect(px+5,py-1,3,2);
+    if(i===0){x.fillStyle='#000';x.fillRect(px-3,py-3,2,2);x.fillRect(px+1,py-3,2,2)}
+  });
+  if(scorpion){
+    x.fillStyle='#40ff40';
+    x.fillRect(scorpion.x-12,scorpion.y-3,24,6);
+    x.fillRect(scorpion.x+(scorpion.vx>0?10:-14),scorpion.y-8,4,6);
+    for(let i=-2;i<=2;i++)x.fillRect(scorpion.x+i*5,scorpion.y+3,2,4);
+  }
+  if(spider){
+    x.fillStyle='#c060ff';
+    x.beginPath();x.ellipse(spider.x,spider.y,8,6,0,0,6.283);x.fill();
+    for(let i=0;i<4;i++){
+      const o=(i-1.5)*4;
+      x.fillRect(spider.x+o,spider.y-11,2,6);x.fillRect(spider.x+o,spider.y+5,2,6);
+    }
+  }
+  if(flea){
+    x.fillStyle='#ff8040';
+    x.fillRect(flea.x-5,flea.y-6,10,12);x.fillRect(flea.x-7,flea.y-2,14,5);
+  }
+  if(state!=='over'&&state!=='dying'){
+    x.fillStyle='#fff';
+    x.fillRect(player.x-7,player.y+2,14,5);
+    x.fillRect(player.x-3,player.y-4,6,7);
+    x.fillRect(player.x-1,player.y-8,2,5);
+  }
+  if(bullet){x.fillStyle='#fff';x.fillRect(bullet.x-1,bullet.y-6,2,8)}
+  for(const b of booms){
+    const k=b.t/260;
+    x.strokeStyle=b.col;x.globalAlpha=1-k;x.lineWidth=2;
+    x.beginPath();x.arc(b.x,b.y,4+k*14,0,6.283);x.stroke();
+    x.globalAlpha=1;
+  }
+  // vides
+  x.fillStyle='#fff';
+  for(let i=0;i<Math.min(lives-1,6);i++){x.fillRect(8+i*14,H-9,10,4);x.fillRect(11+i*14,H-13,4,4)}
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(state==='over'){start();return}keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');bind('up','up');bind('down','down');bind('fire','fire');
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// arrossegar el dit: el control natural, com la bola de la maquina
+let drag=false;
+function movePlayer(ev){
+  const r=c.getBoundingClientRect();
+  const px=(ev.clientX-r.left)*W/r.width, py=(ev.clientY-r.top)*H/r.height;
+  const tx=Math.max(CELL/2,Math.min(W-CELL/2,px));
+  const ty=Math.max(cy(PTOP),Math.min(H-CELL/2,py));
+  let cc=cellOf(tx,player.y); if(!mushAt(cc.r,cc.c))player.x=tx;
+  cc=cellOf(player.x,ty);     if(!mushAt(cc.r,cc.c))player.y=ty;
+}
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  drag=true;keys.fire=true;movePlayer(ev)});
+c.addEventListener('pointermove',ev=>{if(drag||ev.pointerType==='mouse'){ev.preventDefault();movePlayer(ev)}});
+c.addEventListener('pointerup',()=>{drag=false;keys.fire=false});
+c.addEventListener('pointercancel',()=>{drag=false;keys.fire=false});
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+  if(e.code==='ArrowUp'||e.code==='KeyW')keys.up=true;
+  if(e.code==='ArrowDown'||e.code==='KeyS')keys.down=true;
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code))e.preventDefault();
+  if(e.code==='Space'){if(state==='over')start();else{keys.fire=true;shoot()}}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+  if(e.code==='ArrowUp'||e.code==='KeyW')keys.up=false;
+  if(e.code==='ArrowDown'||e.code==='KeyS')keys.down=false;
+  if(e.code==='Space')keys.fire=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+</script>
+</body>
+</html>

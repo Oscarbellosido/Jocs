@@ -1,7 +1,7 @@
 {
   "name": "Jocs Clàssics",
   "short_name": "Jocs",
-  "description": "Nou clàssics dels salons recreatius: Tetris, Comecocos, Space Invaders, Asteroid Belt, Breakout, Missile Command, Galaxian, Frogger i Battlezone",
+  "description": "Onze clàssics dels salons recreatius: Pong, Breakout, Space Invaders, Asteroid Belt, Galaxian, Comecocos, Missile Command, Battlezone, Centipede, Frogger i Tetris",
   "start_url": "/Jocs/",
   "display": "standalone",
   "background_color": "#0b0e1a",

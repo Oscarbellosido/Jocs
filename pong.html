@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pong Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:13px;gap:6px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:94%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:18px;margin-top:10px}
+button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none;user-select:none;-webkit-user-select:none}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TU <b id="p1">0</b> — <b id="p2">0</b> MÀQUINA</span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="340"></canvas></div>
+  <div id="controls">
+    <button id="up">▲</button><button id="down">▼</button>
+  </div>
+  <div id="msg"></div>
+  <small>↑ ↓ o arrossega el dit · primer a 11 punts · pausa: P</small>
+</div>
+<script>
+
+// ===== SO: els tres blips de la maquina original =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.14;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function blip(f,d){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type='square';o.frequency.setValueAtTime(f,n);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.3,n+.004);
+  g.gain.setValueAtTime(.3,n+d-.01);g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function sndPaddle(){aInit();blip(459,.096)}   // pala
+function sndWall(){aInit();blip(226,.016)}     // paret
+function sndPoint(){aInit();blip(490,.257)}    // punt
+function sndWin(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,.14),i*110))}
+function sndLose(){aInit();[300,240,180].forEach((f,i)=>setTimeout(()=>blip(f,.22),i*180))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=340,PW=8,PH=48,BS=8,WIN=11;
+const SPEEDS=[0.20,0.25,0.31,0.38];   // la bola s'accelera durant l'intercanvi
+
+let p1,p2,ball,s1,s2,state,paused,rally,serveTo;
+const keys={up:false,down:false};
+
+let bestScore=parseInt(localStorage.getItem('best_pong')||'0');
+document.getElementById('best').textContent=bestScore;
+function saveBest(){if(s1>bestScore){bestScore=s1;localStorage.setItem('best_pong',bestScore);document.getElementById('best').textContent=bestScore}}
+function updateHUD(){
+  document.getElementById('p1').textContent=s1;
+  document.getElementById('p2').textContent=s2;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function serve(){
+  rally=0;
+  ball={x:W/2-BS/2,y:H/2-BS/2,vx:SPEEDS[0]*(serveTo===1?-1:1),vy:SPEEDS[0]*(Math.random()<.5?-.5:.5),wait:700};
+}
+function start(){
+  s1=0;s2=0;paused=false;state='play';serveTo=Math.random()<.5?1:2;
+  p1={y:H/2-PH/2};p2={y:H/2-PH/2};
+  serve();updateHUD();hideMsg();
+}
+function point(who){
+  who===1?s1++:s2++;
+  sndPoint();updateHUD();
+  serveTo=who===1?2:1;
+  if(s1>=WIN||s2>=WIN){
+    state='over';
+    s1>=WIN?(sndWin(),msg("HAS GUANYAT!<br><small>"+s1+" — "+s2+"<br>Prem ENTER o toca aquí</small>"))
+           :(sndLose(),msg("HAS PERDUT<br><small>"+s1+" — "+s2+"<br>Prem ENTER o toca aquí</small>"));
+  }else serve();
+}
+function speed(){return SPEEDS[Math.min(Math.floor(rally/4),SPEEDS.length-1)]}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  // pala del jugador
+  if(keys.up)p1.y-=0.42*dt;
+  if(keys.down)p1.y+=0.42*dt;
+  p1.y=Math.max(0,Math.min(H-PH,p1.y));
+
+  if(ball.wait>0){ball.wait-=dt;p2.y+=(H/2-PH/2-p2.y)*0.006*dt;return}
+
+  // la maquina segueix la bola, pero no hi arriba sempre
+  const target=ball.y+BS/2-PH/2, d=target-p2.y, max=0.30*dt;
+  p2.y+=Math.max(-max,Math.min(max,d));
+  p2.y=Math.max(0,Math.min(H-PH,p2.y));
+
+  // moviment de la bola, a passos petits per no travessar la pala
+  let steps=Math.ceil(Math.abs(ball.vx)*dt/3);
+  for(let i=0;i<steps;i++){
+    const f=dt/steps;
+    ball.x+=ball.vx*f;ball.y+=ball.vy*f;
+    if(ball.y<=0){ball.y=0;ball.vy=Math.abs(ball.vy);sndWall()}
+    if(ball.y+BS>=H){ball.y=H-BS;ball.vy=-Math.abs(ball.vy);sndWall()}
+    // la pala es divideix en vuit trossos: l'angle depen d'on toca
+    if(ball.vx<0&&ball.x<=20+PW&&ball.x>=20-8&&ball.y+BS>p1.y&&ball.y<p1.y+PH){
+      hitPaddle(p1,1);break;
+    }
+    if(ball.vx>0&&ball.x+BS>=W-20-PW&&ball.x+BS<=W-20+8&&ball.y+BS>p2.y&&ball.y<p2.y+PH){
+      hitPaddle(p2,2);break;
+    }
+    if(ball.x+BS<0){point(2);return}
+    if(ball.x>W){point(1);return}
+  }
+}
+function hitPaddle(pad,who){
+  rally++;
+  const zone=Math.max(0,Math.min(7,Math.floor((ball.y+BS/2-pad.y)/(PH/8))));
+  const ang=(zone-3.5)/3.5*0.65;          // fins a uns 37 graus
+  const sp=speed();
+  ball.vx=(who===1?1:-1)*sp*Math.cos(ang);
+  ball.vy=sp*Math.sin(ang);
+  ball.x=who===1?20+PW:W-20-PW-BS;
+  sndPaddle();
+}
+
+// ===== DIBUIX =====
+const DIGITS=[
+ ["###","# #","# #","# #","###"],["  #","  #","  #","  #","  #"],
+ ["###","  #","###","#  ","###"],["###","  #","###","  #","###"],
+ ["# #","# #","###","  #","  #"],["###","#  ","###","  #","###"],
+ ["###","#  ","###","# #","###"],["###","  #","  #","  #","  #"],
+ ["###","# #","###","# #","###"],["###","# #","###","  #","###"]
+];
+function bigNum(n,cx,cy,px){
+  const s=String(n);
+  const w=s.length*4*px-px;
+  s.split('').forEach((ch,i)=>{
+    const d=DIGITS[+ch];
+    d.forEach((row,r)=>[...row].forEach((c2,cc)=>{
+      if(c2==='#')x.fillRect(cx-w/2+i*4*px+cc*px,cy+r*px,px,px);
+    }));
+  });
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // xarxa del mig
+  x.fillStyle='#fff';
+  for(let y=4;y<H;y+=22)x.fillRect(W/2-2,y,4,12);
+  // marcador gran, estil maquina
+  bigNum(s1,W/2-70,24,6);
+  bigNum(s2,W/2+70,24,6);
+  // pales i bola
+  x.fillRect(20,p1.y,PW,PH);
+  x.fillRect(W-20-PW,p2.y,PW,PH);
+  if(state==='play')x.fillRect(Math.round(ball.x),Math.round(ball.y),BS,BS);
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(state==='over'){start();return}keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('up','up');bind('down','down');
+document.addEventListener('contextmenu',e=>e.preventDefault());
+let drag=false;
+function movePad(ev){
+  const r=c.getBoundingClientRect();
+  const py=(ev.clientY-r.top)*H/r.height;
+  p1.y=Math.max(0,Math.min(H-PH,py-PH/2));
+}
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  drag=true;movePad(ev)});
+c.addEventListener('pointermove',ev=>{if(drag||ev.pointerType==='mouse'){ev.preventDefault();movePad(ev)}});
+c.addEventListener('pointerup',()=>drag=false);
+c.addEventListener('pointercancel',()=>drag=false);
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();keys.up=true}
+  if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();keys.down=true}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowUp'||e.code==='KeyW')keys.up=false;
+  if(e.code==='ArrowDown'||e.code==='KeyS')keys.down=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+</script>
+</body>
+</html>
