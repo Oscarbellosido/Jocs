@@ -94,6 +94,7 @@ const MAP=[
 "#..........................#",
 "############################"];
 
+const TUNNEL_ROW=14;                  // l'unica fila que travessa d'un costat a l'altre
 const U={x:0,y:-1},L={x:-1,y:0},D={x:0,y:1},R={x:1,y:0};
 const ORDER=[U,L,D,R];               // prioritat de l'original en cas d'empat
 const BASE=75.76;                     // pixels per segon al 100%
@@ -118,7 +119,9 @@ function tileChar(tx,ty){return (ty<0||ty>=MH||tx<0||tx>=MW)?' ':MAP[ty][tx]}
 // '-' es la porta del cau: nomes hi passen els ulls dels fantasmes menjats
 function isWall(tx,ty,who){
   if(ty<0||ty>=MH)return true;
-  if(tx<0||tx>=MW)return false;            // tunel lateral
+  // fora del laberint nomes hi ha el tunel: a qualsevol altra fila es paret.
+  // Si no, al sortir per un costat es podia girar amunt o avall i marxar del mapa.
+  if(tx<0||tx>=MW)return ty!==TUNNEL_ROW;
   const ch=MAP[ty][tx];
   if(ch==='#')return true;
   if(ch==='-')return who!=='eyes';
