@@ -36,91 +36,66 @@
   }
   .games {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
     width: 100%;
-    max-width: 380px;
-    padding: 0 1.2rem;
+    max-width: 430px;
+    padding: 0 0.8rem;
   }
-  /* en pantalles amples, dues columnes: s'hi veuen tots d'un cop */
-  @media (min-width: 560px) {
-    .games { grid-template-columns: 1fr 1fr; max-width: 720px; }
-  }
+  /* com més ample, més columnes */
+  @media (min-width: 560px) { .games { grid-template-columns: repeat(3, 1fr); max-width: 760px; } }
+  @media (min-width: 900px) { .games { grid-template-columns: repeat(4, 1fr); max-width: 1020px; } }
   a.btn {
     display: block;
     text-decoration: none;
     text-align: center;
-    padding: 0.5rem 0.8rem;
-    border: 2px solid #aaa;
-    border-radius: 8px;
-    background: #111;
+    padding: 0.3rem;
+    border: 2px solid #3a3a3a;
+    border-radius: 10px;
+    background: #0a0a0a;
     color: #fff;
-    font: bold 1rem monospace;
-    letter-spacing: 0.08em;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
   }
-  a.btn:hover {
-    background: #222;
+  a.btn:hover, a.btn:active {
     border-color: #fff;
-    box-shadow: 0 0 12px #ffffff55;
+    box-shadow: 0 0 14px #ffffff55;
+    transform: translateY(-2px);
   }
-  a.btn small {
+  /* la captura del joc: pixels nets, sense suavitzat */
+  a.btn img {
     display: block;
-    font-size: 0.72rem;
-    font-weight: normal;
-    color: #aaa;
-    margin-top: 0.15rem;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: #000;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  a.btn span {
+    display: block;
+    margin-top: 0.32rem;
+    font: bold 0.78rem monospace;
     letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>
 </head>
 <body>
   <h1>★ JOCS ★</h1>
   <div class="games">
-    <a class="btn" href="tetris.html">
-      TETRIS
-      <small>Encaixa les peces · elimina línies</small>
-    </a>
-    <a class="btn" href="comecocos.html">
-      COMECOCOS
-      <small>Menja els punts · evita els fantasmes</small>
-    </a>
-    <a class="btn" href="space_invaders.html">
-      SPACE INVADERS
-      <small>Elimina els invasors · defensa la terra</small>
-    </a>
-    <a class="btn" href="asteroid_belt_joc.html">
-      ASTEROID BELT
-      <small>Destrueix asteroides · no et toquin</small>
-    </a>
-    <a class="btn" href="breakout.html">
-      BREAKOUT
-      <small>Trenca la paret · no perdis la bola</small>
-    </a>
-    <a class="btn" href="missile_command.html">
-      MISSILE COMMAND
-      <small>Defensa les ciutats dels míssils</small>
-    </a>
-    <a class="btn" href="galaxian.html">
-      GALAXIAN
-      <small>Se't tiren en picat · caça les insígnies</small>
-    </a>
-    <a class="btn" href="frogger.html">
-      FROGGER
-      <small>Travessa el trànsit i el riu</small>
-    </a>
-    <a class="btn" href="battlezone.html">
-      BATTLEZONE
-      <small>Tanc en 3D · vectors verds</small>
-    </a>
-    <a class="btn" href="centipede.html">
-      CENTIPEDE
-      <small>El cuc baixa pels bolets · aranyes i puces</small>
-    </a>
-    <a class="btn" href="pong.html">
-      PONG
-      <small>L'avi de tots · primer a 11</small>
-    </a>
+    <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span></a>
+    <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span></a>
+    <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span></a>
+    <a class="btn" href="asteroid_belt_joc.html"><img src="thumbs/asteroids.png" alt="ASTEROID BELT" width="240" height="240"><span>ASTEROID BELT</span></a>
+    <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span></a>
+    <a class="btn" href="missile_command.html"><img src="thumbs/missile_command.png" alt="MISSILE COMMAND" width="240" height="240"><span>MISSILE COMMAND</span></a>
+    <a class="btn" href="galaxian.html"><img src="thumbs/galaxian.png" alt="GALAXIAN" width="240" height="240"><span>GALAXIAN</span></a>
+    <a class="btn" href="frogger.html"><img src="thumbs/frogger.png" alt="FROGGER" width="240" height="240"><span>FROGGER</span></a>
+    <a class="btn" href="battlezone.html"><img src="thumbs/battlezone.png" alt="BATTLEZONE" width="240" height="240"><span>BATTLEZONE</span></a>
+    <a class="btn" href="centipede.html"><img src="thumbs/centipede.png" alt="CENTIPEDE" width="240" height="240"><span>CENTIPEDE</span></a>
+    <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span></a>
   </div>
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});

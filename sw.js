@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v10';
+const CACHE = 'jocs-v11';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -13,6 +13,17 @@ const FILES = [
   '/Jocs/battlezone.html',
   '/Jocs/centipede.html',
   '/Jocs/pong.html',
+  '/Jocs/thumbs/tetris.png',
+  '/Jocs/thumbs/comecocos.png',
+  '/Jocs/thumbs/space_invaders.png',
+  '/Jocs/thumbs/asteroids.png',
+  '/Jocs/thumbs/breakout.png',
+  '/Jocs/thumbs/missile_command.png',
+  '/Jocs/thumbs/galaxian.png',
+  '/Jocs/thumbs/frogger.png',
+  '/Jocs/thumbs/battlezone.png',
+  '/Jocs/thumbs/centipede.png',
+  '/Jocs/thumbs/pong.png',
   '/Jocs/icon-192.png',
   '/Jocs/icon-512.png'
 ];
