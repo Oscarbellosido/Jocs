@@ -22,7 +22,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="wave">1</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="wave">1</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="512"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="up">▲</button><button id="down">▼</button><button id="right">▶</button><button id="fire">●</button>
@@ -30,6 +30,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="msg"></div>
   <small>arrossega el dit per moure't i disparar · fletxes + ESPAI · pausa: P</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== SO =====
@@ -75,9 +76,23 @@ let mh,mp,chains,player,bullet,spider,flea,scorpion,booms;
 let score,lives,wave,state,paused,extraGiven,stepT,fleaT,spiderT,scorpT,pal;
 const keys={left:false,right:false,up:false,down:false,fire:false};
 
-let bestScore=parseInt(localStorage.getItem('best_centipede')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_centipede',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='centipede';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // les inicials de qui mana
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+// en acabar: envia la puntuacio i ensenya la taula dels 10 millors
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
 function updateHUD(){
   document.getElementById('score').textContent=score;
   document.getElementById('wave').textContent=wave;
@@ -193,7 +208,7 @@ function die(){
   state='dying';sndDie();boom(player.x,player.y,'#fff');
   setTimeout(()=>{
     lives--;updateHUD();
-    if(lives<=0){state='over';msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+    if(lives<=0){state='over';finalPartida("GAME OVER")}
     else{newLife();state='play'}
   },1100);
 }

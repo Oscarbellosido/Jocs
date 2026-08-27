@@ -22,7 +22,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#284;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>TANCS <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>TANCS <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="520"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="fwd">▲</button><button id="back2">▼</button><button id="right">▶</button>
@@ -30,6 +30,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#284;text-align:center;paddin
   <div id="msg"></div>
   <small>fletxes gira i avança · ESPAI dispara · toca la pantalla per disparar · arrossega per girar</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== SO =====
@@ -80,9 +81,23 @@ let cam,score,lives,state,shells,eshells,enemy,saucer,obst,booms,cracks;
 let spawnT,radarA,extraGiven,hitT,paused;
 const keys={left:false,right:false,fwd:false,back:false};
 
-let bestScore=parseInt(localStorage.getItem('best_battlezone')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_battlezone',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='battlezone';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // les inicials de qui mana
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+// en acabar: envia la puntuacio i ensenya la taula dels 10 millors
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
 function updateHUD(){
   document.getElementById('score').textContent=score;
   document.getElementById('lives').textContent=lives;
@@ -295,7 +310,7 @@ function update(dt){
   for(let i=booms.length-1;i>=0;i--){booms[i].t+=dt;if(booms[i].t>500)booms.splice(i,1)}
   if(state==='over')return;
   if(hitT>0){hitT-=dt;if(hitT<=0){cracks=null;
-    if(lives<=0){state='over';sndOver();msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+    if(lives<=0){state='over';sndOver();finalPartida("GAME OVER")}
   }return}
 
   // moviment del tanc

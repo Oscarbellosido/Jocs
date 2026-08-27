@@ -23,6 +23,12 @@ const Records = (() => {
   }
 
   const local = joc => parseInt(localStorage.getItem('best_' + joc) || '0', 10);
+  // alguns jocs guardaven el record amb un altre nom; no el volem perdre
+  const migra = (joc, clauAntiga) => {
+    if (!clauAntiga) return;
+    const vell = localStorage.getItem(clauAntiga);
+    if (vell && !localStorage.getItem('best_' + joc)) localStorage.setItem('best_' + joc, vell);
+  };
   const desaLocal = (joc, punts) => {
     if (punts > local(joc)) localStorage.setItem('best_' + joc, punts);
   };
@@ -92,8 +98,22 @@ const Records = (() => {
     else element.textContent = meu ? 'TU ' + meu : '—';
   }
 
+  // plafo per als jocs que no en tenen cap on ensenyar la taula
+  function panell(titol, cos) {
+    const fons = document.createElement('div');
+    fons.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9998;' +
+      'display:flex;align-items:center;justify-content:center;font-family:monospace';
+    fons.innerHTML = '<div style="text-align:center;color:#fff;border:1px solid #555;border-radius:10px;' +
+      'padding:16px 24px;background:rgba(0,0,0,.95);max-width:80%">' + titol +
+      '<div style="margin:10px 0">' + cos + '</div>' +
+      '<small style="font-size:12px;color:#aaa">Toca per continuar</small></div>';
+    fons.addEventListener('click', () => fons.remove());
+    document.body.appendChild(fons);
+    return fons;
+  }
+
   return {
-    local, desaLocal, nom, marcador,
+    local, desaLocal, nom, marcador, migra, panell,
 
     // Qui va primer. Torna null si no s'hi pot connectar.
     async lider(joc) {

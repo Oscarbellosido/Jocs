@@ -21,7 +21,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TU <b id="p1">0</b> — <b id="p2">0</b> MÀQUINA</span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TU <b id="p1">0</b> — <b id="p2">0</b> MÀQUINA</span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="340"></canvas></div>
   <div id="controls">
     <button id="up">▲</button><button id="down">▼</button>
@@ -29,6 +29,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
   <div id="msg"></div>
   <small>↑ ↓ o arrossega el dit · primer a 11 punts · pausa: P</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== SO: els tres blips de la maquina original =====
@@ -59,9 +60,22 @@ const SPEEDS=[0.20,0.25,0.31,0.38];   // la bola s'accelera durant l'intercanvi
 let p1,p2,ball,s1,s2,state,paused,rally,serveTo;
 const keys={up:false,down:false};
 
-let bestScore=parseInt(localStorage.getItem('best_pong')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(s1>bestScore){bestScore=s1;localStorage.setItem('best_pong',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='pong';
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // les inicials de qui mana
+function saveBest(){
+  if(s1>bestScore){bestScore=s1;Records.desaLocal(JOC,s1)}
+  Records.marcador(JOC,document.getElementById('best'),s1);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,s1);
+  msg(titol+'<br><small>'+s1+' — '+s2+'</small>'+
+      (r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),s1);
+}
 function updateHUD(){
   document.getElementById('p1').textContent=s1;
   document.getElementById('p2').textContent=s2;
@@ -85,8 +99,7 @@ function point(who){
   serveTo=who===1?2:1;
   if(s1>=WIN||s2>=WIN){
     state='over';
-    s1>=WIN?(sndWin(),msg("HAS GUANYAT!<br><small>"+s1+" — "+s2+"<br>Prem ENTER o toca aquí</small>"))
-           :(sndLose(),msg("HAS PERDUT<br><small>"+s1+" — "+s2+"<br>Prem ENTER o toca aquí</small>"));
+    s1>=WIN?(sndWin(),finalPartida("HAS GUANYAT!")):(sndLose(),finalPartida("HAS PERDUT"));
   }else serve();
 }
 function speed(){return SPEEDS[Math.min(Math.floor(rally/4),SPEEDS.length-1)]}

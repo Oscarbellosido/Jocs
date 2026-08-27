@@ -23,7 +23,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#888;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>NIV <b id="level">1</b></span><span>GRANOTES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>NIV <b id="level">1</b></span><span>GRANOTES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="416" height="448"></canvas></div>
   <div id="controls">
     <button id="up">▲</button><button class="c-left">◀</button><button class="c-down">▼</button><button class="c-right">▶</button>
@@ -31,6 +31,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#888;text-align:center;paddin
   <div id="msg"></div>
   <small>fletxes o WASD · llisca el dit · pausa: P</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== CLASSIC ARCADE SOUND ENGINE =====
@@ -89,9 +90,23 @@ const CARCOL={car:['#ffe000','#00e0ff','#ff7000'],truck:['#dddddd'],dozer:['#ffd
 let score=0,level=1,lives=3,state='play',paused=false,extraGiven=false;
 let homes,frog,timeLeft,maxRow,fly,lanes,startTime;
 
-let bestScore=parseInt(localStorage.getItem('best_frogger')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_frogger',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='frogger';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // les inicials de qui mana
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+// en acabar: envia la puntuacio i ensenya la taula dels 10 millors
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
 function updateHUD(){
   document.getElementById('score').textContent=score;
   document.getElementById('level').textContent=level;
@@ -142,7 +157,7 @@ function die(reason){
   reason==='water'?sndDrown():sndSquash();
   setTimeout(()=>{
     lives--;updateHUD();
-    if(lives<=0){state='over';sndOver();msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+    if(lives<=0){state='over';sndOver();finalPartida("GAME OVER")}
     else{resetFrog();state='play'}
   },900);
 }

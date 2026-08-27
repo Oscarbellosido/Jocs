@@ -23,7 +23,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0">BEST <b id="best">0</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>LIVES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
@@ -31,6 +31,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
   <div id="msg"></div>
   <small>← → / A D &nbsp; disparar: ESPAI &nbsp; pausa: P</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== CLASSIC ARCADE SOUND ENGINE =====
@@ -78,9 +79,23 @@ const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=600;
 let score=0,level=1,lives=3,gameOver=false,paused=false;
 let extraGiven=false;
-let bestScore=parseInt(localStorage.getItem('best_invaders')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_invaders',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='space_invaders';
+Records.migra(JOC,'best_invaders');
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // les inicials de qui mana
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+// en acabar: envia la puntuacio i ensenya la taula dels 10 millors
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
 let player,aliens,bullets,enemyBullets,barriers,dir,stepTimer,stepDelay,enemyShootTimer;
 let ufo=null, ufoTimer=0;
 const keys={left:false,right:false,fire:false};
@@ -177,10 +192,10 @@ function update(dt){
     for(const q of barriers){
       if(q.w&&hit(b,q)){q.w=0;b.y=H+99;break}
     }
-    if(hit(b,player)){b.y=H+99;lives--;sndPlayerHit();updateHUD();if(lives<=0){gameOver=true;sndGameOver();msg("GAME OVER<br><small>Prem REINICIAR</small>")}else{resetPlayer()}}
+    if(hit(b,player)){b.y=H+99;lives--;sndPlayerHit();updateHUD();if(lives<=0){gameOver=true;sndGameOver();finalPartida("GAME OVER")}else{resetPlayer()}}
   }
   enemyBullets=enemyBullets.filter(b=>b.y<H+50);
-  if(aliens.some(a=>a.alive&&a.y+a.h>=player.y-5)){gameOver=true;sndGameOver();msg("INVADERS HAN ARRIBAT!<br><small>Prem REINICIAR</small>")}
+  if(aliens.some(a=>a.alive&&a.y+a.h>=player.y-5)){gameOver=true;sndGameOver();finalPartida("INVADERS HAN ARRIBAT!")}
   if(!aliens.some(a=>a.alive)){
     level++;updateHUD();makeAliens();bullets=[];enemyBullets=[];makeBarriers();
   }

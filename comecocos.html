@@ -32,7 +32,7 @@
     <span>PUNTS <b id="score">0</b></span>
     <span>NIV <b id="level">1</b></span>
     <span>VIDES <b id="lives">3</b></span>
-    <span style="color:#ff0">BEST <b id="best">0</b></span>
+    <span style="color:#ff0"><b id="best">—</b></span>
   </div>
   <div id="screen"><canvas id="canvas" width="224" height="248"></canvas></div>
   <div id="message">READY!</div>
@@ -45,6 +45,7 @@
   <button id="restart">NOVA PARTIDA</button>
   <small>fletxes o WASD · llisca el dit sobre el laberint · pausa: P</small>
 </div>
+<script src="records.js"></script>
 <script>
 // === SOUND ENGINE ===
 let AC=null,MG=null,eatTog=0;
@@ -108,9 +109,19 @@ const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),
       bestEl=document.getElementById('best'),levelEl=document.getElementById('level'),msgEl=document.getElementById('message');
 
-let bestScore=parseInt(localStorage.getItem('best_comecocos')||'0');
-bestEl.textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_comecocos',bestScore);bestEl.textContent=bestScore}}
+const JOC='comecocos';
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,bestEl);   // les inicials de qui mana
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,bestEl,score);
+}
+async function finalPartida(){
+  const r=await Records.fiPartida(JOC,score);
+  Records.panell('<b style="font-size:22px">GAME OVER</b>'+
+    (r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':''), r.html);
+  Records.pintaMillor(JOC,bestEl,score);
+}
 
 let dots,dotsLeft,dotsEaten,score,lives,level,state,stateTimer,paused;
 let pac,ghosts,mode,phase,phaseTimer,frightTimer,frightFlash,ghostChain,fruit,extraGiven,sirenT;
@@ -287,7 +298,7 @@ function update(dt){
     stateTimer-=dt;pac.dead+=dt;
     if(stateTimer<=0){
       lives--;updateHUD();
-      if(lives<=0){state='over';msgEl.textContent='GAME OVER — prem NOVA PARTIDA'}
+      if(lives<=0){state='over';msgEl.textContent='GAME OVER — prem NOVA PARTIDA';finalPartida()}
       else{placeActors();state='ready';stateTimer=1.6;msgEl.textContent='READY!'}
     }
     return;

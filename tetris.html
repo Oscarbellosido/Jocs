@@ -99,7 +99,7 @@
     <button id="pauseBtn">⏸</button>
     <button id="resetBtn2">⟲</button>
   </div>
-  <div id="score-wrap">SCORE <span id="scoreDisplay">0</span> &nbsp; <span style="color:#ff0">BEST <span id="bestDisplay">0</span></span></div>
+  <div id="score-wrap">SCORE <span id="scoreDisplay">0</span> &nbsp; <span style="color:#ff0"><span id="bestDisplay">—</span></span></div>
 </div>
 <div id="hud2">
   <span>SEGÜENT <canvas id="nextCanvas" width="44" height="24"></canvas></span>
@@ -125,6 +125,7 @@
   <div id="msg-content"></div>
 </div>
 
+<script src="records.js"></script>
 <script>
 (function(){
   const COLS=10, ROWS=20, BS=30;
@@ -134,9 +135,22 @@
 
   const canvas=document.getElementById('tetrisCanvas'), ctx=canvas.getContext('2d');
   const scoreSpan=document.getElementById('scoreDisplay'), bestSpan=document.getElementById('bestDisplay');
-  let bestScore=parseInt(localStorage.getItem('best_tetris')||'0');
-  bestSpan.textContent=bestScore;
-  function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_tetris',bestScore);bestSpan.textContent=bestScore}}
+  const JOC='tetris';
+  let bestScore=Records.local(JOC);
+  Records.pintaMillor(JOC,bestSpan);   // les inicials de qui mana
+  function saveBest(){
+    if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+    Records.marcador(JOC,bestSpan,score);
+  }
+  async function finalPartida(){
+    showMsg('GAME OVER','⟲ Nou joc');
+    const r=await Records.fiPartida(JOC,score);
+    msgContent.innerHTML='<b style="font-size:26px">GAME OVER</b>'+
+      (r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<button onclick="resetGame()">⟲ Nou joc</button>';
+    Records.pintaMillor(JOC,bestSpan,score);
+  }
   const overlay=document.getElementById('msg-overlay'), msgContent=document.getElementById('msg-content');
 
   // Responsive canvas sizing for mobile
@@ -177,7 +191,7 @@
     cur.shape=nxt.shape.map(r=>r.slice());cur.colorIdx=nxt.colorIdx;
     cur.x=Math.floor((COLS-cur.shape[0].length)/2);cur.y=0;
     nxt=rnd();
-    if(collide(cur.shape,cur.x,cur.y)){gameOver=true;clearInterval(intervalId);intervalId=null;showMsg('GAME OVER','⟲ Nou joc')}
+    if(collide(cur.shape,cur.x,cur.y)){gameOver=true;clearInterval(intervalId);intervalId=null;finalPartida()}
     else{gameOver=false}
     render();
   }
