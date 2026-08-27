@@ -115,6 +115,11 @@ const Records = (() => {
   return {
     local, desaLocal, nom, marcador, migra, panell,
 
+    // Els 10 millors de tots els jocs de cop, per a la pagina principal.
+    async tots() {
+      return await crida('/records');
+    },
+
     // Qui va primer. Torna null si no s'hi pot connectar.
     async lider(joc) {
       const llista = await crida('/records/' + joc);

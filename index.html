@@ -89,25 +89,45 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* qui mana ara mateix a cada joc */
+  a.btn em {
+    display: block;
+    height: 0.95rem;
+    font: normal 0.68rem monospace;
+    font-style: normal;
+    letter-spacing: 0.06em;
+    color: #ffd000;
+    white-space: nowrap;
+    overflow: hidden;
+  }
 </style>
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
   <div class="games">
-    <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span></a>
-    <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span></a>
-    <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span></a>
-    <a class="btn" href="asteroid_belt_joc.html"><img src="thumbs/asteroids.png" alt="ASTEROID BELT" width="240" height="240"><span>ASTEROID BELT</span></a>
-    <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span></a>
-    <a class="btn" href="missile_command.html"><img src="thumbs/missile_command.png" alt="MISSILE COMMAND" width="240" height="240"><span>MISSILE COMMAND</span></a>
-    <a class="btn" href="galaxian.html"><img src="thumbs/galaxian.png" alt="GALAXIAN" width="240" height="240"><span>GALAXIAN</span></a>
-    <a class="btn" href="frogger.html"><img src="thumbs/frogger.png" alt="FROGGER" width="240" height="240"><span>FROGGER</span></a>
-    <a class="btn" href="battlezone.html"><img src="thumbs/battlezone.png" alt="BATTLEZONE" width="240" height="240"><span>BATTLEZONE</span></a>
-    <a class="btn" href="centipede.html"><img src="thumbs/centipede.png" alt="CENTIPEDE" width="240" height="240"><span>CENTIPEDE</span></a>
-    <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span></a>
+    <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span><em data-joc="tetris"></em></a>
+    <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span><em data-joc="comecocos"></em></a>
+    <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span><em data-joc="space_invaders"></em></a>
+    <a class="btn" href="asteroid_belt_joc.html"><img src="thumbs/asteroids.png" alt="ASTEROID BELT" width="240" height="240"><span>ASTEROID BELT</span><em data-joc="asteroids"></em></a>
+    <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span><em data-joc="breakout"></em></a>
+    <a class="btn" href="missile_command.html"><img src="thumbs/missile_command.png" alt="MISSILE COMMAND" width="240" height="240"><span>MISSILE COMMAND</span><em data-joc="missile_command"></em></a>
+    <a class="btn" href="galaxian.html"><img src="thumbs/galaxian.png" alt="GALAXIAN" width="240" height="240"><span>GALAXIAN</span><em data-joc="galaxian"></em></a>
+    <a class="btn" href="frogger.html"><img src="thumbs/frogger.png" alt="FROGGER" width="240" height="240"><span>FROGGER</span><em data-joc="frogger"></em></a>
+    <a class="btn" href="battlezone.html"><img src="thumbs/battlezone.png" alt="BATTLEZONE" width="240" height="240"><span>BATTLEZONE</span><em data-joc="battlezone"></em></a>
+    <a class="btn" href="centipede.html"><img src="thumbs/centipede.png" alt="CENTIPEDE" width="240" height="240"><span>CENTIPEDE</span><em data-joc="centipede"></em></a>
+    <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em data-joc="pong"></em></a>
   </div>
+<script src="records.js"></script>
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+// qui mana a cada joc, en una sola consulta
+Records.tots().then(taules => {
+  if (!taules) return;                       // sense connexio: les fitxes es queden netes
+  document.querySelectorAll('a.btn em[data-joc]').forEach(el => {
+    const lider = (taules[el.dataset.joc] || [])[0];
+    if (lider) el.textContent = lider.n + '  ' + lider.p;
+  });
+});
 </script>
 </body>
 </html>
