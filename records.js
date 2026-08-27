@@ -9,18 +9,30 @@ const Records = (() => {
   const URL_BASE = 'https://jocs-records.oscarbellosido.workers.dev';
   const TEMPS_MAX = 6000;                 // no esperem mai mes de 6 segons
 
+  // Quan una crida falla volem saber per que: no es el mateix que no hi
+  // hagi xarxa que no que el servidor ens digui que no. Si un joc encara no
+  // es a la llista del Worker, deiem "sense connexio" i era mentida.
+  let ultimFall = null;                   // 'xarxa' o 'servidor'
+
   async function crida(cami, opcions) {
     const aborta = new AbortController();
     const t = setTimeout(() => aborta.abort(), TEMPS_MAX);
     try {
       const r = await fetch(URL_BASE + cami, { ...opcions, signal: aborta.signal });
-      return r.ok ? await r.json() : null;
+      if (r.ok) { ultimFall = null; return await r.json(); }
+      ultimFall = 'servidor';
+      return null;
     } catch {
-      return null;                        // sense connexio: qui crida ja ho gestiona
+      ultimFall = 'xarxa';                // sense connexio: qui crida ja ho gestiona
+      return null;
     } finally {
       clearTimeout(t);
     }
   }
+
+  const avisFall = () => '<div style="color:#888;font-size:12px">' + (ultimFall === 'servidor'
+    ? 'Aquest joc encara no és a la llista de rècords compartits.<br>El rècord s\'ha desat només en aquest mòbil.'
+    : 'Sense connexió: rècord desat només aquí') + '</div>';
 
   const local = joc => parseInt(localStorage.getItem('best_' + joc) || '0', 10);
   // alguns jocs guardaven el record amb un altre nom; no el volem perdre
@@ -144,7 +156,7 @@ const Records = (() => {
       if (!punts) return { html: taulaHTML(await crida('/records/' + joc)), posicio: 0 };
 
       const actual = await crida('/records/' + joc);
-      if (actual === null) return { html: '<div style="color:#888;font-size:12px">Sense connexió: rècord desat només aquí</div>', posicio: 0 };
+      if (actual === null) return { html: avisFall(), posicio: 0 };
 
       const hiEntra = actual.length < 10 || punts > actual[actual.length - 1].p;
       if (!hiEntra) return { html: taulaHTML(actual), posicio: 0 };
@@ -155,7 +167,7 @@ const Records = (() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom: n, punts }),
       });
-      if (!res) return { html: taulaHTML(actual), posicio: 0 };
+      if (!res) return { html: taulaHTML(actual) + avisFall(), posicio: 0 };
       if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
       return { html: taulaHTML(res.top, { n, p: punts }), posicio: res.posicio };
     },
