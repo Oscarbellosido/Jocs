@@ -27,6 +27,7 @@ const JOCS = {
   battlezone:      9999999,
   centipede:       9999999,
   pong:                9999,
+  donkey_kong:      999999,
 };
 const TOP = 10;
 
