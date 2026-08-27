@@ -1,6 +1,6 @@
 # Jocs
 
-Onze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
+Tretze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
 llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -19,8 +19,10 @@ mòbil, instal·lat com a aplicació.
 | `comecocos.html` | Pac-Man | 1980 |
 | `missile_command.html` | Missile Command | 1980 |
 | `battlezone.html` | Battlezone | 1980 |
+| `crazy_climber.html` | Crazy Climber | 1980 |
 | `centipede.html` | Centipede | 1981 |
 | `frogger.html` | Frogger | 1981 |
+| `donkey_kong.html` | Donkey Kong | 1981 |
 | `tetris.html` | Tetris | 1984 |
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
@@ -28,7 +30,9 @@ mòbil, instal·lat com a aplicació.
 **El criteri és la fidelitat a l'original**: les regles, les puntuacions i les
 mecàniques són les de la màquina de debò (per exemple, al Breakout el màxim són
 896 punts; al Space Invaders només hi pot haver un tret teu a la pantalla; el
-laberint del Comecocos té els 240 punts i 4 pastilles de l'arcade). Quan calgui
+laberint del Comecocos té els 240 punts i 4 pastilles de l'arcade; al Crazy
+Climber només es pot moure una mà cada vegada i mai no poden quedar a més d'un
+pis de distància, que és el que feien les dues palanques de la màquina). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
 
 ## Estructura

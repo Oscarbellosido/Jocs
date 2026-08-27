@@ -67,9 +67,12 @@ r = await call('GET', '/records/pong');
 ok(r.data.some(x => x.n === 'AAA'), 'sense nom, hi posa AAA');
 
 // 8. tots els jocs de cop
+// no hi posem un numero a pel: cada joc nou el canviaria
+const quantsJocs = (await import('fs')).readFileSync('worker/records.js','utf8')
+  .match(/const JOCS = \{([\s\S]*?)\}/)[1].split('\n').filter(l => /^\s*\w+:/.test(l)).length;
 r = await call('GET', '/records');
-ok(r.status === 200 && Object.keys(r.data).length === 11 && r.data.tetris.length === 10,
-   'GET /records retorna els 11 jocs');
+ok(r.status === 200 && Object.keys(r.data).length === quantsJocs && r.data.tetris.length === 10,
+   `GET /records retorna els ${quantsJocs} jocs`);
 
 // 9. CORS i metodes
 r = await call('OPTIONS', '/records/tetris');

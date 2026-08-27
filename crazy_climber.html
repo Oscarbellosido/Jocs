@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Crazy Climber Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:5px;margin-top:8px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:46px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+#eu,#ed{color:#7ec8ff;border-color:#3a6a9a}
+#du,#dd{color:#ffc07e;border-color:#9a6a3a}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>PIS <b id="pis">1</b></span><span>EDIFICI <b id="edif">1</b></span><span>VIDES <b id="lives">5</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="400" height="600"></canvas></div>
+  <div id="controls">
+    <button id="eu">E▲</button><button id="ed">E▼</button><button id="esq">◀</button><button id="dre">▶</button><button id="du">D▲</button><button id="dd">D▼</button>
+  </div>
+  <div id="msg"></div>
+  <small>una mà cada vegada: E = esquerra, D = dreta · teclat: W/S i ↑/↓, ←/→ per moure't de costat · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(f,d,type='square',vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),dd=b.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+d);
+}
+function sndMa(){aInit();tone(260,.05,'square',.16)}
+function sndPuja(){aInit();tone(520,.05,'square',.14)}
+function sndNo(){aInit();tone(140,.06,'square',.14)}
+function sndTanca(){aInit();tone(200,.09,'square',.18,-120)}
+function sndTest(){aInit();noise(.1,.2)}
+function sndKong(){aInit();tone(90,.3,'sawtooth',.26,-30)}
+function sndMor(){aInit();[600,500,400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.14,'square',.24,-60),i*100))}
+function sndHeli(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24),i*100))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,'square',.26,-50),i*260))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=400,H=600;
+
+// ===== L'EDIFICI =====
+// Quatre columnes de finestres. El grimpador s'agafa sempre a dues de
+// costat: la ma esquerra a una i la dreta a la del costat.
+const COLS=4,WIN_W=64,PITCH=88,MARGE=36,FLOOR_H=68,WIN_H=46,PISOS=25;
+function colX(cc){return MARGE+cc*PITCH+WIN_W/2}
+let camF=0;
+function yPis(f){return H-96-(f-camF)*FLOOR_H}
+
+// Les finestres dinamiques s'obren i es tanquen soles. Abans de tancar-se
+// del tot avisen: la persiana comenca a baixar i encara pots fugir.
+let AVIS=750;
+let edificiN=1,edifici=[];
+// Les parelles de finestres de costat on t'hi pots agafar (la 0 son les
+// columnes 0 i 1, la 1 les columnes 1 i 2...). Si un pis i el de sobre no en
+// comparteixen cap, no hi ha manera de pujar: l'edifici quedaria encallat.
+function parelles(fila){
+  const p=[];
+  for(let i=0;i<COLS-1;i++)if(fila[i].tipus!=='tancada'&&fila[i+1].tipus!=='tancada')p.push(i);
+  return p;
+}
+function filaBona(fila,anterior){
+  if(fila.filter(w=>w.tipus!=='tancada').length<3)return false;
+  const p=parelles(fila);
+  return p.length>0&&p.some(i=>anterior.includes(i));
+}
+function generaEdifici(n){
+  const dinamiques=Math.min(.5,.16+.08*(n-1)),tancades=n===1?.10:.14,b=[];
+  let anterior=[0,1,2];
+  for(let f=0;f<PISOS;f++){
+    if(f===0||f===PISOS-1){
+      const fila=[0,1,2,3].map(()=>({tipus:'fixa'}));
+      b.push(fila);anterior=parelles(fila);continue;
+    }
+    let fila;
+    do{
+      fila=[];
+      for(let cc=0;cc<COLS;cc++){
+        const r=Math.random();
+        if(r<tancades)fila.push({tipus:'tancada'});
+        else if(r<tancades+dinamiques)fila.push({tipus:'dinamica',per:2000+Math.random()*2800,desf:Math.random()*12000});
+        else fila.push({tipus:'fixa'});
+      }
+    }while(!filaBona(fila,anterior));
+    b.push(fila);anterior=parelles(fila);
+  }
+  return b;
+}
+// 0 = ben oberta, 1 = tancada del tot
+function persiana(f,cc){
+  if(f<0||f>=PISOS)return 1;
+  const w=edifici[f][cc];
+  if(w.tipus==='tancada')return 1;
+  if(w.tipus==='fixa')return 0;
+  const TANCAT=1500,OBRE=350,cicle=w.per+AVIS+TANCAT+OBRE;
+  const u=(temps+w.desf)%cicle;
+  if(u<w.per)return 0;
+  if(u<w.per+AVIS)return (u-w.per)/AVIS;
+  if(u<w.per+AVIS+TANCAT)return 1;
+  return 1-(u-w.per-AVIS-TANCAT)/OBRE;
+}
+function agafable(f,cc){return persiana(f,cc)<.55}
+
+// ===== EL GRIMPADOR =====
+const cl={col:1,me:0,md:0,aMe:0,aMd:0,aCe:1,aCd:2,froid:0,droid:0,vy:0,rot:0};
+let state='play',paused=false,score=0,lives=5,temps=0,maxPis=0;
+let testos=[],kongs=[],ocells=[],bigues=[],retols=[];
+let tTest=0,tKong=0,tOcell=0,tBiga=0,tRetol=0,heliX=0;
+
+const JOC='crazy_climber';
+Records.pintaMillor(JOC,document.getElementById('best'));
+let bestScore=Records.local(JOC);
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('pis').textContent=Math.min(PISOS,Math.min(cl.me,cl.md)+1);
+  document.getElementById('edif').textContent=edificiN;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){score+=n;updateHUD()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function posaAlaBase(){
+  cl.col=1;cl.me=0;cl.md=0;cl.aMe=0;cl.aMd=0;cl.aCe=1;cl.aCd=2;
+  cl.froid=0;cl.droid=0;cl.vy=0;cl.rot=0;
+  camF=0;maxPis=0;
+  testos=[];kongs=[];ocells=[];bigues=[];retols=[];
+  tTest=1800;tKong=5000;tOcell=7000;tBiga=9000;tRetol=6000;
+  state='play';
+}
+function nouEdifici(){
+  AVIS=Math.max(320,780-90*(edificiN-1));
+  edifici=generaEdifici(edificiN);
+  posaAlaBase();
+  updateHUD();
+}
+function start(){
+  hideMsg();score=0;lives=5;edificiN=1;temps=0;bestScore=Records.local(JOC);
+  nouEdifici();
+}
+
+// ===== MOURE LES MANS =====
+// Nomes pots moure una ma cada vegada i les dues no poden quedar mai a mes
+// d'un pis de distancia: es la gracia de la maquina original, que tenia dues
+// palanques, una per ma.
+function mouMa(quina,dir){
+  if(state!=='play'||paused)return;
+  const ara=performance.now();
+  if(quina==='e'){
+    if(ara<cl.froid)return;
+    const desti=cl.me+dir;
+    if(desti<0||desti>=PISOS||Math.abs(desti-cl.md)>1||!agafable(desti,cl.col)){sndNo();return}
+    cl.me=desti;cl.froid=ara+110;
+  }else{
+    if(ara<cl.droid)return;
+    const desti=cl.md+dir;
+    if(desti<0||desti>=PISOS||Math.abs(desti-cl.me)>1||!agafable(desti,cl.col+1)){sndNo();return}
+    cl.md=desti;cl.droid=ara+110;
+  }
+  const nou=Math.min(cl.me,cl.md);
+  if(dir>0&&nou>maxPis){addScore(100*(nou-maxPis));maxPis=nou;sndPuja()}
+  else sndMa();
+  updateHUD();
+}
+// De costat nomes pots anar-hi amb les dues mans al mateix pis
+function mouCostat(dir){
+  if(state!=='play'||paused)return;
+  const ara=performance.now();
+  if(ara<cl.froid||ara<cl.droid)return;
+  if(cl.me!==cl.md){sndNo();return}
+  const nouCol=cl.col+dir;
+  if(nouCol<0||nouCol>COLS-2){sndNo();return}
+  const nova=dir<0?nouCol:nouCol+1;
+  if(!agafable(cl.me,nova)){sndNo();return}
+  cl.col=nouCol;cl.froid=ara+110;cl.droid=ara+110;
+  sndMa();
+}
+// Grimpar per damunt de tot: t'agafes a l'helicopter
+function agafaHeli(){
+  if(cl.me!==PISOS-1||cl.md!==PISOS-1)return false;
+  state='heli';sndHeli();
+  const premi=[3000,4000,5000,6000][Math.min(3,edificiN-1)];
+  addScore(premi);
+  msg('HAS ARRIBAT A DALT!<br><small>+'+premi+' punts</small>');
+  setTimeout(()=>{hideMsg();edificiN++;nouEdifici()},2200);
+  return true;
+}
+
+// ===== CAURE =====
+function cau(){
+  if(state!=='play')return;
+  state='cau';cl.vy=0;cl.rot=0;sndMor();
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';sndFi();finalPartida('GAME OVER')}
+    else{posaAlaBase();updateHUD()}
+  },1700);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+// ===== ELS PERILLS =====
+function afegeixTest(){
+  // sovint cauen per la columna on ets: no n'hi ha prou d'anar amunt
+  const prop=Math.random()<.6;
+  const cc=prop?(Math.random()<.5?cl.col:cl.col+1):Math.floor(Math.random()*COLS);
+  testos.push({cc,x:colX(cc),y:-30,vy:.24+.025*(edificiN-1),tipus:'test',gir:0});
+}
+function afegeixKong(){
+  const cc=Math.max(0,Math.min(COLS-2,cl.col+(Math.random()<.5?0:(Math.random()<.5?-1:1))));
+  const f=Math.min(PISOS-1,Math.min(cl.me,cl.md)+1+Math.floor(Math.random()*2));
+  kongs.push({f,cc,t:0,fase:'avis'});
+  sndKong();
+}
+function afegeixOcell(){
+  const f=Math.min(PISOS-1,Math.min(cl.me,cl.md)+2+Math.floor(Math.random()*3));
+  const dir=Math.random()<.5?1:-1;
+  ocells.push({f,x:dir>0?-30:W+30,dir,t:0,tirat:false});
+}
+function afegeixBiga(){
+  bigues.push({y:-200,vy:0,forat:Math.floor(Math.random()*(COLS-1)),avis:800});
+}
+function afegeixRetol(){
+  const cc=Math.floor(Math.random()*(COLS-1));
+  const f=Math.min(PISOS-2,Math.min(cl.me,cl.md)+3+Math.floor(Math.random()*3));
+  retols.push({f,cc,t:0,vida:11000});
+}
+
+function caixa(){
+  const xe=colX(cl.aCe),xd=colX(cl.aCd),ye=yPis(cl.aMe),yd=yPis(cl.aMd);
+  return {x1:Math.min(xe,xd)-16,x2:Math.max(xe,xd)+16,y1:Math.min(ye,yd)-16,y2:Math.max(ye,yd)+46};
+}
+function toca(b,ox,oy,r){
+  return ox+r>b.x1&&ox-r<b.x2&&oy+r>b.y1&&oy-r<b.y2;
+}
+
+function update(dt){
+  if(paused)return;
+  temps+=dt;
+  heliX+=dt;
+  if(state==='cau'){
+    cl.vy+=dt*.0022;cl.rot+=dt*.006;camF-=cl.vy*dt/FLOOR_H;
+    return;
+  }
+  if(state!=='play')return;
+
+  // les mans i la camera s'acosten suaument a on toca
+  const k=Math.min(1,dt/80);
+  cl.aMe+=(cl.me-cl.aMe)*k;cl.aMd+=(cl.md-cl.aMd)*k;
+  cl.aCe+=(cl.col-cl.aCe)*k;cl.aCd+=(cl.col+1-cl.aCd)*k;
+  camF+=(Math.min(cl.aMe,cl.aMd)-camF)*Math.min(1,dt/110);
+
+  // una finestra que es tanca del tot et deixa sense ma: baixes un pis
+  // i, si no pots, caus
+  for(const q of ['e','d']){
+    const f=q==='e'?cl.me:cl.md,cc=q==='e'?cl.col:cl.col+1;
+    if(persiana(f,cc)>=.99){
+      const sota=f-1;
+      if(sota>=0&&Math.abs(sota-(q==='e'?cl.md:cl.me))<=1&&agafable(sota,cc)){
+        if(q==='e')cl.me=sota;else cl.md=sota;
+        sndTanca();updateHUD();
+      }else{sndTanca();cau();return}
+    }
+  }
+
+  const b=caixa();
+
+  // testos i caques
+  tTest-=dt;
+  if(tTest<=0){afegeixTest();tTest=Math.max(650,1900-220*(edificiN-1))+Math.random()*900}
+  for(let i=testos.length-1;i>=0;i--){
+    const t=testos[i];t.y+=t.vy*dt;t.gir+=dt*.008;
+    if(toca(b,t.x,t.y,10)){cau();return}
+    if(t.y>H+40){testos.splice(i,1);sndTest()}
+  }
+
+  // el mico de les finestres
+  tKong-=dt;
+  if(tKong<=0){afegeixKong();tKong=Math.max(2600,6200-700*(edificiN-1))+Math.random()*2200}
+  for(let i=kongs.length-1;i>=0;i--){
+    const kg=kongs[i];kg.t+=dt;
+    if(kg.fase==='avis'&&kg.t>900){kg.fase='ataca';kg.t=0;sndKong()}
+    else if(kg.fase==='ataca'){
+      if(kg.t>700){kongs.splice(i,1);continue}
+      const dins=q=>{const f=q==='e'?cl.me:cl.md,cc=q==='e'?cl.col:cl.col+1;
+                     return f===kg.f&&(cc===kg.cc||cc===kg.cc+1)};
+      if(dins('e')||dins('d')){cau();return}
+    }
+  }
+
+  // ocells
+  if(edificiN>=2){
+    tOcell-=dt;
+    if(tOcell<=0){afegeixOcell();tOcell=5000+Math.random()*4000}
+  }
+  for(let i=ocells.length-1;i>=0;i--){
+    const o=ocells[i];o.t+=dt;o.x+=o.dir*dt*.13;
+    const oy=yPis(o.f)-WIN_H-14;
+    if(!o.tirat&&Math.abs(o.x-colX(cl.col)-PITCH/2)<60){
+      o.tirat=true;
+      testos.push({cc:-1,x:o.x,y:oy,vy:.18,tipus:'caca',gir:0});
+    }
+    if(o.x<-60||o.x>W+60)ocells.splice(i,1);
+  }
+
+  // retols de neo: cremen nomes quan estan encesos
+  if(edificiN>=3){
+    tRetol-=dt;
+    if(tRetol<=0){afegeixRetol();tRetol=8000+Math.random()*5000}
+  }
+  for(let i=retols.length-1;i>=0;i--){
+    const r=retols[i];r.t+=dt;r.vida-=dt;
+    if(r.vida<=0){retols.splice(i,1);continue}
+    const encesa=Math.floor(r.t/1200)%2===0;
+    if(encesa){
+      const dins=q=>{const f=q==='e'?cl.me:cl.md,cc=q==='e'?cl.col:cl.col+1;
+                     return f===r.f&&(cc===r.cc||cc===r.cc+1)};
+      if(dins('e')||dins('d')){cau();return}
+    }
+  }
+
+  // bigues: cauen de dalt i nomes se salven els qui son al forat
+  if(edificiN>=4){
+    tBiga-=dt;
+    if(tBiga<=0){afegeixBiga();tBiga=7000+Math.random()*4000}
+  }
+  for(let i=bigues.length-1;i>=0;i--){
+    const g=bigues[i];
+    if(g.avis>0){g.avis-=dt;continue}
+    g.vy=.26;g.y+=g.vy*dt;
+    if(g.y>b.y1-14&&g.y<b.y2+14&&cl.col!==g.forat){cau();return}
+    if(g.y>H+60)bigues.splice(i,1);
+  }
+}
+
+// ===== DIBUIX =====
+function dibuixaFinestra(f,cc){
+  const px=MARGE+cc*PITCH,py=yPis(f)-WIN_H;
+  if(py>H+10||py<-WIN_H-10)return;
+  const p=persiana(f,cc);
+  x.fillStyle='#0d1424';x.fillRect(px,py,WIN_W,WIN_H);
+  if(p<1){
+    const h=Math.round(WIN_H*(1-p));
+    x.fillStyle='#f2cf5a';x.fillRect(px+3,py+WIN_H-h+3,WIN_W-6,Math.max(0,h-6));
+  }
+  // persiana
+  if(p>0){
+    const h=Math.round(WIN_H*p);
+    x.fillStyle='#5a4a2a';x.fillRect(px+2,py+2,WIN_W-4,Math.max(0,h-2));
+    x.strokeStyle='#3a2f18';x.lineWidth=1;
+    for(let i=6;i<h;i+=6){x.beginPath();x.moveTo(px+2,py+i);x.lineTo(px+WIN_W-2,py+i);x.stroke()}
+  }
+  x.strokeStyle='#8fa3d6';x.lineWidth=2;x.strokeRect(px+1,py+1,WIN_W-2,WIN_H-2);
+}
+function dibuixaGrimpador(){
+  const xe=colX(cl.aCe),xd=colX(cl.aCd),ye=yPis(cl.aMe),yd=yPis(cl.aMd);
+  const bx=(xe+xd)/2,by=(ye+yd)/2+30;
+  x.save();
+  if(state==='cau'){x.translate(bx,by);x.rotate(cl.rot);x.translate(-bx,-by)}
+  // cames
+  x.strokeStyle='#2a48b0';x.lineWidth=6;x.lineCap='round';
+  x.beginPath();x.moveTo(bx-6,by+14);x.lineTo(bx-16,by+38);
+  x.moveTo(bx+6,by+14);x.lineTo(bx+16,by+38);x.stroke();
+  // braços fins a les mans
+  x.strokeStyle='#f0c090';x.lineWidth=5;
+  x.beginPath();x.moveTo(bx-9,by-8);x.lineTo(xe,ye+2);
+  x.moveTo(bx+9,by-8);x.lineTo(xd,yd+2);x.stroke();
+  // cos
+  x.fillStyle='#f2f2f2';x.fillRect(bx-11,by-12,22,28);
+  x.fillStyle='#e03030';x.fillRect(bx-11,by-12,22,5);
+  // cap i gorra
+  x.fillStyle='#f0c090';x.beginPath();x.arc(bx,by-21,8,0,7);x.fill();
+  x.fillStyle='#e03030';x.beginPath();x.arc(bx,by-22,8,Math.PI,0);x.fill();
+  x.fillRect(bx-10,by-23,20,3);
+  // mans
+  x.fillStyle='#f0c090';
+  x.beginPath();x.arc(xe,ye+1,5,0,7);x.fill();
+  x.beginPath();x.arc(xd,yd+1,5,0,7);x.fill();
+  x.restore();
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // cel i lluna quan ja s'acosta el terrat
+  const teulada=yPis(PISOS-1)-WIN_H-22;
+  if(teulada>0){
+    x.fillStyle='#04081c';x.fillRect(0,0,W,teulada);
+    x.fillStyle='#e8e8c0';x.beginPath();x.arc(W-52,Math.max(24,teulada-70),16,0,7);x.fill();
+    x.fillStyle='#04081c';x.beginPath();x.arc(W-44,Math.max(24,teulada-76),15,0,7);x.fill();
+  }
+  // façana
+  const dalt=Math.max(0,teulada);
+  x.fillStyle='#2b3a6e';x.fillRect(8,dalt,W-16,H-dalt);
+  x.fillStyle='#1e2a52';x.fillRect(0,dalt,8,H-dalt);x.fillRect(W-8,dalt,8,H-dalt);
+  if(teulada>-40){x.fillStyle='#5a6ea8';x.fillRect(2,teulada,W-4,10)}
+  // lleixes i finestres
+  const p0=Math.max(0,Math.floor(camF)-2),p1=Math.min(PISOS-1,Math.floor(camF)+10);
+  for(let f=p0;f<=p1;f++){
+    const y=yPis(f);
+    x.fillStyle='#66779e';x.fillRect(10,y,W-20,6);
+    for(let cc=0;cc<COLS;cc++)dibuixaFinestra(f,cc);
+  }
+  // helicopter a dalt de tot
+  if(teulada>-120){
+    const hx=W/2+Math.sin(heliX/900)*62,hy=Math.max(46,teulada-74);
+    // escala de corda, que arriba fins al terrat
+    x.strokeStyle='#c8a060';x.lineWidth=3;
+    x.beginPath();x.moveTo(hx-8,hy+14);x.lineTo(hx-8,teulada);x.moveTo(hx+8,hy+14);x.lineTo(hx+8,teulada);x.stroke();
+    x.lineWidth=2;
+    for(let yy=hy+24;yy<teulada;yy+=14){x.beginPath();x.moveTo(hx-8,yy);x.lineTo(hx+8,yy);x.stroke()}
+    // cua
+    x.fillStyle='#c8ccd4';x.fillRect(hx-58,hy-6,42,9);
+    x.beginPath();x.moveTo(hx-62,hy-20);x.lineTo(hx-50,hy-20);x.lineTo(hx-50,hy+4);x.lineTo(hx-62,hy+4);x.closePath();x.fill();
+    // helix de la cua
+    x.strokeStyle='#8a9098';x.lineWidth=2;
+    const rc=Math.abs(Math.sin(heliX/38))*9+2;
+    x.beginPath();x.moveTo(hx-56,hy-20-rc);x.lineTo(hx-56,hy-20+rc);x.stroke();
+    // cabina
+    x.fillStyle='#c8ccd4';
+    x.beginPath();x.ellipse(hx,hy,28,16,0,0,7);x.fill();
+    x.fillStyle='#7ec8ff';
+    x.beginPath();x.ellipse(hx+13,hy-3,11,9,0,0,7);x.fill();
+    // patins
+    x.strokeStyle='#8a9098';x.lineWidth=3;
+    x.beginPath();x.moveTo(hx-22,hy+22);x.lineTo(hx+22,hy+22);x.stroke();
+    x.lineWidth=2;
+    x.beginPath();x.moveTo(hx-12,hy+14);x.lineTo(hx-12,hy+22);x.moveTo(hx+12,hy+14);x.lineTo(hx+12,hy+22);x.stroke();
+    // helix de dalt
+    x.fillStyle='#8a9098';x.fillRect(hx-3,hy-26,6,12);
+    x.strokeStyle='#b0b6c0';x.lineWidth=4;
+    const r=Math.abs(Math.cos(heliX/38))*44+6;
+    x.beginPath();x.moveTo(hx-r,hy-26);x.lineTo(hx+r,hy-26);x.stroke();
+  }
+  // retols
+  for(const r of retols){
+    const y=yPis(r.f)-WIN_H-2,px=MARGE+r.cc*PITCH;
+    const encesa=Math.floor(r.t/1200)%2===0;
+    x.fillStyle=encesa?'#ff3060':'#402030';
+    x.fillRect(px-4,y-6,PITCH+WIN_W+8,WIN_H+10);
+    x.fillStyle=encesa?'#fff':'#604050';
+    x.font='bold 20px monospace';x.textAlign='center';
+    x.fillText('HOTEL',px+(PITCH+WIN_W)/2,y+WIN_H/2+8);
+    if(encesa){x.strokeStyle='#ffe0f0';x.lineWidth=2;x.strokeRect(px-4,y-6,PITCH+WIN_W+8,WIN_H+10)}
+  }
+  // el mico
+  for(const kg of kongs){
+    const px=MARGE+kg.cc*PITCH,y=yPis(kg.f)-WIN_H;
+    const ample=PITCH+WIN_W;
+    const cx=px+ample/2,cy=y+WIN_H/2,atac=kg.fase==='ataca';
+    if(atac){
+      // els braços surten per les dues finestres
+      x.fillStyle='#6a4a2a';
+      x.fillRect(px-18,cy-2,ample+36,15);
+      x.fillStyle='#3a2410';
+      x.beginPath();x.arc(px-16,cy+6,10,0,7);x.fill();
+      x.beginPath();x.arc(px+ample+16,cy+6,10,0,7);x.fill();
+    }
+    // cap
+    x.fillStyle='#6a4a2a';
+    x.beginPath();x.arc(cx-20,cy-8,8,0,7);x.fill();          // orella
+    x.beginPath();x.arc(cx+20,cy-8,8,0,7);x.fill();
+    x.beginPath();x.ellipse(cx,cy-6,21,18,0,0,7);x.fill();
+    x.fillStyle='#c09060';
+    x.beginPath();x.ellipse(cx,cy+3,13,10,0,0,7);x.fill();   // morro
+    x.fillStyle='#fff';
+    x.beginPath();x.arc(cx-8,cy-9,5,0,7);x.fill();
+    x.beginPath();x.arc(cx+8,cy-9,5,0,7);x.fill();
+    x.fillStyle='#000';
+    x.beginPath();x.arc(cx-8,cy-9,2.5,0,7);x.fill();
+    x.beginPath();x.arc(cx+8,cy-9,2.5,0,7);x.fill();
+    if(atac){                                                 // boca oberta
+      x.fillStyle='#301008';
+      x.beginPath();x.ellipse(cx,cy+5,7,6,0,0,7);x.fill();
+    }else{
+      x.fillStyle='#301008';x.fillRect(cx-7,cy+4,14,2);
+      x.fillStyle='#ff2020';x.font='bold 22px monospace';x.textAlign='center';
+      x.fillText('!',cx,y-6);
+    }
+  }
+  // ocells
+  for(const o of ocells){
+    const y=yPis(o.f)-WIN_H-16;
+    const a=Math.sin(o.t/90)*13;
+    x.strokeStyle='#f0f0f0';x.lineWidth=5;x.lineCap='round';
+    x.beginPath();x.moveTo(o.x-20,y-a);x.lineTo(o.x-3,y+4);x.moveTo(o.x+20,y-a);x.lineTo(o.x+3,y+4);x.stroke();
+    x.fillStyle='#f0f0f0';
+    x.beginPath();x.ellipse(o.x,y+3,10,7,0,0,7);x.fill();
+    x.beginPath();x.arc(o.x+o.dir*9,y-2,5,0,7);x.fill();
+    x.fillStyle='#ffa020';
+    x.beginPath();x.moveTo(o.x+o.dir*13,y-3);x.lineTo(o.x+o.dir*20,y-1);x.lineTo(o.x+o.dir*13,y+2);x.closePath();x.fill();
+    x.fillStyle='#000';x.beginPath();x.arc(o.x+o.dir*10,y-4,1.6,0,7);x.fill();
+  }
+  // testos
+  for(const t of testos){
+    if(t.tipus==='caca'){
+      x.fillStyle='#c8c8c8';x.beginPath();x.arc(t.x,t.y,6,0,7);x.fill();
+    }else{
+      x.save();x.translate(t.x,t.y);x.rotate(t.gir);
+      x.fillStyle='#20a020';
+      x.beginPath();x.arc(-4,-9,5,0,7);x.arc(5,-10,5,0,7);x.arc(0,-14,5,0,7);x.fill();
+      x.fillStyle='#c05020';
+      x.beginPath();x.moveTo(-10,-6);x.lineTo(10,-6);x.lineTo(6,9);x.lineTo(-6,9);x.closePath();x.fill();
+      x.fillStyle='#8a3a14';x.fillRect(-11,-9,22,4);
+      x.restore();
+    }
+  }
+  // bigues
+  for(const g of bigues){
+    if(g.avis>0){
+      x.fillStyle=Math.floor(g.avis/120)%2?'#ff2020':'#802020';
+      x.font='bold 16px monospace';x.textAlign='center';
+      x.fillText('BIGA!',colX(g.forat)+PITCH/2,26);
+      continue;
+    }
+    x.fillStyle='#a0a0a8';
+    const fx=MARGE+g.forat*PITCH-8,fw=PITCH+WIN_W+16;
+    x.fillRect(0,g.y-9,fx,18);
+    x.fillRect(fx+fw,g.y-9,W-fx-fw,18);
+    x.fillStyle='#70707a';
+    x.fillRect(0,g.y-3,fx,6);x.fillRect(fx+fw,g.y-3,W-fx-fw,6);
+  }
+  dibuixaGrimpador();
+  // altura, com al marcador de la maquina
+  x.fillStyle='#4ad8ff';x.font='12px monospace';x.textAlign='left';
+  x.fillText((Math.min(cl.me,cl.md)*4)+'m',10,20);
+  if(paused){x.fillStyle='#fff';x.font='24px monospace';x.textAlign='center';x.fillText('PAUSA',W/2,H/2)}
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// Cada boto fa un pas; si el deixes premut, va repetint.
+function accio(a){
+  if(state==='over'){aInit();start();return}
+  if(state!=='play')return;
+  if(a==='eu'){if(cl.me===PISOS-1&&cl.md===PISOS-1){agafaHeli();return}mouMa('e',1)}
+  else if(a==='ed')mouMa('e',-1);
+  else if(a==='du'){if(cl.me===PISOS-1&&cl.md===PISOS-1){agafaHeli();return}mouMa('d',1)}
+  else if(a==='dd')mouMa('d',-1);
+  else if(a==='esq')mouCostat(-1);
+  else if(a==='dre')mouCostat(1);
+}
+const premut={},proxima={};
+function premAvall(a){aInit();if(premut[a])return;premut[a]=true;accio(a);proxima[a]=performance.now()+300}
+function premAmunt(a){premut[a]=false}
+setInterval(()=>{
+  const ara=performance.now();
+  for(const a in premut)if(premut[a]&&ara>proxima[a]){accio(a);proxima[a]=ara+170}
+},30);
+function bind(id){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();premAvall(id)});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();premAmunt(id)});
+  e.addEventListener('pointercancel',()=>premAmunt(id));
+  e.addEventListener('pointerleave',()=>premAmunt(id));
+}
+['eu','ed','du','dd','esq','dre'].forEach(bind);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+const TECLES={KeyW:'eu',KeyS:'ed',ArrowUp:'du',ArrowDown:'dd',ArrowLeft:'esq',ArrowRight:'dre',KeyA:'esq',KeyD:'dre'};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(TECLES[e.code]){e.preventDefault();premAvall(TECLES[e.code]);return}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if((e.code==='Enter'||e.code==='Space')&&state==='over'){e.preventDefault();start()}
+});
+document.addEventListener('keyup',e=>{if(TECLES[e.code])premAmunt(TECLES[e.code])});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+</script>
+</body>
+</html>
