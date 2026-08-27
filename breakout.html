@@ -31,6 +31,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
   <div id="msg"></div>
   <small>← → / A D &nbsp; llançar: ESPAI &nbsp; pausa: P<br>o arrossega el dit sobre la pantalla</small>
 </div>
+<script src="records.js"></script>
 <script>
 
 // ===== CLASSIC ARCADE SOUND ENGINE =====
@@ -83,9 +84,25 @@ let score=0,lives=3,screen=1,gameOver=false,win=false,paused=false;
 let bricks=[],paddle,ball,hits=0,speedIdx=0,hitOrange=false,hitRed=false,paddleHalved=false;
 const keys={left:false,right:false};
 
-let bestScore=parseInt(localStorage.getItem('best_breakout')||'0');
-document.getElementById('best').textContent=bestScore;
-function saveBest(){if(score>bestScore){bestScore=score;localStorage.setItem('best_breakout',bestScore);document.getElementById('best').textContent=bestScore}}
+const JOC='breakout';
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));   // el millor de tots
+function saveBest(){
+  if(score>bestScore){
+    bestScore=score;Records.desaLocal(JOC,score);
+    const el=document.getElementById('best');
+    if(score>parseInt(el.textContent||'0',10))el.textContent=score;   // l'estas superant ara mateix
+  }
+}
+// en acabar: envia la puntuacio i ensenya la taula dels 10 millors
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'));
+}
 function updateHUD(){
   document.getElementById('score').textContent=score;
   document.getElementById('lives').textContent=lives;
@@ -123,7 +140,7 @@ function bumpSpeed(){
 }
 function loseBall(){
   lives--;updateHUD();sndLose();
-  if(lives<=0){gameOver=true;ball.live=false;msg("GAME OVER<br><small>Prem ENTER o toca aquí</small>")}
+  if(lives<=0){gameOver=true;ball.live=false;finalPartida("GAME OVER")}
   else resetBall();
 }
 function stepBall(d){
@@ -149,7 +166,7 @@ function stepBall(d){
       if(b.row>=2&&b.row<4&&!hitOrange){hitOrange=true;bumpSpeed()}
       if(!bricks.some(q=>q.alive)){
         if(screen===1){screen=2;makeBricks();resetBall();sndScreen();msg("PANTALLA 2<br><small>Prem ESPAI</small>");setTimeout(hideMsg,1400)}
-        else{win=true;sndWin();msg("HAS TRENCAT LA PARET!<br><small>Prem ENTER o toca aquí</small>")}
+        else{win=true;sndWin();finalPartida("HAS TRENCAT LA PARET!")}
       }
       break;
     }

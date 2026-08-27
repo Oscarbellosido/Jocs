@@ -1,7 +1,8 @@
-const CACHE = 'jocs-v11';
+const CACHE = 'jocs-v12';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
+  '/Jocs/records.js',
   '/Jocs/tetris.html',
   '/Jocs/comecocos.html',
   '/Jocs/space_invaders.html',
