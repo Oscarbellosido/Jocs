@@ -78,22 +78,38 @@ const Records = (() => {
     return '<table style="margin:0 auto;font:13px monospace;border-collapse:collapse">' + files + '</table>';
   }
 
-  return {
-    local, desaLocal, nom,
+  // qui mana ara mateix a cada joc, per no haver de preguntar-ho a cada fotograma
+  const lideres = {};
 
-    // El millor de tots. Torna null si no s'hi pot connectar.
-    async millorGlobal(joc) {
+  // El marcador ensenya les inicials de qui va primer i la seva puntuacio,
+  // com a les maquines. Mentre l'estas superant, hi surt TU amb la teva.
+  function marcador(joc, element, punts = 0) {
+    if (!element) return;
+    const l = lideres[joc];
+    const meu = Math.max(punts, local(joc));
+    if (l && punts > l.p) element.textContent = 'TU ' + punts;
+    else if (l) element.textContent = l.n + ' ' + l.p;
+    else element.textContent = meu ? 'TU ' + meu : '—';
+  }
+
+  return {
+    local, desaLocal, nom, marcador,
+
+    // Qui va primer. Torna null si no s'hi pot connectar.
+    async lider(joc) {
       const llista = await crida('/records/' + joc);
-      return llista && llista.length ? llista[0].p : (llista ? 0 : null);
+      if (llista === null) return null;
+      lideres[joc] = llista.length ? { n: llista[0].n, p: llista[0].p } : null;
+      return lideres[joc];
     },
 
-    // Posa el millor de tots a l'element del marcador; si no hi ha xarxa,
-    // hi deixa el record local perque el jugador sempre vegi alguna cosa.
-    async pintaMillor(joc, element) {
+    // Consulta qui mana i ho pinta al marcador. Sense xarxa hi deixa el
+    // teu record local, perque el jugador sempre hi vegi alguna cosa.
+    async pintaMillor(joc, element, punts = 0) {
       if (!element) return;
-      element.textContent = local(joc);
-      const g = await this.millorGlobal(joc);
-      if (g !== null) element.textContent = Math.max(g, local(joc));
+      marcador(joc, element, punts);
+      await this.lider(joc);
+      marcador(joc, element, punts);
     },
 
     // En acabar la partida: desa el local, envia la puntuacio i, si entra
@@ -115,6 +131,7 @@ const Records = (() => {
         body: JSON.stringify({ nom: n, punts }),
       });
       if (!res) return { html: taulaHTML(actual), posicio: 0 };
+      if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
       return { html: taulaHTML(res.top, { n, p: punts }), posicio: res.posicio };
     },
 
