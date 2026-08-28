@@ -38,7 +38,10 @@ mecàniques són les de la màquina de debò (per exemple, al Breakout el màxim
 invasors es mengen els escuts a mesura que hi baixen a sobre; el
 laberint del Comecocos té els 240 punts i 4 pastilles de l'arcade; al Crazy
 Climber només es pot moure una mà cada vegada i mai no poden quedar a més d'un
-pis de distància, que és el que feien les dues palanques de la màquina). Quan calgui
+pis de distància, que és el que feien les dues palanques de la màquina; el
+Donkey Kong té les quatre pantalles de l'original —les botes, la fàbrica dels
+pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
+pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
 
 ## Estructura

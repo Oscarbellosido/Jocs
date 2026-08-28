@@ -69,27 +69,77 @@ function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=448,H=512;
 
-// ===== EL DECORAT =====
-// bigues: cada una va d'un extrem a l'altre amb una mica de pendent,
-// i les botes rodolen sempre cap avall
-const BIGUES=[
-  {x1:0,   y1:478, x2:448, y2:478},
-  {x1:448, y1:432, x2:40,  y2:416},
-  {x1:8,   y1:368, x2:416, y2:352},
-  {x1:440, y1:304, x2:32,  y2:288},
-  {x1:8,   y1:240, x2:416, y2:224},
-  {x1:440, y1:176, x2:60,  y2:160},
-  {x1:56,  y1:118, x2:300, y2:118},
-];
-// escales: de la biga g a la g+1. Les trencades no es poden pujar del tot.
-const ESCALES=[
-  {x:400, g:0}, {x:96, g:0},
-  {x:80,  g:1}, {x:330, g:1, trencada:true},
-  {x:376, g:2}, {x:150, g:2},
-  {x:64,  g:3}, {x:290, g:3, trencada:true},
-  {x:384, g:4}, {x:120, g:4},
-  {x:96,  g:5}, {x:250, g:5},
-];
+// ===== ELS DECORATS =====
+// La maquina te quatre pantalles i cadascuna el seu decorat: 25m les botes,
+// 50m la fabrica dels pastissos, 75m els ascensors i 100m els reblons.
+// Les bigues van d'un extrem a l'altre; si tenen pendent, les botes hi rodolen
+// sempre cap avall. Les escales van de la biga g a la g+1.
+
+// 25m i 100m: la bastida torta de sempre
+const DECORAT_BOTES={
+  bigues:[
+    {x1:0,   y1:478, x2:448, y2:478},
+    {x1:448, y1:432, x2:40,  y2:416},
+    {x1:8,   y1:368, x2:416, y2:352},
+    {x1:440, y1:304, x2:32,  y2:288},
+    {x1:8,   y1:240, x2:416, y2:224},
+    {x1:440, y1:176, x2:60,  y2:160},
+    {x1:56,  y1:118, x2:300, y2:118},
+  ],
+  escales:[
+    {x:400, g:0}, {x:96, g:0},
+    {x:80,  g:1}, {x:330, g:1, trencada:true},
+    {x:376, g:2}, {x:150, g:2},
+    {x:64,  g:3}, {x:290, g:3, trencada:true},
+    {x:384, g:4}, {x:120, g:4},
+    {x:96,  g:5}, {x:250, g:5},
+  ],
+};
+
+// 50m: pisos plans, i quatre son cintes transportadores que et mouen els peus
+// i que canvien de sentit cada pocs segons. Les escales van alternades d'una
+// punta a l'altra, o sigui que has de creuar cada cinta sencera.
+const DECORAT_PASTISSOS={
+  bigues:[
+    {x1:0,  y1:478, x2:448, y2:478},
+    {x1:0,  y1:410, x2:448, y2:410, cinta:1},
+    {x1:0,  y1:342, x2:448, y2:342, cinta:-1},
+    {x1:0,  y1:274, x2:448, y2:274, cinta:1},
+    {x1:0,  y1:206, x2:448, y2:206, cinta:-1},
+    {x1:70, y1:138, x2:330, y2:138},
+  ],
+  escales:[
+    {x:406,g:0},{x:42,g:1},{x:406,g:2},{x:42,g:3},{x:200,g:4},
+  ],
+};
+
+// 75m: replans quiets i dues columnes d'ascensors. Les bigues 5 i 6 pugen, la
+// 7 i la 8 baixen; la seva alcada la mou l'update, i com que en Mario es
+// posa sempre a l'alcada de la biga on es, hi va a sobre sense fer res mes.
+const DECORAT_ASCENSORS={
+  bigues:[
+    {x1:0,   y1:478, x2:448, y2:478},   // 0 terra
+    {x1:0,   y1:404, x2:104, y2:404},   // 1 replà d'on surts
+    {x1:210, y1:240, x2:290, y2:240},   // 2 replà del mig
+    {x1:390, y1:330, x2:448, y2:330},   // 3 replà de la dreta
+    {x1:250, y1:150, x2:448, y2:150},   // 4 dalt de tot, amb la Pauline
+    {x1:120, y1:450, x2:196, y2:450, puja:1},    // 5 columna que puja
+    {x1:120, y1:290, x2:196, y2:290, puja:1},    // 6
+    {x1:300, y1:210, x2:376, y2:210, puja:-1},   // 7 columna que baixa
+    {x1:300, y1:370, x2:376, y2:370, puja:-1},   // 8
+  ],
+  escales:[
+    {x:52,g:0},{x:420,g:3},
+  ],
+};
+// Els ascensors no arriben mai a dalt de tot: aixi no es barallen amb la biga
+// de la Pauline, que hi passaria pel mig.
+const ASC_DALT=200, ASC_BAIX=450;
+// els molls boten per sobre de tot, d'una punta a l'altra, i cauen pel forat
+// de la columna que puja
+const MOLL_Y=136, MOLL_DRETA=440, MOLL_ESQUERRA=150;
+
+let BIGUES=[],ESCALES=[];
 const bigaY=(g,px)=>{
   const b=BIGUES[g], t=(px-b.x1)/(b.x2-b.x1);
   return b.y1+(b.y2-b.y1)*Math.max(0,Math.min(1,t));
@@ -102,6 +152,8 @@ const pendent=g=>BIGUES[g].y2>BIGUES[g].y1?1:-1;
 
 let score=0,lives=3,nivell=1,bonus=5000,state='play',paused=false,fase=1;
 let mario,botes,focs,martells,dk,pauline,reblons,bonusT,dkT,animT;
+let pastissos,molls,gDalt,cintaDir,cintaT,tPastis,tMoll;
+const METRES=['25m','50m','75m','100m'];
 const keys={left:false,right:false,up:false,down:false,salt:false};
 
 const JOC='donkey_kong';
@@ -122,32 +174,49 @@ function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.dis
 function hideMsg(){document.getElementById('msg').style.display='none'}
 
 function novaFase(){
-  botes=[];focs=[];martells=[];
+  botes=[];focs=[];martells=[];pastissos=[];molls=[];reblons=null;
   bonus=5000;bonusT=0;dkT=1400;animT=0;
+  cintaDir=1;cintaT=0;tPastis=1400;tMoll=2600;
+  const posa=d=>{BIGUES=d.bigues.map(b=>({...b}));ESCALES=d.escales};
+  // dos martells, sempre calculats a partir de la biga que els toca
+  const martellsA=(g1,g2)=>[[g1,.32],[g2,.68]].map(([g,f])=>{
+    const px=Math.round(bigaMin(g)+(bigaMax(g)-bigaMin(g))*f);
+    return {x:px,y:bigaY(g,px)-24,agafat:false};
+  });
+
   if(fase===1){
+    // 25m: les botes
+    posa(DECORAT_BOTES);gDalt=6;
     mario={x:40,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
-    martells=[{x:180,y:bigaY(2,180)-24,agafat:false},{x:340,y:bigaY(4,340)-24,agafat:false}];
+    martells=martellsA(2,4);
     focs=[{x:70,y:478,g:0,dir:1,esc:null}];
     dk={x:90,y:78};pauline={x:230,y:74};
-    reblons=null;
+  }else if(fase===2){
+    // 50m: la fabrica dels pastissos
+    posa(DECORAT_PASTISSOS);gDalt=5;
+    mario={x:24,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
+    martells=martellsA(2,4);
+    focs=[{x:220,y:478,g:0,dir:1,esc:null}];
+    dk={x:110,y:82};pauline={x:250,y:78};
+  }else if(fase===3){
+    // 75m: els ascensors
+    posa(DECORAT_ASCENSORS);gDalt=4;
+    mario={x:24,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
+    martells=[(()=>{const px=Math.round(bigaMin(2)+(bigaMax(2)-bigaMin(2))*.5);
+                    return {x:px,y:bigaY(2,px)-24,agafat:false}})()];
+    focs=[{x:300,y:478,g:0,dir:-1,esc:null}];
+    dk={x:268,y:118};pauline={x:400,y:114};
   }else{
-    // la fase dels reblons: treu-los tots i el Donkey Kong cau
+    // 100m: els reblons. Treu-los tots i el Donkey Kong cau.
+    posa(DECORAT_BOTES);gDalt=6;
     mario={x:224,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
-    // Els reblons han d'anar DINS de la biga que els toca. Abans anaven
-    // sempre a x=70 i x=370, i la biga de dalt de tot nomes va de 56 a 300:
-    // aquell rebló quedava surant a l'aire, no s'hi podia arribar i la
-    // pantalla no s'acabava mai.
     reblons=[];
     for(let g=0;g<4;g++){
       const b=BIGUES[g*2],lo=Math.min(b.x1,b.x2),hi=Math.max(b.x1,b.x2);
       reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.22),tret:false});
       reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.78),tret:false});
     }
-    // a la maquina aquesta pantalla tambe te dos martells
-    martells=[2,4].map((g,i)=>{
-      const x=Math.round(bigaMin(g)+(bigaMax(g)-bigaMin(g))*(i?.68:.32));
-      return {x,y:bigaY(g,x)-24,agafat:false};
-    });
+    martells=martellsA(2,4);
     focs=[{x:120,y:478,g:0,dir:1,esc:null},{x:330,y:478,g:0,dir:-1,esc:null}];
     dk={x:150,y:78};pauline={x:250,y:74};
   }
@@ -186,6 +255,9 @@ function mou(dt){
   if(m.estat==='terra'){
     if(keys.left){m.x-=0.115*dt;m.dir=-1;m.anim+=dt}
     if(keys.right){m.x+=0.115*dt;m.dir=1;m.anim+=dt}
+    // la cinta et mou els peus encara que estiguis quiet
+    const cin=BIGUES[m.g]&&BIGUES[m.g].cinta;
+    if(cin)m.x+=cin*cintaDir*0.045*dt;
     m.x=Math.max(8,Math.min(W-8,m.x));
     // Amb el martell a la ma no pots ni pujar escales ni saltar, com a la
     // maquina: el martell et fa fort pero et deixa clavat a la biga, i per
@@ -266,6 +338,55 @@ function mouFoc(f,dt){
   if(Math.random()<0.004)f.dir=mario.x>f.x?1:-1;
 }
 
+// ===== 50m: LES CINTES I ELS PASTISSOS =====
+const dirCinta=g=>BIGUES[g].cinta*cintaDir;
+function tiraPastis(){
+  const cintes=BIGUES.map((b,g)=>b.cinta?g:-1).filter(g=>g>=0);
+  if(!cintes.length)return;
+  const g=cintes[Math.floor(Math.random()*cintes.length)];
+  const d=dirCinta(g);
+  pastissos.push({g,x:d>0?-12:W+12,y:bigaY(g,d>0?0:W)-9});
+}
+function mouPastis(pt,dt){
+  // el pastis va amb la cinta: si la cinta gira, ell tambe
+  const d=dirCinta(pt.g);
+  pt.x+=d*(0.075+nivell*0.004)*dt;
+  pt.y=bigaY(pt.g,Math.max(0,Math.min(W,pt.x)))-9;
+  if(pt.x<-30||pt.x>W+30)pt.mort=true;
+}
+
+// ===== 75m: ELS ASCENSORS I ELS MOLLS =====
+function mouAscensors(dt){
+  const v=0.075+nivell*0.006;
+  for(let g=0;g<BIGUES.length;g++){
+    const b=BIGUES[g];
+    if(!b.puja)continue;
+    const abans=b.y1;
+    let y=b.y1-b.puja*v*dt;
+    let voltat=false;
+    if(y<ASC_DALT){y=ASC_BAIX;voltat=true}
+    if(y>ASC_BAIX){y=ASC_DALT;voltat=true}
+    b.y1=b.y2=y;
+    // si la plataforma se'n va per un extrem, qui hi anava a sobre cau
+    if(voltat&&mario.g===g&&mario.estat==='terra'){
+      mario.estat='salt';mario.vy=0;mario.y=abans;
+    }
+  }
+}
+function tiraMoll(){
+  molls.push({x:MOLL_DRETA,y:MOLL_Y,t:0,estat:'bota'});
+}
+function mouMoll(mo,dt){
+  if(mo.estat==='bota'){
+    mo.t+=dt;mo.x-=0.13*dt;
+    mo.y=MOLL_Y-Math.abs(Math.sin(mo.t/170))*26;
+    if(mo.x<=MOLL_ESQUERRA){mo.estat='cau';mo.vy=0}
+  }else{
+    mo.vy=(mo.vy||0)+0.0013*dt;mo.y+=mo.vy*dt;
+    if(mo.y>H+20)mo.mort=true;
+  }
+}
+
 function xoca(ax,ay,bx,by,r){return Math.abs(ax-bx)<r&&Math.abs(ay-by)<r}
 function morir(){
   if(state!=='play')return;
@@ -287,10 +408,10 @@ async function finalPartida(titol){
 function passaFase(){
   state='fi';sndNivell();
   addScore(Math.max(0,Math.floor(bonus/100)*100));
-  msg(fase===1?'HAS ARRIBAT A DALT!':'EL DONKEY KONG HA CAIGUT!');
+  msg(fase===4?'EL DONKEY KONG HA CAIGUT!':'HAS ARRIBAT A DALT!');
   setTimeout(()=>{
     hideMsg();
-    if(fase===1)fase=2; else {fase=1;nivell++}
+    if(fase<4)fase++; else {fase=1;nivell++}
     novaFase();
   },1800);
 }
@@ -311,6 +432,32 @@ function update(dt){
     if(!h.agafat&&xoca(m.x,m.y-10,h.x,h.y+10,16)){h.agafat=true;m.martell=8000;sndMartell()}
   }
 
+  if(fase===2){
+    // les cintes canvien de sentit cada pocs segons, com a la maquina
+    cintaT+=dt;
+    if(cintaT>4500){cintaT=0;cintaDir*=-1}
+    tPastis-=dt;
+    if(tPastis<=0){tiraPastis();tPastis=Math.max(600,1500-nivell*90)*(0.7+Math.random()*0.6)}
+    for(const pt of pastissos)mouPastis(pt,dt);
+    pastissos=pastissos.filter(pt=>!pt.mort);
+    for(let i=pastissos.length-1;i>=0;i--){
+      const pt=pastissos[i];
+      if(m.martell>0&&xoca(m.x+m.dir*12,m.y-8,pt.x,pt.y,16)){
+        pastissos.splice(i,1);addScore(300);sndTrenca();continue;
+      }
+      if(xoca(m.x,m.y-8,pt.x,pt.y,12)){morir();return}
+    }
+  }else if(fase===3){
+    mouAscensors(dt);
+    tMoll-=dt;
+    if(tMoll<=0){tiraMoll();tMoll=Math.max(900,2400-nivell*140)*(0.7+Math.random()*0.6)}
+    for(const mo of molls)mouMoll(mo,dt);
+    molls=molls.filter(mo=>!mo.mort);
+    for(const mo of molls){
+      if(xoca(m.x,m.y-8,mo.x,mo.y,13)){morir();return}
+    }
+  }
+
   if(fase===1){
     dkT-=dt;
     if(dkT<=0){tiraBota();dkT=Math.max(700,2100-nivell*160)*(0.6+Math.random()*0.8)}
@@ -327,8 +474,8 @@ function update(dt){
         m.saltat.push(b);addScore(100);sndPunts();
       }
     }
-    if(m.g===6||(m.y<130&&m.x>60&&m.x<300)){passaFase();return}
-  }else{
+    if(m.g===gDalt){passaFase();return}
+  }else if(fase===4){
     // treure els reblons trepitjant-los
     for(const r of reblons){
       if(r.tret)continue;
@@ -338,6 +485,9 @@ function update(dt){
       }
     }
     if(reblons.every(r=>r.tret)){passaFase();return}
+  }else{
+    // 50m i 75m: s'acaben arribant a dalt de tot
+    if(m.g===gDalt){passaFase();return}
   }
 
   for(const f of focs)mouFoc(f,dt);
@@ -381,9 +531,26 @@ function dibuixaGorila(){
 }
 function draw(){
   x.fillStyle='#000';x.fillRect(0,0,W,H);
-  // bigues
-  x.strokeStyle='#e05a2a';x.lineWidth=7;x.lineCap='butt';
-  for(const b of BIGUES){x.beginPath();x.moveTo(b.x1,b.y1+3);x.lineTo(b.x2,b.y2+3);x.stroke()}
+  // bigues: les taronges son de sempre, les grises son cintes i les grogues
+  // son els ascensors
+  x.lineWidth=7;x.lineCap='butt';
+  for(const b of BIGUES){
+    x.strokeStyle=b.cinta?'#b4b4bc':b.puja?'#ffd000':'#e05a2a';
+    x.beginPath();x.moveTo(b.x1,b.y1+3);x.lineTo(b.x2,b.y2+3);x.stroke();
+    if(b.cinta){
+      // les ratlletes es mouen cap on va la cinta, perque es vegi el sentit
+      const d=b.cinta*cintaDir,off=((animT*0.05*d)%22+22)%22;
+      x.strokeStyle='#4a4a52';x.lineWidth=3;
+      for(let px=Math.min(b.x1,b.x2)+off;px<Math.max(b.x1,b.x2);px+=22){
+        x.beginPath();x.moveTo(px,b.y1+1);x.lineTo(px+d*8,b.y1+5);x.stroke();
+      }
+      x.lineWidth=7;
+    }
+    if(b.puja){
+      x.fillStyle='#8a6a00';
+      x.fillRect(Math.min(b.x1,b.x2),b.y1+7,Math.abs(b.x2-b.x1),3);
+    }
+  }
   // escales
   for(const e of ESCALES){
     const dalt=bigaY(e.g+1,e.x),baix=bigaY(e.g,e.x);
@@ -399,6 +566,26 @@ function draw(){
   if(reblons)for(const r of reblons){
     if(r.tret)continue;
     x.fillStyle='#ffd000';x.beginPath();x.arc(r.x,bigaY(r.g,r.x)+3,4,0,7);x.fill();
+  }
+  // pastissos
+  for(const pt of pastissos){
+    x.fillStyle='#f0d060';
+    x.beginPath();x.ellipse(pt.x,pt.y,11,6,0,0,7);x.fill();
+    x.fillStyle='#c05020';
+    x.beginPath();x.ellipse(pt.x,pt.y-3,9,4,0,0,7);x.fill();
+    const t=Math.floor(animT/110)%2;
+    x.fillStyle=t?'#ffd000':'#ff6000';
+    x.beginPath();x.moveTo(pt.x,pt.y-14);x.lineTo(pt.x+5,pt.y-6);x.lineTo(pt.x-5,pt.y-6);x.closePath();x.fill();
+  }
+  // molls
+  for(const mo of molls){
+    x.strokeStyle='#4ad8ff';x.lineWidth=3;
+    x.beginPath();
+    for(let i=0;i<4;i++){
+      x.moveTo(mo.x-8,mo.y-6+i*4);x.lineTo(mo.x+8,mo.y-4+i*4);
+    }
+    x.stroke();
+    x.fillStyle='#2a9ad0';x.fillRect(mo.x-9,mo.y-10,18,3);x.fillRect(mo.x-9,mo.y+8,18,3);
   }
   // martells
   for(const h of martells)if(!h.agafat){
@@ -434,7 +621,7 @@ function draw(){
   }
   // alçada, com a la maquina
   x.fillStyle='#4ad8ff';x.font='12px monospace';x.textAlign='left';
-  x.fillText(fase===1?'25m':'100m',10,20);
+  x.fillText(METRES[fase-1],10,20);
 }
 let last=performance.now();
 function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
