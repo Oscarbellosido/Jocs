@@ -133,9 +133,16 @@ function novaFase(){
   }else{
     // la fase dels reblons: treu-los tots i el Donkey Kong cau
     mario={x:224,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
+    // Els reblons han d'anar DINS de la biga que els toca. Abans anaven
+    // sempre a x=70 i x=370, i la biga de dalt de tot nomes va de 56 a 300:
+    // aquell rebló quedava surant a l'aire, no s'hi podia arribar i la
+    // pantalla no s'acabava mai.
     reblons=[];
-    for(let g=0;g<4;g++)for(let k=0;k<2;k++)
-      reblons.push({g:g*2,x:70+k*300,tret:false});
+    for(let g=0;g<4;g++){
+      const b=BIGUES[g*2],lo=Math.min(b.x1,b.x2),hi=Math.max(b.x1,b.x2);
+      reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.22),tret:false});
+      reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.78),tret:false});
+    }
     focs=[{x:120,y:478,g:0,dir:1,esc:null},{x:330,y:478,g:0,dir:-1,esc:null}];
     dk={x:150,y:78};pauline={x:250,y:74};
   }

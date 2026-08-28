@@ -158,6 +158,11 @@ comproven el comportament.
 - **Un objecte ja destruït no ha d'aturar res.** Al mateix lloc, els maons
   esborrats es guarden amb `w=0` i la comprovació no ho mirava: el tret es
   perdia dins d'un forat ja fet.
+- **El que va damunt d'un escenari s'ha de calcular a partir de l'escenari, no
+  amb números fixos.** Al Donkey Kong els vuit reblons anaven sempre a x=70 i
+  x=370, però la biga de dalt de tot només va de 56 a 300: aquell rebló quedava
+  surant a l'aire, no s'hi podia arribar i, com que la pantalla s'acaba quan els
+  treus tots, no s'acabava mai. Ara es posen dins de la biga que els toca.
 - **Si un joc genera l'escenari a l'atzar, comprovar que sempre es pugui acabar.**
   Al Crazy Climber sortien edificis on, a partir d'un pis, no hi havia manera de
   continuar i la partida es quedava morta. Es prova amb un recorregut automàtic
