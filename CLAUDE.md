@@ -83,6 +83,15 @@ les inicials de qui mana (`CRE 640`), o `TU 250` mentre l'estàs superant.
   - Espai KV `jocs-records-kv` lligat com a `RECORDS`
   - El codi és a `worker/records.js`. **Es desplega enganxant-lo al tauler de
     Cloudflare**, no automàticament: si el canvies aquí, cal tornar-lo a enganxar.
+  - L'editor s'obre amb aquest enllaç, que ja et porta al Worker
+    (des de l'**ordinador**, que al mòbil l'editor parteix el text):
+    `https://dash.cloudflare.com/?to=/:account/workers/services/view/jocs-records/production`
+    i després el botó **`</> Editar código`**. Enganxar el fitxer sencer,
+    esborrant el que hi hagi, i prémer **Implementar**.
+  - Per saber si un desplegament ha entrat, obrir
+    `https://jocs-records.oscarbellosido.workers.dev/records/<joc>` al navegador:
+    si surt `[]` o una llista, el Worker coneix el joc; si surt
+    `{"error":"joc desconegut"}`, encara no.
 - **Al navegador**: `records.js` (`Records.pintaMillor`, `Records.marcador`,
   `Records.fiPartida`, `Records.tots`).
 
@@ -96,6 +105,13 @@ Regles que no s'han de trencar:
   d'evitar-ho del tot. Per a una llista entre amics ja va bé.
 - Els identificadors dels jocs al Worker no sempre coincideixen amb els noms de
   fitxer: `space_invaders`, `asteroids`, `missile_command`.
+- **Un joc nou no funciona fins que el Worker no s'ha tornat a desplegar.** Si no
+  és a la llista `JOCS`, el Worker respon 404 i el joc es queda sense taula i
+  sense demanar les inicials. Ens va passar amb el Donkey Kong.
+- **Que el servidor digui que no, no és el mateix que no tenir connexió.** Abans
+  el `records.js` ho posava tot al mateix sac i deia "sense connexió" a algú que
+  hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del
+  servidor (`'servidor'`) i el missatge diu la veritat.
 
 ## Com es prova
 
@@ -110,6 +126,10 @@ comproven el comportament.
   en Carles al mòbil.**
 - Comprovar sempre: que la partida acabi bé, que el marcador quadri, que no surti
   res de pantalla i que **no salti cap error de JavaScript**.
+- **Si un joc genera l'escenari a l'atzar, comprovar que sempre es pugui acabar.**
+  Al Crazy Climber sortien edificis on, a partir d'un pis, no hi havia manera de
+  continuar i la partida es quedava morta. Es prova amb un recorregut automàtic
+  sobre centenars d'escenaris generats, no jugant-hi.
 - El Tetris té el codi dins d'una funció tancada: per inspeccionar-lo, fer-ne una
   còpia sense l'embolcall `(function(){...})()`.
 
@@ -117,8 +137,15 @@ comproven el comportament.
 
 - **Cada canvi de fitxers: pujar la versió de la cache a `sw.js`** (`jocs-vN`).
   Si no, l'app instal·lada pot seguir servint la versió antiga.
+- **Cada joc nou**: afegir-lo a `index.html`, a `sw.js` (el fitxer i la
+  miniatura), a la descripció del `manifest.json`, a la llista `JOCS` de
+  `worker/records.js` i a la taula d'aquí dalt. I **tornar a desplegar el
+  Worker**, que això no va sol.
 - **Miniatures**: es generen obrint cada joc i capturant el canvas. Compte: el
-  Tetris té tres canvas a la pàgina, cal agafar **el més gran** (el tauler).
+  Tetris té tres canvas a la pàgina, cal agafar **el més gran** (el tauler). Si
+  el canvas és vertical (Crazy Climber), retallar-ne un quadrat centrat a l'acció
+  en comptes d'encabir-lo sencer, que si no queda tot negre pels costats. I no
+  capturar amb el joc en pausa, que hi surt el rètol de PAUSA.
 - Commits en català, explicant **què passava** i no només què s'ha tocat.
 
 ## Com treballa en Carles
