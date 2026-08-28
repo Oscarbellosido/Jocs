@@ -56,7 +56,7 @@ worker/             el Worker de Cloudflare dels rècords (còpia del que hi ha 
 scripts/            proves
 ```
 
-## Disposició: tres trampes que ja ens han mossegat
+## Disposició: quatre trampes que ja ens han mossegat
 
 **1. `100vh` no és l'alçada visible al mòbil.** Compta l'espai de la barra del
 navegador, així que és més alt del que es veu. Si a més el contenidor centra
@@ -86,7 +86,13 @@ Per això ara aquell botó porta `width:auto;height:auto` escrit a la mateixa
 etiqueta, que mana més que el full d'estil. Si algun dia s'hi afegeix cap altre
 control, li ha de passar el mateix.
 
-**3. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
+**3. Un botó que et pot matar no pot tocar el que prems sempre.** A
+l'Asteroids el botó d'HIPERESPAI estava enganxat sis píxels sobre el de
+disparar: el piquessis sense voler i, una de cada vuit vegades, et matava. Ara
+és al mig de la pantalla i ben amunt, a més de 70 píxels del de disparar a
+qualsevol mida, i d'un altre color.
+
+**4. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
 de donar per bona una fila de controls, comprovar-la a 320, 360 i 390 px.
 
 ## Rècords compartits
