@@ -143,6 +143,11 @@ function novaFase(){
       reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.22),tret:false});
       reblons.push({g:g*2,x:Math.round(lo+(hi-lo)*.78),tret:false});
     }
+    // a la maquina aquesta pantalla tambe te dos martells
+    martells=[2,4].map((g,i)=>{
+      const x=Math.round(bigaMin(g)+(bigaMax(g)-bigaMin(g))*(i?.68:.32));
+      return {x,y:bigaY(g,x)-24,agafat:false};
+    });
     focs=[{x:120,y:478,g:0,dir:1,esc:null},{x:330,y:478,g:0,dir:-1,esc:null}];
     dk={x:150,y:78};pauline={x:250,y:74};
   }
@@ -182,13 +187,17 @@ function mou(dt){
     if(keys.left){m.x-=0.115*dt;m.dir=-1;m.anim+=dt}
     if(keys.right){m.x+=0.115*dt;m.dir=1;m.anim+=dt}
     m.x=Math.max(8,Math.min(W-8,m.x));
-    // pujar o baixar per una escala
-    const e=escalaA(m.x,m.y,m.g);
-    if(e&&keys.up&&!(e.trencada&&false)){m.estat='escala';m.esc=e;m.x=e.x;return}
-    const eb=ESCALES.find(s=>s.g===m.g-1&&Math.abs(s.x-m.x)<10);
-    if(eb&&keys.down){m.estat='escala';m.esc=eb;m.x=eb.x;m.y=bigaY(eb.g+1,eb.x)+1;return}
+    // Amb el martell a la ma no pots ni pujar escales ni saltar, com a la
+    // maquina: el martell et fa fort pero et deixa clavat a la biga, i per
+    // aixo has de triar be quan l'agafes.
+    if(m.martell<=0){
+      const e=escalaA(m.x,m.y,m.g);
+      if(e&&keys.up&&!(e.trencada&&false)){m.estat='escala';m.esc=e;m.x=e.x;return}
+      const eb=ESCALES.find(s=>s.g===m.g-1&&Math.abs(s.x-m.x)<10);
+      if(eb&&keys.down){m.estat='escala';m.esc=eb;m.x=eb.x;m.y=bigaY(eb.g+1,eb.x)+1;return}
+    }
     if(dinsBiga(m.g,m.x))m.y=bigaY(m.g,m.x); else {m.estat='salt';m.vy=0}
-    if(keys.salt){m.estat='salt';m.vy=-0.30;sndSalt();m.saltat=[]}
+    if(keys.salt&&m.martell<=0){m.estat='salt';m.vy=-0.30;sndSalt();m.saltat=[]}
   }
   if(m.estat==='salt'){
     if(keys.left){m.x-=0.10*dt;m.dir=-1}
