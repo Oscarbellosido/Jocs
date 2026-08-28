@@ -148,6 +148,15 @@ comproven el comportament.
   en Carles al mòbil.**
 - Comprovar sempre: que la partida acabi bé, que el marcador quadri, que no surti
   res de pantalla i que **no salti cap error de JavaScript**.
+- **Si una cosa es mou més de pressa que el gruix del que ha de tocar, se
+  l'endú.** Al Space Invaders el tret avança uns 9 píxels per fotograma i els
+  maons dels escuts en fan 4: mirant només on havia quedat el tret, se'ls
+  saltava i quedaven trossos que no queien mai. Ara es mira **tot el tram
+  recorregut** des del fotograma anterior (`b.prevY`). Sempre que un projectil
+  vagi més de pressa que el seu objectiu, ha de ser així.
+- **Un objecte ja destruït no ha d'aturar res.** Al mateix lloc, els maons
+  esborrats es guarden amb `w=0` i la comprovació no ho mirava: el tret es
+  perdia dins d'un forat ja fet.
 - **Si un joc genera l'escenari a l'atzar, comprovar que sempre es pugui acabar.**
   Al Crazy Climber sortien edificis on, a partir d'un pis, no hi havia manera de
   continuar i la partida es quedava morta. Es prova amb un recorregut automàtic
