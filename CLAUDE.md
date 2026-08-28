@@ -34,7 +34,8 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
 **El criteri és la fidelitat a l'original**: les regles, les puntuacions i les
 mecàniques són les de la màquina de debò (per exemple, al Breakout el màxim són
-896 punts; al Space Invaders només hi pot haver un tret teu a la pantalla; el
+896 punts; al Space Invaders només hi pot haver un tret teu a la pantalla i els
+invasors es mengen els escuts a mesura que hi baixen a sobre; el
 laberint del Comecocos té els 240 punts i 4 pastilles de l'arcade; al Crazy
 Climber només es pot moure una mà cada vegada i mai no poden quedar a més d'un
 pis de distància, que és el que feien les dues palanques de la màquina). Quan calgui

@@ -118,6 +118,7 @@ function makeAliens(){
   for(let r=0;r<rows;r++)for(let col=0;col<cols;col++)
     aliens.push({x:68+col*sx,y:75+r*sy,w:22,h:16,row:r,alive:true});
 }
+let barDalt=0,barBaix=0;
 function makeBarriers(){
   barriers=[];
   for(let b=0;b<4;b++){
@@ -129,6 +130,18 @@ function makeBarriers(){
     ];
     for(let yy=0;yy<shape.length;yy++)for(let xx=0;xx<12;xx++)
       if(shape[yy][xx]==="#") barriers.push({x:bx+xx*4,y:by+yy*4,w:4,h:4});
+    barDalt=by; barBaix=by+shape.length*4;
+  }
+}
+// A la maquina els invasors s'emporten l'escut per davant a mesura que hi
+// baixen a sobre: no s'hi superposen mai, se'l mengen.
+function menjaEscuts(){
+  for(const a of aliens){
+    if(!a.alive||a.y+a.h<barDalt||a.y>barBaix)continue;
+    for(const q of barriers){
+      if(!q.w)continue;
+      if(a.x<q.x+q.w&&a.x+a.w>q.x&&a.y<q.y+q.h&&a.y+a.h>q.y)q.w=0;
+    }
   }
 }
 function start(){
@@ -187,6 +200,7 @@ function update(dt){
     if(edge){dir*=-1;aliens.forEach(a=>{if(a.alive)a.y+=12})}
     if(aliens.filter(a=>a.alive).length<20)stepDelay=Math.max(90,stepDelay-4);
   }
+  menjaEscuts();
   enemyShootTimer+=dt;
   if(enemyShootTimer>Math.max(500,1200-level*70)){enemyShoot();enemyShootTimer=0}
 
