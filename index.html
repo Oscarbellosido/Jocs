@@ -89,37 +89,53 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* qui mana ara mateix a cada joc */
+  /* L'any de la maquina i qui mana ara mateix, tots dos a la mateixa linia:
+     si l'any anes a part, cada fitxa creixeria i la llista encara caldria
+     baixar-la mes. */
   a.btn em {
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.35rem;
     height: 0.95rem;
     font: normal 0.68rem monospace;
     font-style: normal;
     letter-spacing: 0.06em;
-    color: #ffd000;
     white-space: nowrap;
     overflow: hidden;
+  }
+  a.btn em .any {
+    flex: none;
+    font-style: normal;
+    color: #7f9fc4;
+  }
+  a.btn em .rec {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: normal;
+    color: #ffd000;
   }
 </style>
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
   <div class="games">
-    <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span><em data-joc="tetris"></em></a>
-    <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span><em data-joc="comecocos"></em></a>
-    <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span><em data-joc="space_invaders"></em></a>
-    <a class="btn" href="asteroid_belt_joc.html"><img src="thumbs/asteroids.png" alt="ASTEROID BELT" width="240" height="240"><span>ASTEROID BELT</span><em data-joc="asteroids"></em></a>
-    <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span><em data-joc="breakout"></em></a>
-    <a class="btn" href="missile_command.html"><img src="thumbs/missile_command.png" alt="MISSILE COMMAND" width="240" height="240"><span>MISSILE COMMAND</span><em data-joc="missile_command"></em></a>
-    <a class="btn" href="galaxian.html"><img src="thumbs/galaxian.png" alt="GALAXIAN" width="240" height="240"><span>GALAXIAN</span><em data-joc="galaxian"></em></a>
-    <a class="btn" href="frogger.html"><img src="thumbs/frogger.png" alt="FROGGER" width="240" height="240"><span>FROGGER</span><em data-joc="frogger"></em></a>
-    <a class="btn" href="battlezone.html"><img src="thumbs/battlezone.png" alt="BATTLEZONE" width="240" height="240"><span>BATTLEZONE</span><em data-joc="battlezone"></em></a>
-    <a class="btn" href="centipede.html"><img src="thumbs/centipede.png" alt="CENTIPEDE" width="240" height="240"><span>CENTIPEDE</span><em data-joc="centipede"></em></a>
-    <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em data-joc="pong"></em></a>
-    <a class="btn" href="donkey_kong.html"><img src="thumbs/donkey_kong.png" alt="DONKEY KONG" width="240" height="240"><span>DONKEY KONG</span><em data-joc="donkey_kong"></em></a>
-    <a class="btn" href="crazy_climber.html"><img src="thumbs/crazy_climber.png" alt="CRAZY CLIMBER" width="240" height="240"><span>CRAZY CLIMBER</span><em data-joc="crazy_climber"></em></a>
-    <a class="btn" href="dig_dug.html"><img src="thumbs/dig_dug.png" alt="DIG DUG" width="240" height="240"><span>DIG DUG</span><em data-joc="dig_dug"></em></a>
-    <a class="btn" href="defender.html"><img src="thumbs/defender.png" alt="DEFENDER" width="240" height="240"><span>DEFENDER</span><em data-joc="defender"></em></a>
+    <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em><i class="any">1972</i><b class="rec" data-joc="pong"></b></em></a>
+    <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span><em><i class="any">1976</i><b class="rec" data-joc="breakout"></b></em></a>
+    <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span><em><i class="any">1978</i><b class="rec" data-joc="space_invaders"></b></em></a>
+    <a class="btn" href="galaxian.html"><img src="thumbs/galaxian.png" alt="GALAXIAN" width="240" height="240"><span>GALAXIAN</span><em><i class="any">1979</i><b class="rec" data-joc="galaxian"></b></em></a>
+    <a class="btn" href="asteroid_belt_joc.html"><img src="thumbs/asteroids.png" alt="ASTEROID BELT" width="240" height="240"><span>ASTEROID BELT</span><em><i class="any">1979</i><b class="rec" data-joc="asteroids"></b></em></a>
+    <a class="btn" href="comecocos.html"><img src="thumbs/comecocos.png" alt="COMECOCOS" width="240" height="240"><span>COMECOCOS</span><em><i class="any">1980</i><b class="rec" data-joc="comecocos"></b></em></a>
+    <a class="btn" href="missile_command.html"><img src="thumbs/missile_command.png" alt="MISSILE COMMAND" width="240" height="240"><span>MISSILE COMMAND</span><em><i class="any">1980</i><b class="rec" data-joc="missile_command"></b></em></a>
+    <a class="btn" href="crazy_climber.html"><img src="thumbs/crazy_climber.png" alt="CRAZY CLIMBER" width="240" height="240"><span>CRAZY CLIMBER</span><em><i class="any">1980</i><b class="rec" data-joc="crazy_climber"></b></em></a>
+    <a class="btn" href="battlezone.html"><img src="thumbs/battlezone.png" alt="BATTLEZONE" width="240" height="240"><span>BATTLEZONE</span><em><i class="any">1980</i><b class="rec" data-joc="battlezone"></b></em></a>
+    <a class="btn" href="defender.html"><img src="thumbs/defender.png" alt="DEFENDER" width="240" height="240"><span>DEFENDER</span><em><i class="any">1980</i><b class="rec" data-joc="defender"></b></em></a>
+    <a class="btn" href="centipede.html"><img src="thumbs/centipede.png" alt="CENTIPEDE" width="240" height="240"><span>CENTIPEDE</span><em><i class="any">1981</i><b class="rec" data-joc="centipede"></b></em></a>
+    <a class="btn" href="frogger.html"><img src="thumbs/frogger.png" alt="FROGGER" width="240" height="240"><span>FROGGER</span><em><i class="any">1981</i><b class="rec" data-joc="frogger"></b></em></a>
+    <a class="btn" href="donkey_kong.html"><img src="thumbs/donkey_kong.png" alt="DONKEY KONG" width="240" height="240"><span>DONKEY KONG</span><em><i class="any">1981</i><b class="rec" data-joc="donkey_kong"></b></em></a>
+    <a class="btn" href="dig_dug.html"><img src="thumbs/dig_dug.png" alt="DIG DUG" width="240" height="240"><span>DIG DUG</span><em><i class="any">1982</i><b class="rec" data-joc="dig_dug"></b></em></a>
+    <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span><em><i class="any">1984</i><b class="rec" data-joc="tetris"></b></em></a>
   </div>
 <script src="records.js"></script>
 <script>
@@ -127,7 +143,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
 // qui mana a cada joc, en una sola consulta
 Records.tots().then(taules => {
   if (!taules) return;                       // sense connexio: les fitxes es queden netes
-  document.querySelectorAll('a.btn em[data-joc]').forEach(el => {
+  document.querySelectorAll('a.btn em .rec[data-joc]').forEach(el => {
     const lider = (taules[el.dataset.joc] || [])[0];
     if (lider) el.textContent = lider.n + '  ' + lider.p;
   });

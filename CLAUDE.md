@@ -14,18 +14,21 @@ mòbil, instal·lat com a aplicació.
 | `pong.html` | Pong | 1972 |
 | `breakout.html` | Breakout | 1976 |
 | `space_invaders.html` | Space Invaders | 1978 |
-| `asteroid_belt_joc.html` | Asteroids | 1979 |
 | `galaxian.html` | Galaxian | 1979 |
+| `asteroid_belt_joc.html` | Asteroids | 1979 |
 | `comecocos.html` | Pac-Man | 1980 |
 | `missile_command.html` | Missile Command | 1980 |
+| `crazy_climber.html` | Crazy Climber | 1980 |
 | `battlezone.html` | Battlezone | 1980 |
 | `defender.html` | Defender | 1980 |
-| `crazy_climber.html` | Crazy Climber | 1980 |
 | `centipede.html` | Centipede | 1981 |
 | `frogger.html` | Frogger | 1981 |
 | `donkey_kong.html` | Donkey Kong | 1981 |
 | `dig_dug.html` | Dig Dug | 1982 |
 | `tetris.html` | Tetris | 1984 |
+
+Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
+al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
 
@@ -40,7 +43,7 @@ decidir alguna cosa, tirar cap a com era l'original.
 ## Estructura
 
 ```
-index.html          menú amb una miniatura de cada joc
+index.html          menú amb una miniatura de cada joc, per ordre d'any
 records.js          codi comú dels rècords compartits (el carreguen tots els jocs)
 sw.js               service worker (cache per poder jugar sense connexió)
 manifest.json       perquè es pugui instal·lar com a app
