@@ -88,6 +88,27 @@ const Records = (() => {
     });
   }
 
+  // ---- el peu del final de partida ----
+  // Fins ara, en acabar la partida nomes podies tornar a jugar: per anar al
+  // menu havies de comencar una partida i fer enrere. Aixo posa el boto del
+  // menu al mateix quadre. Es un enllac i no un <button> a posta: cada joc te
+  // la seva regla button{width:NNpx} i ens el faria petit.
+  const ESTIL_MENU = 'display:inline-block;font:13px monospace;color:#ddd;' +
+    'text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;' +
+    'padding:8px 14px;white-space:nowrap';
+  function peuFinal(text = 'o toca la pantalla per tornar a jugar') {
+    return '<div style="margin-top:12px;display:flex;gap:10px;justify-content:center;' +
+      'align-items:center;flex-wrap:wrap">' +
+      '<a href="index.html" data-menu-jocs="1" style="' + ESTIL_MENU + '">← MENÚ</a>' +
+      '<small style="font-size:12px;color:#aaa">' + text + '</small></div>';
+  }
+  // Els jocs escolten el clic a tot el quadre per tornar a jugar. Si no
+  // l'aturem aqui, tocar el boto del menu tambe els el dispararia.
+  document.addEventListener('click', e => {
+    const a = e.target && e.target.closest && e.target.closest('a[data-menu-jocs]');
+    if (a) e.stopPropagation();
+  }, true);
+
   // ---- taula dels 10 millors ----
   function taulaHTML(llista, destacat) {
     if (!llista || !llista.length) return '<div style="color:#888;font-size:12px">Encara no hi ha cap rècord</div>';
@@ -123,14 +144,14 @@ const Records = (() => {
     fons.innerHTML = '<div style="text-align:center;color:#fff;border:1px solid #555;border-radius:10px;' +
       'padding:16px 24px;background:rgba(0,0,0,.95);max-width:80%">' + titol +
       '<div style="margin:10px 0">' + cos + '</div>' +
-      '<small style="font-size:12px;color:#aaa">Toca per continuar</small></div>';
+      peuFinal('o toca per continuar') + '</div>';
     fons.addEventListener('click', () => fons.remove());
     document.body.appendChild(fons);
     return fons;
   }
 
   return {
-    local, desaLocal, nom, marcador, migra, panell,
+    local, desaLocal, nom, marcador, migra, panell, peuFinal,
 
     // Els 10 millors de tots els jocs de cop, per a la pagina principal.
     async tots() {

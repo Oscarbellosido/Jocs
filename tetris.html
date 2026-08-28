@@ -148,7 +148,8 @@
     msgContent.innerHTML='<b style="font-size:26px">GAME OVER</b>'+
       (r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
       '<div style="margin:10px 0">'+r.html+'</div>'+
-      '<button onclick="resetGame()">⟲ Nou joc</button>';
+      '<button onclick="resetGame()">⟲ Nou joc</button>'+
+      Records.peuFinal('o torna a jugar amb el botó de dalt');
     Records.pintaMillor(JOC,bestSpan,score);
   }
   const overlay=document.getElementById('msg-overlay'), msgContent=document.getElementById('msg-content');

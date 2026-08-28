@@ -103,7 +103,10 @@ les inicials de qui mana (`CRE 640`), o `TU 250` mentre l'estàs superant.
     si surt `[]` o una llista, el Worker coneix el joc; si surt
     `{"error":"joc desconegut"}`, encara no.
 - **Al navegador**: `records.js` (`Records.pintaMillor`, `Records.marcador`,
-  `Records.fiPartida`, `Records.tots`).
+  `Records.fiPartida`, `Records.tots`, `Records.peuFinal`).
+- El quadre del final de partida l'acaba `Records.peuFinal()`, que hi posa el
+  botó **← MENÚ**. És un enllaç i no un `<button>` a posta: si fos un botó, la
+  regla `button{width:NNpx}` del joc el faria petit.
 
 Regles que no s'han de trencar:
 
@@ -132,6 +135,8 @@ comproven el comportament.
 - `node scripts/prova-worker.mjs` — el Worker contra un KV simulat.
 - `node scripts/prova-dialeg.mjs` — que el quadre de les inicials es vegi bé a
   tots els jocs.
+- `node scripts/prova-menu.mjs` — que en acabar la partida tots els jocs
+  tinguin el botó de tornar al menú i que hi porti.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer

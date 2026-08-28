@@ -95,7 +95,7 @@ async function finalPartida(titol){
   const r=await Records.fiPartida(JOC,score);
   msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
       '<div style="margin:10px 0">'+r.html+'</div>'+
-      '<small>Prem ENTER o toca aquí</small>');
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
   Records.pintaMillor(JOC,document.getElementById('best'),score);
 }
 function updateHUD(){
