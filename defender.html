@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Defender Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+.fila{flex:none;display:flex;gap:6px;margin-top:6px}
+button{font:13px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:64px;height:42px;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+#up,#down{font-size:17px}
+#turbo{color:#7ec8ff}
+#foc{color:#ff0}
+#bomba{color:#ff8020}
+#salt{color:#c080ff}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="onada">1</b></span><span>NAUS <b id="lives">3</b></span><span>BOMBES <b id="bombes">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="448" height="352"></canvas></div>
+  <div class="fila">
+    <button id="up">▲</button><button id="down">▼</button><button id="gira">GIRA</button><button id="turbo">TURBO</button>
+  </div>
+  <div class="fila">
+    <button id="foc">FOC</button><button id="bomba">BOMBA</button><button id="salt">SALT</button>
+  </div>
+  <div id="msg"></div>
+  <small>GIRA canvia de sentit · TURBO accelera · SALT et treu d'un embolic, però de tant en tant surt malament · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(f,d,type='square',vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),dd=b.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+d);
+}
+function sndTret(){aInit();tone(1400,.05,'square',.14,-900)}
+function sndEsclat(){aInit();noise(.22,.26)}
+function sndTurbo(){aInit();noise(.05,.05)}
+function sndGira(){aInit();tone(500,.05,'square',.12,300)}
+function sndBomba(){aInit();noise(.5,.34);tone(90,.5,'sawtooth',.2,-50)}
+function sndSalt(){aInit();[1200,900,600,1500].forEach((f,i)=>setTimeout(()=>tone(f,.06,'square',.18),i*45))}
+function sndRescat(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.09,'square',.22),i*70))}
+function sndAgafa(){aInit();tone(880,.1,'square',.2,300)}
+function sndMutant(){aInit();tone(160,.4,'sawtooth',.24,180)}
+function sndPlaneta(){aInit();noise(1.2,.4);[200,150,100,60].forEach((f,i)=>setTimeout(()=>tone(f,.6,'sawtooth',.26,-30),i*260))}
+function sndMor(){aInit();[500,400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.16,'square',.24,-60),i*130))}
+function sndOnada(){aInit();[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24),i*95))}
+function sndVida(){aInit();[659,880,1175,1568].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.24),i*85))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,'square',.26,-50),i*260))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=448,H=352,RADAR=52,CEL=RADAR+2,SOL=H;      // la franja de dalt es l'escaner
+const ALT=SOL-CEL;                                  // alçada del camp de joc
+// El mon es molt mes ample que la pantalla i dona la volta: aquesta es la
+// gracia del Defender, que no veus mai tot el que passa alhora.
+const MON=W*5;
+
+// ===== PUNTUACIONS DE LA MAQUINA =====
+const PUNTS={lander:150,mutant:150,baiter:200,bomber:250,pod:1000,swarmer:150};
+const PUNTS_AGAFAR=500,PUNTS_DEIXAR=500,BONUS_HUMA=100;
+
+// ===== ESTAT =====
+let state='play',paused=false,score=0,lives=3,bombes=3,onada=1,animT=0;
+let nau=null,terreny=[],humans=[],enemics=[],trets=[],tretsEn=[],mines=[],espurnes=[];
+let cam=0,planetaMort=false,tOnada=0,tBaiter=0,proximaVida=10000,flash=0,estrelles=[];
+
+const JOC='defender';
+Records.pintaMillor(JOC,document.getElementById('best'));
+let bestScore=Records.local(JOC);
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('onada').textContent=onada;
+  document.getElementById('lives').textContent=lives;
+  document.getElementById('bombes').textContent=bombes;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  // a la maquina, cada 10.000 punts et donen una nau i una bomba
+  while(score>=proximaVida){lives++;bombes++;proximaVida+=10000;sndVida()}
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== EL MON, QUE DONA LA VOLTA =====
+const PAS=16,NPUNTS=Math.round(MON/PAS);
+function embolica(v){return ((v%MON)+MON)%MON}
+function distX(a,b){                                 // camí més curt entre dos punts
+  let d=embolica(b-a);
+  if(d>MON/2)d-=MON;
+  return d;
+}
+function pantallaX(wx){
+  let d=embolica(wx-cam);
+  if(d>W+80)d-=MON;
+  return d;
+}
+function generaTerreny(){
+  terreny=[];
+  let h=ALT*.75;
+  for(let i=0;i<NPUNTS;i++){
+    h+=(Math.random()-.5)*26;
+    h=Math.max(ALT*.55,Math.min(ALT*.92,h));
+    terreny.push(h);
+  }
+  // ha de lligar al donar la volta
+  for(let i=0;i<20;i++){
+    const t=i/20;
+    terreny[NPUNTS-1-i]=terreny[NPUNTS-1-i]*t+terreny[0]*(1-t);
+  }
+}
+function alturaTerreny(wx){
+  if(planetaMort)return ALT;
+  const i=embolica(wx)/PAS,i0=Math.floor(i),f=i-i0;
+  const a=terreny[i0%NPUNTS],b=terreny[(i0+1)%NPUNTS];
+  return a+(b-a)*f;
+}
+function ySol(wx){return CEL+alturaTerreny(wx)}
+
+// ===== FER ONADA =====
+function nouEnemic(tipus,wx,y){
+  return {tipus,x:embolica(wx),y,vx:0,vy:0,t:Math.random()*2000,
+          huma:null,viu:true,fase:'busca',tTret:800+Math.random()*2000};
+}
+function novaOnada(){
+  planetaMort=false;generaTerreny();
+  humans=[];
+  for(let i=0;i<10;i++){
+    const wx=embolica((i+.5)*MON/10+(Math.random()-.5)*MON/14);
+    humans.push({x:wx,y:0,estat:'terra',dir:Math.random()<.5?-1:1,portat:null});
+  }
+  enemics=[];trets=[];tretsEn=[];mines=[];espurnes=[];
+  const nl=Math.min(20,10+2*(onada-1));
+  for(let i=0;i<nl;i++)
+    enemics.push(nouEnemic('lander',Math.random()*MON,CEL+20+Math.random()*ALT*.35));
+  if(onada>=2)for(let i=0;i<Math.min(4,onada-1);i++)
+    enemics.push(nouEnemic('bomber',Math.random()*MON,CEL+30+Math.random()*ALT*.5));
+  if(onada>=3)for(let i=0;i<Math.min(4,onada-2);i++)
+    enemics.push(nouEnemic('pod',Math.random()*MON,CEL+30+Math.random()*ALT*.6));
+  tOnada=0;tBaiter=30000;
+  posaNau();
+  state='play';updateHUD();
+}
+function posaNau(){
+  nau={x:MON/4,y:CEL+ALT*.4,vx:0,vy:0,dir:1,portats:[],invulnerable:1500};
+  cam=nau.x-W*.3;
+  estrelles=[];
+  for(let i=0;i<70;i++)estrelles.push({x:Math.random()*MON,y:CEL+Math.random()*ALT,b:Math.random()});
+}
+function start(){
+  hideMsg();score=0;lives=3;bombes=3;onada=1;proximaVida=10000;
+  bestScore=Records.local(JOC);
+  novaOnada();
+}
+
+// ===== CONTROLS =====
+const keys={up:false,down:false,turbo:false,foc:false};
+let tTret=0;
+function gira(){
+  if(state!=='play'||paused)return;
+  nau.dir*=-1;sndGira();
+}
+function bombaIntel(){
+  if(state!=='play'||paused||bombes<=0)return;
+  bombes--;flash=260;sndBomba();
+  for(const e of enemics){
+    if(!e.viu)continue;
+    const sx=pantallaX(e.x);
+    if(sx>-20&&sx<W+20){
+      if(e.huma){deixaCaure(e.huma)}
+      e.viu=false;addScore(PUNTS[e.tipus]||150);esclat(e.x,e.y,'#ff8020');
+    }
+  }
+  mines.length=0;tretsEn.length=0;
+  updateHUD();comprovaOnada();
+}
+function hiperespai(){
+  if(state!=='play'||paused)return;
+  sndSalt();
+  nau.x=Math.random()*MON;
+  nau.y=CEL+30+Math.random()*(ALT*.6);
+  nau.vx=0;nau.vy=0;cam=nau.x-(nau.dir>0?W*.3:W*.7);
+  // a la maquina, de tant en tant el salt et surt malament
+  if(Math.random()<.12)mor();
+  else nau.invulnerable=800;
+}
+function dispara(){
+  if(state!=='play'||paused)return;
+  if(tTret>0)return;
+  tTret=170;
+  trets.push({x:embolica(nau.x+nau.dir*14),y:nau.y,vx:nau.dir*13,vida:900});
+  sndTret();
+}
+
+// ===== ENEMICS =====
+function esclat(wx,y,color='#fff',n=14){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,v=.5+Math.random()*2.5;
+    espurnes.push({x:embolica(wx),y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vida:400+Math.random()*400,color});
+  }
+}
+function faMutant(e){
+  e.tipus='mutant';e.fase='caça';
+  if(e.huma){e.huma.estat='mort';e.huma.portat=null;e.huma=null}
+  sndMutant();
+}
+function humansVius(){return humans.filter(h=>h.estat!=='mort').length}
+// Un huma que cau de massa amunt es mata en tocar terra: per aixo apuntem
+// des d'on ha comencat a caure.
+const CAIGUDA_MORTAL=ALT*.35;
+function deixaCaure(h){
+  if(!h||h.estat==='mort')return;
+  h.estat='cau';h.portat=null;h.yCaiguda=h.y;
+}
+function comprovaPlaneta(){
+  if(planetaMort||humansVius()>0)return;
+  // Sense cap huma viu, el planeta peta: es queda tot fosc i els landers
+  // que quedaven es tornen mutants. Es la regla mes coneguda del Defender.
+  planetaMort=true;sndPlaneta();flash=500;
+  for(const e of enemics)if(e.viu&&e.tipus==='lander')faMutant(e);
+}
+function mouEnemic(e,dt){
+  const f=dt/16.7;
+  e.t+=dt;
+  const dxJug=distX(e.x,nau.x),dyJug=nau.y-e.y;
+  if(e.tipus==='lander'){
+    if(e.fase==='busca'){
+      // baixa buscant un huma per emportar-se'l
+      const lliure=humans.filter(h=>h.estat==='terra'&&!h.portat);
+      let obj=null,millor=1e9;
+      for(const h of lliure){const d=Math.abs(distX(e.x,h.x));if(d<millor){millor=d;obj=h}}
+      if(obj){
+        e.vx+=Math.sign(distX(e.x,obj.x))*.06*f;
+        e.vy+=.045*f;
+        if(Math.abs(distX(e.x,obj.x))<10&&Math.abs(e.y-(ySol(obj.x)-6))<14){
+          e.huma=obj;obj.portat=e;obj.estat='agafat';e.fase='puja';sndAgafa();
+        }
+      }else{e.vy+=(Math.sin(e.t/700)*.5-.1)*.04*f;e.vx+=Math.sign(dxJug)*.03*f}
+    }else if(e.fase==='puja'){
+      e.vy-=.055*f;e.vx*=.96;
+      if(e.y<CEL+14){faMutant(e)}
+    }
+    e.vx=Math.max(-2.4,Math.min(2.4,e.vx));e.vy=Math.max(-2.2,Math.min(2.2,e.vy));
+  }else if(e.tipus==='mutant'){
+    e.vx+=(Math.sign(dxJug)*.10+(Math.random()-.5)*.22)*f;
+    e.vy+=(Math.sign(dyJug)*.10+(Math.random()-.5)*.22)*f;
+    e.vx=Math.max(-4.6,Math.min(4.6,e.vx));e.vy=Math.max(-4,Math.min(4,e.vy));
+  }else if(e.tipus==='baiter'){
+    e.vx+=Math.sign(dxJug)*.16*f;e.vy+=Math.sign(dyJug)*.14*f;
+    e.vx=Math.max(-6.5,Math.min(6.5,e.vx));e.vy=Math.max(-5,Math.min(5,e.vy));
+  }else if(e.tipus==='bomber'){
+    // no dispara: va deixant mines pel camí
+    if(!e.rumb){e.rumb=[Math.random()<.5?-1:1,Math.random()<.5?-1:1]}
+    e.vx=e.rumb[0]*1.5;e.vy=e.rumb[1]*.9;
+    if(e.y<CEL+16||e.y>CEL+ALT-16)e.rumb[1]*=-1;
+    if(e.t>1500){e.t=0;mines.push({x:e.x,y:e.y,vida:9000})}
+  }else if(e.tipus==='pod'){
+    e.vx=Math.sin(e.t/1400)*.9;e.vy=Math.cos(e.t/1900)*.7;
+  }else if(e.tipus==='swarmer'){
+    e.vx+=(Math.sign(dxJug)*.13+(Math.random()-.5)*.3)*f;
+    e.vy+=(Math.sign(dyJug)*.13+(Math.random()-.5)*.3)*f;
+    e.vx=Math.max(-5,Math.min(5,e.vx));e.vy=Math.max(-4.4,Math.min(4.4,e.vy));
+  }
+  e.x=embolica(e.x+e.vx*f);
+  e.y=Math.max(CEL+8,Math.min(CEL+ALT-6,e.y+e.vy*f));
+  if(e.huma){e.huma.x=e.x;e.huma.y=e.y+12}
+
+  // disparar
+  if(e.tipus!=='bomber'&&e.tipus!=='pod'){
+    e.tTret-=dt;
+    if(e.tTret<=0){
+      e.tTret=1100+Math.random()*2200;
+      const sx=pantallaX(e.x);
+      if(sx>-30&&sx<W+30&&Math.abs(dxJug)<W*.7){
+        const d=Math.hypot(dxJug,dyJug)||1;
+        tretsEn.push({x:e.x,y:e.y,vx:dxJug/d*3.4,vy:dyJug/d*3.4,vida:2600});
+      }
+    }
+  }
+}
+function matarEnemic(e,i){
+  e.viu=false;
+  if(e.huma){deixaCaure(e.huma);e.huma=null}
+  addScore(PUNTS[e.tipus]||150);
+  esclat(e.x,e.y,e.tipus==='pod'?'#40ff40':'#ff6020');
+  sndEsclat();
+  if(e.tipus==='pod'){
+    for(let k=0;k<5;k++){
+      const s=nouEnemic('swarmer',e.x+(Math.random()-.5)*30,e.y+(Math.random()-.5)*30);
+      enemics.push(s);
+    }
+  }
+  comprovaOnada();
+}
+function comprovaOnada(){
+  if(state!=='play')return;
+  // els baiters no compten: en surten sempre mentre t'entretinguis
+  const queden=enemics.filter(e=>e.viu&&e.tipus!=='baiter').length;
+  if(queden===0)passaOnada();
+}
+function passaOnada(){
+  state='fi';sndOnada();
+  const vius=humansVius(),bonus=vius*BONUS_HUMA*onada;
+  addScore(bonus);
+  msg('ONADA '+onada+' NETA!<br><small>'+vius+' humans vius · +'+bonus+' punts</small>');
+  setTimeout(()=>{hideMsg();onada++;novaOnada()},2200);
+}
+
+// ===== MORT =====
+function mor(){
+  if(state!=='play')return;
+  state='mor';sndMor();esclat(nau.x,nau.y,'#ffffff',26);
+  for(const h of nau.portats)deixaCaure(h);
+  nau.portats=[];
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';sndFi();finalPartida('GAME OVER')}
+    else{posaNau();state='play'}
+  },1700);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+// ===== BUCLE =====
+function update(dt){
+  if(paused||state==='over')return;
+  animT+=dt;
+  if(flash>0)flash-=dt;
+  for(let i=espurnes.length-1;i>=0;i--){
+    const s=espurnes[i];s.vida-=dt;
+    s.x=embolica(s.x+s.vx*dt/16.7);s.y+=s.vy*dt/16.7;
+    if(s.vida<=0)espurnes.splice(i,1);
+  }
+  if(state!=='play')return;
+  const f=dt/16.7;
+  tOnada+=dt;
+  if(nau.invulnerable>0)nau.invulnerable-=dt;
+  if(tTret>0)tTret-=dt;
+
+  // ---- la nau
+  if(keys.up)nau.vy-=.55*f; else if(keys.down)nau.vy+=.55*f; else nau.vy*=Math.pow(.86,f);
+  nau.vy=Math.max(-4.6,Math.min(4.6,nau.vy));
+  if(keys.turbo){nau.vx+=nau.dir*.3*f;if(Math.random()<.25)sndTurbo()}
+  else nau.vx*=Math.pow(.975,f);
+  nau.vx=Math.max(-8,Math.min(8,nau.vx));
+  nau.x=embolica(nau.x+nau.vx*f);
+  nau.y=Math.max(CEL+10,Math.min(CEL+ALT-8,nau.y+nau.vy*f));
+  if(keys.foc)dispara();
+  // la camera va davant de la nau, segons cap on mires
+  const objectiu=nau.x-(nau.dir>0?W*.32:W*.68);
+  cam=embolica(cam+distX(cam,objectiu)*Math.min(1,dt/140));
+
+  // ---- trets
+  for(let i=trets.length-1;i>=0;i--){
+    const t=trets[i];t.vida-=dt;t.x=embolica(t.x+t.vx*f);
+    if(t.vida<=0){trets.splice(i,1);continue}
+    for(let k=enemics.length-1;k>=0;k--){
+      const e=enemics[k];
+      if(!e.viu)continue;
+      if(Math.abs(distX(t.x,e.x))<12&&Math.abs(t.y-e.y)<11){
+        matarEnemic(e,k);trets.splice(i,1);break;
+      }
+    }
+  }
+  for(let i=tretsEn.length-1;i>=0;i--){
+    const t=tretsEn[i];t.vida-=dt;
+    t.x=embolica(t.x+t.vx*f);t.y+=t.vy*f;
+    if(t.vida<=0||t.y<CEL||t.y>CEL+ALT){tretsEn.splice(i,1);continue}
+    if(nau.invulnerable<=0&&Math.abs(distX(t.x,nau.x))<11&&Math.abs(t.y-nau.y)<8){mor();return}
+  }
+  for(let i=mines.length-1;i>=0;i--){
+    const m=mines[i];m.vida-=dt;
+    if(m.vida<=0){mines.splice(i,1);continue}
+    if(nau.invulnerable<=0&&Math.abs(distX(m.x,nau.x))<11&&Math.abs(m.y-nau.y)<10){mor();return}
+  }
+
+  // ---- enemics
+  enemics=enemics.filter(e=>e.viu);
+  for(const e of enemics){
+    mouEnemic(e,dt);
+    if(nau.invulnerable<=0&&Math.abs(distX(e.x,nau.x))<14&&Math.abs(e.y-nau.y)<12){mor();return}
+  }
+  // els baiters surten si t'hi entretens massa
+  tBaiter-=dt;
+  if(tBaiter<=0){
+    tBaiter=12000;
+    enemics.push(nouEnemic('baiter',nau.x+(Math.random()<.5?-1:1)*W*.6,CEL+20+Math.random()*ALT*.5));
+  }
+
+  // ---- humans
+  for(const h of humans){
+    if(h.estat==='mort')continue;
+    if(h.estat==='terra'){
+      h.x=embolica(h.x+h.dir*.22*f);
+      if(Math.random()<.004*f)h.dir*=-1;
+      h.y=ySol(h.x)-7;
+    }else if(h.estat==='cau'){
+      h.y+=1.9*f;
+      // el pots agafar al vol
+      if(Math.abs(distX(h.x,nau.x))<14&&Math.abs(h.y-nau.y)<14){
+        h.estat='portat';h.portat=nau;nau.portats.push(h);
+        addScore(PUNTS_AGAFAR);sndAgafa();
+        continue;
+      }
+      if(h.y>=ySol(h.x)-7){
+        h.y=ySol(h.x)-7;
+        if(h.y-(h.yCaiguda||h.y)>CAIGUDA_MORTAL){h.estat='mort';esclat(h.x,h.y,'#40e0ff',8)}
+        else h.estat='terra';
+      }
+    }else if(h.estat==='portat'){
+      const k=nau.portats.indexOf(h);
+      h.x=nau.x;h.y=nau.y+12+k*8;
+      if(nau.y>ySol(nau.x)-26){          // els deixes tocant a terra
+        h.estat='terra';h.portat=null;h.y=ySol(h.x)-7;
+        nau.portats.splice(k,1);
+        addScore(PUNTS_DEIXAR);sndRescat();
+      }
+    }
+  }
+  comprovaPlaneta();
+}
+
+// ===== DIBUIX =====
+function dibuixaNau(sx,sy){
+  const d=nau.dir;
+  if(nau.invulnerable>0&&Math.floor(animT/70)%2)return;
+  x.fillStyle='#f0f0f0';
+  x.beginPath();
+  x.moveTo(sx+d*15,sy);x.lineTo(sx-d*6,sy-6);x.lineTo(sx-d*13,sy-6);
+  x.lineTo(sx-d*13,sy+6);x.lineTo(sx-d*6,sy+6);x.closePath();x.fill();
+  x.fillStyle='#40e0ff';x.fillRect(sx-d*10,sy-3,7*d,6);
+  if(keys.turbo){
+    x.fillStyle=Math.floor(animT/50)%2?'#ffd000':'#ff6000';
+    x.beginPath();
+    x.moveTo(sx-d*13,sy-4);x.lineTo(sx-d*(20+Math.random()*8),sy);x.lineTo(sx-d*13,sy+4);
+    x.closePath();x.fill();
+  }
+}
+function dibuixaEnemic(e,sx){
+  const sy=e.y;
+  if(e.tipus==='lander'){
+    x.fillStyle='#40d040';
+    x.beginPath();x.moveTo(sx,sy-9);x.lineTo(sx+9,sy+3);x.lineTo(sx-9,sy+3);x.closePath();x.fill();
+    x.fillStyle='#a0ffa0';x.fillRect(sx-6,sy+3,12,3);
+    x.fillStyle='#ffffff';x.fillRect(sx-2,sy-4,4,4);
+  }else if(e.tipus==='mutant'){
+    x.fillStyle='#ff40ff';
+    x.beginPath();x.arc(sx,sy,8,0,7);x.fill();
+    x.fillStyle='#ffffff';
+    x.fillRect(sx-7,sy-2+Math.sin(animT/60)*2,14,3);
+    x.fillStyle='#800080';x.fillRect(sx-3,sy-6,6,3);
+  }else if(e.tipus==='baiter'){
+    x.fillStyle='#ffe000';
+    x.beginPath();x.moveTo(sx-11,sy);x.lineTo(sx,sy-7);x.lineTo(sx+11,sy);x.lineTo(sx,sy+7);
+    x.closePath();x.fill();
+    x.fillStyle='#a08000';x.fillRect(sx-4,sy-2,8,4);
+  }else if(e.tipus==='bomber'){
+    x.fillStyle='#4080ff';
+    x.beginPath();x.moveTo(sx,sy-9);x.lineTo(sx+8,sy);x.lineTo(sx,sy+9);x.lineTo(sx-8,sy);
+    x.closePath();x.fill();
+    x.strokeStyle='#a0d0ff';x.lineWidth=2;
+    x.beginPath();x.moveTo(sx-8,sy);x.lineTo(sx+8,sy);x.stroke();
+  }else if(e.tipus==='pod'){
+    const r=9+Math.sin(animT/200)*2;
+    x.strokeStyle='#40ff80';x.lineWidth=3;
+    x.beginPath();x.arc(sx,sy,r,0,7);x.stroke();
+    x.fillStyle='#106030';x.beginPath();x.arc(sx,sy,r-4,0,7);x.fill();
+  }else if(e.tipus==='swarmer'){
+    x.fillStyle='#80ff40';
+    x.beginPath();x.moveTo(sx,sy-5);x.lineTo(sx+5,sy+4);x.lineTo(sx-5,sy+4);x.closePath();x.fill();
+  }
+}
+function dibuixaRadar(){
+  x.fillStyle='#000';x.fillRect(0,0,W,RADAR);
+  x.strokeStyle='#404060';x.lineWidth=1;
+  x.strokeRect(.5,.5,W-1,RADAR-1);
+  const esc=W/MON,ey=y=>4+(y-CEL)/ALT*(RADAR-8);
+  // el terreny en petit
+  if(!planetaMort){
+    x.strokeStyle='#2a6a2a';x.beginPath();
+    for(let i=0;i<NPUNTS;i+=3){
+      const px=i*PAS*esc,py=ey(CEL+terreny[i]);
+      i===0?x.moveTo(px,py):x.lineTo(px,py);
+    }
+    x.stroke();
+  }
+  for(const h of humans){
+    if(h.estat==='mort')continue;
+    x.fillStyle='#40e0ff';x.fillRect(h.x*esc-1,ey(h.y)-1,2,3);
+  }
+  for(const e of enemics){
+    if(!e.viu)continue;
+    x.fillStyle=e.tipus==='mutant'?'#ff40ff':e.tipus==='baiter'?'#ffe000':
+                e.tipus==='pod'?'#40ff80':e.tipus==='bomber'?'#4080ff':'#40d040';
+    x.fillRect(e.x*esc-1.5,ey(e.y)-1.5,3,3);
+  }
+  x.fillStyle='#fff';x.fillRect(nau.x*esc-2,ey(nau.y)-2,4,4);
+  // la finestra del que veus ara
+  x.strokeStyle='#8080a0';
+  const vx=embolica(cam)*esc,vw=W*esc;
+  x.strokeRect(vx,1,vw,RADAR-2);
+  if(vx+vw>W)x.strokeRect(vx-W,1,vw,RADAR-2);
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // estrelles: es veuen sobretot quan el planeta ja no hi es
+  for(const s of estrelles){
+    const sx=pantallaX(s.x);
+    if(sx<-2||sx>W+2)continue;
+    x.fillStyle=planetaMort?'rgba(255,255,255,'+(.3+s.b*.7)+')':'rgba(255,255,255,'+(.10+s.b*.18)+')';
+    x.fillRect(sx,s.y,2,2);
+  }
+  // terreny
+  if(!planetaMort){
+    x.strokeStyle='#30a030';x.lineWidth=2;x.beginPath();
+    const i0=Math.floor(embolica(cam)/PAS)-1;
+    for(let k=0;k<=W/PAS+3;k++){
+      const i=(i0+k+NPUNTS)%NPUNTS;
+      const px=pantallaX((i0+k)*PAS),py=CEL+terreny[i];
+      k===0?x.moveTo(px,py):x.lineTo(px,py);
+    }
+    x.stroke();
+  }
+  // mines
+  for(const m of mines){
+    const sx=pantallaX(m.x);
+    if(sx<-10||sx>W+10)continue;
+    x.strokeStyle=Math.floor(animT/120)%2?'#ff4040':'#a02020';x.lineWidth=2;
+    x.beginPath();x.moveTo(sx-5,m.y);x.lineTo(sx+5,m.y);
+    x.moveTo(sx,m.y-5);x.lineTo(sx,m.y+5);x.stroke();
+  }
+  // humans
+  for(const h of humans){
+    if(h.estat==='mort')continue;
+    const sx=pantallaX(h.x);
+    if(sx<-12||sx>W+12)continue;
+    x.fillStyle='#40e0ff';
+    x.fillRect(sx-2,h.y-6,4,4);
+    x.fillRect(sx-1,h.y-2,2,5);
+    x.fillRect(sx-3,h.y+3,2,3);x.fillRect(sx+1,h.y+3,2,3);
+  }
+  // enemics
+  for(const e of enemics){
+    if(!e.viu)continue;
+    const sx=pantallaX(e.x);
+    if(sx<-20||sx>W+20)continue;
+    dibuixaEnemic(e,sx);
+  }
+  // trets
+  for(const t of trets){
+    const sx=pantallaX(t.x);
+    if(sx<-30||sx>W+30)continue;
+    x.fillStyle='#ffffff';x.fillRect(sx-Math.sign(t.vx)*16,t.y-1,16,3);
+    x.fillStyle='#ffe040';x.fillRect(sx-Math.sign(t.vx)*6,t.y-1,6,3);
+  }
+  for(const t of tretsEn){
+    const sx=pantallaX(t.x);
+    if(sx<-8||sx>W+8)continue;
+    x.fillStyle='#ff4040';x.fillRect(sx-2,t.y-2,4,4);
+  }
+  // espurnes
+  for(const s of espurnes){
+    const sx=pantallaX(s.x);
+    if(sx<-6||sx>W+6)continue;
+    x.fillStyle=s.color;x.globalAlpha=Math.max(0,Math.min(1,s.vida/400));
+    x.fillRect(sx-1,s.y-1,3,3);x.globalAlpha=1;
+  }
+  if(state!=='mor')dibuixaNau(pantallaX(nau.x),nau.y);
+  dibuixaRadar();
+  if(flash>0){x.fillStyle='rgba(255,255,255,'+Math.min(.75,flash/400)+')';x.fillRect(0,CEL,W,ALT)}
+  if(planetaMort){
+    x.fillStyle='#ff6060';x.font='12px monospace';x.textAlign='center';
+    x.fillText('EL PLANETA HA PETAT',W/2,CEL+16);
+  }
+  if(nau&&nau.portats.length){
+    x.fillStyle='#40e0ff';x.font='11px monospace';x.textAlign='left';
+    x.fillText('PORTES '+nau.portats.length,6,CEL+14);
+  }
+  if(paused){x.fillStyle='#fff';x.font='24px monospace';x.textAlign='center';x.fillText('PAUSA',W/2,H/2)}
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== BOTONS =====
+function mante(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(state==='over'){start();return}keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+function toca(id,fn){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(state==='over'){start();return}fn()});
+}
+mante('up','up');mante('down','down');mante('turbo','turbo');mante('foc','foc');
+toca('gira',gira);toca('bomba',bombaIntel);toca('salt',hiperespai);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(state==='over'&&(e.code==='Enter'||e.code==='Space')){e.preventDefault();start();return}
+  if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();keys.up=true}
+  if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();keys.down=true}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();keys.turbo=true}
+  if(e.code==='Space'){e.preventDefault();keys.foc=true}
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();if(!e.repeat)gira()}
+  if(e.code==='KeyB'&&!e.repeat)bombaIntel();
+  if(e.code==='KeyH'&&!e.repeat)hiperespai();
+  if(e.code==='KeyP'&&state!=='over')paused=!paused;
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowUp'||e.code==='KeyW')keys.up=false;
+  if(e.code==='ArrowDown'||e.code==='KeyS')keys.down=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.turbo=false;
+  if(e.code==='Space')keys.foc=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+</script>
+</body>
+</html>

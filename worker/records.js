@@ -30,6 +30,7 @@ const JOCS = {
   donkey_kong:      999999,
   crazy_climber:    999999,
   dig_dug:          999999,
+  defender:        9999999,
 };
 const TOP = 10;
 

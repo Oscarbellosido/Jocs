@@ -1,6 +1,6 @@
 # Jocs
 
-Catorze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
+Quinze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
 llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -19,6 +19,7 @@ mòbil, instal·lat com a aplicació.
 | `comecocos.html` | Pac-Man | 1980 |
 | `missile_command.html` | Missile Command | 1980 |
 | `battlezone.html` | Battlezone | 1980 |
+| `defender.html` | Defender | 1980 |
 | `crazy_climber.html` | Crazy Climber | 1980 |
 | `centipede.html` | Centipede | 1981 |
 | `frogger.html` | Frogger | 1981 |
