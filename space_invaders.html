@@ -98,10 +98,12 @@ async function finalPartida(titol){
 }
 let player,aliens,bullets,enemyBullets,barriers,dir,stepTimer,stepDelay,enemyShootTimer;
 let ufo=null, ufoTimer=0;
-// L'ovni de la maquina triga uns nou segons a travessar la pantalla i surt
-// cada vint-i-cinc. Anava a 0.4 pixels per mil·lisegon, que son un segon i
-// mig de punta a punta: no hi havia temps ni de veure'l.
-const VEL_OVNI=0.06, CADA_OVNI=25000;
+// L'ovni surt cada vint-i-cinc segons, com a la maquina. La velocitat, en
+// canvi, es cosa d'en Carles: a la maquina triga uns nou segons a travessar la
+// pantalla i li semblava massa lent, aixi que va a 0.085, que son uns sis
+// segons i mig. (Abans anava a 0.4, un segon i mig, i no hi havia temps ni de
+// veure'l.)
+const VEL_OVNI=0.085, CADA_OVNI=25000;
 // El que val no es a l'atzar: surt d'una taula segons quants trets portes
 // fets. D'aqui el truc de sempre, que el tret 23 val 300 i despres cada 15.
 const PUNTS_OVNI=[100,50,50,100,150,100,100,50,300,100,100,100,50,150,100];
