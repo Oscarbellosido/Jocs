@@ -173,7 +173,7 @@ function novaOnada(){
     enemics.push(nouEnemic('bomber',Math.random()*MON,CEL+30+Math.random()*ALT*.5));
   if(onada>=3)for(let i=0;i<Math.min(4,onada-2);i++)
     enemics.push(nouEnemic('pod',Math.random()*MON,CEL+30+Math.random()*ALT*.6));
-  tOnada=0;tBaiter=30000;
+  tOnada=0;tBaiter=30000/ritme();
   posaNau();
   state='play';updateHUD();
 }
@@ -255,8 +255,12 @@ function comprovaPlaneta(){
   planetaMort=true;sndPlaneta();flash=500;
   for(const e of enemics)if(e.viu&&e.tipus==='lander')faMutant(e);
 }
+// A la primera onada tot va molt mes a poc a poc i va agafant velocitat fins a
+// la cinquena. Abans no hi havia cap diferencia: la primera onada anava igual
+// de rapida que la desena, i amb set botons no dona temps a res.
+const ritme=()=>Math.min(1,.55+(onada-1)*.1125);   // 1a onada 55%, plena a la 5a
 function mouEnemic(e,dt){
-  const f=dt/16.7;
+  const f=dt/16.7, r=ritme();
   e.t+=dt;
   const dxJug=distX(e.x,nau.x),dyJug=nau.y-e.y;
   if(e.tipus==='lander'){
@@ -276,26 +280,26 @@ function mouEnemic(e,dt){
       e.vy-=.055*f;e.vx*=.96;
       if(e.y<CEL+14){faMutant(e)}
     }
-    e.vx=Math.max(-2.4,Math.min(2.4,e.vx));e.vy=Math.max(-2.2,Math.min(2.2,e.vy));
+    e.vx=Math.max(-2.4*r,Math.min(2.4*r,e.vx));e.vy=Math.max(-2.2*r,Math.min(2.2*r,e.vy));
   }else if(e.tipus==='mutant'){
     e.vx+=(Math.sign(dxJug)*.10+(Math.random()-.5)*.22)*f;
     e.vy+=(Math.sign(dyJug)*.10+(Math.random()-.5)*.22)*f;
-    e.vx=Math.max(-4.6,Math.min(4.6,e.vx));e.vy=Math.max(-4,Math.min(4,e.vy));
+    e.vx=Math.max(-4.6*r,Math.min(4.6*r,e.vx));e.vy=Math.max(-4*r,Math.min(4*r,e.vy));
   }else if(e.tipus==='baiter'){
     e.vx+=Math.sign(dxJug)*.16*f;e.vy+=Math.sign(dyJug)*.14*f;
-    e.vx=Math.max(-6.5,Math.min(6.5,e.vx));e.vy=Math.max(-5,Math.min(5,e.vy));
+    e.vx=Math.max(-6.5*r,Math.min(6.5*r,e.vx));e.vy=Math.max(-5*r,Math.min(5*r,e.vy));
   }else if(e.tipus==='bomber'){
     // no dispara: va deixant mines pel camí
     if(!e.rumb){e.rumb=[Math.random()<.5?-1:1,Math.random()<.5?-1:1]}
-    e.vx=e.rumb[0]*1.5;e.vy=e.rumb[1]*.9;
+    e.vx=e.rumb[0]*1.5*r;e.vy=e.rumb[1]*.9*r;
     if(e.y<CEL+16||e.y>CEL+ALT-16)e.rumb[1]*=-1;
     if(e.t>1500){e.t=0;mines.push({x:e.x,y:e.y,vida:9000})}
   }else if(e.tipus==='pod'){
-    e.vx=Math.sin(e.t/1400)*.9;e.vy=Math.cos(e.t/1900)*.7;
+    e.vx=Math.sin(e.t/1400)*.9*r;e.vy=Math.cos(e.t/1900)*.7*r;
   }else if(e.tipus==='swarmer'){
     e.vx+=(Math.sign(dxJug)*.13+(Math.random()-.5)*.3)*f;
     e.vy+=(Math.sign(dyJug)*.13+(Math.random()-.5)*.3)*f;
-    e.vx=Math.max(-5,Math.min(5,e.vx));e.vy=Math.max(-4.4,Math.min(4.4,e.vy));
+    e.vx=Math.max(-5*r,Math.min(5*r,e.vx));e.vy=Math.max(-4.4*r,Math.min(4.4*r,e.vy));
   }
   e.x=embolica(e.x+e.vx*f);
   e.y=Math.max(CEL+8,Math.min(CEL+ALT-6,e.y+e.vy*f));
@@ -305,11 +309,11 @@ function mouEnemic(e,dt){
   if(e.tipus!=='bomber'&&e.tipus!=='pod'){
     e.tTret-=dt;
     if(e.tTret<=0){
-      e.tTret=1100+Math.random()*2200;
+      e.tTret=(1100+Math.random()*2200)/r;
       const sx=pantallaX(e.x);
       if(sx>-30&&sx<W+30&&Math.abs(dxJug)<W*.7){
         const d=Math.hypot(dxJug,dyJug)||1;
-        tretsEn.push({x:e.x,y:e.y,vx:dxJug/d*3.4,vy:dyJug/d*3.4,vida:2600});
+        tretsEn.push({x:e.x,y:e.y,vx:dxJug/d*3.4*r,vy:dyJug/d*3.4*r,vida:2600});
       }
     }
   }
@@ -425,7 +429,7 @@ function update(dt){
   // els baiters surten si t'hi entretens massa
   tBaiter-=dt;
   if(tBaiter<=0){
-    tBaiter=12000;
+    tBaiter=12000/ritme();
     enemics.push(nouEnemic('baiter',nau.x+(Math.random()<.5?-1:1)*W*.6,CEL+20+Math.random()*ALT*.5));
   }
 
