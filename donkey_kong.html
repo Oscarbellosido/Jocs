@@ -61,6 +61,7 @@ function sndSalt(){aInit();tone(320,.13,'square',.2,420)}
 function sndBota(){aInit();noise(.05,.12)}
 function sndPunts(){aInit();[880,1320].forEach((f,i)=>setTimeout(()=>tone(f,.06,'square',.22),i*55))}
 function sndMartell(){aInit();tone(180,.06,'square',.2,-60)}
+function sndFiMartell(){aInit();tone(420,.14,'square',.18,-280)}
 function sndTrenca(){aInit();noise(.12,.3);tone(500,.1,'square',.2,-380)}
 function sndMor(){aInit();[500,420,340,260,180].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24,-40),i*110))}
 function sndNivell(){aInit();[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.11,'square',.24),i*95))}
@@ -178,11 +179,21 @@ function novaFase(){
   bonus=5000;bonusT=0;dkT=1400;animT=0;
   cintaDir=1;cintaT=0;tPastis=1400;tMoll=2600;
   const posa=d=>{BIGUES=d.bigues.map(b=>({...b}));ESCALES=d.escales};
-  // dos martells, sempre calculats a partir de la biga que els toca
-  const martellsA=(g1,g2)=>[[g1,.32],[g2,.68]].map(([g,f])=>{
-    const px=Math.round(bigaMin(g)+(bigaMax(g)-bigaMin(g))*f);
-    return {x:px,y:bigaY(g,px)-24,agafat:false};
-  });
+  // Els martells, dins de la biga i el mes lluny possible de qualsevol
+  // escala: si en queda un a tocar, l'agafes sense voler quan vas a pujar i
+  // et quedes sense poder-ho fer, sense saber per que.
+  const martellA=g=>{
+    const lo=bigaMin(g),hi=bigaMax(g);
+    const esc=ESCALES.filter(e=>e.g===g||e.g===g-1).map(e=>e.x);
+    let millor=Math.round((lo+hi)/2),millorD=-1;
+    for(let f=.15;f<=.851;f+=.05){
+      const px=Math.round(lo+(hi-lo)*f);
+      const d=esc.length?Math.min(...esc.map(ex=>Math.abs(ex-px))):9999;
+      if(d>millorD){millorD=d;millor=px}
+    }
+    return {x:millor,y:bigaY(g,millor)-24,agafat:false};
+  };
+  const martellsA=(g1,g2)=>[g1,g2].map(martellA);
 
   if(fase===1){
     // 25m: les botes
@@ -202,8 +213,7 @@ function novaFase(){
     // 75m: els ascensors
     posa(DECORAT_ASCENSORS);gDalt=4;
     mario={x:24,y:478,g:0,vy:0,dir:1,estat:'terra',martell:0,anim:0};
-    martells=[(()=>{const px=Math.round(bigaMin(2)+(bigaMax(2)-bigaMin(2))*.5);
-                    return {x:px,y:bigaY(2,px)-24,agafat:false}})()];
+    martells=[martellA(2)];
     focs=[{x:300,y:478,g:0,dir:-1,esc:null}];
     dk={x:268,y:118};pauline={x:400,y:114};
   }else{
@@ -281,7 +291,7 @@ function mou(dt){
     if(m.vy>0&&g>=0){m.y=bigaY(g,m.x);m.g=g;m.estat='terra';m.vy=0}
     if(m.y>H+30){morir();return}
   }
-  if(m.martell>0){m.martell-=dt;if(m.martell<=0)m.martell=0}
+  if(m.martell>0){m.martell-=dt;if(m.martell<=0){m.martell=0;sndFiMartell()}}
 }
 
 // ===== BOTES =====
@@ -512,10 +522,19 @@ function dibuixaMario(){
   else if(pas){x.fillRect(px-7,py-3,5,3);x.fillRect(px+2,py-3,5,3)}
   else{x.fillRect(px-3,py-3,6,3)}
   if(m.martell>0){
-    const alt=Math.floor(m.anim/120)%2;
-    x.fillStyle='#a0a0a0';
-    x.fillRect(px+m.dir*10-4,py-(alt?30:14),8,7);
-    x.fillStyle='#8a5a2a';x.fillRect(px+m.dir*10-1,py-(alt?24:12),2,8);
+    // Els dos ultims segons el martell parpelleja, com a la maquina, i a sobre
+    // del cap hi ha la barreta del temps que li queda: si no, se t'acaba sense
+    // adonar-te'n i el seguent barril et mata sense saber per que.
+    const acabant=m.martell<2000;
+    if(!acabant||Math.floor(animT/90)%2){
+      const alt=Math.floor(m.anim/120)%2;
+      x.fillStyle='#a0a0a0';
+      x.fillRect(px+m.dir*10-4,py-(alt?30:14),8,7);
+      x.fillStyle='#8a5a2a';x.fillRect(px+m.dir*10-1,py-(alt?24:12),2,8);
+    }
+    x.fillStyle='#402000';x.fillRect(px-13,py-40,26,4);
+    x.fillStyle=acabant?'#ff5020':'#ffd000';
+    x.fillRect(px-13,py-40,Math.round(26*m.martell/8000),4);
   }
 }
 function dibuixaGorila(){
