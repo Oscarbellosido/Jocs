@@ -140,6 +140,8 @@ comproven el comportament.
   tots els jocs.
 - `node scripts/prova-menu.mjs` — que en acabar la partida tots els jocs
   tinguin el botó de tornar al menú i que hi porti.
+- `node scripts/prova-portada.mjs` — que la portada estigui per ordre d'any i
+  que no vessi a cap mida de pantalla.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer
