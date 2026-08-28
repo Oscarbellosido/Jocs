@@ -49,7 +49,7 @@ worker/             el Worker de Cloudflare dels rècords (còpia del que hi ha 
 scripts/            proves
 ```
 
-## Disposició: dues trampes que ja ens han mossegat
+## Disposició: tres trampes que ja ens han mossegat
 
 **1. `100vh` no és l'alçada visible al mòbil.** Compta l'espai de la barra del
 navegador, així que és més alt del que es veu. Si a més el contenidor centra
@@ -71,7 +71,15 @@ canvas{max-width:94%;max-height:100%;width:auto;height:auto}
 Si el canvas és més petit que la pantalla i s'ha d'**ampliar** (Comecocos), fer
 servir `width:96%;height:100%;object-fit:contain`.
 
-**2. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
+**2. La regla `button{}` de cada joc també agafa els botons que fa el
+`records.js`.** Tots els jocs tenen un `button{width:NNpx;height:NNpx}` per als
+seus controls, i el botó D'ACORD del quadre de rècords, que es crea des del
+`records.js`, no en tenia cap: als jocs amb botons estrets el text se'n sortia.
+Per això ara aquell botó porta `width:auto;height:auto` escrit a la mateixa
+etiqueta, que mana més que el full d'estil. Si algun dia s'hi afegeix cap altre
+control, li ha de passar el mateix.
+
+**3. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
 de donar per bona una fila de controls, comprovar-la a 320, 360 i 390 px.
 
 ## Rècords compartits
@@ -122,6 +130,8 @@ No hi ha framework: proves amb Playwright (ja instal·lat a
 comproven el comportament.
 
 - `node scripts/prova-worker.mjs` — el Worker contra un KV simulat.
+- `node scripts/prova-dialeg.mjs` — que el quadre de les inicials es vegi bé a
+  tots els jocs.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer

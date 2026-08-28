@@ -61,10 +61,15 @@ const Records = (() => {
         '<div style="color:#ff0;font-size:18px;margin-bottom:4px">RÈCORD!</div>' +
         '<div style="font-size:13px;color:#aaa;margin-bottom:14px">Entres a la taula dels 10 millors</div>' +
         '<input id="rec-nom" maxlength="3" autocomplete="off" ' +
-        'style="width:110px;font:bold 30px monospace;text-align:center;text-transform:uppercase;' +
+        'style="width:110px;height:auto;box-sizing:content-box;font:bold 30px monospace;' +
+        'text-align:center;text-transform:uppercase;' +
         'letter-spacing:.2em;background:#111;color:#ff0;border:1px solid #666;border-radius:6px;padding:6px">' +
+        // width i height han d'anar aqui si o si: cada joc te una regla
+        // button{width:NNpx;height:NNpx} per als seus controls i, si no li
+        // posem la nostra, tambe agafa aquest boto i el text se'n surt.
         '<div style="margin-top:14px"><button id="rec-ok" ' +
-        'style="font:16px monospace;background:#111;color:#fff;border:1px solid #777;' +
+        'style="width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:normal;' +
+        'font:16px monospace;background:#111;color:#fff;border:1px solid #777;' +
         'border-radius:8px;padding:8px 22px">D\'ACORD</button></div></div>';
       document.body.appendChild(fons);
 

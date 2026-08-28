@@ -68,7 +68,8 @@ ok(r.data.some(x => x.n === 'AAA'), 'sense nom, hi posa AAA');
 
 // 8. tots els jocs de cop
 // no hi posem un numero a pel: cada joc nou el canviaria
-const quantsJocs = (await import('fs')).readFileSync('worker/records.js','utf8')
+const fitxerWorker = new URL('../worker/records.js', import.meta.url);
+const quantsJocs = (await import('fs')).readFileSync(fitxerWorker,'utf8')
   .match(/const JOCS = \{([\s\S]*?)\}/)[1].split('\n').filter(l => /^\s*\w+:/.test(l)).length;
 r = await call('GET', '/records');
 ok(r.status === 200 && Object.keys(r.data).length === quantsJocs && r.data.tetris.length === 10,
