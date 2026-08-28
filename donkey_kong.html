@@ -28,7 +28,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
     <button id="left">◀</button><button id="up">▲</button><button id="down">▼</button><button id="right">▶</button><button id="salta">SALT</button>
   </div>
   <div id="msg"></div>
-  <small>fletxes · ESPAI per saltar · pausa: P</small>
+  <small>fletxes · ESPAI per saltar · amb el martell no pots ni pujar ni saltar · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -62,6 +62,7 @@ function sndBota(){aInit();noise(.05,.12)}
 function sndPunts(){aInit();[880,1320].forEach((f,i)=>setTimeout(()=>tone(f,.06,'square',.22),i*55))}
 function sndMartell(){aInit();tone(180,.06,'square',.2,-60)}
 function sndFiMartell(){aInit();tone(420,.14,'square',.18,-280)}
+function sndNoPots(){aInit();tone(150,.09,'square',.16,-60)}
 function sndTrenca(){aInit();noise(.12,.3);tone(500,.1,'square',.2,-380)}
 function sndMor(){aInit();[500,420,340,260,180].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24,-40),i*110))}
 function sndNivell(){aInit();[392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.11,'square',.24),i*95))}
@@ -154,6 +155,7 @@ const pendent=g=>BIGUES[g].y2>BIGUES[g].y1?1:-1;
 let score=0,lives=3,nivell=1,bonus=5000,state='play',paused=false,fase=1;
 let mario,botes,focs,martells,dk,pauline,reblons,bonusT,dkT,animT;
 let pastissos,molls,gDalt,cintaDir,cintaT,tPastis,tMoll;
+let avisT=0;                       // l'avis de "amb el martell no pots pujar"
 const METRES=['25m','50m','75m','100m'];
 const keys={left:false,right:false,up:false,down:false,salt:false};
 
@@ -277,9 +279,18 @@ function mou(dt){
       if(e&&keys.up&&!(e.trencada&&false)){m.estat='escala';m.esc=e;m.x=e.x;return}
       const eb=ESCALES.find(s=>s.g===m.g-1&&Math.abs(s.x-m.x)<10);
       if(eb&&keys.down){m.estat='escala';m.esc=eb;m.x=eb.x;m.y=bigaY(eb.g+1,eb.x)+1;return}
+    }else if(keys.up||keys.down){
+      // Prem amunt en una escala amb el martell a la ma: no pot ser, pero
+      // s'ha de dir. Quedar-se plantat aqui sense saber per que es el que et
+      // mata.
+      const hiHaEscala=escalaA(m.x,m.y,m.g)||ESCALES.find(s=>s.g===m.g-1&&Math.abs(s.x-m.x)<10);
+      if(hiHaEscala&&avisT<=0){avisT=1300;sndNoPots()}
     }
     if(dinsBiga(m.g,m.x))m.y=bigaY(m.g,m.x); else {m.estat='salt';m.vy=0}
-    if(keys.salt&&m.martell<=0){m.estat='salt';m.vy=-0.30;sndSalt();m.saltat=[]}
+    if(keys.salt){
+      if(m.martell<=0){m.estat='salt';m.vy=-0.30;sndSalt();m.saltat=[]}
+      else if(avisT<=0){avisT=1300;sndNoPots()}
+    }
   }
   if(m.estat==='salt'){
     if(keys.left){m.x-=0.10*dt;m.dir=-1}
@@ -429,6 +440,7 @@ function passaFase(){
 function update(dt){
   if(state==='over'||paused)return;
   animT+=dt;
+  if(avisT>0)avisT-=dt;
   if(state!=='play')return;
 
   bonusT+=dt;
@@ -641,6 +653,15 @@ function draw(){
   // alçada, com a la maquina
   x.fillStyle='#4ad8ff';x.font='12px monospace';x.textAlign='left';
   x.fillText(METRES[fase-1],10,20);
+  // l'avis, just sobre el cap d'en Mario
+  if(avisT>0&&state==='play'&&mario){
+    const t='AMB EL MARTELL NO POTS PUJAR';
+    x.font='bold 12px monospace';x.textAlign='center';
+    const w=x.measureText(t).width;
+    const px=Math.max(w/2+8,Math.min(W-w/2-8,mario.x)),py=Math.max(36,mario.y-54);
+    x.fillStyle='rgba(0,0,0,.82)';x.fillRect(px-w/2-6,py-12,w+12,17);
+    x.fillStyle='#ffd000';x.fillText(t,px,py);
+  }
 }
 let last=performance.now();
 function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
