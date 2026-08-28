@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Dig Dug Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:6px;margin-top:8px}
+button{font:17px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:54px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none}
+#bomba{width:70px;color:#ff0}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>RONDA <b id="ronda">1</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="448" height="448"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="up">▲</button><button id="down">▼</button><button id="right">▶</button><button id="bomba">BOMBA</button>
+  </div>
+  <div id="msg"></div>
+  <small>fletxes per cavar · BOMBA per clavar l'arpó i inflar · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(f,d,type='square',vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),dd=b.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+d);
+}
+function sndCava(){aInit();noise(.04,.07)}
+function sndArpo(){aInit();tone(700,.06,'square',.16,-300)}
+function sndInfla(n){aInit();tone(300+n*90,.09,'square',.2,120)}
+function sndPeta(){aInit();noise(.16,.3);tone(160,.16,'square',.2,-100)}
+function sndRoca(){aInit();tone(120,.5,'square',.18,-70)}
+function sndTrenca(){aInit();noise(.2,.3)}
+function sndFruita(){aInit();[784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,.09,'square',.24),i*80))}
+function sndFoc(){aInit();noise(.3,.18)}
+function sndMor(){aInit();[440,380,320,260,200,140].forEach((f,i)=>setTimeout(()=>tone(f,.13,'square',.24,-50),i*105))}
+function sndRonda(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24),i*100))}
+function sndVida(){aInit();[659,784,988,1319,1568].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.24),i*80))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,'square',.26,-50),i*260))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+
+// ===== EL TERRENY =====
+// Catorze columnes per dotze fileres. Les fileres van de tres en tres i
+// formen les quatre capes de terra de la maquina: com mes avall mates un
+// bitxo, mes val.
+const COLS=14,ROWS=12,CELL=32,CEL=64;      // CEL = franja de cel de dalt
+const W=COLS*CELL,H=CEL+ROWS*CELL;
+const COLORS_CAPA=['#c47a30','#a83c28','#2a5a9c','#6d7a5a'];
+function capa(r){return Math.min(3,Math.floor(r/3))}
+function cellX(cc){return cc*CELL+CELL/2}
+function cellY(r){return CEL+r*CELL+CELL/2}
+let terra=[];                               // 0 = excavat, 1 = terra
+const dins=(cc,r)=>cc>=0&&cc<COLS&&r>=0&&r<ROWS;
+const buit=(cc,r)=>dins(cc,r)&&terra[r][cc]===0;
+
+// ===== PUNTUACIONS DE LA MAQUINA =====
+const PUNTS_POOKA=[200,300,400,500];
+const PUNTS_FYGAR=[400,600,800,1000];       // el doble si el mates de dalt o de baix
+const PUNTS_ROCA=[1000,2500,4000,6000,8000,10000];
+const FRUITES=[
+  {nom:'pastanaga',punts:400},{nom:'nap',punts:600},{nom:'bolet',punts:800},
+  {nom:'cogombre',punts:1000},{nom:'alberginia',punts:2000},{nom:'pebrot',punts:3000},
+  {nom:'tomaquet',punts:4000},{nom:'all',punts:5000},{nom:'sindria',punts:6000},
+  {nom:'galaxian',punts:7000},{nom:'pinya',punts:8000},
+];
+function fruitaDeRonda(n){return FRUITES[Math.min(FRUITES.length-1,Math.floor((n-1)/2))]}
+
+// ===== ESTAT =====
+let state='play',paused=false,score=0,lives=3,ronda=1,animT=0;
+let p=null,enemics=[],roques=[],fruita=null,arpo=null;
+let roquesCaigudes=0,proximaVida=10000;
+
+const JOC='dig_dug';
+Records.pintaMillor(JOC,document.getElementById('best'));
+let bestScore=Records.local(JOC);
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('ronda').textContent=ronda;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  if(score>=proximaVida){lives++;proximaVida+=40000;sndVida()}
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== MUNTAR LA RONDA =====
+// Una roca que ja cau no barra el pas: t'esclafa si hi ets a sota, que es el
+// que ha de passar. Nomes fan de paret les que encara estan quietes.
+function roquesA(cc,r){
+  return roques.some(q=>(q.estat==='quiet'||q.estat==='tremola')&&q.c===cc&&q.r===r);
+}
+
+function novaRonda(){
+  terra=[];
+  for(let r=0;r<ROWS;r++){terra.push(new Array(COLS).fill(1))}
+  roques=[];enemics=[];fruita=null;arpo=null;roquesCaigudes=0;
+
+  // tunels ja fets, com les rondes de la maquina
+  const forat=(cc,r)=>{if(dins(cc,r))terra[r][cc]=0};
+  for(let i=0;i<3;i++){
+    const r=1+Math.floor(Math.random()*(ROWS-2));
+    const c0=Math.floor(Math.random()*(COLS-6)),llarg=4+Math.floor(Math.random()*5);
+    for(let cc=c0;cc<Math.min(COLS,c0+llarg);cc++)forat(cc,r);
+  }
+  for(let i=0;i<2;i++){
+    const cc=1+Math.floor(Math.random()*(COLS-2));
+    const r0=Math.floor(Math.random()*4),llarg=3+Math.floor(Math.random()*5);
+    for(let r=r0;r<Math.min(ROWS,r0+llarg);r++)forat(cc,r);
+  }
+
+  // el jugador entra pel forat del mig, des de la superficie
+  const pc=Math.floor(COLS/2);
+  for(let r=0;r<=2;r++)forat(pc,r);
+  p={c:pc,r:2,dx:0,dy:0,prog:0,dir:'down',excavant:false,bombejant:false,mort:0};
+
+  // bitxos: un forat per a cada un, lluny del jugador
+  const quants=Math.min(8,3+Math.floor(ronda/2)+1);
+  const fygars=Math.min(quants-1,1+Math.floor((ronda-1)/3));
+  let posats=0,intents=0;
+  while(posats<quants&&intents<600){
+    intents++;
+    const cc=Math.floor(Math.random()*COLS),r=2+Math.floor(Math.random()*(ROWS-2));
+    if(Math.abs(cc-pc)+Math.abs(r-2)<5)continue;
+    if(enemics.some(e=>e.c===cc&&e.r===r))continue;
+    forat(cc,r);
+    enemics.push(nouEnemic(cc,r,posats<fygars?'fygar':'pooka'));
+    posats++;
+  }
+
+  // roques: han de tenir terra a sota per poder caure
+  let rq=0,it=0;
+  const quantesRoques=3+Math.floor(Math.random()*3);
+  while(rq<quantesRoques&&it<600){
+    it++;
+    const cc=Math.floor(Math.random()*COLS),r=1+Math.floor(Math.random()*(ROWS-3));
+    if(terra[r][cc]===0||roquesA(cc,r))continue;
+    if(Math.abs(cc-pc)<2&&r<4)continue;
+    if(enemics.some(e=>e.c===cc&&e.r===r))continue;
+    roques.push({c:cc,r,estat:'quiet',y:cellY(r),t:0,morts:0});
+    rq++;
+  }
+  state='play';
+  updateHUD();
+}
+function nouEnemic(cc,r,tipus){
+  return {c:cc,r,dx:0,dy:0,prog:0,dir:tipus==='fygar'?'left':'left',tipus,
+          estat:'viu',nivell:0,tDesinfla:0,fantasma:false,fx:0,fy:0,
+          tFantasma:4000+Math.random()*4000,faseFoc:'res',tFoc:2000+Math.random()*3000,
+          fuig:false};
+}
+function start(){
+  hideMsg();score=0;lives=3;ronda=1;proximaVida=10000;
+  bestScore=Records.local(JOC);
+  novaRonda();
+}
+
+// ===== MOURE =====
+const VEL_TUNEL=.0052,VEL_CAVA=.0034;      // cel·les per mil·lisegon
+const DIRS={left:[-1,0],right:[1,0],up:[0,-1],down:[0,1]};
+const keys={left:false,right:false,up:false,down:false,bomba:false};
+
+function posX(m){return cellX(m.c)+m.dx*m.prog*CELL}
+function posY(m){return cellY(m.r)+m.dy*m.prog*CELL}
+
+function mouJugador(dt){
+  if(p.bombejant)return;
+  if(p.prog>0){
+    p.prog+=dt*(p.excavant?VEL_CAVA:VEL_TUNEL);
+    if(p.prog>=1){p.c+=p.dx;p.r+=p.dy;p.prog=0;p.dx=0;p.dy=0;p.excavant=false}
+    return;
+  }
+  let d=null;
+  if(keys.left)d='left';else if(keys.right)d='right';
+  else if(keys.up)d='up';else if(keys.down)d='down';
+  if(!d)return;
+  p.dir=d;
+  const [dx,dy]=DIRS[d],nc=p.c+dx,nr=p.r+dy;
+  if(!dins(nc,nr)||roquesA(nc,nr))return;
+  p.dx=dx;p.dy=dy;p.prog=.001;
+  p.excavant=terra[nr][nc]!==0;
+  if(p.excavant)sndCava();
+  terra[nr][nc]=0;
+}
+
+function velEnemic(e){
+  const vius=enemics.filter(en=>en.estat!=='mort').length;
+  const base=.0026*(1+(enemics.length-vius)*.12)*(1+(ronda-1)*.06);
+  return e.fuig?base*1.5:base;
+}
+function mouEnemic(e,dt){
+  if(e.estat!=='viu')return;
+  if(e.fantasma){
+    const vel=.06*(1+(ronda-1)*.05)*(e.fuig?2.4:1);
+    const tx=e.fuig?cellX(0):posX(p),ty=e.fuig?cellY(0):posY(p);
+    const ax=tx-e.fx,ay=ty-e.fy,d=Math.hypot(ax,ay)||1;
+    e.fx+=ax/d*vel*dt;e.fy+=ay/d*vel*dt;
+    const cc=Math.round((e.fx-CELL/2)/CELL),r=Math.round((e.fy-CEL-CELL/2)/CELL);
+    // Nomes es torna solid en un forat que no sigui el d'on ha sortit i que
+    // tingui sortida: si no, tornaria a quedar tancat i no arribaria mai.
+    if(e.fuig)return;                 // el que fuig no s'atura fins a la superficie
+    const surt=cc!==e.forigenC||r!==e.forigenR;
+    const teSortida=Object.values(DIRS).some(([dx,dy])=>buit(cc+dx,r+dy));
+    if(dins(cc,r)&&terra[r][cc]===0&&surt&&teSortida){
+      e.fantasma=false;e.c=cc;e.r=r;e.prog=0;e.dx=0;e.dy=0;
+      e.tFantasma=5000+Math.random()*5000;
+    }
+    return;
+  }
+  // El compte enrere per tornar-se fantasma ha de baixar sempre, tant si el
+  // bitxo esta caminant com si acaba d'arribar a una cel·la.
+  e.tFantasma-=dt;
+  if(e.prog>0){
+    e.prog+=dt*velEnemic(e);
+    if(e.prog>=1){e.c+=e.dx;e.r+=e.dy;e.prog=0;e.dx=0;e.dy=0}
+    return;
+  }
+  const opcions=Object.keys(DIRS).filter(d=>{
+    const [dx,dy]=DIRS[d],nc=e.c+dx,nr=e.r+dy;
+    return buit(nc,nr)&&!roquesA(nc,nr);
+  });
+  // si es queda tancat o se li acaba el temps, travessa la terra fet un fantasma
+  if(!opcions.length||e.tFantasma<=0){
+    e.fantasma=true;e.fx=posX(e);e.fy=posY(e);
+    e.forigenC=e.c;e.forigenR=e.r;
+    return;
+  }
+  // si fuig, cap a dalt a l'esquerra; si no, cap al jugador
+  const tx=e.fuig?0:p.c,ty=e.fuig?0:p.r;
+  opcions.sort((a,b)=>{
+    const da=Math.abs(e.c+DIRS[a][0]-tx)+Math.abs(e.r+DIRS[a][1]-ty);
+    const db=Math.abs(e.c+DIRS[b][0]-tx)+Math.abs(e.r+DIRS[b][1]-ty);
+    return da-db;
+  });
+  const d=(Math.random()<.78||opcions.length===1)?opcions[0]:opcions[1+Math.floor(Math.random()*(opcions.length-1))];
+  e.dir=d;e.dx=DIRS[d][0];e.dy=DIRS[d][1];e.prog=.001;
+}
+
+// ===== L'ARPO I LA BOMBA =====
+// Es clava, i cada cop de bomba l'infla una mica mes. Al quart, peta.
+// Si pares, es va desinflant.
+function tiraArpo(){
+  if(state!=='play'||paused)return;
+  if(arpo&&arpo.enganxat){
+    const e=arpo.enganxat;
+    e.nivell++;e.tDesinfla=900;sndInfla(e.nivell);
+    if(e.nivell>=4)petaEnemic(e);
+    return;
+  }
+  if(arpo)return;
+  if(p.prog>0)return;
+  const [dx,dy]=DIRS[p.dir];
+  let llarg=0;
+  for(let i=1;i<=2;i++){
+    const nc=p.c+dx*i,nr=p.r+dy*i;
+    if(!buit(nc,nr)||roquesA(nc,nr))break;
+    llarg=i;
+  }
+  arpo={dir:p.dir,dx,dy,llarg,t:0,enganxat:null};
+  p.bombejant=true;sndArpo();
+  // mira si toca cap bitxo
+  for(const e of enemics){
+    if(e.estat!=='viu'||e.fantasma)continue;
+    const ex=posX(e),ey=posY(e);
+    for(let i=1;i<=llarg;i++){
+      if(Math.hypot(ex-(cellX(p.c)+dx*i*CELL),ey-(cellY(p.r)+dy*i*CELL))<CELL*.7){
+        arpo.enganxat=e;e.estat='inflat';e.nivell=1;e.tDesinfla=900;
+        e.dx=0;e.dy=0;e.prog=0;sndInfla(1);
+        break;
+      }
+    }
+    if(arpo.enganxat)break;
+  }
+  if(!arpo.enganxat)setTimeout(()=>{if(arpo&&!arpo.enganxat)deixaArpo()},260);
+}
+function deixaArpo(){
+  if(arpo&&arpo.enganxat&&arpo.enganxat.estat==='inflat'){
+    arpo.enganxat.estat='viu';arpo.enganxat.nivell=0;
+  }
+  arpo=null;p.bombejant=false;
+}
+function petaEnemic(e){
+  e.estat='mort';
+  const cp=capa(e.r);
+  let punts;
+  if(e.tipus==='fygar'){
+    const vertical=arpo&&(arpo.dir==='up'||arpo.dir==='down');
+    punts=PUNTS_FYGAR[cp]*(vertical?2:1);
+  }else punts=PUNTS_POOKA[cp];
+  addScore(punts);sndPeta();
+  arpo=null;p.bombejant=false;
+  comprovaRonda();
+}
+
+// ===== ROQUES =====
+function actualitzaRoques(dt){
+  for(let i=roques.length-1;i>=0;i--){
+    const q=roques[i];
+    if(q.estat==='quiet'){
+      if(buit(q.c,q.r+1)&&!roquesA(q.c,q.r+1)){q.estat='tremola';q.t=700}
+    }else if(q.estat==='tremola'){
+      q.t-=dt;
+      if(q.t<=0){q.estat='cau';q.vy=0;q.morts=0;sndRoca()}
+    }else if(q.estat==='cau'){
+      q.vy=Math.min(.45,q.vy+dt*.0016);
+      q.y+=q.vy*dt;
+      const rSota=Math.floor((q.y+CELL/2-CEL)/CELL);
+      // se'n du els bitxos que troba pel cami
+      for(const e of enemics){
+        if(e.estat==='mort')continue;
+        if(Math.abs(posX(e)-cellX(q.c))<CELL*.7&&Math.abs(posY(e)-q.y)<CELL*.8){
+          e.estat='mort';q.morts++;
+          if(arpo&&arpo.enganxat===e){arpo=null;p.bombejant=false}
+        }
+      }
+      if(state==='play'&&Math.abs(posX(p)-cellX(q.c))<CELL*.6&&Math.abs(posY(p)-q.y)<CELL*.7){mor();return}
+      if(rSota>=ROWS||(dins(q.c,rSota+1)&&terra[rSota+1][q.c]!==0)||roquesA(q.c,rSota+1)){
+        q.estat='trencada';q.t=500;q.r=Math.min(ROWS-1,rSota);
+        sndTrenca();
+        if(q.morts>0)addScore(PUNTS_ROCA[Math.min(PUNTS_ROCA.length-1,q.morts-1)]);
+        roquesCaigudes++;
+        if(roquesCaigudes===2&&!fruita)treuFruita();
+        comprovaRonda();
+      }
+      // va obrint tunel mentre baixa
+      const rAra=Math.floor((q.y-CEL)/CELL);
+      if(dins(q.c,rAra))terra[rAra][q.c]=0;
+    }else if(q.estat==='trencada'){
+      q.t-=dt;
+      if(q.t<=0)roques.splice(i,1);
+    }
+  }
+}
+function treuFruita(){
+  const cc=Math.floor(COLS/2),r=Math.floor(ROWS/2);
+  fruita={c:cc,r,t:11000,dades:fruitaDeRonda(ronda)};
+}
+
+// ===== FI DE RONDA I MORT =====
+function comprovaRonda(){
+  if(state!=='play')return;
+  const vius=enemics.filter(e=>e.estat!=='mort');
+  if(vius.length===0){passaRonda();return}
+  // l'ultim que queda fuig cap a la superficie, com a la maquina
+  if(vius.length===1&&!vius[0].fuig){vius[0].fuig=true;vius[0].tFantasma=800}
+}
+function passaRonda(){
+  state='fi';sndRonda();
+  msg('RONDA '+ronda+' NETA!');
+  setTimeout(()=>{hideMsg();ronda++;novaRonda()},1700);
+}
+function mor(){
+  if(state!=='play')return;
+  state='mor';sndMor();arpo=null;
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';sndFi();finalPartida('GAME OVER')}
+    else novaRonda();
+  },1600);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      '<small>Prem ENTER o toca aquí</small>');
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+// ===== BUCLE =====
+function update(dt){
+  if(paused||state==='over')return;
+  animT+=dt;
+  actualitzaRoques(dt);
+  if(state!=='play')return;
+
+  mouJugador(dt);
+
+  // l'arpo es va desinflant si no bombeges
+  if(arpo&&arpo.enganxat){
+    const e=arpo.enganxat;
+    e.tDesinfla-=dt;
+    if(e.tDesinfla<=0){
+      e.nivell--;e.tDesinfla=900;
+      if(e.nivell<=0)deixaArpo();
+    }
+  }
+
+  for(const e of enemics){
+    if(e.estat==='mort')continue;
+    if(e.estat==='inflat')continue;
+    mouEnemic(e,dt);
+    // el Fygar treu foc quan et te a la mateixa filera
+    if(e.tipus==='fygar'&&!e.fantasma){
+      if(e.faseFoc==='res'){
+        e.tFoc-=dt;
+        if(e.tFoc<=0&&e.r===p.r&&Math.abs(e.c-p.c)<=3&&p.prog===0&&e.prog===0){
+          const cap=e.c<p.c?1:-1;
+          let lliure=true;
+          for(let i=1;i<=Math.abs(e.c-p.c);i++)if(!buit(e.c+cap*i,e.r))lliure=false;
+          if(lliure){e.faseFoc='carrega';e.t=700;e.dirFoc=cap>0?'right':'left'}
+          else e.tFoc=1200;
+        }
+      }else if(e.faseFoc==='carrega'){
+        e.t-=dt;
+        if(e.t<=0){e.faseFoc='foc';e.t=700;sndFoc()}
+      }else if(e.faseFoc==='foc'){
+        e.t-=dt;
+        const dx=e.dirFoc==='right'?1:-1;
+        for(let i=1;i<=3;i++){
+          if(!buit(e.c+dx*i,e.r))break;
+          if(Math.abs(posX(p)-cellX(e.c+dx*i))<CELL*.6&&Math.abs(posY(p)-cellY(e.r))<CELL*.6){mor();return}
+        }
+        if(e.t<=0){e.faseFoc='res';e.tFoc=2500+Math.random()*2500}
+      }
+    }
+    // topar amb un bitxo viu et mata
+    const ex=e.fantasma?e.fx:posX(e),ey=e.fantasma?e.fy:posY(e);
+    if(Math.hypot(ex-posX(p),ey-posY(p))<CELL*.62){mor();return}
+  }
+
+  // el bitxo que fuig i arriba a la superficie s'escapa
+  for(const e of enemics){
+    if(e.estat!=='viu'||!e.fuig)continue;
+    const ey=e.fantasma?e.fy:posY(e);
+    if(ey<=cellY(0)){e.estat='mort';comprovaRonda()}
+  }
+
+  if(fruita){
+    fruita.t-=dt;
+    if(fruita.t<=0)fruita=null;
+    else if(Math.abs(posX(p)-cellX(fruita.c))<CELL*.7&&Math.abs(posY(p)-cellY(fruita.r))<CELL*.7){
+      addScore(fruita.dades.punts);sndFruita();fruita=null;
+    }
+  }
+}
+
+// ===== DIBUIX =====
+function dibuixaJugador(){
+  const px=posX(p),py=posY(p);
+  x.save();x.translate(px,py);
+  if(state==='mor'){x.rotate(Math.sin(animT/60)*.5)}
+  // cames
+  x.fillStyle='#f0f0f0';x.fillRect(-8,6,5,8);x.fillRect(3,6,5,8);
+  // cos
+  x.fillStyle='#2a5ad8';x.fillRect(-9,-4,18,12);
+  x.fillStyle='#f0f0f0';x.fillRect(-9,-4,18,4);
+  // casc
+  x.fillStyle='#f0f0f0';x.beginPath();x.arc(0,-9,9,0,7);x.fill();
+  x.fillStyle='#7ec8ff';
+  const mx=p.dir==='left'?-3:p.dir==='right'?3:0;
+  x.beginPath();x.arc(mx,-9,5.5,0,7);x.fill();
+  x.fillStyle='#203040';x.beginPath();x.arc(mx+(p.dir==='left'?-1:1),-9,2.2,0,7);x.fill();
+  // la manega de la bomba
+  x.restore();
+}
+function dibuixaPooka(e,ex,ey){
+  const inf=e.estat==='inflat'?1+e.nivell*.22:1;
+  x.save();x.translate(ex,ey);x.scale(inf,inf);
+  x.fillStyle='#e03a20';x.beginPath();x.arc(0,0,11,0,7);x.fill();
+  x.fillStyle='#f0f0f0';
+  x.beginPath();x.arc(-4,-2,5.5,0,7);x.fill();
+  x.beginPath();x.arc(4,-2,5.5,0,7);x.fill();
+  x.fillStyle='#000';
+  const ull=e.dir==='left'?-2:e.dir==='right'?2:0;
+  x.beginPath();x.arc(-4+ull,-2,2.4,0,7);x.fill();
+  x.beginPath();x.arc(4+ull,-2,2.4,0,7);x.fill();
+  x.fillStyle='#f5c000';x.fillRect(-7,8,5,3);x.fillRect(2,8,5,3);
+  x.restore();
+}
+function dibuixaFygar(e,ex,ey){
+  const inf=e.estat==='inflat'?1+e.nivell*.22:1;
+  const cap=e.dir==='left'?-1:1;
+  x.save();x.translate(ex,ey);x.scale(inf,inf);
+  x.fillStyle='#28b048';
+  x.beginPath();x.ellipse(0,0,12,10,0,0,7);x.fill();
+  x.fillStyle='#1a8034';                          // cua
+  x.beginPath();x.moveTo(-cap*10,-2);x.lineTo(-cap*18,-8);x.lineTo(-cap*16,2);x.closePath();x.fill();
+  x.fillStyle='#28b048';                          // morro
+  x.fillRect(cap>0?8:-14,-4,6,7);
+  x.fillStyle='#f0f0f0';x.beginPath();x.arc(cap*4,-4,4,0,7);x.fill();
+  x.fillStyle='#000';x.beginPath();x.arc(cap*5,-4,2,0,7);x.fill();
+  x.fillStyle='#f5c000';x.fillRect(-6,8,5,3);x.fillRect(1,8,5,3);
+  x.restore();
+  if(e.faseFoc==='carrega'&&Math.floor(animT/100)%2){
+    x.fillStyle='#ff4020';x.beginPath();x.arc(ex+cap*16,ey,4,0,7);x.fill();
+  }
+  if(e.faseFoc==='foc'){
+    // una flamarada de debo, no tres boles: es dibuixa d'una tirada fins on arriba
+    const dx=e.dirFoc==='right'?1:-1;
+    let caselles=0;
+    for(let i=1;i<=3;i++){if(!buit(e.c+dx*i,e.r))break;caselles=i}
+    if(caselles){
+      const x0=ex+dx*10,x1=cellX(e.c+dx*caselles)+dx*13,fy=ey;
+      const ondula=(t,k)=>Math.sin(animT/55+t*3+k)*4;
+      for(const [color,gruix,k] of [['#ff4000',13,0],['#ffb000',9,1.3],['#fff2a0',4.5,2.6]]){
+        x.fillStyle=color;x.beginPath();
+        x.moveTo(x0,fy);
+        for(let t=0;t<=1.001;t+=.1)x.lineTo(x0+(x1-x0)*t,fy-gruix*(1-t*.45)+ondula(t,k));
+        for(let t=1;t>=-.001;t-=.1)x.lineTo(x0+(x1-x0)*t,fy+gruix*(1-t*.45)+ondula(t,k+1));
+        x.closePath();x.fill();
+      }
+    }
+  }
+}
+function dibuixaFruita(){
+  const fx=cellX(fruita.c),fy=cellY(fruita.r),n=fruita.dades.nom;
+  if(fruita.t<3000&&Math.floor(animT/160)%2)return;
+  if(n==='pastanaga'){
+    x.fillStyle='#ff8000';x.beginPath();x.moveTo(0+fx,fy+11);x.lineTo(fx-6,fy-4);x.lineTo(fx+6,fy-4);x.closePath();x.fill();
+    x.fillStyle='#20a020';x.fillRect(fx-5,fy-11,10,7);
+  }else if(n==='nap'){
+    x.fillStyle='#f0f0f0';x.beginPath();x.arc(fx,fy+2,9,0,7);x.fill();
+    x.fillStyle='#c060c0';x.fillRect(fx-9,fy-6,18,5);
+    x.fillStyle='#20a020';x.fillRect(fx-3,fy-13,6,6);
+  }else if(n==='bolet'){
+    x.fillStyle='#e0e0d0';x.fillRect(fx-4,fy-2,8,12);
+    x.fillStyle='#e02020';x.beginPath();x.arc(fx,fy-2,11,Math.PI,0);x.fill();
+    x.fillStyle='#fff';x.beginPath();x.arc(fx-4,fy-6,2,0,7);x.fill();x.beginPath();x.arc(fx+4,fy-7,2,0,7);x.fill();
+  }else if(n==='cogombre'){
+    x.fillStyle='#309030';x.beginPath();x.ellipse(fx,fy,6,12,.4,0,7);x.fill();
+  }else if(n==='alberginia'){
+    x.fillStyle='#8030a0';x.beginPath();x.ellipse(fx,fy+2,8,10,0,0,7);x.fill();
+    x.fillStyle='#20a020';x.fillRect(fx-4,fy-11,8,5);
+  }else if(n==='pebrot'){
+    x.fillStyle='#20b020';x.beginPath();x.ellipse(fx,fy+2,9,9,0,0,7);x.fill();
+    x.fillStyle='#107010';x.fillRect(fx-2,fy-12,4,6);
+  }else if(n==='tomaquet'){
+    x.fillStyle='#e02020';x.beginPath();x.arc(fx,fy+1,10,0,7);x.fill();
+    x.fillStyle='#20a020';x.fillRect(fx-5,fy-11,10,4);
+  }else if(n==='all'){
+    x.fillStyle='#f0f0e0';x.beginPath();x.arc(fx,fy+2,9,0,7);x.fill();
+    x.fillStyle='#c0c0b0';x.fillRect(fx-1,fy-7,2,12);
+    x.fillStyle='#c0a060';x.fillRect(fx-2,fy-12,4,5);
+  }else if(n==='sindria'){
+    x.fillStyle='#106010';x.beginPath();x.arc(fx,fy,11,0,7);x.fill();
+    x.fillStyle='#40b040';x.beginPath();x.arc(fx,fy,11,-.6,.6);x.fill();
+  }else if(n==='galaxian'){
+    x.fillStyle='#f0f000';x.beginPath();x.moveTo(fx,fy-10);x.lineTo(fx+9,fy+8);x.lineTo(fx-9,fy+8);x.closePath();x.fill();
+    x.fillStyle='#4040ff';x.fillRect(fx-3,fy-2,6,6);
+  }else{
+    x.fillStyle='#e0b020';x.beginPath();x.ellipse(fx,fy+2,8,11,0,0,7);x.fill();
+    x.fillStyle='#20a020';
+    for(let i=-1;i<=1;i++){x.beginPath();x.moveTo(fx,fy-8);x.lineTo(fx+i*7,fy-17);x.lineTo(fx+i*3,fy-7);x.closePath();x.fill()}
+  }
+}
+function draw(){
+  // cel i flors de ronda, com al marcador de la maquina
+  x.fillStyle='#000';x.fillRect(0,0,W,CEL);
+  x.fillStyle='#1a1a2e';x.fillRect(0,CEL-6,W,6);
+  for(let i=0;i<Math.min(8,ronda);i++){
+    const fx=W-24-i*26,fy=CEL-24;
+    x.fillStyle=i<4?'#e0e0e0':'#ff80c0';
+    for(let a=0;a<5;a++){
+      const an=a/5*Math.PI*2;
+      x.beginPath();x.arc(fx+Math.cos(an)*5,fy+Math.sin(an)*5,3.6,0,7);x.fill();
+    }
+    x.fillStyle='#f5c000';x.beginPath();x.arc(fx,fy,3.4,0,7);x.fill();
+    x.fillStyle='#20a020';x.fillRect(fx-1,fy+6,2,10);
+  }
+  x.fillStyle='#4ad8ff';x.font='13px monospace';x.textAlign='left';
+  x.fillText('RONDA '+ronda,10,26);
+  x.fillStyle='#ff0';x.fillText(fruitaDeRonda(ronda).punts+' pts',10,46);
+
+  // terra
+  for(let r=0;r<ROWS;r++)for(let cc=0;cc<COLS;cc++){
+    const px=cc*CELL,py=CEL+r*CELL;
+    if(terra[r][cc]===0){x.fillStyle='#000';x.fillRect(px,py,CELL,CELL);continue}
+    x.fillStyle=COLORS_CAPA[capa(r)];x.fillRect(px,py,CELL,CELL);
+    // gra de la terra, perque no sigui un color pla
+    x.fillStyle='rgba(0,0,0,.16)';
+    x.fillRect(px+5,py+7,3,3);x.fillRect(px+19,py+13,3,3);x.fillRect(px+11,py+23,3,3);
+    x.fillStyle='rgba(255,255,255,.07)';
+    x.fillRect(px+24,py+4,3,3);x.fillRect(px+3,py+18,3,3);
+  }
+
+  // roques
+  for(const q of roques){
+    const qx=cellX(q.c),qy=q.estat==='cau'?q.y:cellY(q.r);
+    if(q.estat==='trencada'){
+      x.fillStyle='#9a9a9a';
+      for(let i=0;i<5;i++){
+        const an=i/5*Math.PI*2,d=(500-q.t)/500*16;
+        x.fillRect(qx+Math.cos(an)*d-3,qy+Math.sin(an)*d-3,6,6);
+      }
+      continue;
+    }
+    const tr=q.estat==='tremola'?Math.sin(animT/40)*2:0;
+    x.fillStyle='#9a9a9a';
+    x.beginPath();x.ellipse(qx+tr,qy,13,12,0,0,7);x.fill();
+    x.fillStyle='#c8c8c8';
+    x.beginPath();x.ellipse(qx+tr-3,qy-3,6,5,0,0,7);x.fill();
+    x.strokeStyle='#5a5a5a';x.lineWidth=2;
+    x.beginPath();x.ellipse(qx+tr,qy,13,12,0,0,7);x.stroke();
+  }
+
+  if(fruita)dibuixaFruita();
+
+  // l'arpo
+  if(arpo){
+    const px=posX(p),py=posY(p);
+    const llarg=arpo.enganxat?
+      Math.hypot(posX(arpo.enganxat)-px,posY(arpo.enganxat)-py):arpo.llarg*CELL;
+    x.strokeStyle='#f0f0f0';x.lineWidth=3;
+    x.beginPath();x.moveTo(px,py);
+    x.lineTo(px+arpo.dx*llarg,py+arpo.dy*llarg);x.stroke();
+    x.fillStyle='#ffd000';
+    x.beginPath();x.arc(px+arpo.dx*llarg,py+arpo.dy*llarg,4,0,7);x.fill();
+  }
+
+  // bitxos
+  for(const e of enemics){
+    if(e.estat==='mort')continue;
+    const ex=e.fantasma?e.fx:posX(e),ey=e.fantasma?e.fy:posY(e);
+    if(e.fantasma){
+      // nomes els ulls, travessant la terra
+      x.fillStyle='#f0f0f0';
+      x.beginPath();x.arc(ex-4,ey,5,0,7);x.fill();
+      x.beginPath();x.arc(ex+4,ey,5,0,7);x.fill();
+      x.fillStyle='#000';
+      x.beginPath();x.arc(ex-4,ey,2.2,0,7);x.fill();
+      x.beginPath();x.arc(ex+4,ey,2.2,0,7);x.fill();
+      continue;
+    }
+    if(e.tipus==='pooka')dibuixaPooka(e,ex,ey);else dibuixaFygar(e,ex,ey);
+  }
+
+  if(state!=='mor'||Math.floor(animT/100)%2)dibuixaJugador();
+
+  if(paused){x.fillStyle='#fff';x.font='24px monospace';x.textAlign='center';x.fillText('PAUSA',W/2,H/2)}
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{
+    ev.preventDefault();aInit();
+    if(state==='over'){start();return}
+    if(k==='bomba')tiraArpo();else{keys[k]=true;if(arpo)deixaArpo()}
+  });
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();if(k!=='bomba')keys[k]=false});
+  e.addEventListener('pointercancel',()=>{if(k!=='bomba')keys[k]=false});
+  e.addEventListener('pointerleave',()=>{if(k!=='bomba')keys[k]=false});
+}
+bind('left','left');bind('right','right');bind('up','up');bind('down','down');bind('bomba','bomba');
+document.addEventListener('contextmenu',e=>e.preventDefault());
+const TECLES={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',
+              ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down'};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(TECLES[e.code]){e.preventDefault();if(state==='over'){start();return}keys[TECLES[e.code]]=true;if(arpo)deixaArpo();return}
+  if(e.code==='Space'){e.preventDefault();if(state==='over')start();else tiraArpo();return}
+  if(e.code==='KeyP'&&state!=='over')paused=!paused;
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{if(TECLES[e.code])keys[TECLES[e.code]]=false});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+</script>
+</body>
+</html>

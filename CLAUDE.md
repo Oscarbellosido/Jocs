@@ -1,6 +1,6 @@
 # Jocs
 
-Tretze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
+Catorze jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
 llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -23,6 +23,7 @@ mòbil, instal·lat com a aplicació.
 | `centipede.html` | Centipede | 1981 |
 | `frogger.html` | Frogger | 1981 |
 | `donkey_kong.html` | Donkey Kong | 1981 |
+| `dig_dug.html` | Dig Dug | 1982 |
 | `tetris.html` | Tetris | 1984 |
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
