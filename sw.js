@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v37';
+const CACHE = 'jocs-v38';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -17,6 +17,7 @@ const FILES = [
   '/Jocs/donkey_kong.html',
   '/Jocs/crazy_climber.html',
   '/Jocs/dig_dug.html',
+  '/Jocs/qbert.html',
   '/Jocs/defender.html',
   '/Jocs/thumbs/tetris.png',
   '/Jocs/thumbs/comecocos.png',
@@ -32,6 +33,7 @@ const FILES = [
   '/Jocs/thumbs/donkey_kong.png',
   '/Jocs/thumbs/crazy_climber.png',
   '/Jocs/thumbs/dig_dug.png',
+  '/Jocs/thumbs/qbert.png',
   '/Jocs/thumbs/defender.png',
   '/Jocs/icon-192.png',
   '/Jocs/icon-512.png'

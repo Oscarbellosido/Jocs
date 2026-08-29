@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Q*bert Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:8px}
+button{font:20px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:60px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>RONDA <b id="ronda">1-1</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="448" height="430"></canvas></div>
+  <div id="controls">
+    <button id="ul">◤</button><button id="ur">◥</button><button id="dl">◣</button><button id="dr">◢</button>
+  </div>
+  <div id="msg"></div>
+  <small>salta en diagonal · teclat: ← ↑ amunt, ↓ → avall · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(f,d,type='square',vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(f,n);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,f+slide),n+d);
+  g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(vol,n+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,n+d);
+  o.connect(g);g.connect(MG);o.start(n);o.stop(n+d+.02);
+}
+function noise(d=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),dd=b.getChannelData(0);
+  for(let i=0;i<n;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+d);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+d);
+}
+function sndSalt(){aInit();tone(520,.07,'square',.16,-260)}
+function sndCub(){aInit();tone(760,.06,'square',.18,240)}
+function sndBota(){aInit();tone(300,.05,'square',.12,-120)}
+function sndDisc(){aInit();[500,700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,.07,'square',.2),i*60))}
+function sndCoily(){aInit();[900,700,500,300,180].forEach((f,i)=>setTimeout(()=>tone(f,.1,'sawtooth',.24,-60),i*90))}
+function sndVerd(){aInit();[660,880,1100].forEach((f,i)=>setTimeout(()=>tone(f,.08,'square',.2),i*70))}
+function sndAgafa(){aInit();[440,660,880,1320].forEach((f,i)=>setTimeout(()=>tone(f,.07,'square',.22),i*60))}
+function sndMor(){aInit();[600,480,380,300,220,150].forEach((f,i)=>setTimeout(()=>tone(f,.13,'square',.24,-50),i*105))}
+function sndRonda(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.24),i*95))}
+function sndVida(){aInit();[659,880,1175,1568].forEach((f,i)=>setTimeout(()=>tone(f,.1,'square',.24),i*85))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,'square',.26,-50),i*260))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=448,H=430;
+
+// ===== LA PIRAMIDE =====
+// Set fileres de cubs: la de dalt en te un i la de baix set, 28 en total,
+// com a la maquina. Es veu de gairell, i per aixo els salts son en diagonal.
+const FILES=7, CW=54, CH=44, X0=224, Y0=74;
+const cellX=(r,cc)=>X0+(cc-r/2)*CW;
+const cellY=r=>Y0+r*CH;
+const dins=(r,cc)=>r>=0&&r<FILES&&cc>=0&&cc<=r;
+
+// les quatre diagonals: amunt-esquerra, amunt-dreta, avall-esquerra, avall-dreta
+const DIRS={ul:[-1,-1],ur:[-1,0],dl:[1,0],dr:[1,1]};
+
+// ===== PUNTUACIONS DE LA MAQUINA =====
+const PUNTS_CUB=25, PUNTS_VERD=100, PUNTS_SLICK=300, PUNTS_COILY=500, PUNTS_DISC=50;
+const rondaBonus=r=>1000+250*(r-1);
+
+// colors: el de sortida, el del mig i el que has de deixar a tot arreu
+const PALETES=[
+  {base:'#3050c8',mig:'#c8a020',fi:'#e0c860',costatA:'#20308a',costatB:'#101c50'},
+  {base:'#c02020',mig:'#20a0c0',fi:'#60e0f0',costatA:'#801010',costatB:'#500808'},
+  {base:'#208040',mig:'#c060c0',fi:'#f0a0f0',costatA:'#104828',costatB:'#082818'},
+  {base:'#803090',mig:'#20b060',fi:'#70f0a0',costatA:'#501860',costatB:'#300c38'},
+];
+
+let score=0,lives=3,nivell=1,ronda=1,state='play',paused=false,animT=0;
+let cubs=[],qb=null,bitxos=[],discos=[],passos=1,reverteix=false,pal=PALETES[0];
+let tBola=0,tCoily=0,tSlick=0,tVerd=0,tLateral=0,congelat=0,proximaVida=8000;
+
+const JOC='qbert';
+Records.pintaMillor(JOC,document.getElementById('best'));
+let bestScore=Records.local(JOC);
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('ronda').textContent=nivell+'-'+ronda;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  while(score>=proximaVida){lives++;proximaVida+=8000;sndVida()}
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== MUNTAR LA RONDA =====
+function novaRonda(sencera=true){
+  if(sencera){
+    cubs=[];
+    for(let r=0;r<FILES;r++){cubs.push(new Array(r+1).fill(0))}
+  }
+  // a partir del nivell 2 calen dos salts per deixar el cub del color bo, i
+  // del 3 en amunt, si hi tornes a saltar, el fas enrere
+  passos=nivell===1?1:2;
+  reverteix=nivell>=3;
+  pal=PALETES[(nivell-1)%PALETES.length];
+  qb={r:0,c:0,x:cellX(0,0),y:cellY(0),salt:null,mort:false,renec:0};
+  bitxos=[];
+  if(sencera)discos=[{r:2,costat:-1,usat:false},{r:2,costat:1,usat:false}];
+  tBola=1800;tCoily=3200;tSlick=nivell>=1&&ronda>=2?6000:99999;
+  tVerd=ronda>=2?9000:99999;tLateral=nivell>=2?7000:99999;
+  congelat=0;
+  state='play';updateHUD();
+}
+function start(){
+  score=0;lives=3;nivell=1;ronda=1;proximaVida=8000;paused=false;
+  bestScore=Records.local(JOC);
+  novaRonda();hideMsg();
+}
+
+// ===== SALTAR =====
+// Tothom es mou igual: un salt d'una casella a la del costat, amb la seva
+// corba. Mentre salta, ningu no canvia de rumb.
+function comencaSalt(e,dr,dc,durada=200){
+  e.salt={r0:e.r,c0:e.c,r1:e.r+dr,c1:e.c+dc,t:0,d:durada};
+  e.r+=dr;e.c+=dc;
+}
+function avancaSalt(e,dt){
+  const s=e.salt;
+  if(!s)return false;
+  s.t+=dt;
+  const p=Math.min(1,s.t/s.d);
+  const x0=cellX(s.r0,s.c0),y0=cellY(s.r0),x1=cellX(s.r1,s.c1),y1=cellY(s.r1);
+  e.x=x0+(x1-x0)*p;
+  e.y=y0+(y1-y0)*p-Math.sin(p*Math.PI)*22;    // la corba del salt
+  if(p>=1){e.salt=null;return true}           // acaba d'aterrar
+  return false;
+}
+
+// ===== ELS CUBS =====
+function trepitja(r,cc){
+  if(!dins(r,cc))return;
+  const n=cubs[r][cc];
+  if(n<passos){cubs[r][cc]=n+1;addScore(PUNTS_CUB);sndCub()}
+  else if(reverteix){cubs[r][cc]=n-1;sndBota()}
+}
+function tot()  {return cubs.every((f,r)=>f.every(n=>n===passos))}
+function colorCub(n){return n===0?pal.base:(n>=passos?pal.fi:pal.mig)}
+
+// ===== ELS BITXOS =====
+function nouBitxo(tipus,r,cc){
+  return {tipus,r,c:cc,x:cellX(r,cc),y:cellY(r),salt:null,t:0,
+          serp:false,mort:false,tEspera:0};
+}
+function surtDalt(){return Math.random()<.5?[1,0]:[1,1]}
+function tiraBola(){const [r,cc]=surtDalt();bitxos.push(nouBitxo('bola',r,cc))}
+function tiraCoily(){
+  if(bitxos.some(b=>b.tipus==='coily'&&!b.mort))return;
+  const [r,cc]=surtDalt();bitxos.push(nouBitxo('coily',r,cc));
+}
+function tiraSlick(){
+  const [r,cc]=surtDalt();
+  bitxos.push(nouBitxo(Math.random()<.5?'slick':'sam',r,cc));
+}
+function tiraVerd(){const [r,cc]=surtDalt();bitxos.push(nouBitxo('verd',r,cc))}
+function tiraLateral(){
+  // l'Ugg i el Wrongway pugen per les dues cares de la piramide
+  const dreta=Math.random()<.5;
+  bitxos.push(nouBitxo(dreta?'ugg':'wrongway',FILES-1,dreta?FILES-1:0));
+}
+
+function mouBitxo(b,dt){
+  if(b.mort)return;
+  if(b.salt){
+    if(avancaSalt(b,dt)){
+      if(b.tipus==='slick'||b.tipus==='sam'){
+        // desfan el que has pintat
+        if(dins(b.r,b.c)&&cubs[b.r][b.c]>0){cubs[b.r][b.c]--;sndBota()}
+      }
+      if(b.tipus==='coily'&&!b.serp&&b.r>=FILES-1){b.serp=true;sndCoily()}
+      if(!dins(b.r,b.c))b.mort=true;              // se n'ha anat de la piramide
+      b.tEspera=b.tipus==='coily'&&b.serp?Math.max(200,420-nivell*25):
+                b.tipus==='verd'?420:340;
+    }
+    return;
+  }
+  b.tEspera-=dt;
+  if(b.tEspera>0)return;
+
+  if(b.tipus==='ugg'||b.tipus==='wrongway'){
+    // pugen per la vora: l'un per la dreta i l'altre per l'esquerra
+    const dr=-1, dc=b.tipus==='ugg'?0:-1;
+    if(!dins(b.r+dr,b.c+dc)){b.mort=true;return}
+    comencaSalt(b,dr,dc,300);
+    return;
+  }
+  if(b.tipus==='coily'&&b.serp){
+    // la serp et persegueix: tria el salt que l'acosta mes
+    const opcions=Object.values(DIRS).filter(([dr,dc])=>dins(b.r+dr,b.c+dc));
+    if(!opcions.length){b.mort=true;return}
+    opcions.sort((a,d)=>{
+      const da=Math.abs(b.r+a[0]-qb.r)+Math.abs(b.c+a[1]-qb.c);
+      const dd=Math.abs(b.r+d[0]-qb.r)+Math.abs(b.c+d[1]-qb.c);
+      return da-dd;
+    });
+    comencaSalt(b,opcions[0][0],opcions[0][1],260);
+    return;
+  }
+  // la resta baixen a l'atzar
+  const [dr,dc]=Math.random()<.5?DIRS.dl:DIRS.dr;
+  comencaSalt(b,dr,dc,b.tipus==='verd'?340:300);
+}
+
+// ===== DISCOS =====
+function discA(r,costat){
+  return discos.find(d=>!d.usat&&d.r===r&&d.costat===costat);
+}
+function posDisc(d){
+  // el disc queda just al costat del cub de la vora d'aquella filera
+  const cc=d.costat<0?-1:d.r+1;
+  return {x:cellX(d.r,cc),y:cellY(d.r)};
+}
+function agafaDisc(d){
+  d.usat=true;sndDisc();
+  state='disc';
+  const p=posDisc(d);
+  qb.x=p.x;qb.y=p.y;qb.salt=null;
+  // la serp que et perseguia salta al buit darrere teu
+  const co=bitxos.find(b=>b.tipus==='coily'&&b.serp&&!b.mort);
+  if(co){co.mort=true;co.cau=true;addScore(PUNTS_COILY);sndCoily()}
+  const t0=performance.now();
+  const x0=p.x,y0=p.y,x1=cellX(0,0),y1=cellY(0);
+  const id=setInterval(()=>{
+    const pr=Math.min(1,(performance.now()-t0)/1100);
+    qb.x=x0+(x1-x0)*pr;qb.y=y0+(y1-y0)*pr-Math.sin(pr*Math.PI)*40;
+    if(pr>=1){
+      clearInterval(id);
+      qb.r=0;qb.c=0;qb.x=x1;qb.y=y1;
+      if(state==='disc')state='play';
+    }
+  },16);
+}
+
+// ===== EL JUGADOR =====
+function saltaQbert(dir){
+  if(state!=='play'||paused||qb.salt||qb.mort)return;
+  const [dr,dc]=DIRS[dir];
+  const nr=qb.r+dr,nc=qb.c+dc;
+  if(!dins(nr,nc)){
+    // fora de la piramide: o hi ha un disc, o caus
+    const costat=dc<0||(dr<0&&nc<0)?-1:1;
+    const d=(nr>=0&&nr<FILES)?discA(nr,nc<0?-1:1):null;
+    if(d){comencaSalt(qb,dr,dc,220);qb.capDisc=d;sndSalt();return}
+    comencaSalt(qb,dr,dc,220);qb.cau=true;sndSalt();return;
+  }
+  comencaSalt(qb,dr,dc,180);sndSalt();
+}
+function aterraQbert(){
+  if(qb.capDisc){const d=qb.capDisc;qb.capDisc=null;agafaDisc(d);return}
+  if(qb.cau){mor();return}
+  trepitja(qb.r,qb.c);
+  if(tot()){passaRonda();return}
+}
+
+// ===== MORIR I PASSAR DE RONDA =====
+function mor(){
+  if(state!=='play'&&state!=='disc')return;
+  state='mor';qb.mort=true;sndMor();
+  setTimeout(()=>{
+    lives--;updateHUD();
+    if(lives<=0){state='over';sndFi();finalPartida('GAME OVER')}
+    else novaRonda(false);         // els cubs pintats es queden com estaven
+  },1500);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+function passaRonda(){
+  state='fi';sndRonda();
+  const sobrants=discos.filter(d=>!d.usat).length;
+  const bonus=rondaBonus(ronda)+sobrants*PUNTS_DISC;
+  addScore(bonus);
+  msg('RONDA NETA!<br><small>'+rondaBonus(ronda)+' punts'+
+      (sobrants?' · '+sobrants+' disc'+(sobrants>1?'s':'')+' sense fer servir: +'+sobrants*PUNTS_DISC:'')+'</small>');
+  setTimeout(()=>{
+    hideMsg();
+    if(ronda<4)ronda++; else {ronda=1;nivell++}
+    novaRonda();
+  },2000);
+}
+
+// ===== BUCLE =====
+function update(dt){
+  if(paused||state==='over')return;
+  animT+=dt;
+  if(qb&&qb.renec>0)qb.renec-=dt;
+  if(congelat>0)congelat-=dt;
+  if(state==='disc'){return}
+  if(state!=='play')return;
+
+  if(qb.salt&&avancaSalt(qb,dt)){aterraQbert();if(state!=='play')return}
+
+  // van sortint bitxos
+  if(congelat<=0){
+    tBola-=dt;
+    if(tBola<=0){tiraBola();tBola=Math.max(900,2400-nivell*160)*(0.7+Math.random()*0.6)}
+    tCoily-=dt;
+    if(tCoily<=0){tiraCoily();tCoily=6000}
+    tSlick-=dt;
+    if(tSlick<=0){tiraSlick();tSlick=7000+Math.random()*4000}
+    tVerd-=dt;
+    if(tVerd<=0){tiraVerd();tVerd=14000+Math.random()*8000}
+    tLateral-=dt;
+    if(tLateral<=0){tiraLateral();tLateral=9000+Math.random()*5000}
+    for(const b of bitxos)mouBitxo(b,dt);
+  }
+  bitxos=bitxos.filter(b=>!b.mort||b.cau);
+
+  // topades
+  for(const b of bitxos){
+    if(b.mort)continue;
+    if(b.r!==qb.r||b.c!==qb.c)continue;
+    if(qb.salt||b.salt)continue;                 // en l'aire no es toca ningu
+    if(b.tipus==='verd'){
+      b.mort=true;congelat=5000;addScore(PUNTS_VERD);sndVerd();continue;
+    }
+    if(b.tipus==='slick'||b.tipus==='sam'){
+      b.mort=true;addScore(PUNTS_SLICK);sndAgafa();continue;
+    }
+    mor();return;
+  }
+}
+
+// ===== DIBUIX =====
+function dibuixaCub(r,cc){
+  const px=cellX(r,cc),py=cellY(r),n=cubs[r][cc];
+  const w=CW/2,h=14,alt=30;
+  x.fillStyle=colorCub(n);                       // la cara de dalt
+  x.beginPath();x.moveTo(px,py-h);x.lineTo(px+w,py);x.lineTo(px,py+h);x.lineTo(px-w,py);x.closePath();x.fill();
+  x.fillStyle=pal.costatA;                       // cara esquerra
+  x.beginPath();x.moveTo(px-w,py);x.lineTo(px,py+h);x.lineTo(px,py+h+alt);x.lineTo(px-w,py+alt);x.closePath();x.fill();
+  x.fillStyle=pal.costatB;                       // cara dreta
+  x.beginPath();x.moveTo(px+w,py);x.lineTo(px,py+h);x.lineTo(px,py+h+alt);x.lineTo(px+w,py+alt);x.closePath();x.fill();
+  x.strokeStyle='rgba(0,0,0,.45)';x.lineWidth=1;
+  x.beginPath();x.moveTo(px,py-h);x.lineTo(px+w,py);x.lineTo(px,py+h);x.lineTo(px-w,py);x.closePath();x.stroke();
+}
+function dibuixaQbert(){
+  const px=qb.x,py=qb.y;
+  if(state==='mor'){
+    x.save();x.translate(px,py-12);x.rotate(animT/90);
+    x.fillStyle='#ff8000';x.beginPath();x.arc(0,0,12,0,7);x.fill();x.restore();
+    return;
+  }
+  x.fillStyle='#ff8000';                          // el cos
+  x.beginPath();x.arc(px,py-14,13,0,7);x.fill();
+  x.fillStyle='#ff8000';                          // el nas/trompa
+  const dnas=qb.mirantEsq?-1:1;
+  x.beginPath();x.ellipse(px+dnas*10,py-12,7,4,0,0,7);x.fill();
+  x.fillStyle='#fff';
+  x.beginPath();x.arc(px+dnas*3-2,py-20,5,0,7);x.fill();
+  x.beginPath();x.arc(px+dnas*3+5,py-20,5,0,7);x.fill();
+  x.fillStyle='#000';
+  x.beginPath();x.arc(px+dnas*3-1,py-20,2.3,0,7);x.fill();
+  x.beginPath();x.arc(px+dnas*3+6,py-20,2.3,0,7);x.fill();
+  x.fillStyle='#c05000';                          // peus
+  x.fillRect(px-9,py-4,7,4);x.fillRect(px+2,py-4,7,4);
+}
+function dibuixaBitxo(b){
+  const px=b.x,py=b.y;
+  if(b.tipus==='bola'){
+    x.fillStyle='#e02020';x.beginPath();x.arc(px,py-10,10,0,7);x.fill();
+    x.fillStyle='#ff8080';x.beginPath();x.arc(px-3,py-13,3.5,0,7);x.fill();
+  }else if(b.tipus==='verd'){
+    x.fillStyle='#30d030';x.beginPath();x.arc(px,py-10,10,0,7);x.fill();
+    x.fillStyle='#a0ffa0';x.beginPath();x.arc(px-3,py-13,3.5,0,7);x.fill();
+  }else if(b.tipus==='coily'){
+    if(!b.serp){                                  // encara es un ou
+      x.fillStyle='#c060f0';x.beginPath();x.ellipse(px,py-11,9,12,0,0,7);x.fill();
+      x.fillStyle='#f0c0ff';x.beginPath();x.ellipse(px-3,py-14,3,4,0,0,7);x.fill();
+    }else{                                        // la serp
+      x.fillStyle='#a040e0';
+      x.beginPath();x.ellipse(px,py-6,9,7,0,0,7);x.fill();
+      x.beginPath();x.arc(px,py-20,11,0,7);x.fill();
+      x.fillStyle='#fff';
+      x.beginPath();x.arc(px-4,py-24,4.5,0,7);x.fill();
+      x.beginPath();x.arc(px+4,py-24,4.5,0,7);x.fill();
+      x.fillStyle='#000';
+      x.beginPath();x.arc(px-4,py-24,2,0,7);x.fill();
+      x.beginPath();x.arc(px+4,py-24,2,0,7);x.fill();
+      x.fillStyle='#ff2020';                       // la llengua
+      x.fillRect(px-1,py-16,2,6);
+    }
+  }else if(b.tipus==='slick'||b.tipus==='sam'){
+    x.fillStyle=b.tipus==='slick'?'#40e070':'#20b0a0';
+    x.beginPath();x.arc(px,py-13,11,0,7);x.fill();
+    x.fillStyle='#fff';
+    x.beginPath();x.arc(px-4,py-16,4,0,7);x.fill();
+    x.beginPath();x.arc(px+4,py-16,4,0,7);x.fill();
+    x.fillStyle='#000';
+    x.beginPath();x.arc(px-4,py-16,1.8,0,7);x.fill();
+    x.beginPath();x.arc(px+4,py-16,1.8,0,7);x.fill();
+    x.fillStyle='#204020';x.fillRect(px-9,py-24,18,4);   // el barret
+  }else{                                           // Ugg i Wrongway
+    const cap=b.tipus==='ugg'?-1:1;
+    x.fillStyle='#9040d0';
+    x.beginPath();x.arc(px+cap*6,py-12,11,0,7);x.fill();
+    x.fillStyle='#fff';
+    x.beginPath();x.arc(px+cap*3,py-16,4.5,0,7);x.fill();
+    x.beginPath();x.arc(px+cap*10,py-16,4.5,0,7);x.fill();
+    x.fillStyle='#000';
+    x.beginPath();x.arc(px+cap*3,py-16,2,0,7);x.fill();
+    x.beginPath();x.arc(px+cap*10,py-16,2,0,7);x.fill();
+    x.fillStyle='#5a1c90';x.fillRect(px+cap*2,py-4,10,4);
+  }
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  // de darrere cap endavant, perque els cubs de baix tapin els de dalt
+  for(let r=0;r<FILES;r++)for(let cc=0;cc<=r;cc++)dibuixaCub(r,cc);
+  // discos
+  for(const d of discos){
+    if(d.usat)continue;
+    const p=posDisc(d);
+    const t=Math.floor(animT/140)%2;
+    x.fillStyle=t?'#f0f0a0':'#c0c020';
+    x.beginPath();x.ellipse(p.x,p.y,20,8,0,0,7);x.fill();
+    x.fillStyle=t?'#c0c020':'#f0f0a0';
+    x.beginPath();x.ellipse(p.x,p.y-3,13,5,0,0,7);x.fill();
+  }
+  // primer els de darrere (files de dalt) i despres els de davant
+  const ordre=[...bitxos].sort((a,b)=>(a.y-b.y));
+  for(const b of ordre)if(!b.mort||b.cau)dibuixaBitxo(b);
+  if(qb)dibuixaQbert();
+
+  // el color que has de deixar a tot arreu, i quants cubs queden
+  const fets=cubs.reduce((s,f)=>s+f.filter(n=>n===passos).length,0);
+  x.fillStyle=pal.fi;
+  x.beginPath();x.moveTo(28,20);x.lineTo(46,29);x.lineTo(28,38);x.lineTo(10,29);x.closePath();x.fill();
+  x.fillStyle='#fff';x.font='13px monospace';x.textAlign='left';
+  x.fillText(fets+' / 28',54,34);
+  if(congelat>0){
+    x.fillStyle='#30d030';x.font='13px monospace';x.textAlign='right';
+    x.fillText('ATURATS '+Math.ceil(congelat/1000),W-12,34);
+  }
+  if(paused){x.fillStyle='#fff';x.font='24px monospace';x.textAlign='center';x.fillText('PAUSA',W/2,H/2)}
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function prem(dir){
+  aInit();
+  if(state==='over'){start();return}
+  if(dir==='ul'||dir==='dl')qb&&(qb.mirantEsq=true);
+  if(dir==='ur'||dir==='dr')qb&&(qb.mirantEsq=false);
+  saltaQbert(dir);
+}
+for(const id of ['ul','ur','dl','dr']){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();prem(id)});
+}
+document.addEventListener('contextmenu',e=>e.preventDefault());
+const TECLES={ArrowLeft:'ul',ArrowUp:'ur',ArrowDown:'dl',ArrowRight:'dr',
+              KeyQ:'ul',KeyW:'ur',KeyA:'dl',KeyS:'dr'};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(TECLES[e.code]&&!e.repeat){e.preventDefault();prem(TECLES[e.code]);return}
+  if(e.code==='KeyP'&&state!=='over')paused=!paused;
+  if((e.code==='Enter'||e.code==='Space')&&state==='over'){e.preventDefault();start()}
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>
