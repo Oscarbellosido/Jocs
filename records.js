@@ -109,6 +109,45 @@ const Records = (() => {
     if (a) e.stopPropagation();
   }, true);
 
+  // ---- la taula en entrar al joc ----
+  // Com les maquines de debo, que mentre no hi jugava ningu anaven ensenyant
+  // qui manava. Es tanca sola de seguida i tambe al primer toc, i mentrestant
+  // el joc queda en pausa perque no perdis vides mirant-la. Si no hi ha
+  // records o no s'hi pot connectar, no la ensenya: no fem esperar per res.
+  async function pantallaInicial(joc, pausa, continua) {
+    if (typeof pausa === 'function') { try { pausa(); } catch {} }
+    const fons = document.createElement('div');
+    fons.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9997;' +
+      'display:flex;align-items:center;justify-content:center;font-family:monospace;text-align:center';
+    fons.innerHTML = '<div style="color:#fff;max-width:86%">' +
+      '<div style="color:#ff0;font-size:20px;letter-spacing:.16em;margin-bottom:12px">RÈCORDS</div>' +
+      '<div class="rec-taula" style="color:#888;font-size:12px">…</div>' +
+      '<div class="rec-peu" style="font-size:12px;color:#aaa;margin-top:14px">&nbsp;</div></div>';
+    document.body.appendChild(fons);
+
+    let tancat = false;
+    const tanca = () => {
+      if (tancat) return;
+      tancat = true;
+      fons.remove();
+      document.removeEventListener('keydown', perTecla, true);
+      if (typeof continua === 'function') { try { continua(); } catch {} }
+    };
+    // la tecla que la tanca no ha de disparar ni saltar dins del joc
+    const perTecla = e => { e.stopPropagation(); tanca(); };
+    fons.addEventListener('pointerdown', tanca);
+    document.addEventListener('keydown', perTecla, true);
+    const sostre = setTimeout(tanca, 7000);      // per si la xarxa va lenta
+
+    const llista = await crida('/records/' + joc);
+    if (tancat) return;
+    if (!llista || !llista.length) { clearTimeout(sostre); tanca(); return; }
+    fons.querySelector('.rec-taula').innerHTML = taulaHTML(llista);
+    fons.querySelector('.rec-peu').textContent = 'toca per començar';
+    clearTimeout(sostre);
+    setTimeout(tanca, 3500);
+  }
+
   // ---- taula dels 10 millors ----
   function taulaHTML(llista, destacat) {
     if (!llista || !llista.length) return '<div style="color:#888;font-size:12px">Encara no hi ha cap rècord</div>';
@@ -151,7 +190,7 @@ const Records = (() => {
   }
 
   return {
-    local, desaLocal, nom, marcador, migra, panell, peuFinal,
+    local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial,
 
     // Els 10 millors de tots els jocs de cop, per a la pagina principal.
     async tots() {

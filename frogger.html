@@ -346,6 +346,10 @@ c.addEventListener('pointercancel',()=>sw=null);
 document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){audioInit();start()}});
 
 start();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
 </script>
 </body>
 </html>

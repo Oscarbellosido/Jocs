@@ -458,6 +458,10 @@ document.addEventListener('keyup',e=>{
 document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){audioInit();startGame()}});
 
 startGame();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
 </script>
 </body>
 </html>

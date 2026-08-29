@@ -317,6 +317,8 @@
   });
 
   resetGame();
+  // els records uns segons en entrar, amb el joc en pausa
+  Records.pantallaInicial(JOC,()=>{paused=true},()=>{paused=false});
 })();
 </script>
 </body>

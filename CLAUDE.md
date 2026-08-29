@@ -117,6 +117,11 @@ les inicials de qui mana (`CRE 640`), o `TU 250` mentre l'estàs superant.
     `{"error":"joc desconegut"}`, encara no.
 - **Al navegador**: `records.js` (`Records.pintaMillor`, `Records.marcador`,
   `Records.fiPartida`, `Records.tots`, `Records.peuFinal`).
+- En entrar a qualsevol joc, `Records.pantallaInicial(joc, pausa, continua)`
+  ensenya la taula uns segons, com feien les màquines quan no hi jugava ningú.
+  **El joc queda en pausa mentre es veu** (cada joc li passa el seu `paused`), es
+  tanca sola als 3,5 s o al primer toc, i si no hi ha rècords no surt: no fem
+  esperar per res.
 - El quadre del final de partida l'acaba `Records.peuFinal()`, que hi posa el
   botó **← MENÚ**. És un enllaç i no un `<button>` a posta: si fos un botó, la
   regla `button{width:NNpx}` del joc el faria petit.
@@ -152,6 +157,8 @@ comproven el comportament.
   tinguin el botó de tornar al menú i que hi porti.
 - `node scripts/prova-portada.mjs` — que la portada estigui per ordre d'any i
   que no vessi a cap mida de pantalla.
+- `node scripts/prova-inici.mjs` — que en entrar a cada joc surtin els rècords
+  uns segons, amb el joc aturat, i que se'n vagin sols.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer

@@ -433,6 +433,10 @@ canvas.addEventListener('pointerup',()=>sw=null);
 canvas.addEventListener('pointercancel',()=>sw=null);
 
 newGame();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
 </script>
 </body>
 </html>
