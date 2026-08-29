@@ -6,7 +6,7 @@
 #t #mig{margin-bottom:126px}#t #hy{padding:7px 8px;font:12px monospace;min-width:0}#t #f{padding:14px 12px;font:17px monospace;min-width:60px}}</style>
 <canvas id=c></canvas><div id=h><span id=sc>SCORE 00000</span><span id=hi style="color:#ff0">BEST 00000</span><span id=li>LIVES 3</span></div>
 <a href="index.html" style="position:fixed;top:10px;left:10px;color:#aaa;font-size:13px;text-decoration:none;background:#111;padding:4px 12px;border:1px solid #444;border-radius:6px">← Tornar</a>
-<div id=s><div><b>ASTEROID BELT</b><br><br><button id=go>START</button><br><br><small>← → girar · ↑ acelerar · SPACE disparar · H hiperespai</small></div></div>
+<div id=s style="display:none"></div>
 <div id=t><div><button data-k=ArrowLeft>◀</button><button data-k=ArrowUp>▲</button><button data-k=ArrowRight>▶</button></div><div id=mig><button id=hy>HIPER</button></div><div><button id=f>FIRE</button></div></div>
 <script src="records.js"></script>
 <script>
@@ -73,6 +73,7 @@ x.fillStyle='#f80';UB.forEach(b=>x.fillRect(b.x-2,b.y-2,4,4));
 // UFO saucer
 if(U){x.save();x.translate(U.x,U.y);x.strokeStyle='#0f0';x.lineWidth=2;x.fillStyle='#001a00';x.beginPath();x.ellipse(0,0,U.r,U.r*.45,0,0,Math.PI*2);x.fill();x.stroke();x.fillStyle='#001a00';x.beginPath();x.ellipse(0,-U.r*.2,U.r*.55,U.r*.4,0,Math.PI,0);x.fill();x.stroke();x.restore()}
 P.forEach(p=>{x.globalAlpha=p.t;x.fillRect(p.x,p.y,3,3)});x.globalAlpha=1;if(ship&&on&&!(ship.inv>0&&Math.floor(ship.inv*10)%2)){x.save();x.translate(ship.x,ship.y);x.rotate(ship.a);x.beginPath();x.moveTo(19,0);x.lineTo(-13,-11);x.lineTo(-8,0);x.lineTo(-13,11);x.closePath();x.stroke();if(keys.ArrowUp){x.beginPath();x.moveTo(-10,-4);x.lineTo(-22,0);x.lineTo(-10,4);x.stroke()}x.restore()}}
-function loop(t){let dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}go.onclick=()=>{aInit();start()};document.addEventListener('contextmenu',e=>e.preventDefault());addEventListener('keydown',e=>{aInit();keys[e.key]=1;if(e.key===' '||e.key.startsWith('Arrow'))e.preventDefault();if(e.key==='Enter'&&!on)start();if(e.key==='h'||e.key==='H')hyper()});addEventListener('keyup',e=>keys[e.key]=0);document.querySelectorAll('[data-k]').forEach(b=>{b.onpointerdown=()=>keys[b.dataset.k]=1;b.onpointerup=()=>keys[b.dataset.k]=0;b.onpointercancel=()=>keys[b.dataset.k]=0});f.onpointerdown=()=>{keys[' ']=1;fire()};f.onpointerup=()=>keys[' ']=0;hy.onpointerdown=e=>{e.preventDefault();aInit();hyper()};requestAnimationFrame(loop);
-Records.pantallaInicial(JOC);   // aqui el joc encara no corre: no cal pausar
+function loop(t){let dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}document.addEventListener('contextmenu',e=>e.preventDefault());addEventListener('keydown',e=>{aInit();keys[e.key]=1;if(e.key===' '||e.key.startsWith('Arrow'))e.preventDefault();if(e.key==='Enter'&&!on)start();if(e.key==='h'||e.key==='H')hyper()});addEventListener('keyup',e=>keys[e.key]=0);document.querySelectorAll('[data-k]').forEach(b=>{b.onpointerdown=()=>{aInit();keys[b.dataset.k]=1};b.onpointerup=()=>keys[b.dataset.k]=0;b.onpointercancel=()=>keys[b.dataset.k]=0});f.onpointerdown=()=>{aInit();keys[' ']=1;fire()};f.onpointerup=()=>keys[' ']=0;hy.onpointerdown=e=>{e.preventDefault();aInit();hyper()};requestAnimationFrame(loop);
+start();
+Records.pantallaInicial(JOC,()=>on=false,()=>on=true);
 </script>
