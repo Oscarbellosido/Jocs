@@ -89,9 +89,12 @@ control, li ha de passar el mateix.
 **3. Un botó que et pot matar no pot tocar el que prems sempre.** A
 l'Asteroids el botó d'HIPERESPAI estava enganxat sis píxels sobre el de
 disparar: el piquessis sense voler i, una de cada vuit vegades, et matava. Ara
-és a la cantonada de baix a l'esquerra, damunt de les fletxes, i d'un altre
-color: a més de 170 píxels del de disparar i a 46 del d'accelerar. Provat de
-posar-lo al mig de la pantalla i no: allà fa nosa mentre jugues.
+és a la mateixa filera que la resta però arrambat a les fletxes i petit, per
+deixar tot l'espai que hi hagi entre ell i el de disparar (46 px a 320, 80 a
+390), i d'un altre color. Provat de posar-lo al mig de la pantalla i a la
+cantonada de dalt de les fletxes: totes dues coses fan nosa mentre jugues,
+perquè queden **dins del camp de joc**. Els controls han d'anar tots a la
+mateixa alçada, a sota.
 
 **4. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
 de donar per bona una fila de controls, comprovar-la a 320, 360 i 390 px.
