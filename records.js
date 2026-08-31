@@ -83,6 +83,12 @@ const Records = (() => {
         fons.remove();
         resolve(n);
       };
+      // Si aquesta tecla arriba fins al joc, com que la partida ja es
+      // "over", el fa comencar de nou en silenci mentre encara esperem
+      // la resposta del Worker: quan arriba, torna a pintar el quadre
+      // final pero el joc ja ha reiniciat per sota i cap tecla ni clic
+      // hi torna a fer res.
+      fons.addEventListener('keydown', e => e.stopPropagation());
       fons.querySelector('#rec-ok').addEventListener('click', tanca);
       camp.addEventListener('keydown', e => { if (e.key === 'Enter') tanca(); });
     });
