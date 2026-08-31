@@ -22,7 +22,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>VOLTA <b id="lap">1/4</b></span><span>TEMPS <b id="time">73</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span id="lapcell"><b>CLASSIF.</b></span><span>TEMPS <b id="time">73</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="brake">FRE</button><button id="right">▶</button>
@@ -77,19 +77,24 @@ function updEngine(speedNorm){
 
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=600,HORIZON=210;
-const ROWS=110,STEP_Z=9,ROAD_W_MAX=920,ROAD_W_MIN=40,CURVE_SCALE=2.1;
+// ROWS*STEP_Z son les unitats de carretera que veus (1320). El que dona la
+// sensacio de velocitat es el temps que trigues a recorrer-les: a 480 son
+// menys de tres segons. Amb els 100 d'abans en trigaves deu i semblava que
+// anessis arrossegant-te.
+const ROWS=110,STEP_Z=12,ROAD_W_MAX=920,ROAD_W_MIN=40,CURVE_SCALE=1.0;
+const RATLLA=70;                 // cada quantes unitats canvia la franja del terra
 
 // un tomb del circuit (com el Fuji Speedway original): recta, corba dreta,
 // essa esquerra-dreta, i un revolt final tancat abans de la meta
 const SEGMENTS=[
-  {len:900, curve:0},
-  {len:600, curve:1.3},
-  {len:350, curve:0},
-  {len:420, curve:-1.7},
-  {len:420, curve:1.7},
-  {len:350, curve:0},
-  {len:650, curve:2.4},
-  {len:750, curve:0},
+  {len:4000, curve:0},
+  {len:2600, curve:1.3},
+  {len:1500, curve:0},
+  {len:1800, curve:-1.7},
+  {len:1800, curve:1.7},
+  {len:1500, curve:0},
+  {len:2800, curve:2.4},
+  {len:3000, curve:0},
 ];
 let LAP_LEN=0;const SEG_START=[];
 (function(){let z=0;for(const s of SEGMENTS){SEG_START.push(z);z+=s.len}LAP_LEN=z})();
@@ -101,7 +106,7 @@ function curveAt(z){
 
 const NUM_LAPS=4, QUALIFY_TIME=73, LAP_TIME=73;
 let score=0,lap=1,mode='qualify',timeLeft=QUALIFY_TIME,paused=false,state='play';
-let playerZ=0,playerX=0,speed=0,crashT=0,offT=0;
+let playerZ=0,playerX=0,speed=0,crashT=0,offT=0,immuneT=0;
 let opponents=[],dist=0;
 const keys={left:false,right:false,brake:false};
 
@@ -123,7 +128,9 @@ async function finalPartida(titol){
 }
 function updateHUD(){
   document.getElementById('score').textContent=score;
-  document.getElementById('lap').textContent=(mode==='qualify'?'CLASS.':lap+'/'+NUM_LAPS);
+  // a 320 px "VOLTA CLASS." no hi cabia i partia el marcador en dues linies
+  document.getElementById('lapcell').innerHTML=
+    mode==='qualify'?'<b>CLASSIF.</b>':'VOLTA <b>'+lap+'/'+NUM_LAPS+'</b>';
   document.getElementById('time').textContent=Math.max(0,Math.ceil(timeLeft));
   saveBest();
 }
@@ -138,14 +145,14 @@ function makeOpponents(){
     opponents.push({
       z:(i+1)*(LAP_LEN/7)+Math.random()*200,
       lane:(Math.random()<0.5?-1:1)*(0.35+Math.random()*0.4),
-      spd:34+Math.random()*18,
+      spd:220+Math.random()*110,     // mes lents que tu: son transit per avancar
       col:cols[i%cols.length],
     });
   }
 }
 function start(){
   score=0;lap=1;mode='qualify';timeLeft=QUALIFY_TIME;paused=false;state='play';
-  playerZ=0;playerX=0;speed=0;crashT=0;offT=0;
+  playerZ=0;playerX=0;speed=0;crashT=0;offT=0;immuneT=0;dist=0;
   opponents=[];
   updateHUD();hideMsg();
   msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps</small>");
@@ -154,21 +161,23 @@ function start(){
 let readyTimer=0;
 
 // ===== FISICA =====
-const MAX_SPEED=100;          // unitats de mon per segon, a fons
+const MAX_SPEED=480;          // unitats de mon per segon, a fons
+const KMH_MAX=293;            // el que marcava el marcador de la maquina
 function update(dt){
   if(paused)return;
   if(state==='over')return;
   if(readyTimer>0){readyTimer-=dt;if(readyTimer<=0)hideMsg();return}
   const s=dt/1000;
 
+  if(immuneT>0)immuneT-=dt;
   if(crashT>0){
     crashT-=dt;
-    speed=Math.max(0,speed-60*s);
+    speed=0;                  // el xoc et deixa clavat: has de tornar a agafar embranzida
   } else {
     // acceleracio automatica, com l'accelerador sempre a fons; el fre frena
     const onRoad=Math.abs(playerX)<1.05;
-    const target=keys.brake?0:(onRoad?MAX_SPEED:MAX_SPEED*0.32);
-    const rate=keys.brake?140:(speed<target?55:90);
+    const target=keys.brake?0:(onRoad?MAX_SPEED:MAX_SPEED*0.30);
+    const rate=keys.brake?520:(speed<target?150:340);
     speed+=Math.sign(target-speed)*Math.min(Math.abs(target-speed),rate*s);
     if(!onRoad){
       offT+=dt;
@@ -185,8 +194,10 @@ function update(dt){
 
   const before=playerZ;
   playerZ+=speed*s;
+  // un punt cada 16 unitats recorregudes. Sumant-ho per fotograma amb un
+  // arrodoniment es perdien decimals i la puntuacio depenia dels FPS.
   dist+=speed*s;
-  addScore(Math.round(speed*s*0.4));
+  if(dist>=16){const p=Math.floor(dist/16);dist-=p*16;addScore(p)}
 
   // volta completada
   if(Math.floor(before/LAP_LEN)<Math.floor(playerZ/LAP_LEN)){
@@ -204,7 +215,10 @@ function update(dt){
         state='over';sndCourseDone();finalPartida("CURSA ACABADA!");
         return;
       }
-      lap++;timeLeft+=LAP_TIME;
+      // cada volta et dona temps nou, pero sense passar de 99: el marcador de
+      // la maquina era de dues xifres, i acumulant-ne el rellotge deixava
+      // d'espantar a partir de la segona volta
+      lap++;timeLeft=Math.min(99,timeLeft+LAP_TIME);
       addScore(1000*lap+Math.round(timeLeft*10));
       sndLap();updateHUD();
       msg("VOLTA "+lap);readyTimer=900;
@@ -236,8 +250,11 @@ function update(dt){
       addScore(200);sndPass();o.z+=LAP_LEN*0.5;   // torna a apareixer mes endavant
     }
     o._prevRel=rel;
-    if(crashT<=0&&rel<70&&Math.abs(playerX-o.lane)<0.38){
-      crashT=900;speed*=0.25;sndCrash();
+    // Despres d'un xoc quedes clavat: sense aquesta estona d'immunitat, el
+    // primer que t'atrapes per darrere et tornava a fer xocar, i un altre, i
+    // un altre, sense poder-hi fer res.
+    if(crashT<=0&&immuneT<=0&&rel<70&&Math.abs(playerX-o.lane)<0.38){
+      crashT=1000;immuneT=2200;speed=0;sndCrash();
     }
   }
 }
@@ -252,7 +269,10 @@ function rowGeom(){
     const roadW=ROAD_W_MAX*Math.pow(1-perc,1.7)+ROAD_W_MIN;
     const lookZ=playerZ+i*STEP_Z;
     curveAccum+=curveAt(lookZ)*CURVE_SCALE*(i>0?1:0);
-    const cx=W/2+curveAccum-playerX*(1-perc*0.65)*(ROAD_W_MAX*0.24);
+    // El desplacament acumulat es va tancant cap a l'horitzo: si no, en un
+    // revolt tancat el fons de la corba se n'anava per la vora de la pantalla
+    // i no veies cap on anava la carretera.
+    const cx=W/2+curveAccum*(1-perc*0.45)-playerX*(1-perc*0.65)*(ROAD_W_MAX*0.24);
     rows.push({y,roadW,cx,perc});
   }
   return rows;
@@ -265,7 +285,7 @@ function draw(){
   const rows=rowGeom();
   for(let i=ROWS-1;i>=0;i--){
     const r=rows[i];
-    const alt=Math.floor((playerZ+i*STEP_Z)/40)%2===0;
+    const alt=Math.floor((playerZ+i*STEP_Z)/RATLLA)%2===0;
     x.fillStyle=alt?'#2f8f3a':'#278431';
     x.fillRect(0,r.y-3,W,4);
     const half=r.roadW/2;
@@ -293,12 +313,21 @@ function draw(){
     x.fillRect(cx-w/2,r.y-w*0.15,w,w*0.15);
   }
   drawPlayer();
+  // el marcador de velocitat, a baix a la dreta com a la maquina
+  const kmh=Math.round(speed/MAX_SPEED*KMH_MAX);
+  x.font='bold 26px monospace';x.textAlign='right';
+  x.fillStyle='#fff';x.fillText(kmh,W-52,H-16);
+  x.font='11px monospace';x.fillStyle='#ff0';x.fillText('km/h',W-10,H-16);
+  x.textAlign='left';
   if(crashT>0){
     x.fillStyle='rgba(255,'+(80+Math.random()*80|0)+',0,'+(crashT/900*0.5)+')';
     x.fillRect(0,0,W,H);
   }
 }
 function drawPlayer(){
+  // mentre dura la immunitat de despres del xoc, el cotxe parpelleja, perque
+  // es vegi que encara no et poden tocar
+  if(crashT<=0&&immuneT>0&&Math.floor(immuneT/110)%2===0)return;
   const px=W/2,py=H-70;
   const wob=crashT>0?Math.sin(crashT/40)*10:0;
   x.save();x.translate(px+wob,py);
