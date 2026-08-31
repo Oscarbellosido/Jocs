@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pole Position Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:94%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:14px;margin-top:10px}
+button{font:16px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:78px;height:50px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#brake{color:#ff5050}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>VOLTA <b id="lap">1/4</b></span><span>TEMPS <b id="time">73</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="brake">FRE</button><button id="right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small>← → / A D · frenar: ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null,engineOsc=null,engineGain=null;
+function aInit(){
+  if(!AC){
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination);
+    engineOsc=AC.createOscillator();engineOsc.type='sawtooth';
+    engineGain=AC.createGain();engineGain.gain.value=0;
+    engineOsc.frequency.value=60;
+    engineOsc.connect(engineGain);engineGain.connect(MG);engineOsc.start();
+  }
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.35,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.2,vol=.3){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndCrash(){noise(.5,.4);tone(120,.4,"square",.3,-90)}
+function sndPass(){tone(1400,.06,"square",.2);setTimeout(()=>tone(1800,.06,"square",.2),50)}
+function sndLap(){[600,800,1000,1300].forEach((f,i)=>setTimeout(()=>tone(f,.1,"square",.26),i*70))}
+function sndOffroad(){noise(.08,.15)}
+function sndCourseDone(){[700,900,1100,1400,1800].forEach((f,i)=>setTimeout(()=>tone(f,.14,"square",.3),i*90))}
+function sndGameOver(){[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*250))}
+function updEngine(speedNorm){
+  if(!engineGain)return;
+  engineGain.gain.value=.05+speedNorm*.09;
+  engineOsc.frequency.value=60+speedNorm*260;
+}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=600,HORIZON=210;
+const ROWS=110,STEP_Z=9,ROAD_W_MAX=920,ROAD_W_MIN=40,CURVE_SCALE=2.1;
+
+// un tomb del circuit (com el Fuji Speedway original): recta, corba dreta,
+// essa esquerra-dreta, i un revolt final tancat abans de la meta
+const SEGMENTS=[
+  {len:900, curve:0},
+  {len:600, curve:1.3},
+  {len:350, curve:0},
+  {len:420, curve:-1.7},
+  {len:420, curve:1.7},
+  {len:350, curve:0},
+  {len:650, curve:2.4},
+  {len:750, curve:0},
+];
+let LAP_LEN=0;const SEG_START=[];
+(function(){let z=0;for(const s of SEGMENTS){SEG_START.push(z);z+=s.len}LAP_LEN=z})();
+function curveAt(z){
+  z=((z%LAP_LEN)+LAP_LEN)%LAP_LEN;
+  for(let i=SEGMENTS.length-1;i>=0;i--) if(z>=SEG_START[i]) return SEGMENTS[i].curve;
+  return 0;
+}
+
+const NUM_LAPS=4, QUALIFY_TIME=73, LAP_TIME=73;
+let score=0,lap=1,mode='qualify',timeLeft=QUALIFY_TIME,paused=false,state='play';
+let playerZ=0,playerX=0,speed=0,crashT=0,offT=0;
+let opponents=[],dist=0;
+const keys={left:false,right:false,brake:false};
+
+const JOC='pole_position';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('lap').textContent=(mode==='qualify'?'CLASS.':lap+'/'+NUM_LAPS);
+  document.getElementById('time').textContent=Math.max(0,Math.ceil(timeLeft));
+  saveBest();
+}
+function addScore(n){score+=n;updateHUD()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function makeOpponents(){
+  opponents=[];
+  const cols=['#ff5050','#50a0ff','#ffd000','#40e070'];
+  for(let i=0;i<6;i++){
+    opponents.push({
+      z:(i+1)*(LAP_LEN/7)+Math.random()*200,
+      lane:(Math.random()<0.5?-1:1)*(0.35+Math.random()*0.4),
+      spd:34+Math.random()*18,
+      col:cols[i%cols.length],
+    });
+  }
+}
+function start(){
+  score=0;lap=1;mode='qualify';timeLeft=QUALIFY_TIME;paused=false;state='play';
+  playerZ=0;playerX=0;speed=0;crashT=0;offT=0;
+  opponents=[];
+  updateHUD();hideMsg();
+  msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps</small>");
+  readyTimer=1500;
+}
+let readyTimer=0;
+
+// ===== FISICA =====
+const MAX_SPEED=100;          // unitats de mon per segon, a fons
+function update(dt){
+  if(paused)return;
+  if(state==='over')return;
+  if(readyTimer>0){readyTimer-=dt;if(readyTimer<=0)hideMsg();return}
+  const s=dt/1000;
+
+  if(crashT>0){
+    crashT-=dt;
+    speed=Math.max(0,speed-60*s);
+  } else {
+    // acceleracio automatica, com l'accelerador sempre a fons; el fre frena
+    const onRoad=Math.abs(playerX)<1.05;
+    const target=keys.brake?0:(onRoad?MAX_SPEED:MAX_SPEED*0.32);
+    const rate=keys.brake?140:(speed<target?55:90);
+    speed+=Math.sign(target-speed)*Math.min(Math.abs(target-speed),rate*s);
+    if(!onRoad){
+      offT+=dt;
+      if(offT>110){offT=0;sndOffroad()}
+    } else offT=0;
+
+    if(keys.left)playerX-=1.6*s*(0.5+speed/MAX_SPEED);
+    if(keys.right)playerX+=1.6*s*(0.5+speed/MAX_SPEED);
+    // la corba t'arrossega si no contra-vires, com a l'original
+    playerX+=curveAt(playerZ)*0.55*s*(speed/MAX_SPEED);
+    playerX=Math.max(-1.6,Math.min(1.6,playerX));
+  }
+  updEngine(Math.min(1,speed/MAX_SPEED));
+
+  const before=playerZ;
+  playerZ+=speed*s;
+  dist+=speed*s;
+  addScore(Math.round(speed*s*0.4));
+
+  // volta completada
+  if(Math.floor(before/LAP_LEN)<Math.floor(playerZ/LAP_LEN)){
+    if(mode==='qualify'){
+      // com mes temps et sobri en acabar la volta, mes rapida ha estat: bonus
+      const bonus=1000+Math.round(timeLeft*30);
+      mode='race';lap=1;timeLeft=LAP_TIME;playerZ=playerZ%LAP_LEN;
+      addScore(bonus);sndLap();
+      makeOpponents();
+      msg("CLASSIFICAT!<br><small>comença la cursa: "+NUM_LAPS+" voltes</small>");readyTimer=1500;
+    } else {
+      playerZ=playerZ%LAP_LEN;
+      if(lap>=NUM_LAPS){
+        addScore(5000+Math.round(timeLeft*20));
+        state='over';sndCourseDone();finalPartida("CURSA ACABADA!");
+        return;
+      }
+      lap++;timeLeft+=LAP_TIME;
+      addScore(1000*lap+Math.round(timeLeft*10));
+      sndLap();updateHUD();
+      msg("VOLTA "+lap);readyTimer=900;
+    }
+  }
+
+  // temps
+  if(mode==='qualify'){
+    timeLeft-=s;
+    if(timeLeft<=0){
+      timeLeft=0;mode='race';lap=1;timeLeft=LAP_TIME;playerZ=0;
+      makeOpponents();
+      msg("NO HAS CLASSIFICAT<br><small>comences igualment: "+NUM_LAPS+" voltes</small>");readyTimer=1500;
+    }
+  } else {
+    timeLeft-=s;
+    if(timeLeft<=0){
+      timeLeft=0;state='over';sndGameOver();finalPartida("TEMPS ESGOTAT!");
+      return;
+    }
+  }
+  updateHUD();
+
+  // adversaris
+  if(mode==='race')for(const o of opponents){
+    o.z+=o.spd*s;
+    const rel=((o.z-playerZ)%LAP_LEN+LAP_LEN)%LAP_LEN;
+    if(o._prevRel!==undefined&&o._prevRel<120&&rel>LAP_LEN-400){
+      addScore(200);sndPass();o.z+=LAP_LEN*0.5;   // torna a apareixer mes endavant
+    }
+    o._prevRel=rel;
+    if(crashT<=0&&rel<70&&Math.abs(playerX-o.lane)<0.38){
+      crashT=900;speed*=0.25;sndCrash();
+    }
+  }
+}
+
+// ===== DIBUIX =====
+function rowGeom(){
+  const rows=[];
+  let curveAccum=0;
+  for(let i=0;i<ROWS;i++){
+    const perc=i/ROWS;
+    const y=H-perc*(H-HORIZON);
+    const roadW=ROAD_W_MAX*Math.pow(1-perc,1.7)+ROAD_W_MIN;
+    const lookZ=playerZ+i*STEP_Z;
+    curveAccum+=curveAt(lookZ)*CURVE_SCALE*(i>0?1:0);
+    const cx=W/2+curveAccum-playerX*(1-perc*0.65)*(ROAD_W_MAX*0.24);
+    rows.push({y,roadW,cx,perc});
+  }
+  return rows;
+}
+function draw(){
+  x.fillStyle='#1a2a4a';x.fillRect(0,0,W,HORIZON);
+  // sol/muntanyes senzilles a l'horitzo
+  x.fillStyle='#2a3f6a';
+  for(let i=0;i<5;i++){x.beginPath();x.moveTo(i*120-20,HORIZON);x.lineTo(i*120+60,HORIZON-50);x.lineTo(i*120+140,HORIZON);x.fill()}
+  const rows=rowGeom();
+  for(let i=ROWS-1;i>=0;i--){
+    const r=rows[i];
+    const alt=Math.floor((playerZ+i*STEP_Z)/40)%2===0;
+    x.fillStyle=alt?'#2f8f3a':'#278431';
+    x.fillRect(0,r.y-3,W,4);
+    const half=r.roadW/2;
+    x.fillStyle=alt?'#555':'#5a5a5a';
+    x.fillRect(r.cx-half,r.y-3,half*2,4);
+    // vorada blanc/vermell
+    const curbW=Math.max(2,half*0.08);
+    x.fillStyle=alt?'#d02020':'#e8e8e8';
+    x.fillRect(r.cx-half-curbW,r.y-3,curbW,4);
+    x.fillRect(r.cx+half-curbW,r.y-3,curbW,4);
+    // linia central discontinua
+    if(alt){x.fillStyle='#f0e030';x.fillRect(r.cx-2,r.y-3,4,4)}
+  }
+  // adversaris
+  if(mode==='race')for(const o of opponents){
+    const rel=((o.z-playerZ)%LAP_LEN+LAP_LEN)%LAP_LEN;
+    if(rel>ROWS*STEP_Z)continue;
+    const ri=Math.max(0,Math.min(ROWS-1,Math.round(rel/STEP_Z)));
+    const r=rows[ri];
+    const w=Math.max(3,26*(1-r.perc)+3);
+    const cx=r.cx+o.lane*(r.roadW*0.24);
+    x.fillStyle=o.col;
+    x.fillRect(cx-w/2,r.y-w*0.6,w,w*0.55);
+    x.fillStyle='#000';
+    x.fillRect(cx-w/2,r.y-w*0.15,w,w*0.15);
+  }
+  drawPlayer();
+  if(crashT>0){
+    x.fillStyle='rgba(255,'+(80+Math.random()*80|0)+',0,'+(crashT/900*0.5)+')';
+    x.fillRect(0,0,W,H);
+  }
+}
+function drawPlayer(){
+  const px=W/2,py=H-70;
+  const wob=crashT>0?Math.sin(crashT/40)*10:0;
+  x.save();x.translate(px+wob,py);
+  x.fillStyle='#e02020';x.fillRect(-22,-8,44,26);
+  x.fillStyle='#111';x.fillRect(-18,-16,36,14);
+  x.fillStyle='#8cf';x.fillRect(-14,-14,28,9);
+  x.fillStyle='#111';x.fillRect(-24,10,8,10);x.fillRect(16,10,8,10);
+  x.restore();
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');bind('brake','brake');
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+  if(e.code==='Space'){e.preventDefault();keys.brake=true}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+  if(e.code==='Space')keys.brake=false;
+});
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(state==='over')start()});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

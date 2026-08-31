@@ -1,6 +1,6 @@
 # Jocs
 
-Divuit jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
+Dinou jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
 llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -27,6 +27,7 @@ mòbil, instal·lat com a aplicació.
 | `galaga.html` | Galaga | 1981 |
 | `tempest.html` | Tempest | 1981 |
 | `dig_dug.html` | Dig Dug | 1982 |
+| `pole_position.html` | Pole Position | 1982 |
 | `qbert.html` | Q*bert | 1982 |
 | `tetris.html` | Tetris | 1984 |
 
