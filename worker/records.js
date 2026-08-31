@@ -33,6 +33,7 @@ const JOCS = {
   defender:        9999999,
   qbert:           9999999,
   tempest:         9999999,
+  galaga:          9999999,
 };
 const TOP = 10;
 

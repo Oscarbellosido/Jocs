@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Galaga Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:13px;gap:6px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:94%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:18px;margin-top:10px}
+button{font:22px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:90px;height:52px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>ETAPA <b id="wave">1</b></span><span>NAUS <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="fire">●</button><button id="right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small>← → / A D · disparar: ESPAI · o arrossega el dit · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== CLASSIC ARCADE SOUND ENGINE =====
+let audioCtx=null, master=null;
+function audioInit(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    master=audioCtx.createGain(); master.gain.value=.12; master.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==="suspended") audioCtx.resume();
+}
+function tone(freq,dur,type="square",vol=.35,slide=0){
+  if(!audioCtx)return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain(), now=audioCtx.currentTime;
+  o.type=type; o.frequency.setValueAtTime(freq,now);
+  if(slide) o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(0.0001,now); g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g); g.connect(master); o.start(now); o.stop(now+dur+.02);
+}
+function noise(dur=.12,vol=.25){
+  if(!audioCtx)return;
+  const n=audioCtx.sampleRate*dur, b=audioCtx.createBuffer(1,n,audioCtx.sampleRate);
+  const d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),now=audioCtx.currentTime;
+  src.buffer=b; g.gain.setValueAtTime(vol,now); g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  src.connect(g);g.connect(master);src.start();src.stop(now+dur);
+}
+function sndShoot(){audioInit();tone(1200,.09,"square",.2,-900)}
+function sndDive(){audioInit();tone(900,.28,"sawtooth",.13,-700)}
+function sndHit(){audioInit();noise(.16,.3);tone(200,.13,"square",.2,-140)}
+function sndBossHit(){audioInit();noise(.1,.25);tone(500,.1,"square",.22,-80)}
+function sndBossKill(){audioInit();[700,500,300].forEach((f,i)=>setTimeout(()=>tone(f,.11,"square",.28),i*60))}
+function sndPlayerHit(){audioInit();noise(.4,.36);tone(220,.1,"sawtooth",.26,-180);setTimeout(()=>tone(90,.32,"square",.28,-50),110)}
+function sndCapture(){audioInit();tone(700,.5,"sawtooth",.22,-600)}
+function sndRescue(){audioInit();[500,700,900,1200].forEach((f,i)=>setTimeout(()=>tone(f,.09,"square",.26),i*60))}
+function sndWave(){audioInit();[392,523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.12,"square",.24),i*95))}
+function sndExtra(){audioInit();[880,1100,1320].forEach((f,i)=>setTimeout(()=>tone(f,.1,"square",.24),i*70))}
+function sndPerfecte(){audioInit();[600,800,1000,1300,1600].forEach((f,i)=>setTimeout(()=>tone(f,.13,"square",.28),i*80))}
+function sndGameOver(){audioInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*250))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=600;
+const COLS=8, SLOT_W=48, FX0=(W-COLS*SLOT_W)/2+SLOT_W/2, FY0=76, ROW_H=32;
+// piramide classica: 4 Boss Galaga a dalt, 6 papallones, 24 abelles
+const FORMATION=[
+  {type:'boss',      cols:[2,3,4,5]},
+  {type:'butterfly', cols:[1,2,3,4,5,6]},
+  {type:'bee',        cols:[0,1,2,3,4,5,6,7]},
+  {type:'bee',        cols:[0,1,2,3,4,5,6,7]},
+  {type:'bee',        cols:[0,1,2,3,4,5,6,7]}
+];
+// punts: en formacio i en picat. El Boss Galaga calen dos trets: el primer
+// nomes el "toca", el segon el mata i dona els punts.
+const PTS={bee:[50,100], butterfly:[80,160], boss:[150,400]};
+const COLORS={bee:'#ffe030', butterfly:'#ff4d7a', boss:'#30ff70'};
+
+let score=0,wave=1,lives=3,state='play',paused=false,nextExtra=20000,pendingDual=false;
+let aliens=[],bullets=[],eBullets=[],booms=[],stars=[];
+let chAliens=[],chQueue=[],chSpawnT=0,chHits=0,chTotal=0;
+let player,sway=0,diveTimer=0,readyTimer=0,captureInFlight=false;
+const keys={left:false,right:false,fire:false};
+
+const JOC='galaga';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('wave').textContent=wave;
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  if(score>=nextExtra){lives++;sndExtra();nextExtra+=70000}
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function slotX(col){return FX0+col*SLOT_W}
+function slotY(row){return FY0+row*ROW_H}
+// cada nau entra volant des d'un costat en una corba, com a l'original, en
+// comptes d'apareixer ja formada
+function makeFormation(){
+  aliens=[];
+  let i=0;
+  FORMATION.forEach((r,row)=>r.cols.forEach(col=>{
+    const side=col<COLS/2?-1:1;
+    const x0=side<0?-40:W+40, y0=-50-Math.random()*140;
+    const tx=slotX(col), ty=slotY(row);
+    aliens.push({type:r.type,row,col,
+      x:x0,y:y0,x0,y0,tx,ty,
+      ctrlX:side*130,ctrlY:H*0.55,             // punt de control de la corba d'entrada
+      st:'enter', p:0, delay:i*70, dur:1500+Math.random()*300,
+      hp:r.type==='boss'?2:1, captive:false,
+      ang:0,t:0,stage:0,turn:0,leader:null,shootT:0,frame:0});
+    i++;
+  }));
+}
+// la nau entra volant en una corba (Bezier) des del costat cap a la seva
+// posicio de la formacio, esglaonades perque no arribin totes de cop
+function updateEnter(a,dt){
+  if(a.delay>0){a.delay-=dt;return}
+  a.p=Math.min(1,a.p+dt/a.dur);
+  const p=a.p,q=1-p;
+  a.x=q*q*a.x0+2*q*p*a.ctrlX+p*p*a.tx;
+  a.y=q*q*a.y0+2*q*p*a.ctrlY+p*p*a.ty;
+  if(a.p>=1){a.st='form';a.x=a.tx;a.y=a.ty}
+}
+function makeStars(){
+  stars=[];
+  for(let i=0;i<70;i++)stars.push({x:Math.random()*W,y:Math.random()*H,
+    v:0.01+Math.random()*0.045,tw:Math.random()*2000,c:['#fff','#8cf','#f8c','#ff8'][Math.floor(Math.random()*4)]});
+}
+function resetPlayer(){
+  const dual=(player&&player.dual)||pendingDual;
+  pendingDual=false;
+  const w=dual?46:26;
+  player={x:W/2-w/2,y:H-46,w,h:16,cool:0,dual,captured:false};
+}
+function startWave(){
+  if(wave%4===3){startChallenge();return}
+  makeFormation();bullets=[];eBullets=[];booms=[];
+  diveTimer=2000;sway=0;state='play';captureInFlight=false;
+  updateHUD();sndWave();
+  msg("ETAPA "+wave);readyTimer=1300;
+}
+function start(){
+  score=0;wave=1;lives=3;nextExtra=20000;paused=false;pendingDual=false;
+  player=null;resetPlayer();makeStars();startWave();
+}
+
+// ===== TRETS =====
+function shoot(){
+  if(state!=='play'&&state!=='challenge')return;
+  if(paused||player.captured)return;
+  const max=player.dual?2:1;
+  if(bullets.length>=max||player.cool>0)return;
+  if(player.dual){
+    bullets.push({x:player.x+8,y:player.y-10,w:2,h:11});
+    bullets.push({x:player.x+player.w-10,y:player.y-10,w:2,h:11});
+  } else {
+    bullets.push({x:player.x+player.w/2-1,y:player.y-10,w:2,h:11});
+  }
+  player.cool=90;sndShoot();
+}
+function boom(bx,by,big){booms.push({x:bx,y:by,t:0,big:big})}
+
+// ===== PICATS =====
+function formationAliens(){return aliens.filter(a=>a.st==='form')}
+function anyCaptive(){return aliens.some(a=>a.captive)}
+function startDive(){
+  const cand=formationAliens();
+  if(!cand.length)return;
+  // si hi ha un Boss Galaga lliure i cap intent de captura en marxa, de tant
+  // en tant prova de raptar la teva nau (nomes si vas amb la nau sola)
+  const bosses=cand.filter(a=>a.type==='boss'&&!a.captive);
+  if(!player.dual&&!captureInFlight&&bosses.length&&Math.random()<0.3){
+    const a=bosses[Math.floor(Math.random()*bosses.length)];
+    launch(a,null);a.captureAttempt=true;captureInFlight=true;sndDive();return;
+  }
+  const a=cand[Math.floor(Math.random()*cand.length)];
+  launch(a,null);
+  if(a.type==='boss'){
+    // el Boss Galaga baixa escortat per dues abelles, com a l'original
+    const esc=aliens.filter(e=>e.st==='form'&&e.type==='bee')
+      .sort((p,q)=>Math.abs(p.x-a.x)-Math.abs(q.x-a.x)).slice(0,2);
+    esc.forEach((e,i)=>{launch(e,a);e.escSide=i===0?-1:1;e.t=-160*(i+1)});
+    a.escorts=esc;
+  }
+  sndDive();
+}
+function launch(a,leader){
+  a.st='dive';a.t=0;a.stage=0;a.ang=-Math.PI/2;
+  a.turn=(a.x<W/2?1:-1)*(3.2+Math.random()*1.2)/1000;
+  a.leader=leader||null;
+  a.speed=0.15+wave*0.01;
+  a.shootT=500+Math.random()*700;
+}
+function updateDiver(a,dt){
+  a.t+=dt;
+  if(a.t<0)return;
+  if(a.stage===0){
+    a.ang+=a.turn*dt;
+    a.x+=Math.cos(a.ang)*a.speed*dt;
+    a.y+=Math.sin(a.ang)*a.speed*dt;
+    if(a.t>520)a.stage=1;
+    return;
+  }
+  if(a.stage===1){
+    if(a.captureAttempt){
+      // s'atura sobre teu i obre el raig captor
+      const ty=H-210;
+      if(a.y<ty){a.x+=Math.sign(player.x+player.w/2-a.x)*0.1*dt;a.y+=0.15*dt;return}
+      a.stage='beam';a.beamT=1100;return;
+    }
+    const aimX=(a.leader?a.leader.x+a.escSide*22:player.x+player.w/2)+Math.sin(a.t/280)*70;
+    let d=Math.atan2(H+60-a.y,aimX-a.x)-a.ang;
+    while(d>Math.PI)d-=2*Math.PI;
+    while(d<-Math.PI)d+=2*Math.PI;
+    const max=0.0035*dt;
+    a.ang+=Math.max(-max,Math.min(max,d));
+    a.x+=Math.cos(a.ang)*a.speed*dt;
+    a.y+=Math.sin(a.ang)*a.speed*dt;
+    a.shootT-=dt;
+    if(a.shootT<=0&&a.y<H-120&&a.y>40){
+      eBullets.push({x:a.x,y:a.y+8,vx:0,vy:0.24});
+      a.shootT=700+Math.random()*900;
+    }
+    if(a.y>H+24){a.stage=2;a.y=-24;a.x=slotX(a.col)}
+    if(a.x<-30)a.x=W+28; else if(a.x>W+30)a.x=-28;
+    return;
+  }
+  if(a.stage==='beam'){
+    a.beamT-=dt;
+    if(!player.captured&&!player.dual){
+      const px=player.x+player.w/2;
+      if(Math.abs(px-a.x)<20){captura(a);return}
+    }
+    if(a.beamT<=0){a.captureAttempt=false;captureInFlight=false;a.stage=1;a.t=0}
+    return;
+  }
+  // stage 2: torna a la seva posicio de la formacio
+  const tx=slotX(a.col)+swayX(),ty=slotY(a.row);
+  const dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy);
+  if(d<3){a.st='form';a.leader=null;return}
+  const s=Math.min(0.25*dt,d);
+  a.x+=dx/d*s;a.y+=dy/d*s;
+}
+function captura(boss){
+  boss.captureAttempt=false;boss.captive=true;boss.stage=2;boss.leader=null;
+  captureInFlight=false;
+  sndCapture();
+  player.captured=true;
+  lives--;updateHUD();
+  if(lives<=0){state='over';sndGameOver();finalPartida("NAU CAPTURADA!");return}
+  setTimeout(()=>{resetPlayer();msg("PREPARA'T");readyTimer=1300},700);
+}
+function swayX(){return Math.sin(sway)*13}
+
+function alienValue(a){
+  if(a.st==='form')return PTS[a.type][0];
+  return PTS[a.type][1];
+}
+function hit(r1,r2){return r1.x<r2.x+r2.w&&r1.x+r1.w>r2.x&&r1.y<r2.y+r2.h&&r1.y+r1.h>r2.y}
+function box(a){return {x:a.x-10,y:a.y-8,w:20,h:16}}
+
+// ===== ETAPA DE BONUS =====
+// A cada quarta etapa (3, 7, 11...) hi ha una fase sense atac: els enemics
+// nomes travessen la pantalla en formacions i cal encertar-los tots.
+function startChallenge(){
+  state='challenge';chAliens=[];chQueue=[];chHits=0;chTotal=0;
+  bullets=[];eBullets=[];booms=[];
+  const tipus=['bee','bee','butterfly','bee'];
+  for(let f=0;f<4;f++){
+    const dir=f%2===0?1:-1;
+    const baseY=120+f*70;
+    for(let i=0;i<8;i++){
+      chQueue.push({t:'schedule',at:f*900+i*110,dir,baseY,tipus:tipus[f],phase:i*90});
+      chTotal++;
+    }
+  }
+  chQueue.sort((p,q)=>p.at-q.at);
+  updateHUD();sndWave();
+  msg("ETAPA DE BONUS "+wave);readyTimer=1300;
+}
+function updateChallenge(dt){
+  chSpawnT+=dt;
+  while(chQueue.length&&chQueue[0].at<=chSpawnT){
+    const s=chQueue.shift();
+    chAliens.push({type:s.tipus,dir:s.dir,baseY:s.baseY,phase:s.phase,
+      x:s.dir>0?-40:W+40,t:0,frame:0});
+  }
+  for(const a of chAliens){
+    a.t+=dt;
+    a.x+=a.dir*0.16*dt;
+    a.y=a.baseY+Math.sin((a.t+a.phase)/260)*40;
+    a.frame=Math.floor(performance.now()/220)%2;
+  }
+  chAliens=chAliens.filter(a=>a.x>-50&&a.x<W+50);
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    for(let j=chAliens.length-1;j>=0;j--){
+      const a=chAliens[j];
+      if(hit(b,box(a))){
+        addScore(100);boom(a.x,a.y,false);sndHit();
+        chAliens.splice(j,1);bullets.splice(i,1);chHits++;
+        break;
+      }
+    }
+  }
+  if(!chQueue.length&&!chAliens.length&&!booms.length){
+    const perfecte=chHits>=chTotal;
+    const bonus=chHits*100+(perfecte?10000:0);
+    addScore(bonus);
+    if(perfecte)sndPerfecte();
+    msg((perfecte?"PERFECTE!":"ETAPA COMPLETA")+"<br><small>"+chHits+"/"+chTotal+" · bonus "+bonus+"</small>");
+    readyTimer=1600;
+    setTimeout(()=>{wave++;startWave()},1600);
+    state='challenge-fi';
+  }
+}
+
+function update(dt){
+  for(const s of stars){s.y+=s.v*dt;if(s.y>H){s.y=0;s.x=Math.random()*W}}
+  if(state==='over'||paused)return;
+  if(readyTimer>0){readyTimer-=dt;if(readyTimer<=0)hideMsg();if(state!=='challenge'&&state!=='challenge-fi')return}
+
+  if(!player.captured){
+    if(keys.left)player.x-=0.30*dt;
+    if(keys.right)player.x+=0.30*dt;
+    player.x=Math.max(6,Math.min(W-player.w-6,player.x));
+  }
+  player.cool-=dt;
+  if(keys.fire)shoot();
+
+  bullets.forEach(b=>b.y-=0.72*dt);
+  bullets=bullets.filter(b=>b.y>-14);
+
+  if(state==='challenge'||state==='challenge-fi'){
+    booms.forEach(b=>b.t+=dt);booms=booms.filter(b=>b.t<420);
+    if(state==='challenge')updateChallenge(dt);
+    return;
+  }
+
+  sway+=dt/900;
+  const sx=swayX();
+  for(const a of aliens){
+    if(a.st==='enter')updateEnter(a,dt);
+    else if(a.st==='form'){a.x=slotX(a.col)+sx;a.y=slotY(a.row)}
+    else updateDiver(a,dt);
+    a.frame=Math.floor(performance.now()/220)%2;
+  }
+
+  diveTimer-=dt;
+  if(diveTimer<=0&&!player.captured){
+    startDive();
+    const left=aliens.length;
+    diveTimer=Math.max(550,2300-wave*130-(34-left)*22);
+  }
+
+  eBullets.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt});
+  eBullets=eBullets.filter(b=>b.y<H+10);
+
+  // el teu tret contra els enemics
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    for(let j=aliens.length-1;j>=0;j--){
+      const a=aliens[j];
+      if(hit(b,box(a))){
+        bullets.splice(i,1);
+        a.hp--;
+        if(a.hp>0){sndBossHit();break}    // el primer tret nomes el "toca"
+        addScore(alienValue(a));
+        boom(a.x,a.y,a.type==='boss');
+        const eraCaptiu=a.captive;
+        aliens.forEach(e=>{if(e.leader===a)e.leader=null});
+        aliens.splice(j,1);
+        if(a.type==='boss')sndBossKill();else sndHit();
+        // si en aquell moment encara no havies reaparegut de la captura, el
+        // rescat s'aplica quan ho facis (resetPlayer mira pendingDual)
+        if(eraCaptiu&&!player.dual){
+          sndRescue();
+          if(player.captured)pendingDual=true;
+          else{
+            player.dual=true;
+            const w=46;player.x=Math.max(6,Math.min(W-w-6,player.x-(w-player.w)/2));player.w=w;
+          }
+        }
+        break;
+      }
+    }
+  }
+  // els seus trets i els xocs contra tu
+  if(!player.captured){
+    const pbox={x:player.x,y:player.y,w:player.w,h:player.h};
+    let dead=false,pilotDoble=false;
+    for(let i=eBullets.length-1;i>=0;i--){
+      const b=eBullets[i];
+      if(hit({x:b.x-2,y:b.y,w:4,h:9},pbox)){eBullets.splice(i,1);dead=true;break}
+    }
+    if(!dead)for(const a of aliens){
+      if(a.st==='dive'&&a.t>0&&a.stage!=='beam'&&hit(box(a),pbox)){dead=true;boom(a.x,a.y,false);
+        aliens.splice(aliens.indexOf(a),1);break}
+    }
+    if(dead&&player.dual){
+      // si vas amb doble nau, el primer cop nomes et deixa amb una
+      player.dual=false;player.w=26;player.x+=10;
+      sndPlayerHit();boom(player.x+13,player.y+8,false);
+      eBullets=[];
+    } else if(dead){
+      lives--;updateHUD();boom(player.x+13,player.y+8,true);sndPlayerHit();
+      eBullets=[];
+      if(lives<=0){state='over';sndGameOver();finalPartida("GAME OVER")}
+      else{resetPlayer();aliens.forEach(a=>{if(a.st==='dive'&&!a.captureAttempt){a.st='form';a.leader=null}});
+        msg("PREPARA'T");readyTimer=1400}
+    }
+  }
+
+  booms.forEach(b=>b.t+=dt);
+  booms=booms.filter(b=>b.t<420);
+
+  if(!aliens.length&&!booms.length&&!player.captured){wave++;startWave()}
+}
+
+// ===== DIBUIX =====
+function drawStars(){
+  const now=performance.now();
+  for(const s of stars){
+    if(Math.sin((now+s.tw)/420)>-.3){x.fillStyle=s.c;x.fillRect(s.x|0,s.y|0,2,2)}
+  }
+}
+const SPR={
+  bee:[["  ##  ","  ##  "," #### ","######","# ## #","#    #"],
+       ["  ##  ","  ##  "," #### ","######"," #  # ","#    #"]],
+  butterfly:[["   ##   ","  ####  "," ###### ","## ## ##","########"," #    # "],
+             ["   ##   ","  ####  "," ###### ","## ## ##","########","#      #"]],
+  boss:[["   ##   ","  ####  "," ###### ","########","## ## ##","#  ##  #"],
+        ["   ##   ","  ####  "," ###### ","########"," # ## # ","#  ##  #"]]
+};
+function drawAlien(a){
+  const sp=SPR[a.type][a.frame];
+  const px=2, w=sp[0].length*px, h=sp.length*px;
+  x.fillStyle=a.hp!==undefined&&a.hp<(a.type==='boss'?2:1)?'#0a4020':COLORS[a.type];
+  const ox=a.x-w/2, oy=a.y-h/2;
+  const rot=a.st==='dive'&&a.t>0&&a.stage!=='beam'&&a.stage!==2?a.ang+Math.PI/2:0;
+  if(rot){x.save();x.translate(a.x,a.y);x.rotate(rot);x.translate(-a.x,-a.y)}
+  sp.forEach((row,r)=>[...row].forEach((ch,cc)=>{
+    if(ch==='#')x.fillRect(Math.round(ox+cc*px),Math.round(oy+r*px),px,px);
+  }));
+  if(a.type==='boss'){
+    x.fillStyle='#ff2020';
+    x.fillRect(Math.round(ox),Math.round(oy+6),4,4);
+    x.fillRect(Math.round(ox+w-4),Math.round(oy+6),4,4);
+  }
+  if(rot)x.restore();
+  if(a.captive){    // la nau que li vas deixar penja per sota
+    x.fillStyle='#fff';
+    x.fillRect(Math.round(a.x-4),Math.round(a.y+h/2+2),8,4);
+  }
+  if(a.stage==='beam'){
+    const bt=a.beamT/1100;
+    x.fillStyle='rgba(120,220,255,'+(0.25+0.2*Math.sin(performance.now()/60))+')';
+    x.beginPath();
+    x.moveTo(a.x-6,a.y+8);x.lineTo(a.x+6,a.y+8);
+    x.lineTo(a.x+34,H-46);x.lineTo(a.x-34,H-46);
+    x.closePath();x.fill();
+  }
+}
+function drawChAlien(a){
+  const sp=SPR[a.type][a.frame];
+  const px=2, w=sp[0].length*px, h=sp.length*px;
+  x.fillStyle=COLORS[a.type];
+  const ox=a.x-w/2, oy=a.y-h/2;
+  sp.forEach((row,r)=>[...row].forEach((ch,cc)=>{
+    if(ch==='#')x.fillRect(Math.round(ox+cc*px),Math.round(oy+r*px),px,px);
+  }));
+}
+function drawPlayer(){
+  if(player.captured)return;
+  const draw1=(px)=>{
+    x.fillStyle='#fff';x.fillRect(px+11,player.y,4,6);
+    x.fillStyle='#3080ff';x.fillRect(px+8,player.y+6,10,4);
+    x.fillRect(px,player.y+10,26,4);
+    x.fillStyle='#fff';x.fillRect(px+2,player.y+10,4,4);x.fillRect(px+20,player.y+10,4,4);
+  };
+  if(player.dual){draw1(player.x-2);draw1(player.x+player.w-24)}
+  else draw1(player.x);
+}
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  drawStars();
+  if(state==='challenge'||state==='challenge-fi'){
+    for(const a of chAliens)drawChAlien(a);
+  } else {
+    for(const a of aliens)drawAlien(a);
+  }
+  x.fillStyle='#fff';bullets.forEach(b=>x.fillRect(b.x,b.y,b.w,b.h));
+  x.fillStyle='#ffe060';eBullets.forEach(b=>x.fillRect(b.x-1,b.y,3,8));
+  if(state!=='over')drawPlayer();
+  for(const b of booms){
+    const k=b.t/420, r=(b.big?22:14)*(0.4+k);
+    x.strokeStyle=['#fff','#ffd000','#ff5000'][Math.floor(b.t/70)%3];
+    x.lineWidth=2;x.globalAlpha=1-k;
+    x.beginPath();x.arc(b.x,b.y,r,0,6.283);x.stroke();
+    x.globalAlpha=1;
+  }
+  x.fillStyle='#ff3030';
+  for(let i=0;i<Math.min(lives-1,5);i++)x.fillRect(8+i*16,H-14,12,4);
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();audioInit();keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');
+document.getElementById('fire').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();audioInit();
+  if(state==='over'){start();return}
+  keys.fire=true;shoot();
+});
+document.getElementById('fire').addEventListener('pointerup',()=>keys.fire=false);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+let dragging=false;
+function movePlayer(ev){
+  const r=c.getBoundingClientRect();
+  const px=(ev.clientX-r.left)*W/r.width;
+  player.x=Math.max(6,Math.min(W-player.w-6,px-player.w/2));
+}
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();audioInit();
+  if(state==='over'){start();return}
+  dragging=true;movePlayer(ev);shoot();
+});
+c.addEventListener('pointermove',ev=>{if(dragging||ev.pointerType==='mouse'){ev.preventDefault();movePlayer(ev)}});
+c.addEventListener('pointerup',()=>dragging=false);
+c.addEventListener('pointercancel',()=>dragging=false);
+
+document.addEventListener('keydown',e=>{
+  audioInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+  if(e.code==='Space'){e.preventDefault();keys.fire=true;shoot()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+  if(e.code==='Space')keys.fire=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){audioInit();start()}});
+
+start();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

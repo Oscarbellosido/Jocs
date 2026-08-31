@@ -1,7 +1,7 @@
 {
   "name": "Jocs Clàssics",
   "short_name": "Jocs",
-  "description": "Disset clàssics dels salons recreatius: Pong, Breakout, Space Invaders, Asteroid Belt, Galaxian, Comecocos, Missile Command, Battlezone, Crazy Climber, Centipede, Frogger, Tetris, Donkey Kong, Dig Dug, Defender, Q*bert i Tempest",
+  "description": "Divuit clàssics dels salons recreatius: Pong, Breakout, Space Invaders, Asteroid Belt, Galaxian, Comecocos, Missile Command, Battlezone, Crazy Climber, Centipede, Frogger, Tetris, Donkey Kong, Galaga, Dig Dug, Defender, Q*bert i Tempest",
   "start_url": "/Jocs/",
   "display": "standalone",
   "background_color": "#0b0e1a",
