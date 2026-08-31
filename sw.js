@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v43';
+const CACHE = 'jocs-v44';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -45,8 +45,13 @@ const FILES = [
   '/Jocs/icon-512.png'
 ];
 
+// El "cache: reload" es important: sense ell, en desar-se els fitxers d'una
+// versio nova el navegador els hi podia posar des de la seva propia memoria,
+// o sigui la versio VELLA, i et quedaves amb el joc antic encara que la
+// versio hagues canviat. Aixi els demana sempre de nou.
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
+  e.waitUntil(caches.open(CACHE).then(
+    c => c.addAll(FILES.map(u => new Request(u, { cache: 'reload' })))));
   self.skipWaiting();
 });
 

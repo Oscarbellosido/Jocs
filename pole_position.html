@@ -11,9 +11,15 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #hud{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
 #screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:94%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
-#controls{flex:none;display:flex;gap:14px;margin-top:10px}
+/* El fre NO pot anar al mig, on tots els altres jocs tenen el boto que
+   prems sense parar: prement-lo per costum el cotxe es quedava clavat i
+   se t'acabava el temps sense haver arribat enlloc. Va a l'altra punta,
+   lluny de les fletxes, petit i d'un altre color (la mateixa lliço que
+   l'HIPERESPAI de l'Asteroids). */
+#controls{flex:none;width:94%;display:flex;gap:12px;margin-top:10px;align-items:center}
 button{font:16px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:78px;height:50px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#brake{color:#ff5050}
+#buit{flex:1 1 auto}
+#brake{color:#ff5050;font-size:13px;width:60px;height:44px;flex:none}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
 #msg small{display:block;margin-top:8px;font-size:13px}
 small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;padding:4px 0 6px}
@@ -25,10 +31,10 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span id="lapcell"><b>CLASSIF.</b></span><span>TEMPS <b id="time">73</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="600"></canvas></div>
   <div id="controls">
-    <button id="left">◀</button><button id="brake">FRE</button><button id="right">▶</button>
+    <button id="left">◀</button><button id="right">▶</button><span id="buit"></span><button id="brake">FRE</button>
   </div>
   <div id="msg"></div>
-  <small>← → / A D · frenar: ESPAI · pausa: P</small>
+  <small>l'accelerador va sol: només has de girar · ← → / A D · frenar: ESPAI · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -155,7 +161,7 @@ function start(){
   playerZ=0;playerX=0;speed=0;crashT=0;offT=0;immuneT=0;dist=0;
   opponents=[];
   updateHUD();hideMsg();
-  msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps</small>");
+  msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps<br>l'accelerador va sol: només has de girar</small>");
   readyTimer=1500;
 }
 let readyTimer=0;
@@ -176,7 +182,10 @@ function update(dt){
   } else {
     // acceleracio automatica, com l'accelerador sempre a fons; el fre frena
     const onRoad=Math.abs(playerX)<1.05;
-    const target=keys.brake?0:(onRoad?MAX_SPEED:MAX_SPEED*0.30);
+    // Fora de la carretera hi anaves al 30%, o sigui 88 km/h: passant-hi
+    // mitja volta ja eren 86 segons i el temps s'esgotava sense haver arribat
+    // enlloc. Al 45% segueix castigant, pero se'n pot sortir.
+    const target=keys.brake?0:(onRoad?MAX_SPEED:MAX_SPEED*0.45);
     const rate=keys.brake?520:(speed<target?150:340);
     speed+=Math.sign(target-speed)*Math.min(Math.abs(target-speed),rate*s);
     if(!onRoad){
@@ -184,8 +193,10 @@ function update(dt){
       if(offT>110){offT=0;sndOffroad()}
     } else offT=0;
 
-    if(keys.left)playerX-=1.6*s*(0.5+speed/MAX_SPEED);
-    if(keys.right)playerX+=1.6*s*(0.5+speed/MAX_SPEED);
+    // el volant, una mica mes viu: amb el dit al mobil costava de corregir
+    // dins del revolt tancat, on la corba ja t'arrossega
+    if(keys.left)playerX-=1.9*s*(0.5+speed/MAX_SPEED);
+    if(keys.right)playerX+=1.9*s*(0.5+speed/MAX_SPEED);
     // la corba t'arrossega si no contra-vires, com a l'original
     playerX+=curveAt(playerZ)*0.55*s*(speed/MAX_SPEED);
     playerX=Math.max(-1.6,Math.min(1.6,playerX));
