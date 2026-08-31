@@ -100,6 +100,12 @@ cantonada de dalt de les fletxes: totes dues coses fan nosa mentre jugues,
 perquè queden **dins del camp de joc**. Els controls han d'anar tots a la
 mateixa alçada, a sota.
 
+Hi vam tornar a caure amb el Pole Position: el FRE al mig de la filera, que és
+**on tots els altres jocs tenen el botó que prems sense parar**. Prement-lo per
+costum el cotxe es quedava clavat i saltava TEMPS ESGOTAT sense haver arribat
+enlloc. El lloc del mig és el de l'acció que es fa sempre; qualsevol cosa que
+et perjudiqui va a l'altra punta i més petita.
+
 **4. Els botons han de cabre a 320 px.** Cinc botons de 76 px no hi caben. Abans
 de donar per bona una fila de controls, comprovar-la a 320, 360 i 390 px.
 
