@@ -145,6 +145,33 @@
 <script src="records.js"></script>
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// En tornar d'un joc, la portada et deixava sempre a dalt de tot: amb vint
+// jocs, per tornar a jugar a un del final calia baixar tota la llista un
+// altre cop. Ara es recorda quin has obert i la portada s'hi posa.
+// Es guarda a sessionStorage (mentre l'app estigui oberta), no al disc:
+// obrint l'aplicacio de nou vols començar per dalt.
+(function(){
+  const CLAU='jocs-ultim';
+  const enllacos=[...document.querySelectorAll('a.btn')];
+  enllacos.forEach(a=>a.addEventListener('click',()=>{
+    try{sessionStorage.setItem(CLAU,a.getAttribute('href'))}catch(e){}
+  }));
+  let href=null;
+  try{href=sessionStorage.getItem(CLAU)}catch(e){}
+  if(!href)return;
+  const fitxa=enllacos.find(a=>a.getAttribute('href')===href);
+  if(!fitxa)return;
+  const hiVa=()=>fitxa.scrollIntoView({block:'center'});
+  hiVa();
+  // per si les imatges encara no hi eren i tot s'ha mogut, ho torna a
+  // ajustar en acabar de carregar, pero no si ja has tocat la pantalla
+  let hasTocat=false;
+  ['wheel','touchstart','keydown'].forEach(ev=>
+    addEventListener(ev,()=>hasTocat=true,{passive:true,once:true}));
+  addEventListener('load',()=>{if(!hasTocat)hiVa()});
+})();
+
 // qui mana a cada joc, en una sola consulta
 Records.tots().then(taules => {
   if (!taules) return;                       // sense connexio: les fitxes es queden netes
