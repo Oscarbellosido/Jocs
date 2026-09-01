@@ -19,7 +19,7 @@ const ORDRE = [
   ['comecocos', 1980], ['missile_command', 1980], ['crazy_climber', 1980],
   ['battlezone', 1980], ['defender', 1980],
   ['centipede', 1981], ['frogger', 1981], ['donkey_kong', 1981], ['galaga', 1981], ['tempest', 1981],
-  ['dig_dug', 1982], ['pole_position', 1982], ['qbert', 1982], ['tetris', 1984],
+  ['dig_dug', 1982], ['moon_patrol', 1982], ['pole_position', 1982], ['qbert', 1982], ['tetris', 1984],
 ];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 

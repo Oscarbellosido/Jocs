@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Moon Patrol Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#salta{color:#c080ff}
+#foc{color:#ffd000}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>DIST <b id="dist">0</b></span><span>NAUS <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="270"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="right">▶</button><button id="salta">▲ SALTA</button><button id="foc">● FOC</button>
+  </div>
+  <div id="msg"></div>
+  <small>← alenteix · → accelera · salta els clots, dispara les roques · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.35,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.15,vol=.3){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndJump(){aInit();tone(400,.18,"square",.2,220)}
+function sndShoot(){aInit();tone(900,.06,"square",.16,-300)}
+function sndBoom(){aInit();noise(.14,.28);tone(180,.12,"square",.2,-100)}
+function sndCrash(){aInit();noise(.5,.4);tone(120,.4,"sawtooth",.3,-90)}
+function sndCheckpoint(){aInit();[600,800,1000,1300].forEach((f,i)=>setTimeout(()=>tone(f,.09,"square",.26),i*60))}
+function sndExtra(){aInit();[880,1100,1320].forEach((f,i)=>setTimeout(()=>tone(f,.1,"square",.24),i*70))}
+function sndGameOver(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*250))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=270,GROUND_Y=196,BUGGY_X=96;
+const SPEED_MIN=140,SPEED_MAX=420,ACCEL=220;
+const JUMP_DUR=620,JUMP_H=68;
+const CHECKPOINT_DIST=3200;
+
+let score=0,lives=3,state='play',paused=false,nextExtra=20000;
+let playerZ=0,speed=220,jumpT=null,checkpoint=0,nextCheckpoint=CHECKPOINT_DIST;
+let obstacles=[],skyEnemies=[],bullets=[],diagBullets=[],eBullets=[],bombs=[],booms=[],stars=[];
+let nextObstacleX=600,nextSkyT=1800,cool=0,invulnT=0;
+const keys={left:false,right:false,fire:false};
+const JOC='moon_patrol';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('dist').textContent=Math.floor(playerZ/10)+'m';
+  document.getElementById('lives').textContent=lives;
+  saveBest();
+}
+function addScore(n){
+  score+=n;
+  if(score>=nextExtra){lives++;sndExtra();nextExtra+=40000}
+  updateHUD();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== PALETES: cada control de pas canvia una mica el paisatge =====
+const PALETES=[
+  {sky:'#05041a',hill:'#241a3a',ground:'#3a2a1a'},
+  {sky:'#0a0326',hill:'#2a1440',ground:'#332018'},
+  {sky:'#000814',hill:'#152840',ground:'#28241a'},
+  {sky:'#140314',hill:'#3a1838',ground:'#301c22'},
+];
+function paleta(){return PALETES[checkpoint%PALETES.length]}
+
+function makeStars(){
+  stars=[];
+  for(let i=0;i<50;i++)stars.push({x:Math.random()*W,y:Math.random()*(GROUND_Y-40),tw:Math.random()*2000});
+}
+
+// ===== TERRENY =====
+// Els clots nomes es poden saltar (no es poden disparar). Les roques nomes
+// es poden disparar (saltar no les esquiva, son massa altes). Les mines
+// valen totes dues coses. Sempre hi ha marge entre obstacles perque mai
+// calgui decidir dues coses alhora.
+function afegeixObstacle(){
+  const tipus=['crater','rock','rock','mine'][Math.floor(Math.random()*4)];
+  const w=tipus==='crater'?40+Math.random()*70:22;
+  obstacles.push({x:nextObstacleX,w,tipus,viu:true});
+  nextObstacleX+=240+Math.random()*260;
+}
+function afegeixEnemicTerra(){
+  obstacles.push({x:nextObstacleX,w:26,tipus:'buggy',viu:true,shootT:900+Math.random()*700});
+  nextObstacleX+=240+Math.random()*260;
+}
+function afegeixSaucer(){
+  skyEnemies.push({x:playerZ+W+40,y:30+Math.random()*90,vx:-(40+Math.random()*40),bombT:900+Math.random()*900,viu:true});
+}
+
+function resetPlayer(){playerZ=0;speed=220;jumpT=null;invulnT=1200}
+function start(){
+  score=0;lives=3;nextExtra=20000;paused=false;state='play';
+  checkpoint=0;nextCheckpoint=CHECKPOINT_DIST;
+  obstacles=[];skyEnemies=[];bullets=[];diagBullets=[];eBullets=[];bombs=[];booms=[];
+  nextObstacleX=600;nextSkyT=1800;cool=0;
+  resetPlayer();makeStars();updateHUD();hideMsg();
+}
+
+// ===== SALT =====
+function alcadaSalt(){
+  if(jumpT===null)return 0;
+  const p=jumpT/JUMP_DUR;
+  return Math.sin(Math.min(1,p)*Math.PI)*JUMP_H;
+}
+function saltant(){return jumpT!==null}
+
+// ===== TRETS =====
+function shoot(){
+  if(cool>0)return;
+  cool=230;
+  // la velocitat del tret es suma a la del cotxe en el moment de disparar:
+  // si no, a velocitat maxima el tret gairebe no avança per davant teu
+  bullets.push({x:playerZ+BUGGY_X+18,y:GROUND_Y-8-alcadaSalt(),vx:speed+420});
+  diagBullets.push({x:playerZ+BUGGY_X+14,y:GROUND_Y-14-alcadaSalt(),vx:speed+260,vy:-340});
+  sndShoot();
+}
+function boom(sx,sy,big){booms.push({x:sx,y:sy,t:0,big:big})}
+
+function crash(){
+  if(invulnT>0||state!=='play')return;
+  lives--;updateHUD();sndCrash();
+  boom(BUGGY_X,GROUND_Y-20-alcadaSalt(),true);
+  if(lives<=0){state='over';sndGameOver();finalPartida("GAME OVER");return}
+  jumpT=null;invulnT=1600;
+  eBullets=[];bombs=[];
+  msg("PREPARA'T");readyTimer=1200;
+}
+
+let readyTimer=0;
+function update(dt){
+  if(state==='over'||paused)return;
+  if(readyTimer>0){readyTimer-=dt;if(readyTimer<=0)hideMsg();return}
+  const s=dt/1000;
+
+  if(keys.left)speed=Math.max(SPEED_MIN,speed-ACCEL*s);
+  if(keys.right)speed=Math.min(SPEED_MAX,speed+ACCEL*s);
+  playerZ+=speed*s;
+  cool-=dt;
+  if(invulnT>0)invulnT-=dt;
+  if(keys.fire)shoot();
+
+  if(jumpT!==null){jumpT+=dt;if(jumpT>=JUMP_DUR)jumpT=null}
+
+  // distancia i controls de pas
+  if(playerZ>=nextCheckpoint){
+    checkpoint++;nextCheckpoint+=CHECKPOINT_DIST;
+    addScore(500*checkpoint);sndCheckpoint();
+    msg("CONTROL "+checkpoint+"!<br><small>+"+(500*checkpoint)+" punts</small>");readyTimer=1100;
+  }
+
+  // generar terreny i cel per endavant
+  while(nextObstacleX<playerZ+900){
+    Math.random()<0.22?afegeixEnemicTerra():afegeixObstacle();
+  }
+  nextSkyT-=dt;
+  if(nextSkyT<=0){afegeixSaucer();nextSkyT=2600+Math.random()*1800}
+
+  // xoc amb el terreny
+  const bx=playerZ+BUGGY_X,bw=30;
+  const enLaire=saltant();
+  for(const o of obstacles){
+    if(!o.viu)continue;
+    const dins=bx+bw>o.x&&bx<o.x+o.w;
+    if(!dins)continue;
+    if(o.tipus==='crater'||o.tipus==='mine'){
+      // clots i mines: saltar-los els evita
+      if(!enLaire){crash();return}
+    } else {
+      // roques i cotxes enemics: cal haver-los destruit, saltar no serveix
+      // (son massa alts, com a l'original)
+      crash();return;
+    }
+  }
+  obstacles=obstacles.filter(o=>o.x>playerZ-100);
+
+  // cotxes enemics disparen
+  for(const o of obstacles){
+    if(o.tipus!=='buggy'||!o.viu)continue;
+    o.shootT-=dt;
+    if(o.shootT<=0&&o.x-playerZ<W-BUGGY_X&&o.x>playerZ){
+      eBullets.push({x:o.x,vx:-260});
+      o.shootT=1400+Math.random()*900;
+    }
+  }
+  eBullets.forEach(b=>b.x+=b.vx*s);
+  eBullets=eBullets.filter(b=>b.x>playerZ-40);
+  for(const b of eBullets){
+    if(!enLaire&&Math.abs(b.x-bx-bw/2)<16){crash();return}
+  }
+
+  // saucers i bombes
+  for(const e of skyEnemies){
+    if(!e.viu)continue;
+    e.x+=e.vx*s;
+    e.bombT-=dt;
+    if(e.bombT<=0){bombs.push({x:e.x,y:e.y,vy:120});e.bombT=1600+Math.random()*1400}
+  }
+  skyEnemies=skyEnemies.filter(e=>e.viu&&e.x>playerZ-60);
+  bombs.forEach(b=>b.y+=b.vy*s);
+  for(const b of bombs){
+    if(b.y>=GROUND_Y-10&&!b.tocat){
+      b.tocat=true;
+      if(!enLaire&&Math.abs(b.x-bx-bw/2)<18)crash();
+    }
+  }
+  bombs=bombs.filter(b=>!b.tocat);
+  if(state!=='play')return;
+
+  // trets propis
+  bullets.forEach(b=>b.x+=b.vx*s);
+  bullets=bullets.filter(b=>b.x<playerZ+W+20);
+  diagBullets.forEach(b=>{b.x+=b.vx*s;b.y+=b.vy*s});
+  diagBullets=diagBullets.filter(b=>b.y>0&&b.x<playerZ+W+20);
+
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    for(const o of obstacles){
+      if(!o.viu||o.tipus==='crater')continue;
+      if(b.x>o.x&&b.x<o.x+o.w){
+        o.viu=false;bullets.splice(i,1);
+        addScore(o.tipus==='buggy'?300:o.tipus==='mine'?150:100);
+        boom(o.x-playerZ,GROUND_Y-14,false);sndBoom();
+        break;
+      }
+    }
+  }
+  for(let i=diagBullets.length-1;i>=0;i--){
+    const b=diagBullets[i];
+    for(const e of skyEnemies){
+      if(!e.viu)continue;
+      if(Math.abs(b.x-e.x)<16&&Math.abs(b.y-e.y)<14){
+        e.viu=false;diagBullets.splice(i,1);
+        addScore(250);boom(e.x-playerZ,e.y,false);sndBoom();
+        break;
+      }
+    }
+  }
+}
+
+// ===== DIBUIX =====
+function drawBuggy(alt){
+  const gx=BUGGY_X,gy=GROUND_Y-alt;
+  x.fillStyle=invulnT>0&&Math.floor(invulnT/110)%2===0?'#844':'#e02020';
+  x.fillRect(gx,gy-16,34,10);
+  x.fillRect(gx+6,gy-24,18,10);
+  x.fillStyle='#8cf';x.fillRect(gx+8,gy-22,10,7);
+  x.fillStyle='#111';
+  x.beginPath();x.arc(gx+6,gy-4,6,0,7);x.fill();
+  x.beginPath();x.arc(gx+28,gy-4,6,0,7);x.fill();
+}
+function draw(){
+  const pal=paleta();
+  x.fillStyle=pal.sky;x.fillRect(0,0,W,H);
+  for(const s of stars){
+    if(Math.sin((performance.now()+s.tw)/420)>-.3){x.fillStyle='#fff';x.fillRect(s.x|0,s.y|0,2,2)}
+  }
+  // muntanyes de fons, es mouen mes a poc a poc (paral.laxi)
+  x.fillStyle=pal.hill;
+  const px=-(playerZ*0.25)%160;
+  for(let i=-1;i<5;i++){
+    x.beginPath();x.moveTo(px+i*160,GROUND_Y);x.lineTo(px+i*160+70,GROUND_Y-70);x.lineTo(px+i*160+160,GROUND_Y);x.fill();
+  }
+  // terra
+  x.fillStyle=pal.ground;x.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+  x.strokeStyle='#666';x.beginPath();x.moveTo(0,GROUND_Y);x.lineTo(W,GROUND_Y);x.stroke();
+
+  for(const o of obstacles){
+    if(!o.viu)continue;
+    const sx=o.x-playerZ;
+    if(sx<-40||sx>W+20)continue;
+    if(o.tipus==='crater'){
+      x.fillStyle=pal.sky;x.fillRect(sx,GROUND_Y,o.w,H-GROUND_Y);
+    } else if(o.tipus==='rock'){
+      x.fillStyle='#999';
+      x.beginPath();x.moveTo(sx,GROUND_Y);x.lineTo(sx+o.w/2,GROUND_Y-26);x.lineTo(sx+o.w,GROUND_Y);x.fill();
+    } else if(o.tipus==='mine'){
+      x.fillStyle='#ff5030';
+      x.beginPath();x.arc(sx+o.w/2,GROUND_Y-8,9,0,7);x.fill();
+    } else if(o.tipus==='buggy'){
+      x.fillStyle='#40c0ff';x.fillRect(sx,GROUND_Y-14,o.w,10);
+      x.fillStyle='#111';x.beginPath();x.arc(sx+5,GROUND_Y-3,5,0,7);x.fill();
+      x.beginPath();x.arc(sx+o.w-5,GROUND_Y-3,5,0,7);x.fill();
+    }
+  }
+  for(const e of skyEnemies){
+    if(!e.viu)continue;
+    const sx=e.x-playerZ;
+    if(sx<-30||sx>W+20)continue;
+    x.fillStyle='#c0ff40';
+    x.beginPath();x.ellipse(sx,e.y,16,7,0,0,7);x.fill();
+    x.fillStyle='#7a0';x.beginPath();x.arc(sx,e.y-5,6,0,7);x.fill();
+  }
+  x.fillStyle='#ff4040';
+  for(const b of bombs)if(!b.tocat)x.fillRect(b.x-playerZ-2,b.y-4,4,8);
+  x.fillStyle='#ffe060';
+  for(const b of eBullets)x.fillRect(b.x-playerZ-3,GROUND_Y-8,6,3);
+  x.fillStyle='#fff';
+  for(const b of bullets)x.fillRect(b.x-playerZ,b.y,8,3);
+  x.fillStyle='#ff0';
+  for(const b of diagBullets)x.fillRect(b.x-playerZ,b.y,4,4);
+
+  drawBuggy(alcadaSalt());
+
+  for(const b of booms){
+    const k=b.t/400,r=(b.big?26:14)*(0.4+k);
+    x.strokeStyle=['#fff','#ffd000','#ff5000'][Math.floor(b.t/70)%3];
+    x.lineWidth=2;x.globalAlpha=1-k;
+    x.beginPath();x.arc(b.x,b.y,r,0,7);x.stroke();
+    x.globalAlpha=1;
+  }
+  booms.forEach(b=>b.t+=16.7);
+  booms=booms.filter(b=>b.t<400);
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bind(id,k){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();keys[k]=true});
+  e.addEventListener('pointerup',ev=>{ev.preventDefault();keys[k]=false});
+  e.addEventListener('pointercancel',()=>keys[k]=false);
+  e.addEventListener('pointerleave',()=>keys[k]=false);
+}
+bind('left','left');bind('right','right');bind('foc','fire');
+document.getElementById('salta').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  if(jumpT===null&&state==='play'){jumpT=0;sndJump()}
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+  if(e.code==='Space'){e.preventDefault();keys.fire=true}
+  if((e.code==='ArrowUp'||e.code==='KeyW')&&jumpT===null&&state==='play'){jumpT=0;sndJump()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+  if(e.code==='Space')keys.fire=false;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>
