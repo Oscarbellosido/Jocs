@@ -34,7 +34,7 @@ small{flex:none;max-width:94%;font-size:12px;color:#aaa;text-align:center;paddin
     <button id="left">◀</button><button id="right">▶</button><span id="buit"></span><button id="brake">FRE</button>
   </div>
   <div id="msg"></div>
-  <small>l'accelerador va sol: només has de girar · ← → / A D · frenar: ESPAI · pausa: P</small>
+  <small>l'accelerador va sol, frena als revolts tancats · ← → / A D · frenar: ESPAI · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -161,7 +161,7 @@ function start(){
   playerZ=0;playerX=0;speed=0;crashT=0;offT=0;immuneT=0;dist=0;
   opponents=[];
   updateHUD();hideMsg();
-  msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps<br>l'accelerador va sol: només has de girar</small>");
+  msg("CLASSIFICACIÓ<br><small>completa la volta abans que s'acabi el temps<br>l'accelerador va sol, frena als revolts tancats</small>");
   readyTimer=1500;
 }
 let readyTimer=0;
@@ -193,12 +193,18 @@ function update(dt){
       if(offT>110){offT=0;sndOffroad()}
     } else offT=0;
 
-    // el volant, una mica mes viu: amb el dit al mobil costava de corregir
-    // dins del revolt tancat, on la corba ja t'arrossega
-    if(keys.left)playerX-=1.9*s*(0.5+speed/MAX_SPEED);
-    if(keys.right)playerX+=1.9*s*(0.5+speed/MAX_SPEED);
-    // la corba t'arrossega si no contra-vires, com a l'original
-    playerX+=curveAt(playerZ)*0.55*s*(speed/MAX_SPEED);
+    // El volant no depen de la velocitat (a poc a poc sempre gires be, com a
+    // la vida real). L'arrossegada de la corba si que en depen, com hauria
+    // de ser: com mes de pressa vas, mes fort t'estira. Al revolt final
+    // (2,4), a fons son 3,24 d'arrossegada contra 1,9 de volant: NO n'hi ha
+    // prou de contravirar, cal frenar per poder-lo agafar.
+    const STEER=1.9, DRIFT=1.35;
+    if(keys.left)playerX-=STEER*s;
+    if(keys.right)playerX+=STEER*s;
+    // Si la carretera gira a la dreta (curve>0) i no fas res, et quedes
+    // enrere respecte d'ella i sembla que caus cap a l'esquerra: per aixo
+    // es resta. Abans sumava, i t'arrossegava cap al costat que no tocava.
+    playerX-=curveAt(playerZ)*DRIFT*s*(speed/MAX_SPEED);
     playerX=Math.max(-1.6,Math.min(1.6,playerX));
   }
   updEngine(Math.min(1,speed/MAX_SPEED));
