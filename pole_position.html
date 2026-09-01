@@ -80,6 +80,11 @@ function updEngine(speedNorm){
   engineGain.gain.value=.05+speedNorm*.09;
   engineOsc.frequency.value=60+speedNorm*260;
 }
+// El motor es un oscil.lador que sona sempre: nomes calla perque cada
+// fotograma li tornem a dir el volum. Si el joc s'atura o s'acaba, update()
+// deixa de cridar updEngine i es queda enganxat amb el darrer volum que
+// tenia, sonant sol per sempre. Cal apagar-lo expressament.
+function stopEngine(){if(engineGain)engineGain.gain.value=0}
 
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=600,HORIZON=210;
@@ -125,6 +130,7 @@ function saveBest(){
   Records.marcador(JOC,document.getElementById('best'),score);
 }
 async function finalPartida(titol){
+  stopEngine();
   msg(titol);
   const r=await Records.fiPartida(JOC,score);
   msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
@@ -374,7 +380,7 @@ document.addEventListener('keydown',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
   if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
   if(e.code==='Space'){e.preventDefault();keys.brake=true}
-  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;if(paused){msg("PAUSA");stopEngine()}else hideMsg()}
   if(e.code==='Enter'&&state==='over')start();
 });
 document.addEventListener('keyup',e=>{
