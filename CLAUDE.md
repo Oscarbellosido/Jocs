@@ -198,6 +198,14 @@ comproven el comportament.
   Al Crazy Climber sortien edificis on, a partir d'un pis, no hi havia manera de
   continuar i la partida es quedava morta. Es prova amb un recorregut automàtic
   sobre centenars d'escenaris generats, no jugant-hi.
+- **En perdre una vida, tornar amb immunitat i en un lloc segur.** Si reapareixes
+  al mateix lloc, el que t'acaba de matar encara hi és i et torna a matar
+  immediatament: tres vides en cinc segons sense poder fer res. Al Tempest
+  passava amb un enemic a la vora del tub (ara tornes al carril més lluny i amb
+  2 segons d'immunitat), i al Pole Position amb els cotxes que t'atrapaven
+  mentre estaves clavat després d'un xoc. La nau ha de **parpellejar** mentre
+  duri, perquè es vegi que encara no et poden tocar. Es prova deixant un enemic
+  fix a sobre teu i comprovant que només perds **una** vida, no totes.
 - El Tetris té el codi dins d'una funció tancada: per inspeccionar-lo, fer-ne una
   còpia sense l'embolcall `(function(){...})()`.
 

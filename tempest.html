@@ -148,6 +148,7 @@ const PUNTS={flipper:150,tanker:100,spiker:50,fuseball:250,pulsar:200};
 let score=0,lives=3,nivell=1,state='play',paused=false,animT=0;
 let jugador=null,trets=[],enemics=[],tretsEn=[],punxes=[],espurnes=[];
 let zapsQueden=2,tSurt=0,perSortir=0,congelat=0,proximaVida=20000,flash=0;
+let invulnT=0;                                 // immunitat curta en tornar
 let baixada=0,formaNom='cercle';
 
 const JOC='tempest';
@@ -181,7 +182,7 @@ function nouNivell(){
   if(nivell>=3)for(let i=0;i<NC;i++)if(Math.random()<.35)punxes[i]=.1+Math.random()*.3;
   zapsQueden=2;                                 // el segon nomes se n'endu un
   perSortir=Math.min(24,10+nivell*2);
-  tSurt=900;congelat=0;baixada=0;flash=0;
+  tSurt=900;congelat=0;baixada=0;flash=0;invulnT=0;
   state='play';updateHUD();
 }
 function start(){
@@ -323,16 +324,37 @@ function superzap(){
 }
 
 // ===== MORIR I PASSAR DE NIVELL =====
+// El carril mes lliure per tornar-hi: el mes lluny de qualsevol enemic que
+// sigui a la vora. Tornant al mateix carril, el que t'acabava de matar
+// encara hi era i et tornava a matar de seguida, i aixi fins a quedar-te
+// sense naus sense poder fer res.
+function carrilSegur(){
+  const aVora=enemics.filter(e=>!e.mort&&e.aVora).map(e=>e.flip?e.flip.a:e.l);
+  if(!aVora.length)return jugador.l;
+  const dist=l=>Math.min(...aVora.map(el=>{
+    const d=Math.abs(el-l);
+    return tancat?Math.min(d,NC-d):d;
+  }));
+  let millor=jugador.l,millorD=-1;
+  for(let l=0;l<NC;l++){
+    const d=dist(l);
+    if(d>millorD){millorD=d;millor=l}
+  }
+  return millor;
+}
 function mor(){
   if(state!=='play'&&state!=='baixa')return;
+  if(invulnT>0)return;                         // acabes de tornar: encara no
   state='mor';sndMor();
   esclata(jugador.l,state==='baixa'?baixada:1,'#ffffff',22);
   setTimeout(()=>{
     lives--;updateHUD();
     if(lives<=0){state='over';sndFi();finalPartida('GAME OVER')}
     else{
-      // tornes amb el mateix tub i el que quedava d'enemics
-      jugador={l:jugador.l,mort:0};trets=[];tretsEn=[];baixada=0;state='play';
+      // tornes amb el mateix tub i el que quedava d'enemics, pero al carril
+      // mes lliure i amb una estona d'immunitat per poder reaccionar
+      jugador={l:carrilSegur(),mort:0};trets=[];tretsEn=[];baixada=0;
+      state='play';invulnT=2200;
     }
   },1500);
 }
@@ -361,6 +383,7 @@ function update(dt){
   if(paused||state==='over')return;
   animT+=dt;
   if(flash>0)flash-=dt;
+  if(invulnT>0)invulnT-=dt;
   for(let i=espurnes.length-1;i>=0;i--){
     const s=espurnes[i];s.vida-=dt;s.x+=s.vx*dt/16.7;s.y+=s.vy*dt/16.7;
     if(s.vida<=0)espurnes.splice(i,1);
@@ -453,6 +476,9 @@ function dibuixaTub(){
   }
 }
 function dibuixaJugador(){
+  // mentre dura la immunitat, parpelleja: aixi es veu que encara no et
+  // poden tocar i tens temps de moure't
+  if(invulnT>0&&Math.floor(invulnT/110)%2===0)return;
   const z=state==='baixa'?baixada:1;
   const i2=tancat?vora(jugador.l+1):jugador.l+1;
   const a=punt(jugador.l,z), b=punt(i2,z);
