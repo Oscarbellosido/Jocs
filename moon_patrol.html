@@ -23,13 +23,13 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>DIST <b id="dist">0</b></span><span>NAUS <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>SCORE <b id="score">0</b></span><span>TRAM <b id="dist">A</b></span><span>NAUS <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="480" height="270"></canvas></div>
   <div id="controls">
     <button id="left">◀</button><button id="right">▶</button><button id="salta">▲ SALTA</button><button id="foc">● FOC</button>
   </div>
   <div id="msg"></div>
-  <small>← alenteix · → accelera · salta els clots, dispara les roques · pausa: P</small>
+  <small>salta o dispara el que trobis · els cotxes enemics només cauen a trets · ← alenteix · → accelera · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -68,12 +68,23 @@ function sndGameOver(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>t
 
 const c=document.getElementById('game'),x=c.getContext('2d');
 const W=480,H=270,GROUND_Y=196,BUGGY_X=96;
-const SPEED_MIN=140,SPEED_MAX=420,ACCEL=220;
-const JUMP_DUR=620,JUMP_H=68;
-const CHECKPOINT_DIST=3200;
+// El salt es mesura en DISTANCIA, no en temps. Si durava un temps fix,
+// anant a poc a poc cobria menys terreny i els clots amples es feien
+// impossibles: just al reves del que espera qualsevol, que quan tens por
+// alenteixes. Aixi el salt sempre passa per sobre del mateix tros de
+// terra i, anant a poc a poc, encara tens mes estona per encertar-lo.
+const SPEED_MIN=160,SPEED_MAX=420,ACCEL=220;
+const JUMP_DIST=210,JUMP_H=68;
+const CLOT_MAX=80;
+// El recorregut de la maquina anava per controls amb lletra, de la A a la Z,
+// i arribar al final era acabar la cursa. Sense aixo no es notava gens que
+// anessis avançant: sempre semblava el mateix tros de lluna.
+const CHECKPOINT_DIST=2600;
+const LLETRES='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 let score=0,lives=3,state='play',paused=false,nextExtra=20000;
-let playerZ=0,speed=220,jumpT=null,checkpoint=0,nextCheckpoint=CHECKPOINT_DIST;
+let cursa=1;
+let playerZ=0,speed=220,jumpD=null,checkpoint=0,nextCheckpoint=CHECKPOINT_DIST;
 let obstacles=[],skyEnemies=[],bullets=[],diagBullets=[],eBullets=[],bombs=[],booms=[],stars=[];
 let nextObstacleX=600,nextSkyT=1800,cool=0,invulnT=0;
 const keys={left:false,right:false,fire:false};
@@ -95,7 +106,7 @@ async function finalPartida(titol){
 }
 function updateHUD(){
   document.getElementById('score').textContent=score;
-  document.getElementById('dist').textContent=Math.floor(playerZ/10)+'m';
+  document.getElementById('dist').textContent=LLETRES[Math.min(checkpoint,LLETRES.length-1)]+' · '+Math.floor(playerZ/10)+'m';
   document.getElementById('lives').textContent=lives;
   saveBest();
 }
@@ -122,28 +133,43 @@ function makeStars(){
 }
 
 // ===== TERRENY =====
-// Els clots nomes es poden saltar (no es poden disparar). Les roques nomes
-// es poden disparar (saltar no les esquiva, son massa altes). Les mines
-// valen totes dues coses. Sempre hi ha marge entre obstacles perque mai
-// calgui decidir dues coses alhora.
+// Clots, roques i mines: o els saltes o els dispares. El cotxe enemic es
+// l'unic que has de tombar per força. Sempre hi ha marge entre obstacles
+// perque mai calgui decidir dues coses alhora.
+//
+// La dificultat puja amb els controls que has passat: al principi nomes hi
+// ha terreny i van molt separats, i els OVNIs i els cotxes enemics no
+// surten fins mes endavant. Abans sortia tot de cop des del primer segon i
+// no hi havia manera de fer-s'hi.
+function dificultat(){
+  const n=checkpoint+(cursa-1)*8;
+  return {
+    forat:  Math.max(210,400-n*14),          // separacio minima
+    marge:  Math.max(150,320-n*12),          // i el que s'hi suma a l'atzar
+    ovnis:  n>=2,
+    enemics:n>=4,
+    probEnemic: Math.min(.26,.08+n*.02),
+  };
+}
+function separacio(){const d=dificultat();return d.forat+Math.random()*d.marge}
 function afegeixObstacle(){
   const tipus=['crater','rock','rock','mine'][Math.floor(Math.random()*4)];
-  const w=tipus==='crater'?40+Math.random()*70:22;
+  const w=tipus==='crater'?40+Math.random()*(CLOT_MAX-40):22;
   obstacles.push({x:nextObstacleX,w,tipus,viu:true});
-  nextObstacleX+=240+Math.random()*260;
+  nextObstacleX+=separacio();
 }
 function afegeixEnemicTerra(){
   obstacles.push({x:nextObstacleX,w:26,tipus:'buggy',viu:true,shootT:900+Math.random()*700});
-  nextObstacleX+=240+Math.random()*260;
+  nextObstacleX+=separacio();
 }
 function afegeixSaucer(){
   skyEnemies.push({x:playerZ+W+40,y:30+Math.random()*90,vx:-(40+Math.random()*40),bombT:900+Math.random()*900,viu:true});
 }
 
-function resetPlayer(){playerZ=0;speed=220;jumpT=null;invulnT=1200}
+function resetPlayer(){playerZ=0;speed=220;jumpD=null;invulnT=1200}
 function start(){
   score=0;lives=3;nextExtra=20000;paused=false;state='play';
-  checkpoint=0;nextCheckpoint=CHECKPOINT_DIST;
+  cursa=1;checkpoint=0;nextCheckpoint=CHECKPOINT_DIST;
   obstacles=[];skyEnemies=[];bullets=[];diagBullets=[];eBullets=[];bombs=[];booms=[];
   nextObstacleX=600;nextSkyT=1800;cool=0;
   resetPlayer();makeStars();updateHUD();hideMsg();
@@ -151,11 +177,11 @@ function start(){
 
 // ===== SALT =====
 function alcadaSalt(){
-  if(jumpT===null)return 0;
-  const p=jumpT/JUMP_DUR;
+  if(jumpD===null)return 0;
+  const p=jumpD/JUMP_DIST;
   return Math.sin(Math.min(1,p)*Math.PI)*JUMP_H;
 }
-function saltant(){return jumpT!==null}
+function saltant(){return jumpD!==null}
 
 // ===== TRETS =====
 function shoot(){
@@ -174,7 +200,7 @@ function crash(){
   lives--;updateHUD();sndCrash();
   boom(BUGGY_X,GROUND_Y-20-alcadaSalt(),true);
   if(lives<=0){state='over';sndGameOver();finalPartida("GAME OVER");return}
-  jumpT=null;invulnT=1600;
+  jumpD=null;invulnT=1600;
   eBullets=[];bombs=[];
   msg("PREPARA'T");readyTimer=1200;
 }
@@ -192,21 +218,34 @@ function update(dt){
   if(invulnT>0)invulnT-=dt;
   if(keys.fire)shoot();
 
-  if(jumpT!==null){jumpT+=dt;if(jumpT>=JUMP_DUR)jumpT=null}
+  if(jumpD!==null){jumpD+=speed*s;if(jumpD>=JUMP_DIST)jumpD=null}
 
-  // distancia i controls de pas
+  // controls de pas: de la A a la Z, i en arribar al final, cursa acabada
   if(playerZ>=nextCheckpoint){
     checkpoint++;nextCheckpoint+=CHECKPOINT_DIST;
-    addScore(500*checkpoint);sndCheckpoint();
-    msg("CONTROL "+checkpoint+"!<br><small>+"+(500*checkpoint)+" punts</small>");readyTimer=1100;
+    if(checkpoint>=LLETRES.length){
+      addScore(10000*cursa);sndCheckpoint();
+      cursa++;checkpoint=0;nextCheckpoint=playerZ+CHECKPOINT_DIST;
+      msg("CURSA "+(cursa-1)+" ACABADA!<br><small>+"+(10000*(cursa-1))+
+          " punts · ara ve la cursa "+cursa+", mes difícil</small>");readyTimer=2200;
+    } else {
+      addScore(500*checkpoint);sndCheckpoint();
+      msg("CONTROL "+LLETRES[checkpoint]+"<br><small>+"+(500*checkpoint)+" punts</small>");
+      readyTimer=1000;
+    }
+    updateHUD();
   }
 
   // generar terreny i cel per endavant
+  const dif=dificultat();
   while(nextObstacleX<playerZ+900){
-    Math.random()<0.22?afegeixEnemicTerra():afegeixObstacle();
+    (dif.enemics&&Math.random()<dif.probEnemic)?afegeixEnemicTerra():afegeixObstacle();
   }
   nextSkyT-=dt;
-  if(nextSkyT<=0){afegeixSaucer();nextSkyT=2600+Math.random()*1800}
+  if(nextSkyT<=0){
+    if(dif.ovnis)afegeixSaucer();
+    nextSkyT=2600+Math.random()*1800;
+  }
 
   // xoc amb el terreny
   const bx=playerZ+BUGGY_X,bw=30;
@@ -215,14 +254,15 @@ function update(dt){
     if(!o.viu)continue;
     const dins=bx+bw>o.x&&bx<o.x+o.w;
     if(!dins)continue;
-    if(o.tipus==='crater'||o.tipus==='mine'){
-      // clots i mines: saltar-los els evita
-      if(!enLaire){crash();return}
-    } else {
-      // roques i cotxes enemics: cal haver-los destruit, saltar no serveix
-      // (son massa alts, com a l'original)
+    if(o.tipus==='buggy'){
+      // l'unic que no pots saltar: el cotxe enemic. O el tombes o t'hi
+      // encastes (i mentrestant et va disparant).
       crash();return;
     }
+    // clots, roques i mines: o els saltes o els dispares, com a la maquina
+    // de debo. Al principi les roques nomes es podien disparar i, si no hi
+    // arribaves a temps, no hi havia res a fer: es moria de seguida.
+    if(!enLaire){crash();return}
   }
   obstacles=obstacles.filter(o=>o.x>playerZ-100);
 
@@ -291,6 +331,34 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
+// El recorregut de dalt: les lletres dels controls i on ets ara. Es el que
+// et fa veure que avances i quant et falta per acabar la cursa.
+function drawRecorregut(){
+  const x0=64,x1=W-64,y=16;
+  x.strokeStyle='#444';x.lineWidth=2;
+  x.beginPath();x.moveTo(x0,y);x.lineTo(x1,y);x.stroke();
+  for(let i=0;i<LLETRES.length;i++){
+    const px=x0+(x1-x0)*i/(LLETRES.length-1);
+    x.fillStyle=i<=checkpoint?'#ffd000':'#555';
+    x.fillRect(px-1,y-4,3,8);
+  }
+  // les lletres, nomes les dues puntes: a mig fer no es llegien al mobil
+  x.font='bold 11px monospace';x.textAlign='right';
+  x.fillStyle='#ffd000';x.fillText('A',x0-8,y+4);
+  x.textAlign='left';x.fillStyle='#888';x.fillText('Z',x1+8,y+4);
+  // on ets ara, entre el control passat i el seguent
+  const tram=(playerZ-(nextCheckpoint-CHECKPOINT_DIST))/CHECKPOINT_DIST;
+  const pos=Math.min(LLETRES.length-1,checkpoint+Math.max(0,Math.min(1,tram)));
+  const cx=x0+(x1-x0)*pos/(LLETRES.length-1);
+  x.fillStyle='#e02020';
+  x.beginPath();x.moveTo(cx,y+4);x.lineTo(cx-5,y+12);x.lineTo(cx+5,y+12);x.fill();
+  // la lletra del tram on ets i quina cursa
+  x.font='bold 12px monospace';x.textAlign='center';
+  x.fillStyle='#fff';x.fillText(LLETRES[Math.min(checkpoint,LLETRES.length-1)],cx,y-8);
+  x.font='9px monospace';x.textAlign='right';
+  x.fillStyle='#777';x.fillText('CURSA '+cursa,W-6,H-6);
+  x.textAlign='left';
+}
 function drawBuggy(alt){
   const gx=BUGGY_X,gy=GROUND_Y-alt;
   x.fillStyle=invulnT>0&&Math.floor(invulnT/110)%2===0?'#844':'#e02020';
@@ -316,6 +384,7 @@ function draw(){
   // terra
   x.fillStyle=pal.ground;x.fillRect(0,GROUND_Y,W,H-GROUND_Y);
   x.strokeStyle='#666';x.beginPath();x.moveTo(0,GROUND_Y);x.lineTo(W,GROUND_Y);x.stroke();
+  drawRecorregut();
 
   for(const o of obstacles){
     if(!o.viu)continue;
@@ -380,7 +449,7 @@ bind('left','left');bind('right','right');bind('foc','fire');
 document.getElementById('salta').addEventListener('pointerdown',ev=>{
   ev.preventDefault();aInit();
   if(state==='over'){start();return}
-  if(jumpT===null&&state==='play'){jumpT=0;sndJump()}
+  if(jumpD===null&&state==='play'){jumpD=0;sndJump()}
 });
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -389,7 +458,7 @@ document.addEventListener('keydown',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
   if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
   if(e.code==='Space'){e.preventDefault();keys.fire=true}
-  if((e.code==='ArrowUp'||e.code==='KeyW')&&jumpT===null&&state==='play'){jumpT=0;sndJump()}
+  if((e.code==='ArrowUp'||e.code==='KeyW')&&jumpD===null&&state==='play'){jumpD=0;sndJump()}
   if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg("PAUSA"):hideMsg()}
   if(e.code==='Enter'&&state==='over')start();
 });
