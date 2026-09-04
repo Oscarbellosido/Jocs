@@ -324,10 +324,18 @@ function update(dt){
   // sirena de fons
   sirenT-=dt; if(sirenT<=0){sndSiren(Math.floor(performance.now()/400)%2);sirenT=.4}
 
+  // El punt s'ha de menjar a CADA centre de casella pel qual passa. Mirant-ho
+  // nomes un cop per fotograma s'en saltava algun: va a 1,01 pixels per
+  // fotograma, o sigui que de tant en tant en fa dos de cop, passa pel centre
+  // a mitja passa i acaba el fotograma un pixel mes enlla. Aleshores la
+  // comprovacio "sóc al centre?" deia que no i aquell punt es quedava per
+  // sempre. Aqui dins hi som a cada passa, i no se n'escapa cap.
   moveBy(pac,pacSpeed(),dt,'pac',(p,tx,ty)=>{
+    eatAt(tx,ty);
     if(p.want&&!isWall(tx+p.want.x,ty+p.want.y,'pac'))p.dir=p.want;
   });
   pac.mouth+=dt*12;
+  // i el de la casella on acaba el fotograma, per no fer-lo esperar una passa
   const ptx=tileOf(pac.x),pty=tileOf(pac.y);
   if(pac.x===center(ptx)&&pac.y===center(pty))eatAt(ptx,pty);
 

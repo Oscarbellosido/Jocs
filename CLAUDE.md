@@ -186,6 +186,13 @@ comproven el comportament.
   saltava i quedaven trossos que no queien mai. Ara es mira **tot el tram
   recorregut** des del fotograma anterior (`b.prevY`). Sempre que un projectil
   vagi més de pressa que el seu objectiu, ha de ser així.
+
+  El mateix, però amagat, al Comecocos: el moviment va d'un píxel en un píxel i
+  en fa uns quants per fotograma (1,01 de mitjana, o sigui que de tant en tant
+  en fa dos), mentre que el «que hi ha en aquesta casella?» es mirava **un sol
+  cop per fotograma**. Quan passava pel centre a mitja passa, aquell punt no es
+  menjava mai. **Si el moviment va a passes, la comprovació ha d'anar a dins de
+  cada passa**, no al final del fotograma.
 - **Un objecte ja destruït no ha d'aturar res.** Al mateix lloc, els maons
   esborrats es guarden amb `w=0` i la comprovació no ho mirava: el tret es
   perdia dins d'un forat ja fet.
