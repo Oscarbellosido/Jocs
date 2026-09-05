@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Track &amp; Field Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:10px;margin-top:10px;align-items:center}
+button{font:15px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:74px;height:52px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#c1{color:#7ec8ff}
+#c2{color:#ffd000}
+#accio{color:#80ff90;width:92px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span><b id="prova">100 M</b></span><span>INTENTS <b id="intents">1</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="480" height="270"></canvas></div>
+  <div id="controls">
+    <button id="c1">1</button><button id="c2">2</button><button id="accio">ACCIÓ</button>
+  </div>
+  <div id="msg"></div>
+  <small>prem 1 i 2 alternats per córrer · ACCIÓ per saltar o llançar · teclat: ← → i ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.15,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndPassa(){aInit();noise(.04,.12)}
+function sndSalt(){aInit();tone(420,.16,"square",.2,200)}
+function sndTret(){aInit();tone(700,.5,"square",.22,-400)}   // el tret de sortida
+function sndTanca(){aInit();noise(.18,.3);tone(160,.14,"square",.2,-90)}
+function sndBe(){aInit();[700,900,1200,1500].forEach((f,i)=>setTimeout(()=>tone(f,.11,"square",.26),i*80))}
+function sndMalament(){aInit();[300,240,180].forEach((f,i)=>setTimeout(()=>tone(f,.22,"square",.24,-60),i*180))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*250))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=480,H=270,TERRA=196,ATLETA_X=110;
+const PX_M=26;                      // pixels per metre a la pantalla
+// Corres alternant els dos botons, com a la maquina: prement sempre el
+// mateix no avances. Cada canvi de boto es una gambada.
+// La frenada creix amb la velocitat, com la resistencia de debo: aixi el
+// ritme al qual prems es tradueix en una velocitat (4 cops per segon son
+// uns 8,4 m/s; 5, ja el maxim). Amb una frenada fixa, o arribaves a tope o
+// et quedaves clavat, sense terme mig.
+const IMPULS=0.85, V_MAX=11.2, FRENADA=3.1;
+function frenada(){return FRENADA*(0.35+vel/V_MAX)}
+// L'angle puja de pressa: amb 78 graus per segon trigaves mig segon a
+// arribar als 45 i, corrent, en mig segon ja t'havies passat la ratlla i el
+// salt sempre era nul.
+const ANGLE_VEL=130;                // graus per segon mentre mantens ACCIÓ
+const G=9.8;
+
+// Les quatre proves de la maquina original. Als concursos de camp tens tres
+// intents i compta el millor, com a la de debo. La pista d'impuls fa 40 m,
+// com les de veritat: amb 25 no donava temps d'agafar velocitat si no
+// picaves molt de pressa, i el salt es quedava en no res.
+const PROVES=[
+  {id:'100m',    nom:'100 M LLISOS',  curt:'100 M',   tipus:'cursa',   metres:100, intents:1},
+  {id:'llargada',nom:'SALT DE LLARGADA', curt:'LLARGADA', tipus:'salt', taula:40,  intents:3},
+  {id:'javelina',nom:'JAVELINA',      curt:'JAVELINA', tipus:'llanca', taula:40,   intents:3},
+  {id:'tanques', nom:'110 M TANQUES', curt:'TANQUES', tipus:'tanques', metres:110, intents:1},
+];
+// El que cal fer per classificar-se. A cada volta, mes dur.
+function minim(p,volta){
+  const v=volta-1;
+  if(p.id==='100m')    return 16.0-v*0.5;
+  if(p.id==='llargada')return 4.10+v*0.5;
+  if(p.id==='javelina')return 38+v*6;
+  return 19.0-v*0.7;                       // tanques
+}
+
+let score=0,volta=1,prova=0,intent=1,millor=0;
+let fase='preparats',state='play',paused=false;
+let pos=0,vel=0,temps=0,angle=0,carregant=false,ultimBoto=0,passes=0;
+let vol=null,tanques=[],resultat=null,readyTimer=0,cronoSortida=0;
+
+const JOC='track_field';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+async function finalPartida(titol){
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  const p=PROVES[prova];
+  document.getElementById('score').textContent=score;
+  document.getElementById('prova').textContent=p.curt;
+  document.getElementById('intents').textContent=(p.intents-intent+1)+'/'+p.intents;
+  saveBest();
+}
+function addScore(n){score+=Math.max(0,Math.round(n));updateHUD()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== PREPARAR CADA INTENT =====
+function novaProva(){
+  intent=1;millor=0;preparaIntent();
+}
+function preparaIntent(){
+  const p=PROVES[prova];
+  pos=0;vel=0;temps=0;angle=0;carregant=false;ultimBoto=0;passes=0;vol=null;resultat=null;
+  tanques=[];
+  if(p.tipus==='tanques'){
+    // deu tanques, la primera als 13,7 m i les altres cada 9,1 m, com les de debo
+    for(let i=0;i<10;i++)tanques.push({m:13.7+i*9.1,tocada:false});
+  }
+  fase='preparats';cronoSortida=1.3;
+  state='play';updateHUD();
+  msg(p.nom+'<br><small>'+textMinim(p)+
+      (p.intents>1?' · intent '+intent+' de '+p.intents:'')+'</small>');
+}
+function textMinim(p){
+  const m=minim(p,volta);
+  return p.tipus==='cursa'||p.tipus==='tanques'
+    ? 'cal fer menys de '+m.toFixed(2)+' s'
+    : 'cal passar de '+m.toFixed(2)+(p.id==='javelina'?' m':' m');
+}
+function start(){
+  score=0;volta=1;prova=0;paused=false;
+  novaProva();
+}
+
+// ===== CORRER: alternant els dos botons =====
+function gambada(boto){
+  if(fase!=='corrent'||paused)return;
+  if(boto===ultimBoto)return;          // cal alternar, com a la maquina
+  ultimBoto=boto;passes++;
+  vel=Math.min(V_MAX,vel+IMPULS);
+  sndPassa();
+}
+function accioAvall(){
+  if(paused)return;
+  const p=PROVES[prova];
+  if(fase!=='corrent')return;
+  if(p.tipus==='tanques'){saltaTanca();return}
+  if(p.tipus==='salt'||p.tipus==='llanca'){carregant=true;angle=0}
+}
+function accioAmunt(){
+  if(!carregant)return;
+  carregant=false;
+  const p=PROVES[prova];
+  if(p.tipus==='salt')salta();
+  else if(p.tipus==='llanca')llanca();
+}
+function saltaTanca(){
+  if(vol)return;
+  // el salt cobreix una distancia fixa, no un temps: si depengues del temps,
+  // anar a poc a poc el faria mes curt i seria injust
+  vol={tipus:'tanca',d:0,total:2.6,h:0};
+  sndSalt();
+}
+// La marca es mesura des de la ratlla, no des d'on has saltat: si surts un
+// metre abans, aquell metre el perds. Per aixo cal arribar-hi ben ajustat,
+// que es la gracia de la prova.
+function salta(){
+  // a tota velocitat i 45 graus surten 9,5 m: passat de voltes, pero no
+  // fora del mon. Amb 0,085 se n'anava als 10,2 i quedava ridicul.
+  const d=0.0757*vel*vel*Math.sin(2*angle*Math.PI/180);
+  const p=PROVES[prova];
+  vol={tipus:'salt',d:0,total:Math.max(0.3,d),h:0,sortida:pos,perdut:p.taula-pos};
+  fase='volant';sndSalt();
+}
+function llanca(){
+  const d=0.70*vel*vel*Math.sin(2*angle*Math.PI/180);
+  const p=PROVES[prova];
+  vol={tipus:'javelina',d:0,total:Math.max(1,d),h:0,sortida:pos,perdut:p.taula-pos};
+  fase='volant';sndSalt();
+}
+
+// ===== RESULTAT DE L'INTENT =====
+function acaba(marca,nul){
+  const p=PROVES[prova];
+  const m=minim(p,volta);
+  const millorAra=p.tipus==='cursa'||p.tipus==='tanques'
+    ? (millor===0?marca:Math.min(millor,marca))
+    : Math.max(millor,marca);
+  if(!nul)millor=millorAra;
+  const passa=nul?false:(p.tipus==='cursa'||p.tipus==='tanques'?millor<=m:millor>=m);
+
+  let punts=0;
+  if(!nul){
+    if(p.id==='100m')punts=(16-marca)*900;
+    else if(p.id==='llargada')punts=marca*320;
+    else if(p.id==='javelina')punts=marca*65;
+    else punts=(20-marca)*800;
+    addScore(punts);
+  }
+  resultat={marca,nul,passa,punts:Math.max(0,Math.round(punts))};
+  fase='resultat';
+
+  const txt=nul?'NUL!':(p.tipus==='cursa'||p.tipus==='tanques'
+      ? marca.toFixed(2)+' s':marca.toFixed(2)+' m');
+  if(passa){
+    sndBe();
+    msg('CLASSIFICAT!<br><small>'+txt+' · +'+resultat.punts+' punts</small>');
+    readyTimer=2000;
+  } else if(intent<p.intents){
+    sndMalament();
+    intent++;
+    msg(txt+'<br><small>'+(nul?'intent nul · ':'')+'et queden '+
+        (p.intents-intent+1)+' intents</small>');
+    readyTimer=1800;
+  } else {
+    sndFi();
+    msg('NO T\'HAS CLASSIFICAT<br><small>'+txt+' · calia '+
+        (p.tipus==='cursa'||p.tipus==='tanques'?'menys de '+m.toFixed(2)+' s':m.toFixed(2)+' m')+
+        '</small>');
+    state='over';
+    setTimeout(()=>finalPartida('FI DE LA COMPETICIÓ'),1600);
+  }
+}
+function seguent(){
+  const p=PROVES[prova];
+  if(resultat&&resultat.passa){
+    addScore(2000);                          // bonus per classificar-se
+    prova++;
+    if(prova>=PROVES.length){
+      prova=0;volta++;
+      addScore(5000*(volta-1));
+      // 'entre' i no readyTimer: si no, en acabar-se el temps tornaria a
+      // entrar aqui i es saltaria una prova
+      fase='entre';
+      msg('VOLTA '+volta+'!<br><small>+'+(5000*(volta-1))+' punts · ara els mínims són més durs</small>');
+      setTimeout(novaProva,2200);return;
+    }
+    novaProva();
+  } else {
+    preparaIntent();
+  }
+}
+
+// ===== BUCLE =====
+function update(dt){
+  if(state==='over'||paused)return;
+  const s=dt/1000;
+  if(readyTimer>0){
+    readyTimer-=dt;
+    if(readyTimer<=0){
+      hideMsg();
+      if(fase==='resultat')seguent();
+    }
+    return;
+  }
+  if(fase==='preparats'){
+    cronoSortida-=s;
+    if(cronoSortida<=0){fase='corrent';sndTret();hideMsg()}
+    return;
+  }
+  const p=PROVES[prova];
+
+  if(fase==='corrent'){
+    temps+=s;
+    vel=Math.max(0,vel-frenada()*s);
+    pos+=vel*s;
+    if(carregant)angle=Math.min(90,angle+ANGLE_VEL*s);
+
+    if(p.tipus==='cursa'&&pos>=p.metres){acaba(temps,false);return}
+    if(p.tipus==='tanques'){
+      // topar amb una tanca et frena
+      for(const t of tanques){
+        if(t.tocada)continue;
+        if(Math.abs(pos-t.m)<0.35&&!enLaire()){t.tocada=true;vel*=0.35;sndTanca()}
+      }
+      if(pos>=p.metres){acaba(temps,false);return}
+    }
+    if((p.tipus==='salt'||p.tipus==='llanca')&&pos>=p.taula){
+      // t'has passat de la ratlla sense saltar: nul
+      acaba(0,true);return;
+    }
+  }
+
+  // el salt de les tanques va a part: segueixes corrent mentre voles
+  if(vol&&vol.tipus==='tanca'){
+    vol.d+=vel*s;
+    vol.h=Math.sin(Math.min(1,vol.d/vol.total)*Math.PI)*1.15;
+    if(vol.d>=vol.total)vol=null;
+  } else if(fase==='volant'&&vol){
+    // la javelina sempre triga el mateix a caure, vagi lluny o a prop: si no,
+    // un llançament bo es feia etern
+    vol.d+=(vol.tipus==='javelina'?vol.total/1.8:Math.max(3,vel)*1.6)*s;
+    const k=Math.min(1,vol.d/vol.total);
+    vol.h=Math.sin(k*Math.PI)*(vol.total*(vol.tipus==='javelina'?0.10:0.35));
+    if(k>=1){acaba(Math.max(0,vol.total-vol.perdut),false);vol=null}
+  }
+}
+function enLaire(){return !!(vol&&vol.tipus==='tanca')}
+
+// ===== DIBUIX =====
+function camera(){
+  // la camera segueix l'atleta, pero a la javelina mira on va la llança
+  const m=fase==='volant'&&vol&&vol.tipus==='javelina'?vol.sortida+vol.d:pos;
+  return m*PX_M-ATLETA_X;
+}
+function dibuixaAtleta(px,py,corrent){
+  x.strokeStyle='#fff';x.lineWidth=2;x.lineCap='round';
+  const f=Math.sin(passes*1.3+(corrent?performance.now()/70:0))*0.9;
+  x.beginPath();
+  x.arc(px,py-26,5,0,7);x.stroke();                      // cap
+  x.beginPath();
+  x.moveTo(px,py-21);x.lineTo(px,py-10);                 // cos
+  x.moveTo(px,py-10);x.lineTo(px-6*f,py);                // cames
+  x.moveTo(px,py-10);x.lineTo(px+6*f,py);
+  x.moveTo(px,py-18);x.lineTo(px+7,py-14-4*f);           // braços
+  x.moveTo(px,py-18);x.lineTo(px-7,py-14+4*f);
+  x.stroke();
+}
+function draw(){
+  const p=PROVES[prova];
+  const cam=camera();
+  // cel i grades
+  x.fillStyle='#0b1430';x.fillRect(0,0,W,TERRA-46);
+  x.fillStyle='#1b2550';
+  for(let i=0;i<14;i++){
+    const gx=((i*60-cam*0.25)%(W+60)+W+60)%(W+60)-60;
+    x.fillRect(gx,TERRA-78,52,32);
+  }
+  x.fillStyle='#2a3468';x.fillRect(0,TERRA-46,W,46);
+  // pista
+  x.fillStyle=p.tipus==='llanca'?'#2f6a35':'#8a3a2a';
+  x.fillRect(0,TERRA,W,H-TERRA);
+  x.fillStyle='#fff';x.fillRect(0,TERRA,W,2);
+
+  // marques cada 10 m i numeros
+  x.font='9px monospace';x.textAlign='center';
+  for(let m=0;m<=140;m+=10){
+    const sx=m*PX_M-cam;
+    if(sx<-30||sx>W+30)continue;
+    x.fillStyle='#fff';x.fillRect(sx,TERRA,1,8);
+    x.fillStyle='#ddd';x.fillText(m+'m',sx,TERRA+20);
+  }
+  // meta o ratlla de sortida
+  if(p.tipus==='cursa'||p.tipus==='tanques'){
+    const sx=p.metres*PX_M-cam;
+    if(sx>-20&&sx<W+20){x.fillStyle='#ff0';x.fillRect(sx,TERRA-60,3,60)}
+  } else {
+    const sx=p.taula*PX_M-cam;
+    if(sx>-20&&sx<W+20){x.fillStyle='#fff';x.fillRect(sx,TERRA-4,4,8);
+      x.fillStyle='#ff5050';x.fillRect(sx,TERRA-22,2,18)}
+  }
+  // tanques
+  for(const t of tanques){
+    const sx=t.m*PX_M-cam;
+    if(sx<-20||sx>W+20)continue;
+    x.strokeStyle=t.tocada?'#775':'#fff';x.lineWidth=2;
+    x.beginPath();
+    if(t.tocada){x.moveTo(sx-6,TERRA);x.lineTo(sx+8,TERRA-6)}
+    else{x.moveTo(sx,TERRA);x.lineTo(sx,TERRA-20);x.moveTo(sx-7,TERRA-20);x.lineTo(sx+7,TERRA-20)}
+    x.stroke();
+  }
+
+  // atleta
+  let ax=ATLETA_X, ay=TERRA;
+  if(fase==='volant'&&vol&&vol.tipus==='salt'){
+    ax=(vol.sortida+vol.d)*PX_M-cam;ay=TERRA-vol.h*PX_M;
+  } else if(fase==='volant'&&vol&&vol.tipus==='javelina'){
+    ax=vol.sortida*PX_M-cam;
+  } else if(vol&&vol.tipus==='tanca'){
+    ax=pos*PX_M-cam;ay=TERRA-vol.h*PX_M;
+  } else {
+    ax=pos*PX_M-cam;
+  }
+  dibuixaAtleta(ax,ay,fase==='corrent');
+
+  // la javelina volant
+  if(fase==='volant'&&vol&&vol.tipus==='javelina'){
+    const jx=(vol.sortida+vol.d)*PX_M-cam, jy=TERRA-vol.h*PX_M;
+    x.strokeStyle='#ffd000';x.lineWidth=2;
+    x.beginPath();x.moveTo(jx-10,jy+4);x.lineTo(jx+10,jy-4);x.stroke();
+  }
+
+  // marcadors de dalt
+  x.textAlign='left';x.font='bold 12px monospace';
+  x.fillStyle='#fff';
+  if(p.tipus==='cursa'||p.tipus==='tanques'){
+    x.fillText('TEMPS '+temps.toFixed(2)+' s',10,18);
+    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,34);
+  } else {
+    const d=fase==='volant'&&vol?vol.total:0;
+    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,18);
+    if(d)x.fillText('MARCA '+d.toFixed(2)+' m',10,34);
+  }
+  x.textAlign='right';
+  x.fillStyle='#ffd000';x.fillText('MÍNIM '+minim(p,volta).toFixed(2)+
+    (p.tipus==='cursa'||p.tipus==='tanques'?' s':' m'),W-10,18);
+  if(millor)x.fillText('MILLOR '+millor.toFixed(2),W-10,34);
+  x.textAlign='left';
+
+  // l'angle mentre el carregues
+  if(carregant){
+    const bx=W/2-40,by=H-26;
+    x.fillStyle='#333';x.fillRect(bx,by,80,10);
+    x.fillStyle=angle>36&&angle<54?'#80ff90':'#ffd000';
+    x.fillRect(bx,by,80*angle/90,10);
+    x.fillStyle='#fff';x.font='10px monospace';x.textAlign='center';
+    x.fillText(Math.round(angle)+'°',W/2,by-4);
+    // la marca dels 45 graus, que es on va mes lluny
+    x.fillStyle='#fff';x.fillRect(bx+40,by-3,1,16);
+    x.textAlign='left';
+  }
+  if(fase==='preparats'&&cronoSortida>0){
+    x.fillStyle='#fff';x.font='bold 20px monospace';x.textAlign='center';
+    x.fillText(cronoSortida>0.7?'A LES MARQUES':'LLESTOS...',W/2,70);
+    x.textAlign='left';
+  }
+}
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function bindCorrer(id,boto){
+  const e=document.getElementById(id);
+  e.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+    if(state==='over'){start();return}
+    gambada(boto)});
+}
+bindCorrer('c1',1);bindCorrer('c2',2);
+const bAccio=document.getElementById('accio');
+bAccio.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  accioAvall()});
+bAccio.addEventListener('pointerup',ev=>{ev.preventDefault();accioAmunt()});
+bAccio.addEventListener('pointercancel',()=>accioAmunt());
+bAccio.addEventListener('pointerleave',()=>accioAmunt());
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.repeat)return;
+  if(e.code==='ArrowLeft'||e.code==='KeyA')gambada(1);
+  if(e.code==='ArrowRight'||e.code==='KeyD')gambada(2);
+  if(e.code==='Space'){e.preventDefault();accioAvall()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;paused?msg('PAUSA'):hideMsg()}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='Space')accioAmunt();
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+// El joc queda en pausa mentre es veuen.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

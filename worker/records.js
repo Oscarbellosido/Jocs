@@ -36,6 +36,7 @@ const JOCS = {
   galaga:          9999999,
   pole_position:   9999999,
   moon_patrol:     9999999,
+  track_field:     9999999,
 };
 const TOP = 10;
 

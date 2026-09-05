@@ -1,6 +1,6 @@
 # Jocs
 
-Vint jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
+Vint-i-un jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
 llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -30,6 +30,7 @@ mòbil, instal·lat com a aplicació.
 | `moon_patrol.html` | Moon Patrol | 1982 |
 | `pole_position.html` | Pole Position | 1982 |
 | `qbert.html` | Q*bert | 1982 |
+| `track_field.html` | Track & Field | 1983 |
 | `tetris.html` | Tetris | 1984 |
 
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
