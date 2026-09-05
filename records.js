@@ -94,6 +94,50 @@ const Records = (() => {
     });
   }
 
+  // ---- el boto de pausa, al marcador de tots els jocs ----
+  // Al mobil no hi havia manera d'aturar una partida: la pausa nomes anava
+  // amb la tecla P i al telefon no hi ha teclat. Si et trucaven, o perdies la
+  // partida o havies de sortir. Aquest boto es posa sol al marcador de tots
+  // els jocs i fa exactament el mateix que prement la P: la pausa de cada joc
+  // ja esta feta i provada, aqui nomes la disparem.
+  function posaBotoPausa() {
+    // gairebe tots tenen el marcador a #hud; l'Asteroids, que es a pantalla
+    // completa, l'hi diu #h
+    const hud = document.getElementById('hud') || document.getElementById('h');
+    if (!hud || document.getElementById('rec-pausa')) return;
+    // si el joc ja en porta un de seu (el Tetris), no n'hi posem un segon
+    for (const b of hud.querySelectorAll('button')) {
+      if (/[⏸▶]/.test(b.textContent)) return;
+    }
+    const b = document.createElement('button');
+    b.id = 'rec-pausa';
+    b.type = 'button';
+    b.textContent = '❚❚';
+    b.setAttribute('aria-label', 'Pausa');
+    // width i height han d'anar aqui si o si: cada joc te una regla
+    // button{width:NNpx;height:NNpx} per als seus controls i tambe agafaria
+    // aquest boto, que quedaria enorme al mig del marcador.
+    b.setAttribute('style',
+      'width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:1;' +
+      'font:11px monospace;background:transparent;color:#aaa;' +
+      'border:1px solid #555;border-radius:6px;padding:5px 7px;' +
+      'flex-shrink:0;cursor:pointer;font-family:monospace');
+    b.addEventListener('click', () => {
+      // uns jocs miren e.code==='KeyP' i altres e.key==='p': hi posem tots dos
+      document.dispatchEvent(new KeyboardEvent('keydown',
+        { code: 'KeyP', key: 'p', bubbles: true }));
+    });
+    // al costat del boto de tornar, si n'hi ha; si no, al principi del marcador
+    const back = hud.querySelector('#back');
+    if (back && back.parentNode === hud) hud.insertBefore(b, back.nextSibling);
+    else hud.insertBefore(b, hud.firstChild);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', posaBotoPausa);
+  } else {
+    posaBotoPausa();
+  }
+
   // ---- el peu del final de partida ----
   // Fins ara, en acabar la partida nomes podies tornar a jugar: per anar al
   // menu havies de comencar una partida i fer enrere. Aixo posa el boto del

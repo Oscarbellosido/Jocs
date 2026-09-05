@@ -174,6 +174,8 @@ comproven el comportament.
   que no vessi a cap mida de pantalla.
 - `node scripts/prova-inici.mjs` — que en entrar a cada joc surtin els rècords
   uns segons, amb el joc aturat, i que se'n vagin sols.
+- `node scripts/prova-pausa.mjs` — que tots els jocs tinguin el botó de pausa
+  al marcador, que aturi la partida de debò i que la torni a engegar.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer
