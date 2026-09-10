@@ -26,7 +26,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
 </head>
 <body>
 <div id="wrap">
-  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="onada">1</b></span><span>NAUS <b id="lives">3</b></span><span>BOMBES <b id="bombes">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>ONADA <b id="onada">1</b></span><span>NAUS <b id="lives">3</b></span><span>BOMB. <b id="bombes">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="448" height="352"></canvas></div>
   <div class="fila">
     <button id="up">▲</button><button id="down">▼</button><button id="gira">GIRA</button><button id="turbo">TURBO</button>
@@ -35,7 +35,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
     <button id="foc">FOC</button><button id="bomba">BOMBA</button><button id="salt">SALT</button>
   </div>
   <div id="msg"></div>
-  <small>GIRA canvia de sentit · TURBO accelera · SALT et treu d'un embolic, però de tant en tant surt malament · pausa: P</small>
+  <small><b style="color:#ddd">Salva els humans de la superfície: si se'ls emporten, es tornen mutants.</b> GIRA canvia de sentit · TURBO accelera · SALT et treu d'un embolic, però de tant en tant surt malament · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>

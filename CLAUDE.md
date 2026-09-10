@@ -160,6 +160,51 @@ Regles que no s'han de trencar:
   hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del
   servidor (`'servidor'`) i el missatge diu la veritat.
 
+## El marcador de dalt: pausa i so
+
+Tots dos botons els posa el `records.js` sol, a `#hud` (o `#h`, a l'Asteroids).
+Cap joc no els ha de fer.
+
+- **Pausa** (`❚❚`): dispara la tecla `P`, que la pausa de cada joc ja estava
+  feta. Si el joc ja en porta un de seu (el Tetris), no n'hi posa un segon.
+- **So** (`🔊`/`🔇`): surt **quan el joc fa el primer soroll**, no abans, perquè
+  el Tetris no en fa cap i seria mentida oferir-li un botó per callar-lo. La
+  tria es recorda a `localStorage` (`jocs-so`) i val per a tots els jocs.
+
+Cada joc es munta el so a la seva manera (uns en diuen `MG` i `AC`, altres
+`master` i `audioCtx`, i el del Tetris és dins d'una funció tancada), però tots
+fan el mateix: es fan un volum general i el connecten a la sortida del
+navegador. Per no haver de tocar vint-i-un fitxers, el `records.js` es posa al
+mig: canvia `AudioNode.prototype.connect` perquè tot el que es connecti a la
+sortida passi abans per un volum nostre. **Apagar el so és posar aquell volum a
+zero, no aturar el rellotge del so** (`suspend`): amb el rellotge aturat, els
+sorolls que el joc va programant s'amunteguen a la mateixa hora i, en tornar a
+engegar, sonen tots de cop.
+
+Els dos botons ocupen lloc al marcador: el del Crazy Climber i el del Defender
+ja no hi cabien per sis píxels i s'han hagut d'escurçar (`EDIFICI` → `EDIF.`,
+`BOMBES` → `BOMB.`). Si algun altre queda just, el `records.js` li posa
+`flex-wrap:wrap` perquè baixi de línia en comptes de sortir de la pantalla.
+
+## La línia d'ajuda de cada joc
+
+Cada joc porta un `<small>` que **comença dient què has de fer** i després diu
+quins botons ho fan:
+
+```html
+<small><b style="color:#ddd">Primer a 11 punts.</b> ↑ ↓ o arrossega el dit · pausa: P</small>
+```
+
+Els vint-i-un només deien quina tecla feia què, i cap no deia l'objectiu: al
+Q*bert, «salta en diagonal», però no que has de pintar tots els cubs; al Dig
+Dug, «fletxes per cavar», però no que has de netejar el nivell. És el mateix que
+passava amb el botó del Track & Field: sabies prémer-lo i no sabies per què.
+
+Va a sota dels controls, que és on hi ha lloc. Les dues excepcions són els jocs
+que van a pantalla completa: a l'**Asteroid Belt** la línia és fixa just damunt
+dels controls, i al **Tetris** va dins de `#hudbar` (el `resizeCanvas()` ja
+mesura l'alçada d'aquesta barra i abaixa el tauler tot sol).
+
 ## Com es prova
 
 No hi ha framework: proves amb Playwright (ja instal·lat a
@@ -177,6 +222,9 @@ comproven el comportament.
   uns segons, amb el joc aturat, i que se'n vagin sols.
 - `node scripts/prova-pausa.mjs` — que tots els jocs tinguin el botó de pausa
   al marcador, que aturi la partida de debò i que la torni a engegar.
+- `node scripts/prova-so.mjs` — que als jocs que fan soroll surti el botó del
+  so, que apagant-lo el volum es posi de debò a zero i torni en tornar-hi, i
+  que el marcador no vessi a 320 px.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer
@@ -225,7 +273,8 @@ comproven el comportament.
   Si no, l'app instal·lada pot seguir servint la versió antiga.
 - **Cada joc nou**: afegir-lo a `index.html`, a `sw.js` (el fitxer i la
   miniatura), a la descripció del `manifest.json`, a la llista `JOCS` de
-  `worker/records.js` i a la taula d'aquí dalt. I **tornar a desplegar el
+  `worker/records.js` i a la taula d'aquí dalt. I posar-li la línia d'ajuda
+  començant per l'objectiu. I **tornar a desplegar el
   Worker**, que això no va sol.
 - **Miniatures**: es generen obrint cada joc i capturant el canvas. Compte: el
   Tetris té tres canvas a la pàgina, cal agafar **el més gran** (el tauler). Si

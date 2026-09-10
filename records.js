@@ -94,6 +94,73 @@ const Records = (() => {
     });
   }
 
+  // ---- el so, i el boto per apagar-lo ----
+  // Vint dels vint-i-un jocs fan soroll i no hi havia manera de callar-los des
+  // del joc: o baixaves el volum del telefon o res. Al llit o amb gent al
+  // costat, aixo vol dir no jugar-hi.
+  //
+  // Cada joc es munta el so a la seva manera (uns en diuen MG i AC, altres
+  // master i audioCtx, i el del Tetris es dins d'una funcio tancada), pero
+  // tots fan el mateix: es fan un volum general i el connecten a la sortida
+  // del navegador. Aixi que en comptes de tocar els vint-i-un fitxers,
+  // aqui ens posem al mig: tot el que es connecti a la sortida passa abans
+  // per un volum nostre, i apagar el so es posar-lo a zero.
+  //
+  // A zero i no aturant el rellotge del so (suspend): amb el rellotge aturat,
+  // els sorolls que el joc va programant mentrestant s'amunteguen tots a la
+  // mateixa hora i, en tornar a engegar, sonen tots de cop.
+  const CLAU_SO = 'jocs-so';
+  let soActiu = true;
+  try { soActiu = localStorage.getItem(CLAU_SO) !== '0'; } catch (e) { }
+  const volums = [];                      // un per cada joc que faci soroll
+
+  function volumGeneral(ctx) {
+    if (!ctx.__volumJocs) {
+      const g = ctx.createGain();
+      g.gain.value = soActiu ? 1 : 0;
+      connectaOriginal.call(g, ctx.destination);
+      ctx.__volumJocs = g;
+      volums.push(g);
+      // El boto surt quan el joc fa el primer soroll, no abans: el Tetris no
+      // en fa cap i seria mentida oferir-li un boto per callar-lo.
+      demanaBotoSo();
+    }
+    return ctx.__volumJocs;
+  }
+
+  // Es fa un cop per pagina, abans que el joc arrenqui: el records.js es
+  // carrega sempre abans del codi del joc.
+  let connectaOriginal = null;
+  try {
+    connectaOriginal = AudioNode.prototype.connect;
+    AudioNode.prototype.connect = function (desti, ...resta) {
+      // nomes ens interessa qui es connecta a la sortida; la resta de
+      // connexions entre nodes (i les que van a un parametre) no les toquem
+      if (desti && desti.context && desti === desti.context.destination) {
+        connectaOriginal.call(this, volumGeneral(desti.context), ...resta);
+        return desti;                     // el connect() torna sempre on li han dit
+      }
+      return connectaOriginal.call(this, desti, ...resta);
+    };
+  } catch (e) {
+    connectaOriginal = null;              // navegador sense Web Audio: res a fer
+  }
+
+  function posaSo(actiu) {
+    soActiu = !!actiu;
+    for (const g of volums) g.gain.value = soActiu ? 1 : 0;
+    try { localStorage.setItem(CLAU_SO, soActiu ? '1' : '0'); } catch (e) { }
+    const b = document.getElementById('rec-so');
+    if (b) pintaBotoSo(b);
+  }
+  function pintaBotoSo(b) {
+    b.textContent = soActiu ? '🔊' : '🔇';
+    b.style.color = soActiu ? '#aaa' : '#f66';
+    b.style.borderColor = soActiu ? '#555' : '#a44';
+    b.setAttribute('aria-label', soActiu ? 'Apagar el so' : 'Engegar el so');
+    b.setAttribute('title', soActiu ? 'Apagar el so' : 'Engegar el so');
+  }
+
   // ---- el boto de pausa, al marcador de tots els jocs ----
   // Al mobil no hi havia manera d'aturar una partida: la pausa nomes anava
   // amb la tecla P i al telefon no hi ha teclat. Si et trucaven, o perdies la
@@ -131,6 +198,41 @@ const Records = (() => {
     const back = hud.querySelector('#back');
     if (back && back.parentNode === hud) hud.insertBefore(b, back.nextSibling);
     else hud.insertBefore(b, hud.firstChild);
+  }
+
+  // el boto del so, just despres del de pausa
+  function posaBotoSo() {
+    const hud = document.getElementById('hud') || document.getElementById('h');
+    if (!hud || !connectaOriginal || document.getElementById('rec-so')) return;
+    // si el marcador va just, val mes que baixi de linia que no pas que se
+    // surti de la pantalla i no es pugui prémer
+    hud.style.flexWrap = 'wrap';
+    const b = document.createElement('button');
+    b.id = 'rec-so';
+    b.type = 'button';
+    // mateix motiu que al de pausa: la regla button{width:NNpx} del joc
+    // tambe agafaria aquest, i quedaria enorme
+    b.setAttribute('style',
+      'width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:1;' +
+      'font:11px monospace;background:transparent;' +
+      'border:1px solid #555;border-radius:6px;padding:5px 6px;' +
+      'flex-shrink:0;cursor:pointer;font-family:monospace');
+    pintaBotoSo(b);
+    b.addEventListener('click', e => { e.stopPropagation(); posaSo(!soActiu); });
+    const pausa = document.getElementById('rec-pausa');
+    if (pausa && pausa.parentNode === hud) hud.insertBefore(b, pausa.nextSibling);
+    else {
+      const back = hud.querySelector('#back');
+      if (back && back.parentNode === hud) hud.insertBefore(b, back.nextSibling);
+      else hud.insertBefore(b, hud.firstChild);
+    }
+  }
+  function demanaBotoSo() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', posaBotoSo, { once: true });
+    } else {
+      posaBotoSo();
+    }
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', posaBotoPausa);
@@ -288,5 +390,10 @@ const Records = (() => {
     },
 
     taulaHTML,
+
+    // per a les proves i per si algun joc vol saber si el so esta engegat
+    so: () => soActiu,
+    posaSo,
+    canalsSo: () => volums.map(g => g.gain.value),
   };
 })();
