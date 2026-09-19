@@ -201,9 +201,15 @@ Dug, «fletxes per cavar», però no que has de netejar el nivell. És el mateix
 passava amb el botó del Track & Field: sabies prémer-lo i no sabies per què.
 
 Va a sota dels controls, que és on hi ha lloc. Les dues excepcions són els jocs
-que van a pantalla completa: a l'**Asteroid Belt** la línia és fixa just damunt
-dels controls, i al **Tetris** va dins de `#hudbar` (el `resizeCanvas()` ja
-mesura l'alçada d'aquesta barra i abaixa el tauler tot sol).
+que van a pantalla completa: al **Tetris** va dins de `#hudbar` (el
+`resizeCanvas()` ja mesura l'alçada d'aquesta barra i abaixa el tauler tot sol),
+i a l'**Asteroid Belt** és fixa just damunt dels controls.
+
+A l'Asteroid Belt, com que el joc ocupa tota la pantalla, **la línia queda dins
+del camp i els asteroides hi passen per sobre**. Per això allà només es veu
+mentre no jugues: se'n va al primer toc i torna quan s'acaba la partida, que és
+quan la pots tornar a llegir sense que faci nosa. Si algun dia hi ha un altre
+joc a pantalla completa, li ha de passar el mateix.
 
 ## Com es prova
 
@@ -225,6 +231,9 @@ comproven el comportament.
 - `node scripts/prova-so.mjs` — que als jocs que fan soroll surti el botó del
   so, que apagant-lo el volum es posi de debò a zero i torni en tornar-hi, i
   que el marcador no vessi a 320 px.
+- `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
+  que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
+  Belt marxi del camp quan comences a jugar.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer
