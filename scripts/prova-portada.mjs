@@ -21,6 +21,10 @@ const ORDRE = [
   ['centipede', 1981], ['frogger', 1981], ['donkey_kong', 1981], ['galaga', 1981], ['tempest', 1981],
   ['dig_dug', 1982], ['moon_patrol', 1982], ['pole_position', 1982], ['qbert', 1982], ['track_field', 1983], ['tetris', 1984],
 ];
+// La portada es un museu ordenat per any. Els jocs que no son de l'epoca de
+// les recreatives van en un apartat a part, despres dels classics, perque no
+// trenquin la linia del temps.
+const MODERNS = [['sindria', 2021]];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
@@ -33,7 +37,7 @@ for (const [w, h] of MIDES) {
     status: 200, contentType: 'application/json',
     headers: { 'access-control-allow-origin': '*' },
     body: JSON.stringify(Object.fromEntries(
-      ORDRE.map(([joc]) => [joc, [{ n: 'CRE', p: 188400, t: 1 }]]))),
+      [...ORDRE, ...MODERNS].map(([joc]) => [joc, [{ n: 'CRE', p: 188400, t: 1 }]]))),
   }));
   const p = await ctx.newPage();
   const errors = [];
@@ -43,9 +47,11 @@ for (const [w, h] of MIDES) {
 
   const r = await p.evaluate(() => {
     const fitxes = [...document.querySelectorAll('a.btn')];
+    const dades = f => [f.querySelector('.rec').dataset.joc, +f.querySelector('.any').textContent];
+    const seccioModerns = document.getElementById('moderns');
     return {
-      llista: fitxes.map(f => [f.querySelector('.rec').dataset.joc,
-                               +f.querySelector('.any').textContent]),
+      llista: [...document.querySelectorAll('.games:not(#moderns) a.btn')].map(dades),
+      moderns: seccioModerns ? [...seccioModerns.querySelectorAll('a.btn')].map(dades) : null,
       scrollHoritzontal: document.documentElement.scrollWidth > window.innerWidth + 1,
       tallades: fitxes.filter(f => f.getBoundingClientRect().top < 0).length,
       anyAmagat: fitxes.filter(f => f.querySelector('.any').getBoundingClientRect().width < 10).length,
@@ -54,22 +60,35 @@ for (const [w, h] of MIDES) {
         return e.scrollWidth > e.clientWidth + 1;
       }).length,
       imgTrencades: [...document.images].filter(i => !i.complete || i.naturalWidth === 0).length,
+      // les captures son quadrades: si surten estirades, alguna cosa mana
+      // sobre l'aspect-ratio (ens va passar amb les etiquetes width/height)
+      imgEstirades: [...document.images].filter(i => {
+        const r = i.getBoundingClientRect();
+        return Math.abs(r.width - r.height) > 2;
+      }).length,
     };
   });
 
   const esperat = JSON.stringify(ORDRE);
   const problemes = [];
   if (JSON.stringify(r.llista) !== esperat) problemes.push('l\'ordre o algun any no quadra');
+  if (r.moderns === null) problemes.push('falta l\'apartat dels moderns');
+  else if (JSON.stringify(r.moderns) !== JSON.stringify(MODERNS)) {
+    problemes.push('l\'apartat dels moderns no quadra');
+  }
   if (r.scrollHoritzontal) problemes.push('scroll horitzontal');
   if (r.tallades) problemes.push(`${r.tallades} fitxes tallades per dalt`);
   if (r.anyAmagat) problemes.push(`${r.anyAmagat} anys que no es veuen`);
   if (r.vessa) problemes.push(`${r.vessa} línies on el record no cap`);
   if (r.imgTrencades) problemes.push(`${r.imgTrencades} miniatures trencades`);
+  if (r.imgEstirades) problemes.push(`${r.imgEstirades} miniatures estirades`);
   if (errors.length) problemes.push(errors[0]);
 
   if (problemes.length) malament++;
   console.log(`${problemes.length ? '✗' : '✓'} ${String(w + 'x' + h).padEnd(10)} ` +
-    (problemes.length ? problemes.join(' · ') : `els ${r.llista.length} jocs per ordre, de ${r.llista[0][1]} a ${r.llista.at(-1)[1]}`));
+    (problemes.length ? problemes.join(' · ')
+      : `els ${r.llista.length} clàssics per ordre, de ${r.llista[0][1]} a ${r.llista.at(-1)[1]}` +
+        `, i ${r.moderns.length} de modern`));
   await ctx.close();
 }
 

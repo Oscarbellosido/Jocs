@@ -1,7 +1,7 @@
 # Jocs
 
-Vint-i-un jocs clàssics dels salons recreatius, fets amb HTML i JavaScript sense cap
-llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
+Vint-i-un jocs clàssics dels salons recreatius i un de modern, fets amb HTML i
+JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
 - Publicat a: https://oscarbellosido.github.io/Jocs/ (compte: la **J majúscula**)
@@ -36,6 +36,21 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
+### I un de modern
+
+| Fitxer | Joc | Any |
+|---|---|---|
+| `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
+
+La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
+al final de la fila trencaria la línia del temps. Per això els que **no** són de
+l'època van en un apartat seu (`#moderns`), després dels clàssics, amb el títol
+`I UN DE MODERN`. Si algun dia n'hi ha més, van tots allà.
+
+I com que aquests sí que són jocs d'empreses vives —no màquines de fa quaranta
+anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
+nom de l'original.
+
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
 
 **El criteri és la fidelitat a l'original**: les regles, les puntuacions i les
@@ -49,6 +64,33 @@ Donkey Kong té les quatre pantalles de l'original —les botes, la fàbrica del
 pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
 pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
+
+## El Síndria: com funciona la física
+
+És l'únic joc amb física de debò, i té dues decisions que no s'han de desfer
+sense entendre-les:
+
+- **Verlet i no velocitats.** Cada fruita recorda on era el pas anterior i la
+  velocitat en surt sola. Amb velocitats i rebots, les fruites de sota d'una
+  pila tremolen i la pila no para mai quieta. El temps avança **sempre igual**
+  (`PAS = 1/120`), passi el que passi amb els fotogrames.
+- **Es fonen quan es TOQUEN, no quan s'encavalquen.** El solucionador de xocs
+  acaba cada pas separant les fruites fins que just es toquen, així que demanant
+  encavalcament no s'ajuntaven mai: en una prova, 88 fruites i 1 punt.
+
+Altres coses que ja s'han hagut d'ajustar:
+
+- Les mides de les fruites van **lligades a l'amplada de la caixa**: hi caben
+  dues síndries just just, com a l'original. Amb la síndria més grossa la caixa
+  vessava abans d'hora i no hi havia manera d'arribar-hi.
+- **Vessar només compta si la fruita està quieta** i fa dos segons que sobresurt.
+  Si no, perdies cada cop que en deixaves anar una de grossa i rebotava amunt.
+- Cada fruita es pinta **un sol cop** en un llençol a part i després només
+  s'enganxa. Fent el degradat i les ratlles a cada fotograma, amb la caixa plena
+  el dibuix costava 4 mil·lèsimes per fotograma, i el pressupost sencer d'un
+  fotograma són 16.
+- És l'únic joc **sense `image-rendering:pixelated`**: són cercles grossos i amb
+  els píxels quadrats quedaven dentats.
 
 ## Estructura
 
@@ -280,9 +322,10 @@ comproven el comportament.
 
 - **Cada canvi de fitxers: pujar la versió de la cache a `sw.js`** (`jocs-vN`).
   Si no, l'app instal·lada pot seguir servint la versió antiga.
-- **Cada joc nou**: afegir-lo a `index.html`, a `sw.js` (el fitxer i la
-  miniatura), a la descripció del `manifest.json`, a la llista `JOCS` de
-  `worker/records.js` i a la taula d'aquí dalt. I posar-li la línia d'ajuda
+- **Cada joc nou**: afegir-lo a `index.html` (a l'apartat que li toqui), a
+  `sw.js` (el fitxer i la miniatura), a la descripció del `manifest.json`, a la
+  llista `JOCS` de `worker/records.js`, a la taula d'aquí dalt i a la llista del
+  `scripts/prova-portada.mjs`. I posar-li la línia d'ajuda
   començant per l'objectiu. I **tornar a desplegar el
   Worker**, que això no va sol.
 - **Miniatures**: es generen obrint cada joc i capturant el canvas. Compte: el

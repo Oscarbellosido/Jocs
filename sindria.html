@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Síndria</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* aquest joc son cercles grossos i no pixels: amb image-rendering:pixelated
+   les fruites quedaven dentades, aixi que aqui el deixem suavitzar */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#1a1410;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#deixa{color:#7dff9b;width:120px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="620"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="right">▶</button><button id="deixa">DEIXA ANAR</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Ajunta dues fruites iguals per fer-ne una de més grossa, fins a la síndria; s'acaba si la caixa vessa.</b> llisca el dit per triar el lloc i aixeca'l per deixar-la caure · teclat: ← → i ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndCau(){aInit();noise(.05,.1)}
+// com mes grossa la fruita que surt, mes greu el so
+function sndAjunta(n){aInit();tone(880-n*55,.16,"sine",.28,120)}
+function sndSindria(){aInit();[520,660,790,1050].forEach((f,i)=>setTimeout(()=>tone(f,.18,"triangle",.3),i*95))}
+function sndFi(){aInit();[340,280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=620;
+// la caixa: parets i terra
+// El sostre ha de deixar prou aire a sobre per a la fruita que tens a la ma:
+// la mes grossa que pot caure fa 43 de radi, i amb 112 se superposava amb la
+// tira de fruites de dalt.
+const PARET=22, TERRA=H-16, SOSTRE=140;   // SOSTRE es la ratlla de vessar
+const CAIXA_E=PARET, CAIXA_D=W-PARET;
+
+// Les onze fruites, de petita a gran. La gracia es que cada parella en fa una
+// de la seguent, i la de dalt de tot es la sindria.
+// Les mides van lligades a l'amplada de la caixa: hi caben dues sindries just
+// just, com a la maquina. Amb la sindria mes grossa la caixa vessava abans
+// d'hora i no hi havia manera d'arribar-hi.
+const FRUITES=[
+  {nom:'cirera',   r:13, c:'#d8253f', c2:'#f0566d', pinyol:'#7a1224'},
+  {nom:'maduixa',  r:19, c:'#ef3b4a', c2:'#ff7b7b', pinyol:'#a3182a'},
+  {nom:'raïm',     r:25, c:'#8a4fd0', c2:'#b487ee', pinyol:'#4e2680'},
+  {nom:'mandarina',r:31, c:'#f5852a', c2:'#ffb066', pinyol:'#a8510e'},
+  {nom:'taronja',  r:38, c:'#f0a01e', c2:'#ffc65e', pinyol:'#9e6208'},
+  {nom:'poma',     r:46, c:'#d43b3b', c2:'#ff7a6a', pinyol:'#8a1f22'},
+  {nom:'pera',     r:54, c:'#bcd23a', c2:'#e0f07a', pinyol:'#7b8c17'},
+  {nom:'préssec',  r:62, c:'#ff9b7a', c2:'#ffc4ac', pinyol:'#c05a3c'},
+  {nom:'pinya',    r:72, c:'#e8c53c', c2:'#f7e08a', pinyol:'#9a7a10'},
+  {nom:'meló',     r:83, c:'#b6d97a', c2:'#dcf0b4', pinyol:'#74954a'},
+  {nom:'síndria',  r:95, c:'#2f8f3f', c2:'#57bf60', pinyol:'#11491c'},
+];
+const SINDRIA=FRUITES.length-1;
+// Els punts de cada unio, com a la maquina: 1, 3, 6, 10... Ajuntar dues
+// fruites grosses val molt mes que ajuntar-ne dues de petites.
+const PUNTS=FRUITES.map((f,i)=>i*(i+1)/2);
+// nomes cauen les cinc mes petites: si en caiguessin de grosses no hi hauria joc
+const MAX_CAU=4;
+
+// ===== FISICA =====
+// Verlet: cada fruita recorda on era l'any passat i la velocitat surt sola.
+// Amb aixo les piles de fruites es queden quietes; amb velocitats i rebots
+// les de sota tremolaven i la pila no parava mai de moure's.
+const PAS=1/120;                    // el temps sempre avanca igual
+const G=0.13;                       // gravetat, en pixels per pas al quadrat
+const AIRE=0.992;                   // fregament
+const ITER=8;                       // quantes vegades es desencallen per pas
+
+let fruites=[],score=0,state='play',paused=false;
+let mira=W/2,actual=0,seguentN=0,espera=0,idSeg=1;
+let vessantT=0,brillo=[],temps=0;
+
+const JOC='sindria';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function novaFruita(){return Math.floor(Math.random()*(MAX_CAU+1))}
+function start(){
+  fruites=[];score=0;state='play';paused=false;
+  mira=W/2;actual=novaFruita();seguentN=novaFruita();majorVista=0;
+  espera=0;vessantT=0;brillo=[];temps=0;idSeg=1;
+  hideMsg();updateHUD();
+}
+
+function afegeix(n,px,py,vx=0,vy=0){
+  fruites.push({n,x:px,y:py,px:px-vx,py:py-vy,r:FRUITES[n].r,
+                gir:Math.random()*6.28,id:idSeg++,neix:temps});
+  return fruites[fruites.length-1];
+}
+
+function deixaAnar(){
+  if(state!=='play'||paused||espera>0)return;
+  const r=FRUITES[actual].r;
+  const px=Math.max(CAIXA_E+r,Math.min(CAIXA_D-r,mira));
+  afegeix(actual,px,SOSTRE-r-10);
+  actual=seguentN;seguentN=novaFruita();
+  espera=0.42;                      // una mica d'aire entre fruita i fruita
+  sndCau();updateHUD();
+}
+
+function passaFisica(){
+  for(const f of fruites){
+    const vx=(f.x-f.px)*AIRE, vy=(f.y-f.py)*AIRE;
+    f.px=f.x;f.py=f.y;
+    f.x+=vx;f.y+=vy+G;
+    f.gir+=vx*0.02;
+  }
+  for(let k=0;k<ITER;k++){
+    // entre fruites
+    for(let i=0;i<fruites.length;i++){
+      const a=fruites[i];
+      for(let j=i+1;j<fruites.length;j++){
+        const b=fruites[j];
+        let dx=b.x-a.x, dy=b.y-a.y;
+        const rr=a.r+b.r;
+        if(Math.abs(dx)>rr||Math.abs(dy)>rr)continue;
+        let d=Math.hypot(dx,dy);
+        if(d>=rr)continue;
+        if(d<0.0001){dx=Math.random()-0.5;dy=-1;d=1}
+        // les grosses es deixen empenyer menys que les petites
+        const ma=a.r*a.r, mb=b.r*b.r, tot=ma+mb;
+        const corr=(rr-d)/d*0.5;
+        a.x-=dx*corr*(mb/tot)*1.0; a.y-=dy*corr*(mb/tot)*1.0;
+        b.x+=dx*corr*(ma/tot)*1.0; b.y+=dy*corr*(ma/tot)*1.0;
+      }
+    }
+    // parets i terra
+    for(const f of fruites){
+      if(f.x-f.r<CAIXA_E)f.x=CAIXA_E+f.r;
+      if(f.x+f.r>CAIXA_D)f.x=CAIXA_D-f.r;
+      if(f.y+f.r>TERRA){
+        f.y=TERRA-f.r;
+        f.px+=(f.x-f.px)*0.35;       // fregament amb el terra
+      }
+    }
+  }
+}
+
+// dues d'iguals que es toquen es fonen en una de la seguent
+function ajunta(){
+  for(let i=0;i<fruites.length;i++){
+    const a=fruites[i];
+    for(let j=i+1;j<fruites.length;j++){
+      const b=fruites[j];
+      if(a.n!==b.n)continue;
+      // Es fonen quan es TOQUEN, no quan s'encavalquen: el solucionador de
+      // xocs acaba cada pas separant-les fins que just es toquen, aixi que
+      // demanant encavalcament no s'ajuntaven mai (88 fruites i 1 punt).
+      const d=Math.hypot(b.x-a.x,b.y-a.y);
+      if(d>a.r+b.r+1.5)continue;
+      const n=a.n, mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const vx=((a.x-a.px)+(b.x-b.px))/2, vy=((a.y-a.py)+(b.y-b.py))/2;
+      fruites.splice(j,1);fruites.splice(i,1);
+      if(n===SINDRIA){
+        // dues sindries: marxen totes dues i cau un premi gros, com a la maquina
+        score+=PUNTS[SINDRIA]*4;
+        esclat(mx,my,FRUITES[SINDRIA].c2,30);
+        sndSindria();
+      } else {
+        afegeix(n+1,mx,my,vx,vy);
+        score+=PUNTS[n+1];
+        esclat(mx,my,FRUITES[n+1].c2,10+n*2);
+        if(n+1===SINDRIA)sndSindria(); else sndAjunta(n);
+      }
+      updateHUD();
+      return true;                   // una per fotograma: la resta ja vindra
+    }
+  }
+  return false;
+}
+function esclat(px,py,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.28, v=1+Math.random()*3;
+    brillo.push({x:px,y:py,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,t:1,col});
+  }
+}
+
+async function finalPartida(){
+  msg('LA CAIXA HA VESSAT');
+  const r=await Records.fiPartida(JOC,score);
+  msg('LA CAIXA HA VESSAT'+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  temps+=dt;
+  if(espera>0)espera-=dt;
+
+  let acc=Math.min(dt,0.05);
+  while(acc>0){
+    passaFisica();
+    acc-=PAS;
+  }
+  let n=0;
+  while(ajunta()&&n++<6);             // les cadenes s'han de poder encadenar
+
+  for(let i=brillo.length-1;i>=0;i--){
+    const p=brillo[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.25;p.t-=dt*2.2;
+    if(p.t<=0)brillo.splice(i,1);
+  }
+
+  // Vessar: una fruita que es queda quieta per sobre de la ratlla. Se li
+  // donen dos segons, que si no acabaries la partida cada cop que en deixes
+  // caure una de grossa i rebota un moment cap amunt.
+  let vessa=false;
+  for(const f of fruites){
+    if(temps-f.neix<0.9)continue;     // la que acabes de deixar anar, no compta
+    const quieta=Math.hypot(f.x-f.px,f.y-f.py)<0.6;
+    if(quieta&&f.y-f.r<SOSTRE){vessa=true;break}
+  }
+  vessantT=vessa?vessantT+dt:0;
+  if(vessantT>2){
+    state='over';sndFi();
+    setTimeout(finalPartida,700);
+  }
+}
+
+// ===== DIBUIX =====
+// Cada fruita es dibuixa un sol cop en un llencol a part i despres nomes
+// s'enganxa. Fent el degradat i les ratlles a cada fotograma, amb la caixa
+// plena el dibuix costava 4 mil·lesimes per fotograma, que al mobil ja son
+// massa: el pressupost sencer d'un fotograma son 16.
+const llencols={};
+function sprite(n,r){
+  const clau=n+'@'+Math.round(r);
+  if(llencols[clau])return llencols[clau];
+  const pad=Math.ceil(r*0.5), ll=document.createElement('canvas');
+  ll.width=Math.ceil(r*2+pad*2);ll.height=Math.ceil(r*2+pad*2);
+  const g=ll.getContext('2d');
+  g.translate(pad+r,pad+r);
+  pintaFruita(g,r,n);
+  ll.__pad=pad+r;
+  llencols[clau]=ll;
+  return ll;
+}
+function dibuixaFruita(px,py,r,n,alpha){
+  const ll=sprite(n,r);
+  if(alpha!=null&&alpha!==1){x.globalAlpha=alpha;x.drawImage(ll,px-ll.__pad,py-ll.__pad);x.globalAlpha=1}
+  else x.drawImage(ll,px-ll.__pad,py-ll.__pad);
+}
+function pintaFruita(x,r,n){
+  const d=FRUITES[n];
+  x.save();
+  const g=x.createRadialGradient(-r*0.35,-r*0.4,r*0.1,0,0,r);
+  g.addColorStop(0,d.c2);g.addColorStop(1,d.c);
+  x.fillStyle=g;
+  x.beginPath();x.arc(0,0,r,0,6.2832);x.fill();
+  x.strokeStyle='rgba(0,0,0,.28)';x.lineWidth=Math.max(1,r*0.05);x.stroke();
+  // la síndria porta ratlles, que si no sembla un meló
+  if(n===SINDRIA){
+    x.strokeStyle=d.pinyol;x.lineWidth=r*0.12;
+    for(let i=-2;i<=2;i++){
+      x.beginPath();
+      x.arc(0,0,r*0.98,0,6.2832);
+      x.save();x.clip();
+      x.beginPath();
+      x.moveTo(i*r*0.36,-r);x.quadraticCurveTo(i*r*0.5,0,i*r*0.36,r);x.stroke();
+      x.restore();
+    }
+  }
+  // la lluentor de dalt, que les fa semblar rodones
+  x.fillStyle='rgba(255,255,255,.35)';
+  x.beginPath();x.ellipse(-r*0.32,-r*0.38,r*0.26,r*0.17,-0.6,0,6.2832);x.fill();
+  // la cueta
+  x.strokeStyle=d.pinyol;x.lineWidth=Math.max(1.5,r*0.08);
+  x.beginPath();x.moveTo(0,-r*0.95);x.lineTo(r*0.12,-r*1.18);x.stroke();
+  x.fillStyle='#4c8f34';
+  x.beginPath();x.ellipse(r*0.3,-r*1.16,r*0.2,r*0.1,-0.4,0,6.2832);x.fill();
+  x.restore();
+}
+function draw(){
+  x.fillStyle='#1a1410';x.fillRect(0,0,W,H);
+  // la caixa
+  x.fillStyle='#0d0a08';x.fillRect(CAIXA_E,SOSTRE-30,CAIXA_D-CAIXA_E,TERRA-SOSTRE+30);
+  x.strokeStyle='#7a5a3a';x.lineWidth=6;
+  x.beginPath();
+  x.moveTo(CAIXA_E-3,SOSTRE-40);x.lineTo(CAIXA_E-3,TERRA+3);
+  x.lineTo(CAIXA_D+3,TERRA+3);x.lineTo(CAIXA_D+3,SOSTRE-40);
+  x.stroke();
+
+  // la ratlla de vessar, que parpelleja quan hi ets a prop
+  const perill=vessantT>0.25;
+  x.strokeStyle=perill?'#ff5050':'#5a4436';
+  x.lineWidth=2;x.setLineDash([9,7]);
+  x.beginPath();x.moveTo(CAIXA_E,SOSTRE);x.lineTo(CAIXA_D,SOSTRE);x.stroke();
+  x.setLineDash([]);
+  if(perill&&Math.floor(temps*6)%2===0){
+    x.fillStyle='#ff5050';x.font='bold 13px monospace';x.textAlign='center';
+    x.fillText('VESSA!',W/2,SOSTRE-12);x.textAlign='left';
+  }
+
+  for(const f of fruites)dibuixaFruita(f.x,f.y,f.r,f.n);
+
+  for(const p of brillo){
+    x.globalAlpha=Math.max(0,p.t);
+    x.fillStyle=p.col;x.fillRect(p.x-2,p.y-2,4,4);
+  }
+  x.globalAlpha=1;
+
+  // la fruita que tens a la ma i per on caura
+  if(state==='play'){
+    const r=FRUITES[actual].r;
+    const px=Math.max(CAIXA_E+r,Math.min(CAIXA_D-r,mira));
+    if(espera<=0){
+      x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=2;x.setLineDash([5,9]);
+      x.beginPath();x.moveTo(px,SOSTRE-10);x.lineTo(px,TERRA);x.stroke();
+      x.setLineDash([]);
+      dibuixaFruita(px,Math.max(r+34,SOSTRE-r-8),r,actual,0.95);
+    }
+  }
+
+  // La tira de dalt: la cadena de fruites, de la cirera a la sindria, amb les
+  // que ja has fet enceses. Aixi es veu d'un cop d'ull fins on has arribat i
+  // que ve despres. A la dreta, la fruita que et tocara.
+  let ex=14;
+  for(let i=0;i<FRUITES.length;i++){
+    const rr=3+i;
+    dibuixaFruita(ex+rr,15,rr,i,i<=majorFeta()?1:0.22);
+    ex+=rr*2+3;
+  }
+  x.strokeStyle='#4a3a2e';x.lineWidth=1;
+  x.beginPath();x.moveTo(W-46,3);x.lineTo(W-46,28);x.stroke();
+  dibuixaFruita(W-25,15,Math.min(12,FRUITES[seguentN].r),seguentN,0.95);
+  x.fillStyle='#8a7a6a';x.font='8px monospace';x.textAlign='center';
+  x.fillText('VE ARA',W-25,37);x.textAlign='left';
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+let majorVista=0;
+function majorFeta(){
+  for(const f of fruites)if(f.n>majorVista)majorVista=f.n;
+  return majorVista;
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last)/1000;last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// El dit mana: llisques per la pantalla per triar el lloc i, en aixecar-lo,
+// la fruita cau. Els botons hi son per a qui jugui amb el teclat o prefereixi
+// picar.
+function xCanvas(ev){
+  const r=c.getBoundingClientRect();
+  return (ev.clientX-r.left)/r.width*W;
+}
+let arrossegant=false;
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')return;
+  arrossegant=true;mira=xCanvas(ev);
+});
+c.addEventListener('pointermove',ev=>{
+  if(!arrossegant)return;
+  ev.preventDefault();mira=xCanvas(ev);
+});
+function solta(ev){
+  if(!arrossegant)return;
+  arrossegant=false;
+  if(ev&&ev.clientX!=null)mira=xCanvas(ev);
+  deixaAnar();
+}
+c.addEventListener('pointerup',solta);
+c.addEventListener('pointercancel',()=>{arrossegant=false});
+c.addEventListener('pointerleave',()=>{arrossegant=false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+const PAS_BOTO=16;
+function mou(d){mira=Math.max(CAIXA_E,Math.min(CAIXA_D,mira+d*PAS_BOTO))}
+let repeteix=null;
+function bindMou(id,d){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();mou(d);
+    clearInterval(repeteix);repeteix=setInterval(()=>mou(d),60)});
+  const atura=()=>clearInterval(repeteix);
+  b.addEventListener('pointerup',atura);
+  b.addEventListener('pointercancel',atura);
+  b.addEventListener('pointerleave',atura);
+}
+bindMou('left',-1);bindMou('right',1);
+document.getElementById('deixa').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')start(); else deixaAnar();
+});
+
+const tecles={};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();tecles.l=1}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();tecles.r=1}
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)deixaAnar()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')tecles.l=0;
+  if(e.code==='ArrowRight'||e.code==='KeyD')tecles.r=0;
+});
+setInterval(()=>{
+  if(state!=='play'||paused)return;
+  if(tecles.l)mou(-1);
+  if(tecles.r)mou(1);
+},45);
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

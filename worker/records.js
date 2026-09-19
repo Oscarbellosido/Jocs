@@ -37,6 +37,7 @@ const JOCS = {
   pole_position:   9999999,
   moon_patrol:     9999999,
   track_field:     9999999,
+  sindria:          999999,
 };
 const TOP = 10;
 

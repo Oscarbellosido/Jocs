@@ -74,6 +74,11 @@
   a.btn img {
     display: block;
     width: 100%;
+    /* height:auto és imprescindible: les etiquetes width/height de la imatge
+       valen com a estil i, sense això, manaven sobre l'aspect-ratio. Totes
+       les miniatures sortien de 164x240 en comptes de quadrades, o sigui
+       estirades cap avall un 46%. */
+    height: auto;
     aspect-ratio: 1;
     border-radius: 6px;
     background: #000;
@@ -109,6 +114,20 @@
     font-style: normal;
     color: #7f9fc4;
   }
+  h2.seccio {
+    width: 100%;
+    max-width: 430px;
+    padding: 0 0.8rem;
+    margin-top: 0.5rem;
+    font: normal 0.72rem monospace;
+    letter-spacing: 0.16em;
+    color: #7f9fc4;
+    text-align: center;
+  }
+  h2.seccio::before, h2.seccio::after { content: '· '; }
+  h2.seccio::after { content: ' ·'; }
+  @media (min-width: 560px) { h2.seccio { max-width: 760px; } }
+  @media (min-width: 900px) { h2.seccio { max-width: 1020px; } }
   a.btn em .rec {
     min-width: 0;
     overflow: hidden;
@@ -142,6 +161,10 @@
     <a class="btn" href="qbert.html"><img src="thumbs/qbert.png" alt="Q*BERT" width="240" height="240"><span>Q*BERT</span><em><i class="any">1982</i><b class="rec" data-joc="qbert"></b></em></a>
     <a class="btn" href="track_field.html"><img src="thumbs/track_field.png" alt="TRACK &amp; FIELD" width="240" height="240"><span>TRACK &amp; FIELD</span><em><i class="any">1983</i><b class="rec" data-joc="track_field"></b></em></a>
     <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span><em><i class="any">1984</i><b class="rec" data-joc="tetris"></b></em></a>
+  </div>
+  <h2 class="seccio">I UN DE MODERN</h2>
+  <div class="games" id="moderns">
+    <a class="btn" href="sindria.html"><img src="thumbs/sindria.png" alt="SÍNDRIA" width="240" height="240"><span>SÍNDRIA</span><em><i class="any">2021</i><b class="rec" data-joc="sindria"></b></em></a>
   </div>
 <script src="records.js"></script>
 <script>
