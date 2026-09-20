@@ -74,7 +74,15 @@ for (const joc of jocs) {
   const mesura = await p.evaluate(() => {
     const hud = document.getElementById('hud') || document.getElementById('h');
     const bs = document.getElementById('rec-so');
+    // El marcador ha de cabre en UNA linia. Amb els botons de pausa i so,
+    // a 320 px catorze jocs el partien en dues i perdien onze pixels de joc.
+    let partit = false;
+    if (hud) {
+      const rs = [...hud.children].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
+      for (const a of rs) for (const b of rs) if (a.bottom <= b.top + 0.5) partit = true;
+    }
     return {
+      partit,
       vessa: hud ? hud.scrollWidth > hud.clientWidth + 1 : false,
       scrollPagina: document.documentElement.scrollWidth > window.innerWidth + 1,
       mida: bs ? [Math.round(bs.getBoundingClientRect().width),
@@ -97,6 +105,7 @@ for (const joc of jocs) {
     }
   }
   if (mesura.vessa) problemes.push('el marcador vessa a 320 px');
+  if (mesura.partit) problemes.push('el marcador es parteix en dues línies a 320 px');
   if (mesura.scrollPagina) problemes.push('scroll horitzontal');
   if (errors.length) problemes.push(errors[0]);
 

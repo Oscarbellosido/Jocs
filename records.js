@@ -187,7 +187,7 @@ const Records = (() => {
     b.setAttribute('style',
       'width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:1;' +
       'font:11px monospace;background:transparent;color:#aaa;' +
-      'border:1px solid #555;border-radius:6px;padding:5px 7px;' +
+      'border:1px solid #555;border-radius:6px;padding:5px 5px;' +
       'flex-shrink:0;cursor:pointer;font-family:monospace');
     b.addEventListener('click', () => {
       // uns jocs miren e.code==='KeyP' i altres e.key==='p': hi posem tots dos
@@ -215,7 +215,7 @@ const Records = (() => {
     b.setAttribute('style',
       'width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:1;' +
       'font:11px monospace;background:transparent;' +
-      'border:1px solid #555;border-radius:6px;padding:5px 6px;' +
+      'border:1px solid #555;border-radius:6px;padding:5px 5px;' +
       'flex-shrink:0;cursor:pointer;font-family:monospace');
     pintaBotoSo(b);
     b.addEventListener('click', e => { e.stopPropagation(); posaSo(!soActiu); });
@@ -227,6 +227,7 @@ const Records = (() => {
       else hud.insertBefore(b, hud.firstChild);
     }
   }
+  function ajusta() { ajustaTot(); }
   function demanaBotoSo() {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', posaBotoSo, { once: true });
@@ -235,10 +236,65 @@ const Records = (() => {
     }
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', posaBotoPausa);
+    document.addEventListener('DOMContentLoaded', () => { posaBotoPausa(); ajusta(); });
   } else {
-    posaBotoPausa();
+    posaBotoPausa(); ajusta();
   }
+
+  // ---- el marcador a les pantalles estretes ----
+  // Amb els dos botons nous, a 320 px el marcador de catorze jocs ja no cabia
+  // en una linia i baixava de linia: onze pixels menys de joc, i abans de
+  // posar-los-hi no li passava a cap. El que hi sobra es el "← Tornar", que
+  // ocupa 76 px a tot arreu; a les pantalles estretes n'hi ha prou amb la
+  // fletxa. Es diu igual per a qui ho llegeixi en veu alta.
+  const ESTRETA = 380;
+  function ajustaTornar() {
+    const hud = document.getElementById('hud') || document.getElementById('h');
+    const back = hud && hud.querySelector('#back');
+    if (!back) return;
+    if (back.dataset.textLlarg === undefined) back.dataset.textLlarg = back.textContent;
+    const estreta = window.innerWidth <= ESTRETA;
+    const vol = estreta ? '←' : back.dataset.textLlarg;
+    if (back.textContent !== vol) back.textContent = vol;
+    back.setAttribute('aria-label', 'Tornar al menú');
+    back.setAttribute('title', 'Tornar al menú');
+  }
+
+  // Nomes amb la fletxa encara no n'hi havia prou: el marcador de punts creix
+  // durant la partida i el del Defender, amb cinc xifres, tornava a partir-se.
+  // Com que cada joc ensenya coses diferents i els numeros creixen mentre
+  // jugues, en comptes d'anar mida per mida a cada joc, aqui s'encongeix la
+  // lletra del marcador fins que hi cap, i para de seguida que hi cap.
+  function esPartit(hud) {
+    const rs = [...hud.children].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
+    for (const a of rs) for (const b of rs) if (a.bottom <= b.top + 0.5) return true;
+    return false;
+  }
+  function ajustaMarcador() {
+    const hud = document.getElementById('hud') || document.getElementById('h');
+    if (!hud) return;
+    if (hud.dataset.midaBase === undefined) {
+      hud.dataset.midaBase = parseFloat(getComputedStyle(hud).fontSize) || 12;
+    }
+    const base = parseFloat(hud.dataset.midaBase);
+    hud.style.gap = window.innerWidth <= ESTRETA ? '3px' : '';
+    // no baixem de 10px: mes petit no es llegeix, i si ni aixi hi cap val
+    // mes que baixi de linia que no pas que no es vegi
+    const abans = hud.style.fontSize;
+    for (let mida = base; mida >= 10; mida -= 0.5) {
+      hud.style.fontSize = mida >= base ? '' : mida + 'px';
+      if (!esPartit(hud)) break;
+    }
+    // Si la lletra ha canviat, el marcador te una altra alcada. Hi ha jocs que
+    // col·loquen el tauler a partir d'aquesta alcada (el Tetris ho fa al seu
+    // resizeCanvas), i s'han d'assabentar del canvi.
+    if (hud.style.fontSize !== abans) dispatchEvent(new Event('resize'));
+  }
+  function ajustaTot() { ajustaTornar(); ajustaMarcador(); }
+  addEventListener('resize', ajustaTot);
+  // els numeros creixen mentre jugues, aixi que s'ha de repassar de tant en
+  // tant; llegir quatre rectangles cada segon i mig no costa res
+  setInterval(ajustaMarcador, 1500);
 
   // ---- el peu del final de partida ----
   // Fins ara, en acabar la partida nomes podies tornar a jugar: per anar al

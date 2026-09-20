@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Nibbler Classic</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:16px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="380" height="420"></canvas></div>
+  <div id="controls">
+    <button id="u">▲</button><button id="l">◀</button><button id="d">▼</button><button id="r">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Menja't tots els punts del laberint sense mossegar-te la cua ni petar contra una paret; cada punt et fa més llarg.</b> llisca el dit cap on vulguis anar · fletxes o WASD · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.12,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+// el mos alterna de to, com el "wakka wakka" de les maquines
+let mos=0;
+function sndMos(){aInit();mos=1-mos;tone(mos?440:330,.05,"square",.18)}
+function sndMor(){aInit();noise(.3,.3);[400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.18,"square",.25,-80),i*130))}
+function sndNivell(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.13,"square",.26),i*110))}
+function sndFi(){aInit();[300,240,180,120].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*240))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=380,H=420;
+const CELA=20, COLS=19, FILES=17;
+const DALT=40;                       // franja de dalt: laberint i temps
+
+// Els laberints del Nibbler: passadissos amples amb pilars, no un embut com
+// el del Comecocos. Amb passadissos d'una sola casella, una serp llarga no
+// te on girar i el joc es torna impossible de seguida.
+const LABERINTS=[
+`###################
+#.................#
+#.###.###.###.###.#
+#.................#
+#.###.###.###.###.#
+#.................#
+#.###.###.###.###.#
+#.................#
+#.................#
+#.................#
+#.###.###.###.###.#
+#.................#
+#.###.###.###.###.#
+#.................#
+#.###.###.###.###.#
+#.................#
+###################`,
+`###################
+#.................#
+#.#.#.#.#.#.#.#.#.#
+#.................#
+#.#####.###.#####.#
+#.................#
+#.#.#.#.....#.#.#.#
+#.................#
+#.#.#.#.....#.#.#.#
+#.................#
+#.#####.###.#####.#
+#.................#
+#.#.#.#.#.#.#.#.#.#
+#.................#
+#.###.#######.###.#
+#.................#
+###################`,
+`###################
+#.................#
+#.###.#.....#.###.#
+#.....#.###.#.....#
+#.###.#.#.#.#.###.#
+#.#.......#.......#
+#.#.#####.#.#####.#
+#.................#
+#.#####.#.#.#####.#
+#.......#.#.......#
+#.###.#####.###.#.#
+#.................#
+#.#.#####.#####.#.#
+#.................#
+#.###.#.###.#.###.#
+#.................#
+###################`,
+`###################
+#.................#
+#.###.#########.#.#
+#...#.........#...#
+#.#.#.#######.#.#.#
+#.#...#.....#...#.#
+#.#####.###.#####.#
+#.................#
+#.#####.###.#####.#
+#.#...#.....#...#.#
+#.#.#.#######.#.#.#
+#...#.........#...#
+#.###.#########.#.#
+#.................#
+#.#.#.#.#.#.#.#.#.#
+#.................#
+###################`,
+];
+
+// Un punt de cada tres et fa mes llarg. Amb un per punt, en mig laberint la
+// serp ja no cabia enlloc: hi ha mes de 190 caselles buides i el laberint
+// s'ha de poder acabar.
+const CREIX_CADA=3;
+const LLARG_INICI=5;
+const VIDES=3;
+
+let mapa=[],serp=[],dir={x:1,y:0},seguentDir=null;
+let punts=0,nivell=1,vides=VIDES,queden=0,menjats=0,creixPend=0;
+let state='play',paused=false,acum=0,bonus=0,espera=0,titolT=0;
+
+const JOC='nibbler';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(punts>bestScore){bestScore=punts;Records.desaLocal(JOC,punts)}
+  Records.marcador(JOC,document.getElementById('best'),punts);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=punts;
+  document.getElementById('lives').textContent=vides;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// cada laberint va una mica mes de pressa
+function msPerPas(){return Math.max(85,160-(nivell-1)*9)}
+
+function carregaLaberint(){
+  const txt=LABERINTS[(nivell-1)%LABERINTS.length];
+  mapa=txt.trim().split('\n').map(f=>f.split(''));
+  queden=0;
+  for(const f of mapa)for(const ce of f)if(ce==='.')queden++;
+  bonus=2000+queden*10;
+  posaSerp();
+  menjats=0;creixPend=0;
+}
+// On comenca: el tram recte mes llarg del mig del laberint, que aixi sempre
+// hi ha on arrencar i no surts mirant una paret.
+function trobaInici(){
+  let millor=null;
+  for(let f=1;f<FILES-1;f++){
+    let ini=-1;
+    for(let co=1;co<=COLS-1;co++){
+      const lliure=co<COLS-1&&mapa[f][co]!=='#';
+      if(lliure&&ini<0)ini=co;
+      if(!lliure&&ini>=0){
+        const llarg=co-ini;
+        const dist=Math.abs(f-(FILES-1)/2);
+        if(llarg>=LLARG_INICI+1&&(!millor||llarg>millor.llarg||
+           (llarg===millor.llarg&&dist<millor.dist))){
+          millor={f,ini,llarg,dist};
+        }
+        ini=-1;
+      }
+    }
+  }
+  return millor;
+}
+function posaSerp(){
+  const t=trobaInici();
+  const f=t?t.f:1, cap=t?t.ini+t.llarg-1:COLS-2;
+  serp=[];
+  for(let i=0;i<LLARG_INICI;i++)serp.push({x:cap-i,y:f});
+  dir={x:1,y:0};seguentDir=null;
+}
+
+function start(){
+  punts=0;nivell=1;vides=VIDES;state='play';paused=false;
+  acum=0;espera=0;
+  carregaLaberint();
+  titolT=1400;
+  hideMsg();updateHUD();
+}
+
+function mou(nd){
+  if(state!=='play'||paused)return;
+  // no et pots girar del tot cap enrere: et menjaries a tu mateix
+  const ref=seguentDir||dir;
+  if(nd.x===-ref.x&&nd.y===-ref.y)return;
+  seguentDir=nd;
+}
+
+function passa(){
+  if(seguentDir){dir=seguentDir;seguentDir=null}
+  const cap=serp[0];
+  const nx=cap.x+dir.x, ny=cap.y+dir.y;
+
+  if(mapa[ny]===undefined||mapa[ny][nx]===undefined||mapa[ny][nx]==='#'){mor();return}
+  // la cua s'aparta al mateix moment que hi arribes, o sigui que trepitjar
+  // l'ultima casella val (excepte si encara has de creixer)
+  const fins=creixPend>0?serp.length:serp.length-1;
+  for(let i=0;i<fins;i++)if(serp[i].x===nx&&serp[i].y===ny){mor();return}
+
+  serp.unshift({x:nx,y:ny});
+  if(creixPend>0)creixPend--; else serp.pop();
+
+  if(mapa[ny][nx]==='.'){
+    mapa[ny][nx]=' ';
+    queden--;punts+=10;menjats++;
+    if(menjats%CREIX_CADA===0)creixPend++;
+    sndMos();updateHUD();
+    if(queden===0)acabaNivell();
+  }
+}
+
+function acabaNivell(){
+  state='nivell';
+  const extra=Math.max(0,Math.round(bonus));
+  punts+=extra;updateHUD();
+  sndNivell();
+  msg('LABERINT NET!<br><small>bonus de temps: '+extra+' punts</small>');
+  setTimeout(()=>{
+    if(state!=='nivell')return;
+    nivell++;carregaLaberint();
+    hideMsg();state='play';titolT=1200;updateHUD();
+  },1900);
+}
+
+function mor(){
+  if(state!=='play')return;
+  vides--;updateHUD();
+  sndMor();
+  if(vides<=0){
+    state='over';
+    setTimeout(finalPartida,900);
+  } else {
+    state='mort';
+    setTimeout(()=>{
+      if(state!=='mort')return;
+      posaSerp();state='play';espera=900;titolT=900;
+    },1100);
+  }
+}
+
+async function finalPartida(){
+  msg('GAME OVER');
+  const r=await Records.fiPartida(JOC,punts);
+  msg('GAME OVER'+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),punts);
+}
+
+function update(dt){
+  if(paused||state==='over'||state==='nivell')return;
+  if(titolT>0)titolT-=dt;
+  if(state==='mort')return;
+  if(espera>0){espera-=dt;return}      // un respir en tornar a sortir
+  bonus=Math.max(0,bonus-dt*0.042);   // dt va en mil·lèsimes: uns 42 punts per segon
+  acum+=dt;
+  const pas=msPerPas();
+  while(acum>=pas){acum-=pas;passa();if(state!=='play')return}
+}
+
+// ===== DIBUIX =====
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+
+  // la franja de dalt
+  x.fillStyle='#ffd000';x.font='bold 12px monospace';x.textAlign='left';
+  x.fillText('LABERINT '+nivell,8,16);
+  x.textAlign='right';
+  x.fillStyle=bonus<400?'#ff5050':'#8fd0ff';
+  x.fillText('BONUS '+Math.round(bonus),W-8,16);
+  x.textAlign='left';
+  // les vides que et queden, dibuixades
+  for(let i=0;i<vides;i++){
+    x.fillStyle='#6fe36f';
+    x.fillRect(8+i*14,24,10,10);
+    x.fillStyle='#000';x.fillRect(12+i*14,26,2,2);
+  }
+
+  // el laberint
+  for(let f=0;f<FILES;f++){
+    for(let co=0;co<COLS;co++){
+      const ce=mapa[f]&&mapa[f][co];
+      const px=co*CELA, py=DALT+f*CELA;
+      if(ce==='#'){
+        x.fillStyle='#1b3a8a';x.fillRect(px+1,py+1,CELA-2,CELA-2);
+        x.fillStyle='#2f55bb';x.fillRect(px+1,py+1,CELA-2,3);
+      } else if(ce==='.'){
+        x.fillStyle='#ffd000';
+        x.fillRect(px+CELA/2-2,py+CELA/2-2,4,4);
+      }
+    }
+  }
+
+  // la serp
+  for(let i=serp.length-1;i>=0;i--){
+    const s=serp[i];
+    const px=s.x*CELA, py=DALT+s.y*CELA;
+    if(i===0){
+      x.fillStyle=state==='mort'?'#ff5050':'#9dff6a';
+      x.fillRect(px+1,py+1,CELA-2,CELA-2);
+      // els ulls, mirant cap on va
+      x.fillStyle='#000';
+      const ex=dir.x*4, ey=dir.y*4;
+      x.fillRect(px+CELA/2-4+ex-1,py+CELA/2-4+ey,3,3);
+      x.fillRect(px+CELA/2+2+ex-1,py+CELA/2+2+ey,3,3);
+    } else {
+      // el cos, a bandes, que es vegi com de llarga s'ha fet
+      x.fillStyle=i%2?'#3fa83f':'#57c957';
+      x.fillRect(px+2,py+2,CELA-4,CELA-4);
+    }
+  }
+
+  if(titolT>0&&state==='play'){
+    x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,DALT+FILES*CELA/2-22,W,44);
+    x.fillStyle='#fff';x.font='bold 17px monospace';x.textAlign='center';
+    x.fillText('LABERINT '+nivell,W/2,DALT+FILES*CELA/2+6);
+    x.textAlign='left';
+  }
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 24px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(60,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+const AMUNT={x:0,y:-1},AVALL={x:0,y:1},ESQ={x:-1,y:0},DRETA={x:1,y:0};
+function bind(id,d){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+    if(state==='over'){start();return}
+    mou(d)});
+}
+bind('u',AMUNT);bind('d',AVALL);bind('l',ESQ);bind('r',DRETA);
+
+// llisca el dit cap on vulguis anar
+let toc=null;
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  toc={x:ev.clientX,y:ev.clientY}});
+c.addEventListener('pointermove',ev=>{
+  if(!toc)return;
+  const dx=ev.clientX-toc.x, dy=ev.clientY-toc.y;
+  if(Math.abs(dx)<18&&Math.abs(dy)<18)return;
+  mou(Math.abs(dx)>Math.abs(dy)?(dx>0?DRETA:ESQ):(dy>0?AVALL:AMUNT));
+  toc={x:ev.clientX,y:ev.clientY};    // torna a comptar, per poder encadenar girs
+});
+const soltaToc=()=>toc=null;
+c.addEventListener('pointerup',soltaToc);
+c.addEventListener('pointercancel',soltaToc);
+c.addEventListener('pointerleave',soltaToc);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();mou(AMUNT)}
+  if(e.code==='ArrowDown'||e.code==='KeyS'){e.preventDefault();mou(AVALL)}
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();mou(ESQ)}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();mou(DRETA)}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

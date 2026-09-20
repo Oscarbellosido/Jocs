@@ -19,7 +19,7 @@ const ORDRE = [
   ['comecocos', 1980], ['missile_command', 1980], ['crazy_climber', 1980],
   ['battlezone', 1980], ['defender', 1980],
   ['centipede', 1981], ['frogger', 1981], ['donkey_kong', 1981], ['galaga', 1981], ['tempest', 1981],
-  ['dig_dug', 1982], ['moon_patrol', 1982], ['pole_position', 1982], ['qbert', 1982], ['track_field', 1983], ['tetris', 1984],
+  ['dig_dug', 1982], ['moon_patrol', 1982], ['nibbler', 1982], ['pole_position', 1982], ['qbert', 1982], ['track_field', 1983], ['tetris', 1984],
 ];
 // La portada es un museu ordenat per any. Els jocs que no son de l'epoca de
 // les recreatives van en un apartat a part, despres dels classics, perque no

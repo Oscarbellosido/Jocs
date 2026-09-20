@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-un jocs clàssics dels salons recreatius i un de modern, fets amb HTML i
+Vint-i-dos jocs clàssics dels salons recreatius i un de modern, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -28,6 +28,7 @@ mòbil, instal·lat com a aplicació.
 | `tempest.html` | Tempest | 1981 |
 | `dig_dug.html` | Dig Dug | 1982 |
 | `moon_patrol.html` | Moon Patrol | 1982 |
+| `nibbler.html` | Nibbler | 1982 |
 | `pole_position.html` | Pole Position | 1982 |
 | `qbert.html` | Q*bert | 1982 |
 | `track_field.html` | Track & Field | 1983 |
@@ -64,6 +65,28 @@ Donkey Kong té les quatre pantalles de l'original —les botes, la fàbrica del
 pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
 pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
+
+## El Nibbler és el Snake de debò
+
+Quan es diu «el Snake», tothom pensa en la serp que menja i es fa llarga. La
+màquina d'aquell joc és el **Nibbler (1982, Rock-Ola)**, no pas el *Blockade*
+(1976, Gremlin): el Blockade era per a **dos jugadors**, no hi havia res per
+menjar i la serp creixia sola. Si algun dia es fa el Blockade, va a part i és
+del 1976.
+
+Dues coses del Nibbler que no s'han de tocar a la lleugera:
+
+- **Els passadissos són amples, amb pilars**, no un embut com el del Comecocos.
+  Amb passadissos d'una sola casella, una serp llarga no té on girar i el joc es
+  torna impossible al cap de quatre punts.
+- **Un punt de cada tres et fa més llarg** (`CREIX_CADA`). Amb un per punt, a
+  mig laberint la serp ja no cabia enlloc: hi ha entre 160 i 190 caselles
+  buides i el laberint s'ha de poder acabar. Provat amb un jugador automàtic
+  que evita ficar-se en racons: neteja dos laberints i arriba a fer 67 de llarg.
+
+On comença cada laberint no està escrit enlloc: es busca **el tram recte més
+llarg del mig** (`trobaInici`), i així mai no surts mirant una paret ni et
+quedes sense lloc per arrencar.
 
 ## El Síndria: com funciona la física
 
@@ -223,10 +246,31 @@ zero, no aturar el rellotge del so** (`suspend`): amb el rellotge aturat, els
 sorolls que el joc va programant s'amunteguen a la mateixa hora i, en tornar a
 engegar, sonen tots de cop.
 
-Els dos botons ocupen lloc al marcador: el del Crazy Climber i el del Defender
-ja no hi cabien per sis píxels i s'han hagut d'escurçar (`EDIFICI` → `EDIF.`,
-`BOMBES` → `BOMB.`). Si algun altre queda just, el `records.js` li posa
-`flex-wrap:wrap` perquè baixi de línia en comptes de sortir de la pantalla.
+### El marcador ha de cabre en UNA línia
+
+Els dos botons ocupen lloc, i això va costar car sense que se'n veiés el
+rastre: amb ells posats, **a 320 px catorze jocs partien el marcador en dues
+línies** i perdien onze píxels de joc. Abans de posar-los no li passava a cap.
+El `flex-wrap:wrap` evitava que sortissin de la pantalla, però amagava el
+problema en comptes de resoldre'l.
+
+Ara el `records.js` fa tres coses, per aquest ordre:
+
+1. A les pantalles de **380 px o menys**, el botó de tornar es queda només amb
+   la fletxa (`←`). Són 50 px que es recuperen a tots els jocs; l'etiqueta per
+   a qui ho llegeixi en veu alta segueix dient «Tornar al menú».
+2. Encongeix la lletra del marcador **fins que hi cap**, i para de seguida que
+   hi cap. No baixa de 10 px: més petit no es llegeix. Cal repassar-ho de tant
+   en tant (cada segon i mig) perquè **els números creixen mentre jugues**: el
+   Defender cabia amb quatre xifres i es partia amb cinc.
+3. Si tot i així no hi cap, baixa de línia abans que sortir de la pantalla.
+
+Dos jocs han hagut d'escurçar els seus rètols perquè en tenen més que ningú:
+`EDIFICI` → `EDIF.` al Crazy Climber, i `ONADA`/`NAUS`/`BOMBES` →
+`ONA.`/`NAU`/`BOM.` al Defender.
+
+Això ho vigila el `scripts/prova-so.mjs`, que a 320 px comprova que cap joc
+parteixi el marcador.
 
 ## La línia d'ajuda de cada joc
 
