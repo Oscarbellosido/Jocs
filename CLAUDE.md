@@ -42,6 +42,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | Fitxer | Joc | Any |
 |---|---|---|
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
+| `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
@@ -137,6 +138,33 @@ Altres coses que ja s'han hagut d'ajustar:
   juntes del compte.
 - Si el joc es queda sense plataformes, el bucle que en fabrica no acaba mai
   (`mesAlta` queda a `Infinity`). Hi ha una xarxa de seguretat.
+
+## Les Boles: el mateix cicle que el Síndria
+
+Prepares el tret, el deixes anar i mires com la física ho resol sola. Coses
+que ja s'han hagut d'ajustar:
+
+- **El pas de la bola es parteix en trossets** (`mouBola`). A 640 píxels per
+  segon avança deu píxels per fotograma i un maó en fa quaranta-quatre, però
+  una cantonada es cola: mirant només on ha acabat, travessaria maons sencers.
+  És la trampa del tret del Space Invaders.
+- **El xoc es mira eix per eix**: primer s'avança en horitzontal i, si toca,
+  es rebota i es desfà; després el mateix en vertical. Amb un sol test per als
+  dos eixos, les cantonades donaven rebots impossibles.
+- **Mai es tira gairebé horitzontal** (`ANGLE_MIN`): les boles es quedarien
+  rebotant de paret a paret sense tocar res i la ronda no s'acabaria mai. I si
+  tot i així es queden voltant, als catorze segons se'ls dóna caiguda. Mirant
+  només si pujaven, una bola encallada entre dos maons amb caiguda zero no
+  baixava mai.
+- **El color del maó va pel que li queda, no pel número de sortida.** Anant
+  pel de sortida, tots els d'una ronda eren del mateix color i no es veia
+  quins ja estaven tocats.
+- Amb moltes boles, **només la sortida ja durava dos segons i mig**: ara la
+  separació entre bola i bola s'escurça a mesura que en tens més, i tocant la
+  pantalla mentre volen van més de pressa.
+
+Provat amb dos jugadors automàtics: un que apunta a ull arriba a la ronda 15,
+i un que prova seixanta angles i tria el millor passa de la 28.
 
 ## El Síndria: com funciona la física
 

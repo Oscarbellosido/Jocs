@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Boles</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* com el Síndria: cercles i no píxels, aquí no volem el suavitzat tallat */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#0b0f1c;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#tira{color:#7dff9b;width:120px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>RONDA <b id="score">1</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="360" height="620"></canvas></div>
+  <div id="controls">
+    <button id="esq">◀</button><button id="dre">▶</button><button id="tira">TIRA</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Apunta i deixa anar les boles: cada maó necessita tants cops com diu el seu número. Cada ronda els maons baixen una fila i s'acaba si toquen a baix.</b> llisca el dit per apuntar i aixeca'l per tirar · teclat: ← → i ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.004);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+// El "toc" puja de to amb els cops seguits: és el que fa gustós veure una
+// bola que rebota deu vegades sense parar.
+let cadena=0;
+function sndToc(){aInit();tone(300+Math.min(24,cadena)*38,.04,"square",.13);cadena++}
+function sndTrenca(){aInit();noise(.07,.14);tone(660,.07,"square",.16,240)}
+function sndTira(){aInit();tone(180,.06,"square",.16,160)}
+function sndBola(){aInit();tone(880,.06,"square",.2);setTimeout(()=>tone(1320,.09,"square",.2),60)}
+function sndBaixa(){aInit();tone(150,.16,"square",.18,-50)}
+function sndFi(){aInit();[320,250,190,140].forEach((f,i)=>setTimeout(()=>tone(f,.3,"square",.26,-60),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=360,H=620;
+const COLS=7, CELA=48, MARGE=12;
+const DALT=44;                       // franja de dalt: ronda i boles
+const FILA0=DALT+8;                  // on comença la primera fila de maons
+const LINIA=H-42;                    // el terra: aquí surten i tornen les boles
+
+const R=5;                           // radi de la bola
+const VEL=640;                       // píxels per segon
+// Mil·lèsimes entre bola i bola en sortir. Amb moltes boles, a 90 fixes
+// només la sortida ja durava dos segons i mig.
+function separa(){return Math.max(34,90-nBoles*2)}
+const TEMPS_MAX=14000;               // si es queden voltant, cap avall
+// Mai no es tira gairebé horitzontal: les boles es quedarien rebotant de
+// paret a paret sense tocar res i la ronda no s'acabaria mai.
+const ANGLE_MIN=14*Math.PI/180;
+
+let maons=[],boles=[],espurnes=[];
+let ronda=1,nBoles=2;
+let tirX=W/2,apuntant=false,angle=-Math.PI/2;
+let state='play',paused=false,fase='apunta';
+let perLlençar=0,cronLlanç=0,cronRonda=0,novaX=null;
+let sacseja=0,rapid=false;
+
+const JOC='boles';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(ronda>bestScore){bestScore=ronda;Records.desaLocal(JOC,ronda)}
+  Records.marcador(JOC,document.getElementById('best'),ronda);
+}
+function updateHUD(){document.getElementById('score').textContent=ronda;saveBest()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function colX(co){return MARGE+co*CELA}
+function filaY(f){return FILA0+f*CELA}
+
+// Una fila nova de maons. Els números pugen amb la ronda, i de tant en tant
+// n'hi ha un de doble i alguna bola per recollir.
+function novaFila(){
+  let quants=0;
+  const bonus=Math.random()<.85?Math.floor(Math.random()*COLS):-1;
+  for(let co=0;co<COLS;co++){
+    if(co===bonus){maons.push({co,f:0,tipus:'bola'});continue}
+    if(Math.random()<.52){
+      const doble=Math.random()<.18;
+      maons.push({co,f:0,tipus:'mao',vida:ronda*(doble?2:1),max:ronda*(doble?2:1)});
+      quants++;
+    }
+  }
+  // que no surti mai una fila buida: seria una ronda regalada
+  if(!quants){
+    const co=Math.floor(Math.random()*COLS);
+    if(co!==bonus)maons.push({co,f:0,tipus:'mao',vida:ronda,max:ronda});
+  }
+}
+
+function start(){
+  maons=[];boles=[];espurnes=[];
+  ronda=1;nBoles=2;
+  tirX=W/2;angle=-Math.PI/2;apuntant=false;
+  state='play';paused=false;fase='apunta';
+  perLlençar=0;cronLlanç=0;cronRonda=0;novaX=null;sacseja=0;cadena=0;rapid=false;
+  novaFila();
+  hideMsg();updateHUD();
+}
+
+async function finalPartida(){
+  msg('FINS AQUÍ');
+  const r=await Records.fiPartida(JOC,ronda);
+  msg('FINS AQUÍ'+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),ronda);
+}
+
+// ===== TIRAR =====
+function tira(){
+  if(state!=='play'||paused||fase!=='apunta')return;
+  perLlençar=nBoles;cronLlanç=0;cronRonda=0;rapid=false;
+  novaX=null;cadena=0;
+  fase='volant';
+  sndTira();
+}
+
+function llençaUna(){
+  boles.push({x:tirX,y:LINIA-R,vx:Math.cos(angle)*VEL,vy:Math.sin(angle)*VEL,viva:true,
+              tornant:false});
+  perLlençar--;
+}
+
+// ===== FÍSICA =====
+function maoRect(m){return {x:colX(m.co)+2,y:filaY(m.f)+2,w:CELA-4,h:CELA-4}}
+function xoca(b,r){
+  return b.x+R>r.x&&b.x-R<r.x+r.w&&b.y+R>r.y&&b.y-R<r.y+r.h;
+}
+function pica(m){
+  if(m.tipus==='bola'){
+    nBoles++;m.mort=true;sndBola();
+    for(let i=0;i<8;i++)espurnes.push({x:colX(m.co)+CELA/2,y:filaY(m.f)+CELA/2,
+      vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3,t:1,col:'#8fe9ff'});
+    return;
+  }
+  m.vida--;m.tocat=1;
+  if(m.vida<=0){
+    m.mort=true;sndTrenca();
+    for(let i=0;i<10;i++)espurnes.push({x:colX(m.co)+CELA/2,y:filaY(m.f)+CELA/2,
+      vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:1,col:colorMao(m)});
+  } else sndToc();
+}
+
+function mouBola(b,dt){
+  // El pas es parteix en trossets: a 640 px per segon la bola avança 10 px per
+  // fotograma i els maons en fan 44, però una cantonada es pot colar. Mirant
+  // només on ha acabat, travessaria maons sencers. Mateixa trampa del tret
+  // del Space Invaders.
+  const passos=Math.max(1,Math.ceil(Math.abs(b.vx*dt)/3+Math.abs(b.vy*dt)/3));
+  const h=dt/passos;
+  for(let p=0;p<passos&&b.viva;p++){
+    // --- horitzontal ---
+    b.x+=b.vx*h;
+    if(b.x-R<MARGE){b.x=MARGE+R;b.vx=-b.vx}
+    if(b.x+R>W-MARGE){b.x=W-MARGE-R;b.vx=-b.vx}
+    for(const m of maons){
+      if(m.mort)continue;
+      const r=maoRect(m);
+      if(!xoca(b,r))continue;
+      b.x-=b.vx*h;b.vx=-b.vx;
+      pica(m);
+      break;
+    }
+    // --- vertical ---
+    b.y+=b.vy*h;
+    if(b.y-R<DALT){b.y=DALT+R;b.vy=-b.vy}
+    for(const m of maons){
+      if(m.mort)continue;
+      const r=maoRect(m);
+      if(!xoca(b,r))continue;
+      b.y-=b.vy*h;b.vy=-b.vy;
+      pica(m);
+      break;
+    }
+    if(b.y+R>=LINIA){
+      b.y=LINIA-R;b.viva=false;
+      if(novaX===null)novaX=b.x;       // la primera que toca terra mana
+    }
+  }
+}
+
+function acabaRonda(){
+  fase='baixa';
+  // tot avall una fila
+  for(const m of maons)m.f++;
+  // primer la ronda i després la fila: la fila nova ha de dur els números de
+  // la ronda que comença, no els de la que acaba
+  ronda++;updateHUD();
+  novaFila();
+  sndBaixa();sacseja=140;
+  tirX=novaX===null?tirX:Math.max(MARGE+R,Math.min(W-MARGE-R,novaX));
+  // s'ha acabat? un maó que arriba a la ratlla
+  for(const m of maons){
+    if(m.mort||m.tipus!=='mao')continue;
+    if(filaY(m.f)+CELA>LINIA){
+      state='over';sndFi();
+      setTimeout(finalPartida,800);
+      return;
+    }
+  }
+  setTimeout(()=>{if(state==='play')fase='apunta'},260);
+}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  for(let i=espurnes.length-1;i>=0;i--){
+    const e=espurnes[i];e.x+=e.vx;e.y+=e.vy;e.vy+=.12;e.t-=dt/450;
+    if(e.t<=0)espurnes.splice(i,1);
+  }
+  for(const m of maons)if(m.tocat)m.tocat=Math.max(0,m.tocat-dt/160);
+  if(sacseja>0)sacseja-=dt;
+
+  if(fase!=='volant')return;
+  cronRonda+=dt;
+
+  if(perLlençar>0){
+    cronLlanç-=dt;
+    if(cronLlanç<=0){llençaUna();cronLlanç=separa()}
+  }
+  // si es queden voltant massa estona, cap avall: la ronda ha d'acabar
+  if(cronRonda>TEMPS_MAX)for(const b of boles)if(b.viva)b.vy=Math.max(b.vy,220);
+
+  const s=Math.min(dt,40)/1000*(rapid?2.6:1);
+  for(const b of boles)if(b.viva)mouBola(b,s);
+  // les que ja han caigut llisquen cap al punt de sortida nou
+  for(const b of boles){
+    if(b.viva||novaX===null)continue;
+    const d=novaX-b.x;
+    if(Math.abs(d)>2)b.x+=Math.sign(d)*Math.min(Math.abs(d),dt*0.9);
+  }
+  maons=maons.filter(m=>!m.mort);
+
+  if(perLlençar===0&&boles.every(b=>!b.viva)){
+    boles=[];
+    acabaRonda();
+  }
+}
+
+// ===== DIBUIX =====
+function colorMao(m){
+  // Del blau (li queda poc) al vermell (encara aguanta molt), segons el que
+  // li queda ARA. Anant pel número de sortida, tots els d'una ronda sortien
+  // del mateix color i no es veia quins ja estaven tocats.
+  const n=Math.min(1,(m.vida||1)/Math.max(5,ronda*1.6));
+  const h=205-205*n;
+  return 'hsl('+h+',60%,'+(50+10*(1-n))+'%)';
+}
+function dibuixaMao(m){
+  const px=colX(m.co),py=filaY(m.f);
+  if(m.tipus==='bola'){
+    x.strokeStyle='#8fe9ff';x.lineWidth=2;
+    x.beginPath();x.arc(px+CELA/2,py+CELA/2,9,0,6.2832);x.stroke();
+    x.fillStyle='#8fe9ff';
+    x.beginPath();x.arc(px+CELA/2,py+CELA/2,4.5,0,6.2832);x.fill();
+    x.font='9px monospace';x.textAlign='center';
+    x.fillText('+1',px+CELA/2,py+CELA/2+22);x.textAlign='left';
+    return;
+  }
+  const c0=colorMao(m);
+  x.fillStyle=c0;
+  x.fillRect(px+3,py+3,CELA-6,CELA-6);
+  if(m.tocat>0){
+    x.fillStyle='rgba(255,255,255,'+(0.55*m.tocat).toFixed(2)+')';
+    x.fillRect(px+3,py+3,CELA-6,CELA-6);
+  }
+  x.fillStyle='rgba(255,255,255,.16)';x.fillRect(px+3,py+3,CELA-6,4);
+  x.fillStyle='#fff';x.font='bold 15px monospace';x.textAlign='center';
+  x.fillText(m.vida,px+CELA/2,py+CELA/2+5);
+  x.textAlign='left';
+}
+// la punteria: una filera de punts que segueix el primer rebot
+function dibuixaMira(){
+  let bx=tirX,by=LINIA-R,vx=Math.cos(angle),vy=Math.sin(angle);
+  x.fillStyle='rgba(255,255,255,.5)';
+  for(let i=0;i<150;i++){
+    bx+=vx*6;by+=vy*6;
+    if(bx-R<MARGE||bx+R>W-MARGE){vx=-vx;bx+=vx*6}
+    if(by-R<DALT){vy=-vy;by+=vy*6}
+    let topa=false;
+    for(const m of maons){
+      if(m.mort)continue;
+      const r=maoRect(m);
+      if(bx+R>r.x&&bx-R<r.x+r.w&&by+R>r.y&&by-R<r.y+r.h){topa=true;break}
+    }
+    if(topa||by>LINIA)break;
+    if(i%3===0){x.beginPath();x.arc(bx,by,2,0,6.2832);x.fill()}
+  }
+}
+function draw(){
+  x.save();
+  if(sacseja>0)x.translate(0,Math.sin(sacseja*0.6)*2);
+  x.fillStyle='#0b0f1c';x.fillRect(0,-4,W,H+8);
+
+  // les parets
+  x.fillStyle='#1b2440';
+  x.fillRect(0,DALT,MARGE,LINIA-DALT);x.fillRect(W-MARGE,DALT,MARGE,LINIA-DALT);
+  x.fillRect(0,DALT-4,W,4);
+
+  // la franja de dalt
+  x.font='bold 13px monospace';x.textAlign='center';
+  x.fillStyle='#8fe9ff';
+  x.fillText('BOLES '+nBoles,W/2,20);
+  x.textAlign='left';
+
+  for(const m of maons)dibuixaMao(m);
+
+  for(const e of espurnes){
+    x.globalAlpha=Math.max(0,e.t);
+    x.fillStyle=e.col;x.fillRect(e.x-2,e.y-2,4,4);
+  }
+  x.globalAlpha=1;
+
+  // la ratlla de baix: si un maó hi arriba, s'ha acabat
+  x.strokeStyle='#42506e';x.lineWidth=2;x.setLineDash([7,6]);
+  x.beginPath();x.moveTo(MARGE,LINIA);x.lineTo(W-MARGE,LINIA);x.stroke();
+  x.setLineDash([]);
+
+  for(const b of boles){
+    x.fillStyle=b.viva?'#fff':'#8899bb';
+    x.beginPath();x.arc(b.x,b.y,R,0,6.2832);x.fill();
+  }
+
+  if(fase==='apunta'&&state==='play'){
+    dibuixaMira();
+    // el canó
+    x.fillStyle='#fff';
+    x.beginPath();x.arc(tirX,LINIA-R,7,0,6.2832);x.fill();
+    x.fillStyle='#0b0f1c';x.font='bold 10px monospace';x.textAlign='center';
+    x.fillText(nBoles,tirX,LINIA-R+3.5);x.textAlign='left';
+  }
+
+  if(fase==='volant'&&!rapid&&cronRonda>2200){
+    x.fillStyle='rgba(255,255,255,.45)';x.font='10px monospace';x.textAlign='center';
+    x.fillText('toca la pantalla per accelerar',W/2,LINIA+22);x.textAlign='left';
+  }
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 24px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+  x.restore();
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(50,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function aPantalla(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W, y:(ev.clientY-r.top)/r.height*H};
+}
+function apunta(p){
+  let a=Math.atan2(p.y-(LINIA-R),p.x-tirX);
+  // sempre cap amunt, i mai tan pla que la bola no pugi
+  if(a>-ANGLE_MIN&&a<Math.PI/2)a=-ANGLE_MIN;
+  else if(a<=-Math.PI+ANGLE_MIN||a>=Math.PI/2)a=-Math.PI+ANGLE_MIN;
+  angle=a;
+}
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  // mentre volen, tocar la pantalla les fa córrer: no has d'esperar-te
+  if(fase!=='apunta'){rapid=true;return}
+  apuntant=true;apunta(aPantalla(ev))});
+c.addEventListener('pointermove',ev=>{if(apuntant){ev.preventDefault();apunta(aPantalla(ev))}});
+function solta(){if(!apuntant)return;apuntant=false;tira()}
+c.addEventListener('pointerup',solta);
+c.addEventListener('pointercancel',()=>apuntant=false);
+c.addEventListener('pointerleave',()=>apuntant=false);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function gira(d){
+  angle=Math.max(-Math.PI+ANGLE_MIN,Math.min(-ANGLE_MIN,angle+d*0.035));
+}
+let repeteix=null;
+function bindGir(id,d){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+    if(state==='over'){start();return}
+    gira(d);clearInterval(repeteix);repeteix=setInterval(()=>gira(d),55)});
+  const atura=()=>clearInterval(repeteix);
+  b.addEventListener('pointerup',atura);
+  b.addEventListener('pointercancel',atura);
+  b.addEventListener('pointerleave',atura);
+}
+bindGir('esq',-1);bindGir('dre',1);
+document.getElementById('tira').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  tira()});
+
+const tecles={};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();tecles.e=1}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();tecles.d=1}
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)tira()}
+  if(e.code==='KeyP'&&state!=='over')paused=!paused;
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')tecles.e=0;
+  if(e.code==='ArrowRight'||e.code==='KeyD')tecles.d=0;
+});
+setInterval(()=>{
+  if(state!=='play'||paused||fase!=='apunta')return;
+  if(tecles.e)gira(-1);
+  if(tecles.d)gira(1);
+},45);
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

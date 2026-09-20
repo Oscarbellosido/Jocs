@@ -40,6 +40,7 @@ const JOCS = {
   nibbler:         9999999,
   sindria:          999999,
   amunt:            999999,
+  boles:              9999,
 };
 const TOP = 10;
 
