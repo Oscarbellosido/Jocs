@@ -50,7 +50,7 @@ for (const [w, h] of MIDES) {
     const dades = f => [f.querySelector('.rec').dataset.joc, +f.querySelector('.any').textContent];
     const seccioModerns = document.getElementById('moderns');
     return {
-      llista: [...document.querySelectorAll('.games:not(#moderns) a.btn')].map(dades),
+      llista: [...document.querySelectorAll('#classics a.btn')].map(dades),
       moderns: seccioModerns ? [...seccioModerns.querySelectorAll('a.btn')].map(dades) : null,
       scrollHoritzontal: document.documentElement.scrollWidth > window.innerWidth + 1,
       tallades: fitxes.filter(f => f.getBoundingClientRect().top < 0).length,
@@ -62,6 +62,8 @@ for (const [w, h] of MIDES) {
       imgTrencades: [...document.images].filter(i => !i.complete || i.naturalWidth === 0).length,
       // les captures son quadrades: si surten estirades, alguna cosa mana
       // sobre l'aspect-ratio (ens va passar amb les etiquetes width/height)
+      // els dos apartats han de tenir títol
+      titols: [...document.querySelectorAll('h2.seccio')].map(h => h.textContent.trim()),
       imgEstirades: [...document.images].filter(i => {
         const r = i.getBoundingClientRect();
         return Math.abs(r.width - r.height) > 2;
@@ -82,6 +84,7 @@ for (const [w, h] of MIDES) {
   if (r.vessa) problemes.push(`${r.vessa} línies on el record no cap`);
   if (r.imgTrencades) problemes.push(`${r.imgTrencades} miniatures trencades`);
   if (r.imgEstirades) problemes.push(`${r.imgEstirades} miniatures estirades`);
+  if (r.titols.length !== 2) problemes.push(`hi ha ${r.titols.length} títols d'apartat i n'hi ha d'haver 2`);
   if (errors.length) problemes.push(errors[0]);
 
   if (problemes.length) malament++;

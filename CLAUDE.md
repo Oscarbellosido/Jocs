@@ -45,9 +45,14 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
-al final de la fila trencaria la línia del temps. Per això els que **no** són de
-l'època van en un apartat seu (`#moderns`), després dels clàssics, amb el títol
-`I UN DE MODERN`. Si algun dia n'hi ha més, van tots allà.
+al final de la fila trencaria la línia del temps. Per això la portada va partida
+en dos apartats, cadascun amb el seu títol i la seva graella:
+
+- `#classics` — **CLÀSSICS DELS SALONS 1972 — 1984**, per ordre d'any.
+- `#moderns` — **MODERNS del mòbil**, també per ordre d'any.
+
+El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
+apartat tingui els jocs que li toquen.
 
 I com que aquests sí que són jocs d'empreses vives —no màquines de fa quaranta
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el

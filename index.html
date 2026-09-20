@@ -118,7 +118,7 @@
     width: 100%;
     max-width: 430px;
     padding: 0 0.8rem;
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
     font: normal 0.72rem monospace;
     letter-spacing: 0.16em;
     color: #7f9fc4;
@@ -126,6 +126,7 @@
   }
   h2.seccio::before, h2.seccio::after { content: '· '; }
   h2.seccio::after { content: ' ·'; }
+  h2.seccio i { font-style: normal; color: #6a6a6a; }
   @media (min-width: 560px) { h2.seccio { max-width: 760px; } }
   @media (min-width: 900px) { h2.seccio { max-width: 1020px; } }
   a.btn em .rec {
@@ -139,7 +140,8 @@
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
-  <div class="games">
+  <h2 class="seccio">CLÀSSICS DELS SALONS <i>1972 — 1984</i></h2>
+  <div class="games" id="classics">
     <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em><i class="any">1972</i><b class="rec" data-joc="pong"></b></em></a>
     <a class="btn" href="breakout.html"><img src="thumbs/breakout.png" alt="BREAKOUT" width="240" height="240"><span>BREAKOUT</span><em><i class="any">1976</i><b class="rec" data-joc="breakout"></b></em></a>
     <a class="btn" href="space_invaders.html"><img src="thumbs/space_invaders.png" alt="SPACE INVADERS" width="240" height="240"><span>SPACE INVADERS</span><em><i class="any">1978</i><b class="rec" data-joc="space_invaders"></b></em></a>
@@ -163,7 +165,7 @@
     <a class="btn" href="track_field.html"><img src="thumbs/track_field.png" alt="TRACK &amp; FIELD" width="240" height="240"><span>TRACK &amp; FIELD</span><em><i class="any">1983</i><b class="rec" data-joc="track_field"></b></em></a>
     <a class="btn" href="tetris.html"><img src="thumbs/tetris.png" alt="TETRIS" width="240" height="240"><span>TETRIS</span><em><i class="any">1984</i><b class="rec" data-joc="tetris"></b></em></a>
   </div>
-  <h2 class="seccio">I UN DE MODERN</h2>
+  <h2 class="seccio">MODERNS <i>del mòbil</i></h2>
   <div class="games" id="moderns">
     <a class="btn" href="amunt.html"><img src="thumbs/amunt.png" alt="AMUNT" width="240" height="240"><span>AMUNT</span><em><i class="any">2009</i><b class="rec" data-joc="amunt"></b></em></a>
     <a class="btn" href="sindria.html"><img src="thumbs/sindria.png" alt="SÍNDRIA" width="240" height="240"><span>SÍNDRIA</span><em><i class="any">2021</i><b class="rec" data-joc="sindria"></b></em></a>
