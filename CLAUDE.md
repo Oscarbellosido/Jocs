@@ -75,19 +75,34 @@ màquina d'aquell joc és el **Nibbler (1982, Rock-Ola)**, no pas el *Blockade*
 menjar i la serp creixia sola. Si algun dia es fa el Blockade, va a part i és
 del 1976.
 
-Dues coses del Nibbler que no s'han de tocar a la lleugera:
+Tres coses del Nibbler que no s'han de tocar a la lleugera:
 
-- **Els passadissos són amples, amb pilars**, no un embut com el del Comecocos.
-  Amb passadissos d'una sola casella, una serp llarga no té on girar i el joc es
-  torna impossible al cap de quatre punts.
+- **Els pilars fan una casella i les columnes senars queden sempre obertes.**
+  Així, des d'on siguis i anant on vagis, tens una sortida a una casella de
+  distància. Els primers laberints els vaig fer amb blocs de tres i les files
+  de pilars només s'obrien cada quatre columnes: llliscaves amunt i dues
+  caselles després t'estampaves sense haver pogut fer res, i un d'ells tenia
+  deu racons on era impossible sortir-ne. Ho comprova el
+  `scripts/prova-cuc.mjs`, que tampoc no deixa passar passadissos de més de
+  dues caselles sense poder girar.
 - **Un punt de cada tres et fa més llarg** (`CREIX_CADA`). Amb un per punt, a
-  mig laberint la serp ja no cabia enlloc: hi ha entre 160 i 190 caselles
-  buides i el laberint s'ha de poder acabar. Provat amb un jugador automàtic
-  que evita ficar-se en racons: neteja dos laberints i arriba a fer 67 de llarg.
+  mig laberint la serp ja no cabia enlloc: hi ha unes 200 caselles buides i el
+  laberint s'ha de poder acabar. Provat amb un jugador automàtic que evita
+  ficar-se en racons: neteja un laberint i arriba a fer 62 de llarg.
+- **Girar contra una paret no mata.** El cuc segueix recte i el gir es guarda
+  per a la primera obertura, com a la màquina i com al Comecocos.
 
 On comença cada laberint no està escrit enlloc: es busca **el tram recte més
-llarg del mig** (`trobaInici`), i així mai no surts mirant una paret ni et
-quedes sense lloc per arrencar.
+llarg del mig** (`trobaInici`). El cap va al **principi** del tram i no al
+final: sortint al final tenia la paret a la casella del costat i, a 160
+mil·lèsimes per casella, o giraves a l'acte o t'estampaves. Ara hi ha mitja
+filera per davant, i el cuc no arrenca fins al cap de vuit dècimes.
+
+I el més important de tot: **un gir contra una paret no mata**. El cuc segueix
+recte i el gir es guarda per a la primera obertura que trobi, com a la màquina
+i com al Comecocos. Els passadissos entre files només s'obren a les columnes 1,
+5, 9, 13 i 17: si girar entre dos pilars matés, la primera corba de totes ja
+seria mort segura.
 
 ## L'Amunt: el salt mana sobre tota la resta
 
@@ -347,6 +362,8 @@ comproven el comportament.
 - `node scripts/prova-so.mjs` — que als jocs que fan soroll surti el botó del
   so, que apagant-lo el volum es posi de debò a zero i torni en tornar-hi, i
   que el marcador no vessi a 320 px.
+- `node scripts/prova-cuc.mjs` — que els laberints del Nibbler no tinguin
+  racons sense sortida ni passadissos llargs on no puguis girar.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

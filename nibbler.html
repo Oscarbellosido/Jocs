@@ -24,7 +24,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>VIDES <b id="lives">3</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="380" height="420"></canvas></div>
   <div id="controls">
-    <button id="u">▲</button><button id="l">◀</button><button id="d">▼</button><button id="r">▶</button>
+    <button id="l">◀</button><button id="u">▲</button><button id="d">▼</button><button id="r">▶</button>
   </div>
   <div id="msg"></div>
   <small><b style="color:#ddd">Menja't tots els punts del laberint sense mossegar-te la cua ni petar contra una paret; cada punt et fa més llarg.</b> llisca el dit cap on vulguis anar · fletxes o WASD · pausa: P</small>
@@ -68,78 +68,82 @@ const W=380,H=420;
 const CELA=20, COLS=19, FILES=17;
 const DALT=40;                       // franja de dalt: laberint i temps
 
-// Els laberints del Nibbler: passadissos amples amb pilars, no un embut com
-// el del Comecocos. Amb passadissos d'una sola casella, una serp llarga no
-// te on girar i el joc es torna impossible de seguida.
+// Els laberints: passadissos amples amb pilars d'UNA casella, i les columnes
+// senars sempre obertes. Aixi, des d'on siguis i anant on vagis, tens una
+// sortida a una casella de distancia.
+//
+// Els primers els vaig fer amb blocs de tres i les files de pilars nomes
+// s'obrien cada quatre columnes: llliscaves amunt i dues caselles despres
+// t'estampaves sense haver pogut fer res. Ho comprova el scripts/prova-cuc.mjs.
 const LABERINTS=[
 `###################
 #.................#
-#.###.###.###.###.#
+#..#..#..#..#..#..#
 #.................#
-#.###.###.###.###.#
+#..#..#..#..#..#..#
 #.................#
-#.###.###.###.###.#
+#..#..#..#..#..#..#
 #.................#
+#..#..#..#..#..#..#
 #.................#
+#..#..#..#..#..#..#
 #.................#
-#.###.###.###.###.#
+#..#..#..#..#..#..#
 #.................#
-#.###.###.###.###.#
-#.................#
-#.###.###.###.###.#
+#..#..#..#..#..#..#
 #.................#
 ###################`,
 `###################
 #.................#
 #.#.#.#.#.#.#.#.#.#
 #.................#
-#.#####.###.#####.#
-#.................#
-#.#.#.#.....#.#.#.#
-#.................#
-#.#.#.#.....#.#.#.#
-#.................#
-#.#####.###.#####.#
+#.#.#.#.#.#.#.#.#.#
 #.................#
 #.#.#.#.#.#.#.#.#.#
 #.................#
-#.###.#######.###.#
+#.#.#.#.#.#.#.#.#.#
 #.................#
-###################`,
-`###################
+#.#.#.#.#.#.#.#.#.#
 #.................#
-#.###.#.....#.###.#
-#.....#.###.#.....#
-#.###.#.#.#.#.###.#
-#.#.......#.......#
-#.#.#####.#.#####.#
-#.................#
-#.#####.#.#.#####.#
-#.......#.#.......#
-#.###.#####.###.#.#
-#.................#
-#.#.#####.#####.#.#
-#.................#
-#.###.#.###.#.###.#
-#.................#
-###################`,
-`###################
-#.................#
-#.###.#########.#.#
-#...#.........#...#
-#.#.#.#######.#.#.#
-#.#...#.....#...#.#
-#.#####.###.#####.#
-#.................#
-#.#####.###.#####.#
-#.#...#.....#...#.#
-#.#.#.#######.#.#.#
-#...#.........#...#
-#.###.#########.#.#
+#.#.#.#.#.#.#.#.#.#
 #.................#
 #.#.#.#.#.#.#.#.#.#
 #.................#
 ###################`,
+`###################
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+#.##...##.##...##.#
+#.................#
+###################`,
+`###################
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+#.#..##..##..#..#.#
+#.................#
+###################`
 ];
 
 // Un punt de cada tres et fa mes llarg. Amb un per punt, en mig laberint la
@@ -149,7 +153,7 @@ const CREIX_CADA=3;
 const LLARG_INICI=5;
 const VIDES=3;
 
-let mapa=[],serp=[],dir={x:1,y:0},seguentDir=null;
+let mapa=[],serp=[],dir={x:1,y:0},seguentDir=null,seguentVida=0;
 let punts=0,nivell=1,vides=VIDES,queden=0,menjats=0,creixPend=0;
 let state='play',paused=false,acum=0,bonus=0,espera=0,titolT=0;
 
@@ -170,7 +174,7 @@ function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.dis
 function hideMsg(){document.getElementById('msg').style.display='none'}
 
 // cada laberint va una mica mes de pressa
-function msPerPas(){return Math.max(85,160-(nivell-1)*9)}
+function msPerPas(){return Math.max(85,175-(nivell-1)*10)}
 
 function carregaLaberint(){
   const txt=LABERINTS[(nivell-1)%LABERINTS.length];
@@ -180,6 +184,7 @@ function carregaLaberint(){
   bonus=2000+queden*10;
   posaSerp();
   menjats=0;creixPend=0;
+  espera=800;                        // un moment per veure on ets abans d'arrencar
 }
 // On comenca: el tram recte mes llarg del mig del laberint, que aixi sempre
 // hi ha on arrencar i no surts mirant una paret.
@@ -193,7 +198,7 @@ function trobaInici(){
       if(!lliure&&ini>=0){
         const llarg=co-ini;
         const dist=Math.abs(f-(FILES-1)/2);
-        if(llarg>=LLARG_INICI+1&&(!millor||llarg>millor.llarg||
+        if(llarg>=LLARG_INICI+7&&(!millor||llarg>millor.llarg||
            (llarg===millor.llarg&&dist<millor.dist))){
           millor={f,ini,llarg,dist};
         }
@@ -205,7 +210,10 @@ function trobaInici(){
 }
 function posaSerp(){
   const t=trobaInici();
-  const f=t?t.f:1, cap=t?t.ini+t.llarg-1:COLS-2;
+  // El cap va al PRINCIPI del tram, no al final: sortint al final tenia la
+  // paret a la casella del costat i, a 175 mil·lèsimes per casella, o giraves
+  // a l'acte o t'estampaves. Així hi ha mitja filera per davant.
+  const f=t?t.f:1, cap=t?t.ini+LLARG_INICI-1:LLARG_INICI;
   serp=[];
   for(let i=0;i<LLARG_INICI;i++)serp.push({x:cap-i,y:f});
   dir={x:1,y:0};seguentDir=null;
@@ -224,15 +232,27 @@ function mou(nd){
   // no et pots girar del tot cap enrere: et menjaries a tu mateix
   const ref=seguentDir||dir;
   if(nd.x===-ref.x&&nd.y===-ref.y)return;
-  seguentDir=nd;
+  seguentDir=nd;seguentVida=3;
 }
 
+function esParet(px,py){
+  return !mapa[py]||!mapa[py][px]||mapa[py][px]==='#';
+}
 function passa(){
-  if(seguentDir){dir=seguentDir;seguentDir=null}
   const cap=serp[0];
+  // Un gir contra una paret no et mata: el cuc segueix recte i el gir es
+  // guarda per a la primera obertura que trobi, com a la maquina i com al
+  // Comecocos. Abans, llliscar amunt entre dos pilars era mort segura, i
+  // aixo passava a la primera corba de totes.
+  // El gir guardat dura tres caselles i prou: si no, un gir que has demanat
+  // i has deixat córrer et sortiria d'improvís mig laberint més enllà.
+  if(seguentDir){
+    if(!esParet(cap.x+seguentDir.x,cap.y+seguentDir.y)){dir=seguentDir;seguentDir=null}
+    else if(--seguentVida<=0)seguentDir=null;
+  }
   const nx=cap.x+dir.x, ny=cap.y+dir.y;
 
-  if(mapa[ny]===undefined||mapa[ny][nx]===undefined||mapa[ny][nx]==='#'){mor();return}
+  if(esParet(nx,ny)){mor();return}
   // la cua s'aparta al mateix moment que hi arribes, o sigui que trepitjar
   // l'ultima casella val (excepte si encara has de creixer)
   const fins=creixPend>0?serp.length:serp.length-1;
@@ -386,7 +406,7 @@ c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
 c.addEventListener('pointermove',ev=>{
   if(!toc)return;
   const dx=ev.clientX-toc.x, dy=ev.clientY-toc.y;
-  if(Math.abs(dx)<18&&Math.abs(dy)<18)return;
+  if(Math.abs(dx)<14&&Math.abs(dy)<14)return;
   mou(Math.abs(dx)>Math.abs(dy)?(dx>0?DRETA:ESQ):(dy>0?AVALL:AMUNT));
   toc={x:ev.clientX,y:ev.clientY};    // torna a comptar, per poder encadenar girs
 });
