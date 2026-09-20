@@ -24,7 +24,7 @@ const ORDRE = [
 // La portada es un museu ordenat per any. Els jocs que no son de l'epoca de
 // les recreatives van en un apartat a part, despres dels classics, perque no
 // trenquin la linia del temps.
-const MODERNS = [['sindria', 2021]];
+const MODERNS = [['amunt', 2009], ['sindria', 2021]];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();

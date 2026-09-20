@@ -39,6 +39,7 @@ const JOCS = {
   track_field:     9999999,
   nibbler:         9999999,
   sindria:          999999,
+  amunt:            999999,
 };
 const TOP = 10;
 

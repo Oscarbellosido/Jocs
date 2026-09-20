@@ -41,6 +41,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
 | Fitxer | Joc | Any |
 |---|---|---|
+| `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
@@ -87,6 +88,35 @@ Dues coses del Nibbler que no s'han de tocar a la lleugera:
 On comença cada laberint no està escrit enlloc: es busca **el tram recte més
 llarg del mig** (`trobaInici`), i així mai no surts mirant una paret ni et
 quedes sense lloc per arrencar.
+
+## L'Amunt: el salt mana sobre tota la resta
+
+Saltes sol i sense parar; l'única cosa que fas és triar cap on. Per això
+**l'impuls, la gravetat i la separació entre plataformes van lligats**:
+
+```
+el salt puja IMPULS² / (2·GRAV) = 149 px
+les plataformes no se separen mai més de 105 px
+```
+
+Si es toca un dels tres números, s'han de tornar a quadrar tots tres. Amb un
+impuls més gros volaves per sobre de tres plataformes de cop i el joc es feia
+sol; amb un de més petit hi ha separacions a les quals no s'arriba i és una
+loteria.
+
+Altres coses que ja s'han hagut d'ajustar:
+
+- **Només toques plataforma quan baixes**, i es mira tot el tram recorregut des
+  del fotograma anterior. A tota velocitat el salt avança més que el gruix
+  d'una plataforma: mirant només on has acabat, hi passaries a través. És la
+  mateixa trampa del tret del Space Invaders.
+- **La dificultat va per alçada, no per temps**: qui puja a poc a poc no s'ho
+  ha de trobar més fàcil. La funció `dificultat()` només mira els metres.
+- L'alçada es compta des d'`ALTURA0`. Comptant-la amb la `y` en negatiu, a
+  baix de tot sortien alçades negatives i les plataformes es generaven més
+  juntes del compte.
+- Si el joc es queda sense plataformes, el bucle que en fabrica no acaba mai
+  (`mesAlta` queda a `Infinity`). Hi ha una xarxa de seguretat.
 
 ## El Síndria: com funciona la física
 

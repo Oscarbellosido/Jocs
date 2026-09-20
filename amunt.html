@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Amunt</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#0a1030;touch-action:none}
+#controls{flex:none;display:flex;gap:10px;margin-top:10px}
+button{font:16px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:92px;height:50px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>ALÇADA <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="360" height="600"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="right">▶</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Puja saltant de plataforma en plataforma; saltes tot sol, tu només tries cap on. S'acaba si caus.</b> mou el dit per la pantalla · ← → o A D · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="square",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.12,vol=.25){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndSalt(){aInit();tone(300,.09,"square",.2,340)}
+function sndMolla(){aInit();tone(320,.22,"square",.26,720)}
+function sndTrenca(){aInit();noise(.1,.16);tone(200,.1,"square",.16,-90)}
+function sndMoneda(){aInit();tone(1046,.07,"square",.22);setTimeout(()=>tone(1568,.1,"square",.22),70)}
+function sndCau(){aInit();[500,380,280,190].forEach((f,i)=>setTimeout(()=>tone(f,.22,"square",.25,-90),i*140))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=360,H=600;
+
+// Saltes sol i sense parar: l'unica cosa que fas es triar cap on. Per aixo
+// l'impuls i la gravetat han de quadrar amb la separacio entre plataformes.
+// El salt puja IMPULS²/(2·GRAV) = 149 px. Les plataformes no se separen mai
+// mes de 105, o sigui que sempre arribes a la seguent, pero amb prou marge
+// perque calgui apuntar. Amb un impuls mes gros volaves per sobre de tres
+// plataformes de cop i el joc es feia sol.
+const GRAV=0.42, IMPULS=-11.2;
+const SEP_MIN=52, SEP_MAX=105;
+const ALTURA0=H-60;                  // d'on surts: l'alcada es compta des d'aqui
+const PLAT_W=62, PLAT_H=12;
+const JUG_W=26, JUG_H=30;
+const VEL_MAX=6.4, ACCEL=0.9, FREGA=0.86;
+
+// Tipus de plataforma. La trencadissa i la que es mou surten mes amunt, que
+// si no la primera pujada ja seria una loteria.
+const NORMAL=0, MOU=1, TRENCA=2;
+
+let jug,plats,monedes,bocins,camera,score,state,paused;
+let inclina=0,teclaEsq=0,teclaDre=0,seguentId=1;
+
+const JOC='amunt';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){document.getElementById('score').textContent=score;saveBest()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// Com mes amunt, mes separades i mes trampes. La dificultat va per alcada i
+// no per temps: qui puja a poc a poc no ha de trobar-s'ho mes facil.
+function dificultat(alt){
+  const n=Math.max(0,Math.min(1,alt/9000));
+  return {
+    sep: SEP_MIN+(SEP_MAX-SEP_MIN)*n,
+    mou: alt>900 ? Math.min(.30,.05+n*.35) : 0,
+    trenca: alt>1800 ? Math.min(.24,.04+n*.30) : 0,
+    molla: .06,
+  };
+}
+
+function novaPlat(y){
+  const d=dificultat(ALTURA0-y);
+  const r=Math.random();
+  let tipus=NORMAL;
+  if(r<d.trenca)tipus=TRENCA;
+  else if(r<d.trenca+d.mou)tipus=MOU;
+  const p={id:seguentId++,x:Math.random()*(W-PLAT_W),y,tipus,
+           vx:tipus===MOU?(Math.random()<.5?-1:1)*(1+Math.random()*1.2):0,
+           molla:tipus===NORMAL&&Math.random()<d.molla,trencada:false};
+  plats.push(p);
+  // alguna moneda per damunt d'una plataforma, per donar un extra a qui
+  // s'arrisca a desviar-se
+  if(Math.random()<.10)monedes.push({x:p.x+PLAT_W/2,y:y-34,agafada:false});
+  return p;
+}
+
+function start(){
+  plats=[];monedes=[];bocins=[];seguentId=1;
+  score=0;state='play';paused=false;
+  camera=0;
+  // Terra de sortida: una plataforma ampla que ocupa tot el baix de la
+  // pantalla. Sense ella, desviar-te al primer salt era caure amb alçada 0 i
+  // no hi havia res a sota per salvar-te. S'en va sola quan puges.
+  plats.push({id:seguentId++,x:-20,y:H-26,tipus:NORMAL,vx:0,molla:false,trencada:false,ample:W+40});
+  plats.push({id:seguentId++,x:W/2-PLAT_W/2,y:H-60,tipus:NORMAL,vx:0,molla:false,trencada:false});
+  let y=H-60-70;
+  while(y>-H){novaPlat(y);y-=SEP_MIN+Math.random()*(70-SEP_MIN+10)}
+  jug={x:W/2-JUG_W/2,y:H-60-JUG_H,vx:0,vy:0,mirant:1};
+  hideMsg();updateHUD();
+}
+
+async function finalPartida(){
+  msg('HAS CAIGUT');
+  const r=await Records.fiPartida(JOC,score);
+  msg('HAS CAIGUT'+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+// el ninot va cap al dit i s'hi atura, sense passar-se'n
+function segueixElDit(){
+  if(ditX===null)return;
+  const centre=jug.x+JUG_W/2;
+  inclina=Math.abs(ditX-centre)<7?0:(ditX>centre?1:-1);
+}
+function salta(força){
+  jug.vy=força;
+  jug.y-=1;
+}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  const k=Math.min(2.2,dt/16.667);        // passos llargs no han de colar-se
+
+  // ---- moure's de costat ----
+  segueixElDit();
+  let vol=0;
+  if(teclaEsq)vol-=1;
+  if(teclaDre)vol+=1;
+  if(inclina)vol=inclina;
+  if(vol){jug.vx+=vol*ACCEL*k;jug.mirant=vol>0?1:-1}
+  else jug.vx*=Math.pow(FREGA,k);
+  jug.vx=Math.max(-VEL_MAX,Math.min(VEL_MAX,jug.vx));
+  jug.x+=jug.vx*k;
+  // pels costats surts per un cantó i entres per l'altre, com a la màquina
+  if(jug.x+JUG_W<0)jug.x=W;
+  if(jug.x>W)jug.x=-JUG_W;
+
+  // ---- caure i saltar ----
+  const abansY=jug.y;
+  jug.vy+=GRAV*k;
+  jug.y+=jug.vy*k;
+
+  // Només toques plataforma quan BAIXES, i es mira tot el tram recorregut:
+  // a tota velocitat el salt avança més que el gruix d'una plataforma i, si
+  // només es mirés on has acabat, passaries de llarg sense tocar-la.
+  if(jug.vy>0){
+    for(const p of plats){
+      if(p.trencada)continue;
+      const peuAbans=abansY+JUG_H, peuAra=jug.y+JUG_H;
+      if(peuAbans>p.y+PLAT_H||peuAra<p.y)continue;
+      const ample=p.ample||PLAT_W;
+      if(jug.x+JUG_W<p.x+4||jug.x>p.x+ample-4)continue;
+      if(p.tipus===TRENCA){
+        p.trencada=true;sndTrenca();
+        for(let i=0;i<8;i++)bocins.push({x:p.x+Math.random()*PLAT_W,y:p.y,
+          vx:(Math.random()-.5)*3,vy:Math.random()*2,t:1});
+        continue;                         // et deixa caure: no t'impulsa
+      }
+      jug.y=p.y-JUG_H;
+      if(p.molla){salta(IMPULS*1.55);sndMolla()}
+      else{salta(IMPULS);sndSalt()}
+      break;
+    }
+  }
+
+  // ---- plataformes que es mouen ----
+  for(const p of plats){
+    if(p.tipus!==MOU)continue;
+    p.x+=p.vx*k;
+    if(p.x<0){p.x=0;p.vx*=-1}
+    if(p.x>W-PLAT_W){p.x=W-PLAT_W;p.vx*=-1}
+  }
+
+  // ---- la càmera puja amb tu, i no baixa mai ----
+  const límit=H*0.42;
+  if(jug.y-camera<límit){
+    camera=jug.y-límit;
+    const alt=Math.max(0,Math.round((H-60-JUG_H-camera-límit)/10));
+    if(alt>score){score=alt;updateHUD()}
+  }
+
+  // ---- fer i desfer món ----
+  plats=plats.filter(p=>p.y-camera<H+40);
+  monedes=monedes.filter(m=>m.y-camera<H+40);
+  let mesAlta=plats.reduce((m,p)=>Math.min(m,p.y),Infinity);
+  if(!isFinite(mesAlta))mesAlta=camera;   // sense aixo, quedar-se sense plataformes penja el joc
+  const d=dificultat(ALTURA0-camera);
+  while(mesAlta>camera-60){
+    mesAlta-=SEP_MIN+Math.random()*(d.sep-SEP_MIN);
+    novaPlat(mesAlta);
+  }
+
+  // ---- monedes ----
+  for(const m of monedes){
+    if(m.agafada)continue;
+    if(Math.abs(m.x-(jug.x+JUG_W/2))<20&&Math.abs(m.y-(jug.y+JUG_H/2))<22){
+      m.agafada=true;score+=50;updateHUD();sndMoneda();
+    }
+  }
+
+  for(let i=bocins.length-1;i>=0;i--){
+    const b=bocins[i];b.x+=b.vx*k;b.y+=b.vy*k;b.vy+=.3*k;b.t-=dt/450;
+    if(b.t<=0)bocins.splice(i,1);
+  }
+
+  // ---- caure per sota ----
+  if(jug.y-camera>H+30){
+    state='over';sndCau();
+    setTimeout(finalPartida,800);
+  }
+}
+
+// ===== DIBUIX =====
+function dibuixaPlat(p){
+  if(p.trencada)return;         // ja no aguanta: no s'ha de veure
+  const py=p.y-camera;
+  if(py<-20||py>H+20)return;
+  let col='#4a9e4a', vora='#2f7030';
+  if(p.tipus===MOU){col='#4a86d0';vora='#2a5a96'}
+  if(p.tipus===TRENCA){col='#b06a3a';vora='#7a4520'}
+  const ample=p.ample||PLAT_W;
+  x.fillStyle=vora;x.fillRect(p.x,py,ample,PLAT_H);
+  x.fillStyle=col;x.fillRect(p.x,py,ample,PLAT_H-3);
+  if(p.tipus===TRENCA){
+    x.strokeStyle=vora;x.lineWidth=2;
+    x.beginPath();x.moveTo(p.x+ample/2,py);x.lineTo(p.x+ample/2-4,py+PLAT_H);x.stroke();
+  }
+  if(p.molla){
+    x.fillStyle='#ffd000';
+    x.fillRect(p.x+ample/2-7,py-8,14,8);
+    x.fillStyle='#8a6a00';
+    x.fillRect(p.x+ample/2-6,py-6,12,2);
+    x.fillRect(p.x+ample/2-6,py-3,12,2);
+  }
+}
+function dibuixaJugador(){
+  const px=jug.x, py=jug.y-camera;
+  // cos
+  x.fillStyle='#ffd45e';
+  x.fillRect(px+3,py+6,JUG_W-6,JUG_H-10);
+  x.fillStyle='#ffe9a8';
+  x.fillRect(px+5,py+8,JUG_W-10,6);
+  // potes, plegades si puja
+  x.fillStyle='#e0a020';
+  if(jug.vy<0){x.fillRect(px+4,py+JUG_H-5,7,4);x.fillRect(px+JUG_W-11,py+JUG_H-5,7,4)}
+  else{x.fillRect(px+3,py+JUG_H-4,7,5);x.fillRect(px+JUG_W-10,py+JUG_H-4,7,5)}
+  // ulls, mirant cap on vas
+  x.fillStyle='#000';
+  const o=jug.mirant>0?3:-3;
+  x.fillRect(px+7+o,py+9,3,4);
+  x.fillRect(px+JUG_W-11+o,py+9,3,4);
+}
+function draw(){
+  // cel, més fosc com més amunt
+  const alt=Math.min(1,score/2500);
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#05081f');
+  g.addColorStop(1,`rgb(${Math.round(20+40*(1-alt))},${Math.round(30+50*(1-alt))},${Math.round(70+60*(1-alt))})`);
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  // estrelles, lligades a l'alçada perquè sembli que puges
+  x.fillStyle='rgba(255,255,255,.55)';
+  for(let i=0;i<40;i++){
+    const ex=(i*97)%W, ey=((i*163)-camera*0.25)%H;
+    x.fillRect(ex,(ey+H)%H,2,2);
+  }
+
+  for(const p of plats)dibuixaPlat(p);
+
+  for(const m of monedes){
+    if(m.agafada)continue;
+    const py=m.y-camera;
+    if(py<-20||py>H+20)continue;
+    x.fillStyle='#ffd000';
+    x.beginPath();x.arc(m.x,py,8,0,6.2832);x.fill();
+    x.fillStyle='#a88400';
+    x.beginPath();x.arc(m.x,py,4,0,6.2832);x.fill();
+  }
+
+  for(const b of bocins){
+    x.globalAlpha=Math.max(0,b.t);
+    x.fillStyle='#b06a3a';x.fillRect(b.x,b.y-camera,6,4);
+  }
+  x.globalAlpha=1;
+
+  dibuixaJugador();
+
+  // una ratlla amb la millor alçada que has fet mai, per tenir-hi la vista
+  if(bestScore>0&&score<bestScore){
+    const py=(H-60-JUG_H)-bestScore*10-camera;
+    if(py>0&&py<H){
+      x.strokeStyle='rgba(255,208,0,.55)';x.lineWidth=1;x.setLineDash([6,6]);
+      x.beginPath();x.moveTo(0,py);x.lineTo(W,py);x.stroke();x.setLineDash([]);
+      x.fillStyle='#ffd000';x.font='10px monospace';
+      x.fillText('el teu rècord: '+bestScore,8,py-4);
+    }
+  }
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 24px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(50,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// El dit mana: on poses el dit, cap allà va. Els botons hi són per al teclat
+// i per a qui prefereixi picar.
+function xCanvas(ev){const r=c.getBoundingClientRect();return (ev.clientX-r.left)/r.width*W}
+// On tens el dit, no cap on l'has mogut: es torna a mirar a cada fotograma
+// (a segueixElDit). Mirant-ho només quan el dit es mou, el ninot passava de
+// llarg i seguia caminant fins que el tornaves a moure.
+let ditX=null;
+c.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+  if(state==='over'){start();return}
+  ditX=xCanvas(ev)});
+c.addEventListener('pointermove',ev=>{if(ditX!==null){ev.preventDefault();ditX=xCanvas(ev)}});
+const deixa=()=>{ditX=null;inclina=0};
+c.addEventListener('pointerup',deixa);
+c.addEventListener('pointercancel',deixa);
+c.addEventListener('pointerleave',deixa);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function bindBoto(id,quin){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+    if(state==='over'){start();return}
+    quin(1)});
+  const solta=()=>quin(0);
+  b.addEventListener('pointerup',solta);
+  b.addEventListener('pointercancel',solta);
+  b.addEventListener('pointerleave',solta);
+}
+bindBoto('left',v=>teclaEsq=v);
+bindBoto('right',v=>teclaDre=v);
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();teclaEsq=1}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();teclaDre=1}
+  if(e.code==='KeyP'&&state!=='over')paused=!paused;
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')teclaEsq=0;
+  if(e.code==='ArrowRight'||e.code==='KeyD')teclaDre=0;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>
