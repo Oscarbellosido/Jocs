@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v64';
+const CACHE = 'jocs-v65';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -29,6 +29,7 @@ const FILES = [
   '/Jocs/amunt.html',
   '/Jocs/boles.html',
   '/Jocs/balanca.html',
+  '/Jocs/xifres.html',
   '/Jocs/thumbs/tetris.png',
   '/Jocs/thumbs/comecocos.png',
   '/Jocs/thumbs/space_invaders.png',
@@ -54,6 +55,7 @@ const FILES = [
   '/Jocs/thumbs/amunt.png',
   '/Jocs/thumbs/boles.png',
   '/Jocs/thumbs/balanca.png',
+  '/Jocs/thumbs/xifres.png',
   '/Jocs/icon-192.png',
   '/Jocs/icon-512.png'
 ];

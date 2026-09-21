@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Xifres</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* numeros grossos i caixes arrodonides: amb els pixels quadrats quedaria dentat */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#0f1418;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:13px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:92px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#segueix{color:#7dff9b}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="400" height="580"></canvas></div>
+  <div id="controls">
+    <button id="desfes">DESFÉS</button><button id="torna">TORNA-HI</button><button id="segueix">PROU</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Arriba al número de dalt combinant els sis de baix; deu rondes i com més a prop, més punts.</b> toca un número, una operació i un altre número · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndToca(){aInit();tone(660,.05,"square",.14)}
+function sndOpera(){aInit();tone(440,.09,"triangle",.22,120)}
+function sndNo(){aInit();tone(150,.12,"square",.16,-50)}
+function sndDesfes(){aInit();tone(300,.07,"sine",.16,-80)}
+function sndExacte(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.2,"triangle",.3),i*90))}
+function sndProp(){aInit();[440,554].forEach((f,i)=>setTimeout(()=>tone(f,.18,"sine",.24),i*120))}
+function sndRes(){aInit();[330,247].forEach((f,i)=>setTimeout(()=>tone(f,.25,"sine",.22,-60),i*180))}
+function sndFi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.24,"triangle",.28),i*140))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=400,H=580;
+
+// ===== LES REGLES =====
+// Les del concurs original: sis fitxes tretes d'una bossa amb dos jocs de
+// l'1 al 10 i un 25, un 50, un 75 i un 100, i un objectiu de 101 a 999.
+// Nomes s'hi val a fer sumes, restes, multiplicacions i divisions, cada
+// fitxa una sola vegada, i cap resultat pot ser negatiu, zero ni decimal.
+const GROSSOS=[25,50,75,100];
+const RONDES=10;
+const SEGONS=90;
+// El concurs dona 30 segons, pero alla hi juga gent entrenada i en Carles no
+// fa un concurs: amb 30 la majoria de rondes quedarien a zero i no seria un
+// joc de pensar sino de patir. Els segons que et sobren son punts, o sigui
+// que qui va de pressa hi guanya igualment.
+const OPS=[['+','+'],['-','−'],['*','×'],['/','÷']];
+
+// ===== EL CERCADOR =====
+// Serveix per a dues coses: per no treure mai una ronda sense solucio (com
+// els edificis del Crazy Climber) i per ensenyar-te com es podia fer quan no
+// te n'has sortit. Para de seguida que troba una manera, que es per aixo que
+// es rapid: de mediana, dues o tres mil·lesimes.
+function busca(nums,objectiu,maxNodes=250000){
+  let nodes=0;
+  const vist=new Set();
+  function rec(llista){
+    if(++nodes>maxNodes)return null;
+    for(const o of llista)if(o.v===objectiu)return o.passos;
+    if(llista.length<2)return null;
+    const clau=llista.map(o=>o.v).sort((a,b)=>a-b).join(',');
+    if(vist.has(clau))return null;
+    vist.add(clau);
+    for(let i=0;i<llista.length;i++)
+      for(let j=i+1;j<llista.length;j++){
+        const a=llista[i],b=llista[j];
+        const resta=[];
+        for(let t=0;t<llista.length;t++)if(t!==i&&t!==j)resta.push(llista[t]);
+        const gran=Math.max(a.v,b.v),petit=Math.min(a.v,b.v);
+        const cands=[[a.v+b.v,'+',a.v,b.v]];
+        if(a.v!==b.v)cands.push([gran-petit,'-',gran,petit]);
+        // multiplicar o dividir per 1 no fa res i només crema una fitxa
+        if(a.v!==1&&b.v!==1)cands.push([a.v*b.v,'*',a.v,b.v]);
+        if(petit>1&&gran%petit===0)cands.push([gran/petit,'/',gran,petit]);
+        for(const [v,op,p,q] of cands){
+          const passos=[...a.passos,...b.passos,[p,op,q,v]];
+          const r=rec([...resta,{v,passos}]);
+          if(r)return r;
+        }
+      }
+    return null;
+  }
+  return rec(nums.map(v=>({v,passos:[]})));
+}
+
+let fitxes=[],selA=null,opSel=null,historial=[],pila=[];
+let objectiu=0,solucio=[],ronda=1,score=0,temps=SEGONS;
+let millorVal=null,millorDist=1e9,puntsRonda=0,resultat='';
+let state='juga',paused=false,idSeg=1,tremola=0,brill=0;
+
+const JOC='xifres';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== REPARTIR =====
+// La dificultat va per dues coses alhora:
+//  - Quantes fitxes grosses (25, 50, 75, 100) et toquen: son les que et fan
+//    pujar de pressa, o sigui que com mes n'hi ha, mes facil.
+//  - Quantes fitxes calen com a minim per fer l'objectiu. Aixo es el que fa
+//    de debo la dificultat, i triant l'objectiu a l'atzar no es pot manar:
+//    mesurat amb el cercador complet, ja a la primera ronda calien quatre
+//    fitxes o mes el 92% de les vegades. Comencar aixi es desanimar-se.
+// Per aixo les primeres rondes no trien l'objectiu a l'atzar: el FABRIQUEN
+// amb tres o quatre de les sis fitxes, i les altres queden d'esquer. Les
+// ultimes si que van a l'atzar, que es quan ha de costar.
+function perfil(r){
+  if(r<=2)return {grossos:2,fitxes:3};
+  if(r<=4)return {grossos:2,fitxes:4};
+  if(r<=6)return {grossos:1,fitxes:4};
+  if(r<=8)return {grossos:1,fitxes:5};
+  return {grossos:0,fitxes:0};        // 0 = objectiu a l'atzar
+}
+function reparteix(nGrossos){
+  const g=[...GROSSOS],p=[];
+  for(let i=1;i<=10;i++)p.push(i,i);
+  const out=[];
+  for(let i=0;i<nGrossos;i++)out.push(...g.splice(Math.floor(Math.random()*g.length),1));
+  while(out.length<6)out.push(...p.splice(Math.floor(Math.random()*p.length),1));
+  for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}
+  return out;
+}
+// Fabricar un objectiu: s'agafen K de les sis fitxes i es combinen a la
+// babala fins que en surt un numero de 101 a 999. Aixi l'objectiu te segur
+// una solucio de K fitxes, ni que n'hi hagi de mes curtes.
+function combina(sub){
+  let llista=sub.map(v=>({v,passos:[]}));
+  while(llista.length>1){
+    const i=Math.floor(Math.random()*llista.length);
+    let j=Math.floor(Math.random()*llista.length);
+    while(j===i)j=Math.floor(Math.random()*llista.length);
+    const a=llista[i],b=llista[j];
+    const gran=Math.max(a.v,b.v),petit=Math.min(a.v,b.v);
+    const cands=[[a.v+b.v,'+',a.v,b.v]];
+    if(a.v!==b.v)cands.push([gran-petit,'-',gran,petit]);
+    if(a.v!==1&&b.v!==1)cands.push([a.v*b.v,'*',a.v,b.v]);
+    if(petit>1&&gran%petit===0)cands.push([gran/petit,'/',gran,petit]);
+    const [v,op,p,q]=cands[Math.floor(Math.random()*cands.length)];
+    llista=llista.filter((_,t)=>t!==i&&t!==j);
+    llista.push({v,passos:[...a.passos,...b.passos,[p,op,q,v]]});
+  }
+  return llista[0];
+}
+// Un objectiu que ja queda a tocar d'una fitxa que tens (objectiu 103 i un
+// 100 a la ma) et regalava seixanta punts sense fer res. Ha de quedar prou
+// lluny de totes sis.
+const A_PROP=15;
+function objectiuBo(nums,v){
+  if(v<101||v>999)return false;
+  return nums.every(n=>Math.abs(n-v)>A_PROP);
+}
+function objectiuAmb(nums,k){
+  for(let intent=0;intent<300;intent++){
+    const barreja=[...nums];
+    for(let i=barreja.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[barreja[i],barreja[j]]=[barreja[j],barreja[i]]}
+    const r=combina(barreja.slice(0,k));
+    if(objectiuBo(nums,r.v))return r;
+  }
+  return null;
+}
+
+function novaRonda(){
+  const pf=perfil(ronda);
+  if(pf.fitxes){
+    for(let intent=0;intent<12;intent++){
+      const nums=reparteix(pf.grossos);
+      const r=objectiuAmb(nums,pf.fitxes);
+      if(r){posaRonda(nums,r.v,r.passos);return}
+    }
+  }
+  for(let intent=0;intent<40;intent++){
+    const nums=reparteix(pf.grossos);
+    const obj=101+Math.floor(Math.random()*899);
+    if(!objectiuBo(nums,obj))continue;
+    const p=busca(nums,obj);
+    if(p){posaRonda(nums,obj,p);return}
+  }
+  // xarxa de seguretat: no hauria de passar mai, pero millor aixo que penjar-se
+  posaRonda([1,2,3,4,5,100],105,[[100,'+',5,105]]);
+}
+function posaRonda(nums,obj,passos){
+  fitxes=nums.map(v=>({id:idSeg++,v,gran:GROSSOS.includes(v)}));
+  inicials=fitxes.map(f=>({...f}));
+  objectiu=obj;solucio=passos;
+  selA=null;opSel=null;historial=[];pila=[];
+  millorVal=null;millorDist=1e9;
+  temps=SEGONS;state='juga';
+  for(const f of fitxes)mira(f.v);
+}
+let inicials=[];
+
+function mira(v){
+  const d=Math.abs(v-objectiu);
+  if(d<millorDist){millorDist=d;millorVal=v}
+}
+
+function start(){
+  ronda=1;score=0;paused=false;hideMsg();
+  novaRonda();updateHUD();
+}
+
+// ===== JUGAR =====
+function fitxaPerId(id){return fitxes.find(f=>f.id===id)}
+function desaPila(){pila.push({fitxes:fitxes.map(f=>({...f})),historial:[...historial]})}
+
+function opera(idB){
+  const a=fitxaPerId(selA),b=fitxaPerId(idB);
+  if(!a||!b||a.id===b.id)return;
+  let v=null;
+  if(opSel==='+')v=a.v+b.v;
+  else if(opSel==='-')v=a.v-b.v;
+  else if(opSel==='*')v=a.v*b.v;
+  else if(opSel==='/')v=(b.v!==0&&a.v%b.v===0)?a.v/b.v:null;
+  // Cap resultat pot ser negatiu, zero ni decimal: es la regla del concurs i
+  // es el que fa que calgui pensar l'ordre.
+  if(v===null||v<=0||!Number.isInteger(v)){
+    sndNo();tremola=.35;selA=null;opSel=null;return;
+  }
+  desaPila();
+  const simbol=OPS.find(o=>o[0]===opSel)[1];
+  historial.push(a.v+' '+simbol+' '+b.v+' = '+v);
+  fitxes=fitxes.filter(f=>f.id!==a.id&&f.id!==b.id);
+  fitxes.push({id:idSeg++,v,gran:false,nou:1});
+  selA=null;opSel=null;
+  mira(v);
+  if(v===objectiu){sndExacte();brill=1;acabaRonda('exacte')}
+  else sndOpera();
+}
+
+function desfes(){
+  if(state!=='juga'||!pila.length)return;
+  const p=pila.pop();
+  fitxes=p.fitxes;historial=p.historial;
+  selA=null;opSel=null;sndDesfes();
+}
+function tornaHi(){
+  if(state!=='juga')return;
+  if(pila.length)desaPila();
+  fitxes=inicials.map(f=>({...f}));historial=[];pila=[];
+  selA=null;opSel=null;sndDesfes();
+}
+
+// Els punts: encertar-ho val molt mes que quedar-hi a prop, i els segons que
+// et sobren tambe compten, que si no jugar de pressa no serviria de res.
+function puntsPer(dist,seg){
+  if(dist===0)return 100+Math.round(seg);
+  if(dist<=5)return 60;
+  if(dist<=10)return 40;
+  return 0;
+}
+function acabaRonda(com){
+  if(state!=='juga')return;
+  state='fiRonda';
+  const d=millorDist;
+  puntsRonda=puntsPer(d,temps);
+  score+=puntsRonda;
+  if(d===0)resultat='EXACTE!';
+  else if(d<=10)resultat='T\'HI HAS QUEDAT A '+d;
+  else if(millorVal===null)resultat='NO HAS FET RES';
+  else resultat='MASSA LLUNY (a '+d+')';
+  if(d!==0){if(d<=10)sndProp();else sndRes()}
+  document.getElementById('segueix').textContent=
+    ronda>=RONDES?'ACABA':'SEGÜENT';
+  esperaSeg=.7;
+  updateHUD();
+}
+let esperaSeg=0;
+
+function segueix(){
+  if(state==='over'){start();return}
+  if(state!=='fiRonda'||esperaSeg>0)return;
+  document.getElementById('segueix').textContent='PROU';
+  if(ronda>=RONDES){finalPartida();return}
+  ronda++;novaRonda();
+}
+
+async function finalPartida(){
+  state='over';sndFi();
+  msg('S\'HAN ACABAT LES DEU RONDES<br><small>'+score+' punts</small>');
+  const r=await Records.fiPartida(JOC,score);
+  msg('S\'HAN ACABAT LES DEU RONDES<br><small>'+score+' punts</small>'+
+      (r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+  document.getElementById('segueix').textContent='ALTRA VEGADA';
+}
+
+// ===== ON ÉS CADA COSA =====
+// Tot es toca al canvas: els numeros i les operacions son el que prems sense
+// parar i han d'estar a la vista, no pas als botons de sota.
+const T_W=104,T_H=54,T_GAP=14,T_X0=(W-3*T_W-2*T_GAP)/2,T_Y0=292,T_Y1=292+T_H+14;
+const O_W=64,O_H=58,O_GAP=16,O_X0=(W-4*O_W-3*O_GAP)/2,O_Y=430;
+function caixaFitxa(i){
+  const fila=i<3?0:1,col=i%3;
+  return {x:T_X0+col*(T_W+T_GAP),y:fila?T_Y1:T_Y0,w:T_W,h:T_H};
+}
+function caixaOp(i){return {x:O_X0+i*(O_W+O_GAP),y:O_Y,w:O_W,h:O_H}}
+function dins(p,b){return p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h}
+
+function toca(p){
+  if(paused)return;
+  if(state==='fiRonda'){segueix();return}
+  if(state!=='juga')return;
+  for(let i=0;i<fitxes.length;i++){
+    if(dins(p,caixaFitxa(i))){
+      const f=fitxes[i];
+      if(selA===null){selA=f.id;sndToca()}
+      else if(selA===f.id){selA=null;opSel=null;sndToca()}
+      else if(opSel===null){selA=f.id;sndToca()}
+      else opera(f.id);
+      return;
+    }
+  }
+  for(let i=0;i<OPS.length;i++){
+    if(dins(p,caixaOp(i))){
+      if(selA===null){sndNo();tremola=.25;return}
+      opSel=OPS[i][0];sndToca();return;
+    }
+  }
+}
+
+// ===== DIBUIX =====
+function rodona(g,px,py,w,h,r){
+  g.beginPath();
+  g.moveTo(px+r,py);g.lineTo(px+w-r,py);g.quadraticCurveTo(px+w,py,px+w,py+r);
+  g.lineTo(px+w,py+h-r);g.quadraticCurveTo(px+w,py+h,px+w-r,py+h);
+  g.lineTo(px+r,py+h);g.quadraticCurveTo(px,py+h,px,py+h-r);
+  g.lineTo(px,py+r);g.quadraticCurveTo(px,py,px+r,py);
+  g.closePath();
+}
+function draw(){
+  x.clearRect(0,0,W,H);
+  x.textBaseline='alphabetic';
+
+  // ronda i rellotge
+  x.fillStyle='#8a9aa5';x.font='12px monospace';x.textAlign='left';
+  x.fillText('RONDA '+ronda+' de '+RONDES,12,22);
+  const poc=temps<=15;
+  x.fillStyle=poc&&Math.floor(temps*3)%2===0?'#ff6a6a':'#8a9aa5';
+  x.textAlign='right';
+  x.fillText(Math.ceil(Math.max(0,temps))+'s',W-12,22);
+  x.fillStyle='#22303a';x.fillRect(12,30,W-24,5);
+  x.fillStyle=poc?'#d9534f':'#4f9dd9';
+  x.fillRect(12,30,(W-24)*Math.max(0,temps)/SEGONS,5);
+
+  // l'objectiu
+  const sac=tremola>0?(Math.random()-.5)*7:0;
+  x.fillStyle='#16212a';rodona(x,60+sac,44,280,76,12);x.fill();
+  x.strokeStyle='#3b5364';x.lineWidth=2;x.stroke();
+  x.fillStyle='#7f96a5';x.font='11px monospace';x.textAlign='center';
+  x.fillText('ARRIBA A',W/2+sac,64);
+  x.fillStyle=brill>0?'#7dff9b':'#ffd75e';
+  x.font='bold 42px monospace';
+  x.fillText(String(objectiu),W/2+sac,108);
+
+  // el més a prop que has fet
+  x.font='12px monospace';
+  if(millorVal===null||millorDist>200){
+    x.fillStyle='#63727c';x.fillText('encara no t\'hi has acostat',W/2,140);
+  }else if(millorDist===0){
+    x.fillStyle='#7dff9b';x.fillText('l\'has fet: '+millorVal,W/2,140);
+  }else{
+    x.fillStyle='#b9c7d0';
+    x.fillText('el més a prop: '+millorVal+'  (a '+millorDist+')',W/2,140);
+  }
+
+  // El rastre de les operacions. Va dins d'una caixa i, quan es buida, diu
+  // que hi sortiran: si no, alla al mig hi havia un forat negre i semblava
+  // que faltes alguna cosa.
+  x.strokeStyle='#22303a';x.lineWidth=1;
+  rodona(x,40,152,W-80,118,10);x.stroke();
+  x.font='13px monospace';x.textAlign='center';
+  if(!historial.length){
+    x.fillStyle='#3f4c55';x.font='11px monospace';
+    x.fillText('aquí sortiran les operacions que facis',W/2,216);
+  }
+  for(let i=0;i<historial.length;i++){
+    x.fillStyle='#6f8f9f';x.font='13px monospace';
+    x.fillText(historial[i],W/2,174+i*20);
+  }
+  // el que estàs muntant ara
+  if(selA!==null){
+    const a=fitxaPerId(selA);
+    const s=OPS.find(o=>o[0]===opSel);
+    x.fillStyle='#ffd75e';x.font='bold 15px monospace';
+    x.fillText(a.v+(s?' '+s[1]+' ?':'  ...'),W/2,286);
+  }
+
+  // les fitxes
+  for(let i=0;i<fitxes.length;i++){
+    const b=caixaFitxa(i),f=fitxes[i];
+    const tria=selA===f.id;
+    x.fillStyle=tria?'#2f5d7a':(f.gran?'#3a3550':'#1d2932');
+    rodona(x,b.x,b.y,b.w,b.h,10);x.fill();
+    x.strokeStyle=tria?'#8fd0ff':(f.gran?'#7b6fb0':'#3b5364');
+    x.lineWidth=tria?3:2;x.stroke();
+    x.fillStyle=tria?'#fff':'#dce8ef';
+    x.font='bold '+(f.v>99?26:30)+'px monospace';
+    x.textAlign='center';x.textBaseline='middle';
+    x.fillText(String(f.v),b.x+b.w/2,b.y+b.h/2+1);
+    x.textBaseline='alphabetic';
+  }
+
+  // les operacions
+  for(let i=0;i<OPS.length;i++){
+    const b=caixaOp(i),tria=opSel===OPS[i][0];
+    x.fillStyle=tria?'#7a5a1f':'#1d2932';
+    rodona(x,b.x,b.y,b.w,b.h,10);x.fill();
+    x.strokeStyle=tria?'#ffd75e':'#3b5364';x.lineWidth=tria?3:2;x.stroke();
+    x.fillStyle=tria?'#ffd75e':'#dce8ef';
+    x.font='bold 28px monospace';x.textAlign='center';x.textBaseline='middle';
+    x.fillText(OPS[i][1],b.x+b.w/2,b.y+b.h/2+1);
+    x.textBaseline='alphabetic';
+  }
+
+  // la instrucció, que aquest joc no s'endevina sol
+  x.fillStyle='#55646e';x.font='10px monospace';x.textAlign='center';
+  x.fillText('un número · una operació · un altre número',W/2,514);
+  x.fillText('cada fitxa una sola vegada · res de negatius ni decimals',W/2,531);
+
+  if(state==='fiRonda')quadreFiRonda();
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);
+  }
+  x.textAlign='left';
+}
+
+function quadreFiRonda(){
+  x.fillStyle='rgba(8,12,16,.93)';
+  rodona(x,24,138,W-48,332,14);x.fill();
+  x.strokeStyle='#3b5364';x.lineWidth=2;x.stroke();
+  x.textAlign='center';
+  x.fillStyle=millorDist===0?'#7dff9b':(millorDist<=10?'#ffd75e':'#ff8a8a');
+  x.font='bold 21px monospace';
+  x.fillText(resultat,W/2,180);
+  x.fillStyle='#dce8ef';x.font='16px monospace';
+  x.fillText(puntsRonda+' punts',W/2,208);
+  if(millorDist!==0&&solucio.length){
+    x.fillStyle='#7f96a5';x.font='12px monospace';
+    x.fillText('es podia fer així:',W/2,242);
+    x.fillStyle='#b9c7d0';x.font='14px monospace';
+    for(let i=0;i<solucio.length;i++){
+      const [p,op,q,v]=solucio[i];
+      const s=OPS.find(o=>o[0]===op)[1];
+      x.fillText(p+' '+s+' '+q+' = '+v,W/2,268+i*21);
+    }
+  }
+  x.fillStyle='#7f96a5';x.font='12px monospace';
+  x.fillText('total: '+score+' punts',W/2,412);
+  if(esperaSeg<=0){
+    x.fillStyle=Math.floor(performance.now()/450)%2?'#7dff9b':'#4a7a5a';
+    x.font='13px monospace';
+    x.fillText(ronda>=RONDES?'toca per veure el resultat':'toca per continuar',W/2,444);
+  }
+  x.textAlign='left';
+}
+
+let last=performance.now();
+function loop(t){
+  const dt=Math.min(40,t-last)/1000;last=t;
+  if(!paused){
+    if(tremola>0)tremola-=dt;
+    if(brill>0)brill-=dt*1.5;
+    if(esperaSeg>0)esperaSeg-=dt;
+    if(state==='juga'){
+      temps-=dt;
+      if(temps<=0){temps=0;acabaRonda('temps')}
+    }
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+function punt(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W,y:(ev.clientY-r.top)/r.height*H};
+}
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')return;
+  toca(punt(ev));
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function boto(id,fn){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();fn()});
+}
+boto('desfes',desfes);
+boto('torna',tornaHi);
+boto('segueix',()=>{
+  if(state==='over'){start();document.getElementById('segueix').textContent='PROU';return}
+  if(state==='fiRonda')segueix();
+  else acabaRonda('prou');
+});
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'&&state!=='over'){e.preventDefault();paused=!paused;return}
+  if(e.code==='KeyZ'){e.preventDefault();desfes()}
+  if(e.code==='Space'||e.code==='Enter'){
+    e.preventDefault();
+    if(state==='over')start();
+    else if(state==='fiRonda')segueix();
+  }
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-dos jocs clàssics dels salons recreatius i quatre de moderns, fets amb HTML i
+Vint-i-dos jocs clàssics dels salons recreatius i cinc que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -37,10 +37,11 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I quatre de moderns
+### I cinc que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
+| `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
 | `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
@@ -51,7 +52,13 @@ al final de la fila trencaria la línia del temps. Per això la portada va parti
 en dos apartats, cadascun amb el seu títol i la seva graella:
 
 - `#classics` — **CLÀSSICS DELS SALONS 1972 — 1984**, per ordre d'any.
-- `#moderns` — **MODERNS del mòbil**, també per ordre d'any.
+- `#moderns` — **FORA DELS SALONS, de la tele i del mòbil**, també per ordre d'any.
+
+El que separa els dos apartats **no és l'any, és si era una màquina de saló**.
+L'apartat de sota es deia «MODERNS del mòbil» mentre només hi havia jocs de
+mòbil; amb el Xifres, que és del 1972 i de la televisió, aquell nom ja era
+mentida. L'identificador de la graella segueix essent `moderns` perquè no es
+trenqui res, però el que hi surt escrit és el que mana.
 
 El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
@@ -169,6 +176,46 @@ que ja s'han hagut d'ajustar:
 
 Provat amb dos jugadors automàtics: un que apunta a ull arriba a la ronda 15,
 i un que prova seixanta angles i tria el millor passa de la 28.
+
+## El Xifres: que cap ronda no surti sense solució
+
+És la prova de números de **«Des chiffres et des lettres»** (França, 1972, de
+l'Armand Jammot), aquí coneguda com a *Cifras y letras*. Les regles són les
+seves: sis fitxes d'una bossa amb dos jocs de l'1 al 10 i un 25, un 50, un 75 i
+un 100; un objectiu de 101 a 999; només sumar, restar, multiplicar i dividir;
+cada fitxa una sola vegada, i **cap resultat negatiu, zero ni decimal**. El nom
+de l'original no es fa servir enlloc.
+
+Tres coses que no s'han de desfer sense entendre-les:
+
+- **Cap ronda no surt sense solució.** El joc porta un cercador (`busca`) que
+  para de seguida que en troba una, i una ronda no es dóna per bona fins que
+  n'hi ha. Va a dues o tres mil·lèsimes de mediana i 45 com a molt, o sigui que
+  es pot fer al mòbil entre ronda i ronda. Al concurs de debò n'hi ha que no
+  tenen solució exacta; aquí no, que això és una partida amb punts.
+- **La dificultat no es pot deixar a l'atzar.** Mesurat amb el cercador
+  complet, triant l'objectiu a l'atzar ja a la primera ronda calien quatre
+  fitxes o més el 92% de les vegades: començar així és desanimar-se. Per això
+  les rondes fins a la vuitena **fabriquen** l'objectiu combinant tres, quatre
+  o cinc de les sis fitxes (les altres queden d'esquer), i només les dues
+  últimes el trien a l'atzar. Ara la rampa va de 2,9 fitxes de mitjana a la
+  ronda 1 fins a 5,3 a la 10, i ho vigila el `scripts/prova-xifres.mjs`.
+- **L'objectiu no pot quedar a tocar d'una fitxa de sortida** (`A_PROP`). Amb
+  un objectiu de 103 i un 100 a la mà, els punts de «t'hi has quedat a 3»
+  et queien sense fer res.
+
+Dues coses on ens separem del concurs, a posta:
+
+- **Noranta segons per ronda i no trenta.** Allà hi juga gent entrenada; aquí,
+  amb trenta, la majoria de rondes quedarien a zero i seria un joc de patir i
+  no de pensar. Els segons que sobren són punts, o sigui que anar de pressa
+  continua valent la pena.
+- **El més a prop que has fet compta sol.** No has de dir cap número: el joc es
+  mira tots els que has arribat a fer i es queda el millor. Així no es perden
+  punts per haver-se equivocat de botó.
+
+Quan no te n'has sortit, al final de la ronda s'ensenya **una** manera de
+fer-ho: la que el cercador tenia desada. No és forçosament la més curta.
 
 ## La Balança: un joc nostre
 
@@ -452,6 +499,8 @@ comproven el comportament.
   que el marcador no vessi a 320 px.
 - `node scripts/prova-cuc.mjs` — que els laberints del Nibbler no tinguin
   racons sense sortida ni passadissos llargs on no puguis girar.
+- `node scripts/prova-xifres.mjs` — que cap ronda del Xifres surti sense
+  solució, que la dificultat pugi de debò i que es pugui jugar tocant.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.
