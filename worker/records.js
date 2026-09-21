@@ -43,6 +43,7 @@ const JOCS = {
   boles:              9999,
   balanca:          999999,
   xifres:             9999,
+  ram:               99999,
 };
 const TOP = 10;
 

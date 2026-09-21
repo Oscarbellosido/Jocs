@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-dos jocs clàssics dels salons recreatius i cinc que no ho són, fets amb HTML i
+Vint-i-dos jocs clàssics dels salons recreatius i sis que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -37,7 +37,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I cinc que no són de saló
+### I sis que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -46,6 +46,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
 | `balanca.html` | Balança | 2026 |
+| `ram.html` | El Ram | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -67,8 +68,8 @@ I com que aquests sí que són jocs d'empreses vives —no màquines de fa quara
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
 nom de l'original.
 
-La **Balança** és l'excepció: no s'assembla a res, és nostra de cap a peus. Si
-algun dia se'n fan més d'inventades, van aquí mateix, amb l'any que es fan.
+La **Balança** i **el Ram** són l'excepció: no s'assemblen a res, són nostres de
+cap a peus. Les inventades van aquí mateix, amb l'any que es fan.
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
 
@@ -250,6 +251,43 @@ vegades més punts per jugar bé: és la diferència que volem.
 La regla i el mínim de cada moment **van escrits a la pantalla** (a dalt a
 l'esquerra i a sota de tot): és un joc inventat i ningú no en sap les regles
 d'abans.
+
+## El Ram: el motor del Síndria amb un altre joc a sobre
+
+És nostre, i és el que passa quan al motor de física del Síndria se li posa una
+regla diferent: **quatre boles o més del mateix color que es toquen esclaten
+totes**, el munt s'esfondra al forat i, si en caient se'n fa un altre ram,
+torna a esclatar. Això és la cadena, i és la gràcia del joc.
+
+- **Els rams es compten per contacte, no per caselles.** Aquí no hi ha graella:
+  hi ha un munt de boles on es toca qui es toca. Es busca amb una inundació
+  sobre el graf de contactes, amb el mateix marge de 2,5 px que el Síndria fa
+  servir per ajuntar les fruites, i pel mateix motiu: el solucionador de xocs
+  acaba cada pas deixant-les **just tocant-se**, no encavalcades. Demanant
+  encavalcament no esclataria mai res.
+- **Totes les boles fan igual de grosses.** Amb mides diferents no
+  s'empaquetarien en rusc i el munt quedaria ple de forats; amb la mateixa
+  mida, s'encaixen soles i es veu de seguida què toca què.
+- **Els dibuixets de dins no són per fer bonic.** Amb sis colors sols, el
+  vermell i el taronja o el verd i el groc es confonen d'un cop d'ull, i aquest
+  és un joc que es juga mirant. Cada color porta la seva forma.
+- **Les fileres que pugen des de sota són tota la dificultat de debò.** Els
+  colors només arriben a sis (més ja no es distingeixen) i allà la dificultat
+  es plantava: amb només els colors, un jugador automàtic que col·loca bé va
+  fer **1.200 tirades sense morir-se**. Ara cada poques tirades puja una filera
+  i el munt s'enfila cap a la ratlla, i cada vegada en puja una abans.
+- Per posar la filera, primer **s'apuja tot el munt de cop** i després es posa
+  la nova al terra. Posant-la al terra sense fer lloc abans, el solucionador de
+  xocs hauria de desencavallar-ho tot alhora i el munt saltaria enlaire.
+
+Com està calibrat, amb dos jugadors automàtics: un que deixa anar la bola a
+l'atzar fa unes 144 tirades i uns 1.000 punts; un que mira on cauria i tria el
+lloc on tocarà més boles del seu color arriba a 392 tirades i 5.300 punts. Tots
+dos veuen cadenes llargues, que és el que ha de passar: el premi gros no pot
+ser només per a qui hi juga bé.
+
+Amb cent boles a la caixa, dibuixar costa 0,15 mil·lèsimes i la física més
+buscar els rams 0,31: el pressupost sencer d'un fotograma són 16.
 
 ## El Síndria: com funciona la física
 

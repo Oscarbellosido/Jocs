@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>El Ram</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* com el Síndria: son cercles grossos, i amb image-rendering:pixelated
+   quedarien dentats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#101820;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#deixa{color:#7dff9b;width:120px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="620"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="right">▶</button><button id="deixa">DEIXA ANAR</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Ajunta quatre boles del mateix color o més i esclaten totes; s'acaba si la caixa vessa.</b> llisca el dit per triar el lloc i aixeca'l per deixar-la caure · teclat: ← → i ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndCau(){aInit();noise(.05,.1)}
+function sndPuja(){aInit();noise(.16,.16);tone(120,.22,"square",.18,60)}
+// com més llarga la cadena, més agut: se sent que va encadenant
+function sndEsclat(n,cadena){
+  aInit();
+  const base=380+Math.min(6,cadena-1)*90;
+  tone(base,.13,"triangle",.26,120);
+  setTimeout(()=>tone(base*1.5,.11,"sine",.2,80),60);
+  noise(.06,.09);
+}
+function sndFi(){aInit();[340,280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=620;
+
+// ===== LA CAIXA =====
+const PARET=20, TERRA=H-14, SOSTRE=146;   // SOSTRE es la ratlla de vessar
+const CAIXA_E=PARET, CAIXA_D=W-PARET;
+// Totes les boles fan igual: aixi s'empaqueten en rusc i el munt queda maco.
+// Amb 380 px de caixa n'hi caben nou per filera.
+const R=21;
+
+// Sis colors, cadascun amb un dibuixet a dins. El dibuixet no es per fer
+// bonic: amb sis colors sols, els que s'assemblen es confonen d'un cop d'ull,
+// i aquest es un joc que es juga mirant.
+const COLORS=[
+  {c:'#e0474c', c2:'#ff8b8f', fosc:'#8d1f27', glif:'cercle'},
+  {c:'#f0a92b', c2:'#ffd27a', fosc:'#9a6408', glif:'rombe'},
+  {c:'#4fb06a', c2:'#93e6a6', fosc:'#22693a', glif:'triangle'},
+  {c:'#3f8fd0', c2:'#8ccaf5', fosc:'#1b4f7d', glif:'quadrat'},
+  {c:'#9a6ad6', c2:'#cdb0f0', fosc:'#5c3d8a', glif:'creu'},
+  {c:'#d9d24f', c2:'#f2ee9e', fosc:'#87812a', glif:'anella'},
+];
+const MIN_RAM=4;                   // quantes de seguides han de ser per esclatar
+
+// ===== FISICA =====
+// La mateixa del Sindria: Verlet, el temps sempre avanca igual, i vuit
+// passades de desencallar per pas. Amb velocitats i rebots el munt no pararia
+// mai quiet.
+const PAS=1/120, G=0.13, AIRE=0.992, ITER=8;
+
+let boles=[],score=0,state='play',paused=false;
+let mira=W/2,actual=0,seguentC=0,espera=0,idSeg=1;
+let vessantT=0,brillo=[],rotuls=[],temps=0,tirades=0;
+let cadena=0,cadenaFins=0,maxCadena=0,files=0,perFila=0;
+
+const JOC='ram';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// La dificultat va per dues coses:
+//  - Els colors: com mes n'hi ha, mes costa que en quedin quatre de seguides
+//    del mateix. Pero aixo s'atura als sis (mes colors ja no es distingeixen),
+//    i llavors la dificultat es quedava plantada: amb el minut fix, un jugador
+//    que col·loca be no es moria mai (provat: 1.200 tirades i seguia).
+//  - Les fileres que pugen des de sota. Aixo si que no s'acaba mai: com mes
+//    va, mes sovint en puja una, i el munt s'enfila cap a la ratlla. Es el que
+//    obliga a anar fent esclatar rams en comptes d'anar col·locant amb calma.
+function nColors(){return Math.min(COLORS.length,3+Math.floor(tirades/28))}
+function cadaFila(){return Math.max(6,16-Math.floor(tirades/45))}
+function novaFila(){
+  // Tot amunt de cop una filera, i la nova al terra. Si es posessin al terra
+  // sense fer lloc abans, el solucionador de xocs les hauria de desencavallar
+  // totes alhora i el munt saltaria enlaire.
+  for(const b of boles){b.y-=2*R;b.py-=2*R}
+  const n=Math.floor((CAIXA_D-CAIXA_E)/(2*R));
+  const marge=((CAIXA_D-CAIXA_E)-n*2*R)/2;
+  for(let i=0;i<n;i++)afegeix(novaBola(),CAIXA_E+marge+R+i*2*R,TERRA-R);
+  files++;perFila=0;
+  sndPuja();
+}
+function novaBola(){return Math.floor(Math.random()*nColors())}
+
+function start(){
+  boles=[];score=0;state='play';paused=false;
+  mira=W/2;actual=novaBola();seguentC=novaBola();
+  espera=0;vessantT=0;brillo=[];rotuls=[];temps=0;idSeg=1;
+  tirades=0;cadena=0;cadenaFins=0;maxCadena=0;files=0;perFila=0;
+  hideMsg();updateHUD();
+}
+
+function afegeix(col,px,py,vx=0,vy=0){
+  boles.push({c:col,x:px,y:py,px:px-vx,py:py-vy,r:R,id:idSeg++,neix:temps,nou:0});
+}
+
+function deixaAnar(){
+  if(state!=='play'||paused||espera>0)return;
+  const px=Math.max(CAIXA_E+R,Math.min(CAIXA_D-R,mira));
+  afegeix(actual,px,SOSTRE-R-8);
+  actual=seguentC;seguentC=novaBola();
+  tirades++;perFila++;
+  espera=0.34;
+  sndCau();updateHUD();
+  if(perFila>=cadaFila())novaFila();
+}
+
+function passaFisica(){
+  for(const b of boles){
+    const vx=(b.x-b.px)*AIRE, vy=(b.y-b.py)*AIRE;
+    b.px=b.x;b.py=b.y;
+    b.x+=vx;b.y+=vy+G;
+  }
+  for(let k=0;k<ITER;k++){
+    for(let i=0;i<boles.length;i++){
+      const a=boles[i];
+      for(let j=i+1;j<boles.length;j++){
+        const b=boles[j];
+        let dx=b.x-a.x, dy=b.y-a.y;
+        const rr=a.r+b.r;
+        if(Math.abs(dx)>rr||Math.abs(dy)>rr)continue;
+        let d=Math.hypot(dx,dy);
+        if(d>=rr)continue;
+        if(d<0.0001){dx=Math.random()-0.5;dy=-1;d=1}
+        const corr=(rr-d)/d*0.5;
+        a.x-=dx*corr; a.y-=dy*corr;
+        b.x+=dx*corr; b.y+=dy*corr;
+      }
+    }
+    for(const b of boles){
+      if(b.x-b.r<CAIXA_E)b.x=CAIXA_E+b.r;
+      if(b.x+b.r>CAIXA_D)b.x=CAIXA_D-b.r;
+      if(b.y+b.r>TERRA){
+        b.y=TERRA-b.r;
+        b.px+=(b.x-b.px)*0.35;        // fregament amb el terra
+      }
+    }
+  }
+}
+
+// ===== ELS RAMS =====
+// Un ram es un grup de boles del mateix color que es toquen, comptant per
+// contacte i no per caselles: aqui no hi ha caselles, hi ha un munt.
+// El marge de 2,5 px es pel mateix motiu que al Síndria: el solucionador de
+// xocs acaba cada pas deixant-les just tocant-se, no encavalcades.
+const TOCA=(2*R+2.5)*(2*R+2.5);
+function rams(){
+  const n=boles.length, vist=new Array(n).fill(false), grups=[];
+  for(let i=0;i<n;i++){
+    if(vist[i])continue;
+    vist[i]=true;
+    const pila=[i], grup=[i];
+    while(pila.length){
+      const a=pila.pop();
+      for(let j=0;j<n;j++){
+        if(vist[j]||boles[j].c!==boles[a].c)continue;
+        const dx=boles[j].x-boles[a].x, dy=boles[j].y-boles[a].y;
+        if(dx*dx+dy*dy<=TOCA){vist[j]=true;pila.push(j);grup.push(j)}
+      }
+    }
+    if(grup.length>=MIN_RAM)grups.push(grup);
+  }
+  return grups;
+}
+
+function esclata(){
+  const grups=rams();
+  if(!grups.length)return false;
+  // La cadena: si esclata una altra cosa poc despres, es perque el munt ha
+  // caigut i n'ha fet un altre de ram. Aixo es el que val punts de debo.
+  if(temps<cadenaFins)cadena++; else cadena=1;
+  cadenaFins=temps+1.1;
+  if(cadena>maxCadena)maxCadena=cadena;
+
+  const fora=new Set();
+  for(const g of grups){
+    let mx=0,my=0;
+    for(const i of g){mx+=boles[i].x;my+=boles[i].y;fora.add(i)}
+    mx/=g.length;my/=g.length;
+    const col=COLORS[boles[g[0]].c];
+    const punts=g.length*g.length*cadena;
+    score+=punts;
+    for(const i of g)espurna(boles[i].x,boles[i].y,col.c2,7);
+    rotuls.push({x:mx,y:my,t:1,txt:'+'+punts,col:col.c2});
+    if(cadena>1)rotuls.push({x:mx,y:my-24,t:1.3,txt:'CADENA ×'+cadena,col:'#ffe680'});
+    sndEsclat(g.length,cadena);
+  }
+  boles=boles.filter((_,i)=>!fora.has(i));
+  updateHUD();
+  return true;
+}
+
+function espurna(px,py,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.28, v=1+Math.random()*3.5;
+    brillo.push({x:px,y:py,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.2,t:1,col});
+  }
+}
+
+async function finalPartida(){
+  msg('LA CAIXA HA VESSAT');
+  const r=await Records.fiPartida(JOC,score);
+  msg('LA CAIXA HA VESSAT'+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  temps+=dt;
+  if(espera>0)espera-=dt;
+
+  let acc=Math.min(dt,0.05);
+  while(acc>0){passaFisica();acc-=PAS}
+
+  let n=0;
+  while(esclata()&&n++<8);          // els rams s'han de poder encadenar
+
+  for(let i=brillo.length-1;i>=0;i--){
+    const p=brillo[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.25;p.t-=dt*2.2;
+    if(p.t<=0)brillo.splice(i,1);
+  }
+  for(let i=rotuls.length-1;i>=0;i--){
+    const r=rotuls[i];r.y-=dt*26;r.t-=dt*1.1;
+    if(r.t<=0)rotuls.splice(i,1);
+  }
+
+  // Vessar: una bola quieta per sobre de la ratlla. Se li donen dos segons,
+  // que si no perdries cada cop que en deixes caure una i rebota amunt.
+  let vessa=false;
+  for(const b of boles){
+    if(temps-b.neix<0.9)continue;
+    const quieta=Math.hypot(b.x-b.px,b.y-b.py)<0.6;
+    if(quieta&&b.y-b.r<SOSTRE){vessa=true;break}
+  }
+  vessantT=vessa?vessantT+dt:0;
+  if(vessantT>2){
+    state='over';sndFi();
+    setTimeout(finalPartida,700);
+  }
+}
+
+// ===== DIBUIX =====
+// Cada color es pinta un sol cop en un llençol a part i despres nomes
+// s'enganxa, com les fruites del Síndria: amb la caixa plena hi ha un centenar
+// de boles i fer el degradat a cada fotograma no cabria al pressupost.
+const llencols={};
+function sprite(col){
+  if(llencols[col])return llencols[col];
+  const pad=4, ll=document.createElement('canvas');
+  ll.width=ll.height=Math.ceil((R+pad)*2);
+  const g=ll.getContext('2d');
+  g.translate(R+pad,R+pad);
+  const d=COLORS[col];
+  const grad=g.createRadialGradient(-R*0.32,-R*0.36,R*0.12,0,0,R);
+  grad.addColorStop(0,d.c2);grad.addColorStop(.62,d.c);grad.addColorStop(1,d.fosc);
+  g.fillStyle=grad;
+  g.beginPath();g.arc(0,0,R,0,6.29);g.fill();
+  g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=1.5;g.stroke();
+  // el dibuixet de dins
+  g.fillStyle='rgba(0,0,0,.22)';
+  const s=R*0.42;
+  g.beginPath();
+  if(d.glif==='cercle')g.arc(0,R*0.06,s*0.72,0,6.29);
+  else if(d.glif==='rombe'){g.moveTo(0,-s);g.lineTo(s,0);g.lineTo(0,s);g.lineTo(-s,0);g.closePath()}
+  else if(d.glif==='triangle'){g.moveTo(0,-s);g.lineTo(s*0.92,s*0.7);g.lineTo(-s*0.92,s*0.7);g.closePath()}
+  else if(d.glif==='quadrat')g.rect(-s*0.76,-s*0.76,s*1.52,s*1.52);
+  else if(d.glif==='creu'){g.rect(-s*0.3,-s,s*0.6,s*2);g.rect(-s,-s*0.3,s*2,s*0.6)}
+  else {g.arc(0,0,s*0.85,0,6.29);g.arc(0,0,s*0.45,0,6.29,true)}
+  g.fill();
+  // el llustre de dalt
+  g.fillStyle='rgba(255,255,255,.32)';
+  g.beginPath();g.ellipse(-R*0.3,-R*0.42,R*0.3,R*0.19,-0.5,0,6.29);g.fill();
+  ll.__pad=R+pad;
+  llencols[col]=ll;
+  return ll;
+}
+function dibuixaBola(px,py,col,alpha){
+  const ll=sprite(col);
+  if(alpha!=null&&alpha!==1){x.globalAlpha=alpha;x.drawImage(ll,px-ll.__pad,py-ll.__pad);x.globalAlpha=1}
+  else x.drawImage(ll,px-ll.__pad,py-ll.__pad);
+}
+
+function draw(){
+  x.clearRect(0,0,W,H);
+
+  // la caixa
+  x.fillStyle='#0a1016';
+  x.fillRect(CAIXA_E,SOSTRE-30,CAIXA_D-CAIXA_E,TERRA-SOSTRE+30);
+  x.strokeStyle='#2c3f4e';x.lineWidth=3;
+  x.beginPath();
+  x.moveTo(CAIXA_E-1,SOSTRE-30);x.lineTo(CAIXA_E-1,TERRA+2);
+  x.lineTo(CAIXA_D+1,TERRA+2);x.lineTo(CAIXA_D+1,SOSTRE-30);
+  x.stroke();
+
+  // la ratlla de vessar
+  const perill=vessantT>0.4;
+  x.strokeStyle=perill?'#ff5050':'#385061';
+  x.lineWidth=2;x.setLineDash([9,7]);
+  x.beginPath();x.moveTo(CAIXA_E,SOSTRE);x.lineTo(CAIXA_D,SOSTRE);x.stroke();
+  x.setLineDash([]);
+  if(perill&&Math.floor(temps*6)%2===0){
+    x.fillStyle='#ff5050';x.font='bold 13px monospace';x.textAlign='center';
+    x.fillText('VESSA!',W/2,SOSTRE-12);x.textAlign='left';
+  }
+
+  for(const b of boles)dibuixaBola(b.x,b.y,b.c);
+
+  for(const p of brillo){
+    x.globalAlpha=Math.max(0,p.t);
+    x.fillStyle=p.col;x.fillRect(p.x-2,p.y-2,4,4);
+  }
+  x.globalAlpha=1;
+  x.textAlign='center';
+  for(const r of rotuls){
+    x.globalAlpha=Math.max(0,Math.min(1,r.t));
+    x.fillStyle=r.col;x.font='bold 15px monospace';
+    x.fillText(r.txt,r.x,r.y);
+  }
+  x.globalAlpha=1;x.textAlign='left';
+
+  // la bola que tens a la ma i per on caurà
+  if(state==='play'&&espera<=0){
+    const px=Math.max(CAIXA_E+R,Math.min(CAIXA_D-R,mira));
+    x.strokeStyle='rgba(255,255,255,.16)';x.lineWidth=2;x.setLineDash([5,9]);
+    x.beginPath();x.moveTo(px,SOSTRE-4);x.lineTo(px,TERRA);x.stroke();
+    x.setLineDash([]);
+    dibuixaBola(px,SOSTRE-R-8,actual,0.95);
+  }
+
+  // dalt: quants colors hi ha en joc i quina ve ara
+  x.fillStyle='#6d8494';x.font='10px monospace';x.textAlign='left';
+  x.fillText('COLORS',12,18);
+  for(let i=0;i<nColors();i++){
+    const d=COLORS[i];
+    x.fillStyle=d.c;x.beginPath();x.arc(20+i*17,34,6.5,0,6.29);x.fill();
+  }
+  x.strokeStyle='#33485a';x.lineWidth=1;
+  x.beginPath();x.moveTo(W-62,8);x.lineTo(W-62,52);x.stroke();
+  dibuixaBola(W-32,30,seguentC,0.95);
+  x.fillStyle='#6d8494';x.font='9px monospace';x.textAlign='center';
+  x.fillText('VE ARA',W-32,62);
+
+  const falten=Math.max(0,cadaFila()-perFila);
+  x.textAlign='center';
+  x.fillStyle=falten<=2?'#ff9a4a':'#6d8494';
+  x.font=(falten<=2?'bold ':'')+'11px monospace';
+  x.fillText(falten===0?'PUJA!':'PUJA UNA FILERA EN '+falten,W/2,20);
+  if(maxCadena>1){
+    x.fillStyle='#7d8f9c';x.font='10px monospace';
+    x.fillText('MILLOR CADENA ×'+maxCadena,W/2,36);
+  }
+  x.textAlign='left';
+  x.textAlign='left';
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last)/1000;last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// Els mateixos que el Síndria: el dit mana, i els botons hi son per a qui
+// jugui amb teclat o prefereixi picar.
+function xCanvas(ev){
+  const r=c.getBoundingClientRect();
+  return (ev.clientX-r.left)/r.width*W;
+}
+let arrossegant=false;
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')return;
+  arrossegant=true;mira=xCanvas(ev);
+});
+c.addEventListener('pointermove',ev=>{
+  if(!arrossegant)return;
+  ev.preventDefault();mira=xCanvas(ev);
+});
+function solta(ev){
+  if(!arrossegant)return;
+  arrossegant=false;
+  if(ev&&ev.clientX!=null)mira=xCanvas(ev);
+  deixaAnar();
+}
+c.addEventListener('pointerup',solta);
+c.addEventListener('pointercancel',()=>{arrossegant=false});
+c.addEventListener('pointerleave',()=>{arrossegant=false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+const PAS_BOTO=16;
+function mou(d){mira=Math.max(CAIXA_E,Math.min(CAIXA_D,mira+d*PAS_BOTO))}
+let repeteix=null;
+function bindMou(id,d){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();mou(d);
+    clearInterval(repeteix);repeteix=setInterval(()=>mou(d),60)});
+  const atura=()=>clearInterval(repeteix);
+  b.addEventListener('pointerup',atura);
+  b.addEventListener('pointercancel',atura);
+  b.addEventListener('pointerleave',atura);
+}
+bindMou('left',-1);bindMou('right',1);
+document.getElementById('deixa').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')start(); else deixaAnar();
+});
+
+const tecles={};
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();tecles.l=1}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();tecles.r=1}
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)deixaAnar()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')tecles.l=0;
+  if(e.code==='ArrowRight'||e.code==='KeyD')tecles.r=0;
+});
+setInterval(()=>{
+  if(state!=='play'||paused)return;
+  if(tecles.l)mou(-1);
+  if(tecles.r)mou(1);
+},45);
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

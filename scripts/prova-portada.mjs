@@ -26,7 +26,7 @@ const ORDRE = [
 // trenquin la linia del temps.
 // No son de saló: van a part perquè no trenquin la línia del temps dels
 // clàssics. Dins de l'apartat, també per ordre d'any.
-const MODERNS = [['xifres', 1972], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026]];
+const MODERNS = [['xifres', 1972], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026]];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
