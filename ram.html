@@ -415,21 +415,28 @@ function draw(){
   x.fillStyle='#6d8494';x.font='9px monospace';x.textAlign='center';
   x.fillText('VE ARA',W-32,62);
 
-  // L'avis de la filera va DOS cops: a dalt, amb el compte, i una banda al
-  // terra quan ja ve, que es d'on puja. Nomes a dalt, de lletra grisa i
-  // petita, no el veia ningu mentre mirava el munt.
-  const falten=Math.max(0,cadaFila()-perFila);
-  if(state==='play'&&falten<=2){
-    const p=Math.floor(temps*5)%2;
-    x.fillStyle=p?'#c2701f':'#6b3f12';
-    x.fillRect(CAIXA_E,TERRA-5,CAIXA_D-CAIXA_E,7);
-    x.fillStyle=p?'#ffc07a':'#b07a3a';
-    for(let i=CAIXA_E;i<CAIXA_D;i+=16)x.fillRect(i,TERRA-5,8,7);
+  // L'avis de la filera va al TERRA, que es d'on puja i on ja estas mirant:
+  // una barra que s'omple de mica en mica i, quan ja ve, pampallugueja amb
+  // ratlles. El retol de dalt hi era des del primer dia, pero de lletra grisa
+  // d'onze pixels i a dalt de tot: en Carles ni el veia. Ara es mes clar,
+  // pero qui avisa de debo es la barra.
+  const cada=cadaFila(), falten=Math.max(0,cada-perFila);
+  if(state==='play'){
+    const ample=CAIXA_D-CAIXA_E, ple=Math.min(1,perFila/cada);
+    const prop=falten<=2, p=Math.floor(temps*5)%2;
+    x.fillStyle='#1b2731';
+    x.fillRect(CAIXA_E,TERRA-5,ample,7);
+    x.fillStyle=prop?(p?'#ffb05a':'#c2701f'):'#42657d';
+    x.fillRect(CAIXA_E,TERRA-5,ample*ple,7);
+    if(prop){
+      x.fillStyle=p?'#ffd8a8':'#b07a3a';
+      for(let i=CAIXA_E;i<CAIXA_D;i+=16)x.fillRect(i,TERRA-5,8,7);
+    }
   }
   x.textAlign='center';
-  x.fillStyle=falten<=2?'#ff9a4a':'#6d8494';
-  x.font=(falten<=2?'bold ':'')+'11px monospace';
-  x.fillText(falten===0?'PUJA UNA FILERA!':'PUJA UNA FILERA EN '+falten,W/2,20);
+  x.fillStyle=falten<=2?'#ff9a4a':'#9db4c4';
+  x.font='bold 12px monospace';
+  x.fillText(falten===0?'↑ PUJA UNA FILERA!':'↑ PUJA UNA FILERA EN '+falten,W/2,20);
   if(maxCadena>1){
     x.fillStyle='#7d8f9c';x.font='10px monospace';
     x.fillText('MILLOR CADENA ×'+maxCadena,W/2,36);
