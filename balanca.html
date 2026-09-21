@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Balança</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* com el Sindria: aqui hi ha corbes i numeros grossos, no pixels, i amb
+   image-rendering:pixelated les cadenes i els cantells quedaven dentats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#15120e;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:68px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#deixa{color:#7dff9b;width:120px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="400" height="620"></canvas></div>
+  <div id="controls">
+    <button id="left">◀</button><button id="right">▶</button><button id="deixa">DEIXA ANAR</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Iguala el pes dels dos plats i la balança es buida; cada nivell n'hi ha d'haver més, i s'acaba si es tomba.</b> llisca el dit per triar la columna i aixeca'l per deixar-hi la peça · teclat: ← → i ESPAI · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndPosa(){aInit();noise(.05,.12);tone(190,.05,"square",.12)}
+function sndNo(){aInit();tone(120,.09,"square",.16)}
+// com mes gros el numero que surt, mes agut: les fusions grosses se senten
+function sndAjunta(n){aInit();const i=Math.log2(n);tone(300+i*70,.14,"triangle",.26,90)}
+function sndBuida(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.2,"triangle",.3),i*80))}
+function sndFi(){aInit();[300,240,190,140].forEach((f,i)=>setTimeout(()=>tone(f,.32,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=400,H=620;
+
+// ===== LA BALANCA =====
+// El pal va al mig i els dos plats pengen del bracet amb cadenes, com una
+// balanca de debo. Els plats no giren: pengen, aixi que sempre queden plans
+// i les peces s'hi apilen dretes.
+const CX=W/2, CY=126;        // el punt on gira el bracet
+const BRAC=132;              // mig bracet
+const CADENA=362;            // del bracet fins al terra del plat
+const COLS=3, FILES=5, CELA=32;
+const MAX_ANG=0.31;          // uns 18 graus: mes que aixo ja es tomba
+
+// El nucli del joc: la balanca es buida quan els dos plats pesen IGUAL.
+// Hi ha un minim perque si no, deixant-hi un 1 a cada costat ja es buidaria
+// cada dues tirades i el joc no aniria enlloc.
+// I aquest minim PUJA cada nivell: es tota la dificultat del joc. Amb un minim
+// fix, un jugador que compti bé no es mor mai (provat: 3000 tirades i seguia).
+// Ara, com mes va, mes pes has d'acumular per poder buidar-la, i el lloc dels
+// plats no creix: al final no hi ha manera de quadrar-ho i s'acaba.
+const MIN_BASE=8, MIN_PUJA=10;
+function minBuida(){return MIN_BASE+MIN_PUJA*(nivell()-1)}
+// I es tomba quan la diferencia arriba aqui. Ha de ser prou mes gran que la
+// peca mes pesada que pot sortir (8): si no, una sola peca et mataria sense
+// que hi poguessis fer res.
+const MAX_DIF=18;
+
+const Y_MA=186;              // on espera la peca que tens a la ma
+const G_CAU=2600;            // gravetat de la peca mentre cau
+
+let plats, ang, angV, sel, actual, seguent, caient, lliures, espurnes;
+let score, state, paused, tirades, buidatT, tombaCostat, temps, avis;
+
+const JOC='balanca';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  saveBest();
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function platsBuits(){return [[[],[],[]],[[],[],[]]]}
+
+function start(){
+  plats=platsBuits();
+  ang=0;angV=0;sel=1;
+  score=0;state='play';paused=false;tirades=0;
+  buidatT=0;tombaCostat=0;temps=0;avis=0;
+  caient=null;lliures=[];espurnes=[];
+  actual=nouBloc();seguent=nouBloc();
+  hideMsg();updateHUD();
+}
+
+// ===== LES PECES =====
+// Tot son potencies de dos perque dues d'iguals en fan una de la seguent i
+// aixi la cadena no s'acaba mai. Com mes va, mes pesades surten: aquesta es
+// tota la dificultat del joc.
+function nivell(){return 1+Math.floor(tirades/15)}
+function nouBloc(){
+  const n=nivell(), r=Math.random();
+  if(n<=1)return r<.72?1:2;
+  if(n===2)return r<.50?1:(r<.86?2:4);
+  if(n===3)return r<.38?1:(r<.76?2:4);
+  if(n===4)return r<.28?1:(r<.62?2:(r<.92?4:8));
+  return r<.18?1:(r<.50?2:(r<.82?4:8));
+}
+
+// ===== GEOMETRIA =====
+function extrem(costat){
+  const s=costat?1:-1;
+  return {x:CX+s*BRAC*Math.cos(ang), y:CY+s*BRAC*Math.sin(ang)};
+}
+function terraPlat(costat){
+  const e=extrem(costat);
+  return {x:e.x, y:e.y+CADENA};
+}
+function posCela(costat,col,fila){
+  const t=terraPlat(costat);
+  return {x:t.x+(col-1)*CELA, y:t.y-CELA/2-fila*CELA};
+}
+// Per triar amb el dit es fan servir les posicions amb la balanca plana: els
+// plats es mouen amunt i avall, pero de costat gairebe no, i si la ranura
+// ballés mentre apuntes no sabries mai on prems.
+function xRanura(i){
+  const costat=i<COLS?0:1, col=i%COLS;
+  return CX+(costat?1:-1)*BRAC+(col-1)*CELA;
+}
+function ranuraCostat(i){return i<COLS?0:1}
+function ranuraCol(i){return i%COLS}
+function plena(i){return plats[ranuraCostat(i)][ranuraCol(i)].length>=FILES}
+function totPle(){for(let i=0;i<COLS*2;i++)if(!plena(i))return false;return true}
+
+function pes(costat){
+  let s=0;
+  for(const col of plats[costat])for(const b of col)s+=b.n;
+  return s;
+}
+
+// ===== JUGAR =====
+function deixaAnar(){
+  if(state!=='play'||paused||caient)return;
+  if(plena(sel)){sndNo();avis=.5;return}
+  caient={costat:ranuraCostat(sel),col:ranuraCol(sel),n:actual,
+          y:Y_MA,vy:120};
+  actual=seguent;seguent=nouBloc();
+  tirades++;
+  sndPosa();
+}
+
+function aterra(){
+  const {costat,col,n}=caient;
+  const pila=plats[costat][col];
+  pila.push({n:n,t:0});
+  caient=null;
+  // Ajuntar no canvia el pes del plat (1+1=2), pero hi deixa un forat: es
+  // l'unica manera de guanyar lloc. Per aixo s'encadena avall tant com pugui.
+  let i=pila.length-1;
+  while(i>0&&pila[i].n===pila[i-1].n){
+    pila.pop();
+    pila[i-1].n*=2;pila[i-1].t=0;
+    score+=pila[i-1].n;
+    const p=posCela(costat,col,i-1);
+    espurna(p.x,p.y,colorBloc(pila[i-1].n),12);
+    sndAjunta(pila[i-1].n);
+    i--;
+  }
+  updateHUD();
+  comprova();
+}
+
+function comprova(){
+  const e=pes(0), d=pes(1);
+  if(e===d&&e>=minBuida()){buida(e+d);return}
+  if(Math.abs(d-e)>=MAX_DIF){tomba(d>e?1:-1);return}
+  if(totPle()){state='over';sndFi();setTimeout(()=>finalPartida('NO HI CAP RES MÉS'),700)}
+}
+
+function buida(total){
+  state='buidant';buidatT=0;
+  // Val molt mes buidar-la carregada que buidar-la buida: els punts van al
+  // quadrat del que hi havia a sobre.
+  score+=Math.round(total*total/4);
+  for(let costat=0;costat<2;costat++)
+    for(let col=0;col<COLS;col++)
+      for(let fila=0;fila<plats[costat][col].length;fila++){
+        const p=posCela(costat,col,fila);
+        espurna(p.x,p.y,'#ffe680',6);
+      }
+  sndBuida();updateHUD();
+}
+
+function tomba(costat){
+  tombaCostat=costat;
+  state='tomba';
+  // les peces cauen del plat que s'ha enfonsat
+  lliures=[];
+  for(let cs=0;cs<2;cs++)
+    for(let col=0;col<COLS;col++)
+      plats[cs][col].forEach((b,fila)=>{
+        const p=posCela(cs,col,fila);
+        lliures.push({x:p.x,y:p.y,n:b.n,
+          vx:(cs?1:-1)*(30+Math.random()*90),
+          vy:-60-Math.random()*90,
+          rot:0,vr:(Math.random()-.5)*7});
+      });
+  plats=platsBuits();
+  sndFi();
+  setTimeout(()=>finalPartida('S\'HA TOMBAT'),1500);
+}
+
+async function finalPartida(titol){
+  state='over';
+  msg(titol);
+  const r=await Records.fiPartida(JOC,score);
+  msg(titol+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+function espurna(px,py,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.28, v=30+Math.random()*90;
+    espurnes.push({x:px,y:py,vx:Math.cos(a)*v,vy:Math.sin(a)*v-60,t:1,col:col});
+  }
+}
+
+// ===== CADA FOTOGRAMA =====
+function update(dt){
+  if(paused)return;
+  temps+=dt;
+  if(avis>0)avis-=dt;
+
+  // El bracet es una molla: va cap a on toca i passa una mica de llarg, com
+  // una balanca de debo. Sense aixo el pes canviava de cop i no es veia.
+  let obj;
+  if(state==='tomba')obj=tombaCostat*0.55;
+  else obj=Math.max(-1,Math.min(1,(pes(1)-pes(0))/MAX_DIF))*MAX_ANG;
+  angV+=((obj-ang)*55-angV*9.5)*dt;
+  ang+=angV*dt;
+
+  for(const p of espurnes){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=520*dt;p.t-=dt*1.8}
+  for(let i=espurnes.length-1;i>=0;i--)if(espurnes[i].t<=0)espurnes.splice(i,1);
+
+  for(let costat=0;costat<2;costat++)
+    for(const col of plats[costat])
+      for(const b of col)if(b.t<1)b.t=Math.min(1,b.t+dt*7);
+
+  if(state==='buidant'){
+    buidatT+=dt;
+    if(buidatT>.85){plats=platsBuits();state='play'}
+    return;
+  }
+  if(state==='tomba'){
+    for(const l of lliures){
+      l.x+=l.vx*dt;l.y+=l.vy*dt;l.vy+=1400*dt;l.rot+=l.vr*dt;
+    }
+    return;
+  }
+  if(state!=='play')return;
+
+  if(caient){
+    caient.vy+=G_CAU*dt;
+    caient.y+=caient.vy*dt;
+    const desti=posCela(caient.costat,caient.col,plats[caient.costat][caient.col].length).y;
+    if(caient.y>=desti){caient.y=desti;aterra()}
+  }
+}
+
+// ===== DIBUIX =====
+const COLORS=['#e6dbc6','#f2cf83','#f0a35a','#ec7a4e','#e05a63','#d1508f',
+              '#a85fd0','#6f79dc','#3fa9c9','#42b978','#9ccf4a','#e8e04a'];
+function colorBloc(n){return COLORS[Math.min(COLORS.length-1,Math.round(Math.log2(n)))]}
+function fosc(n){return Math.log2(n)<3?'#2a2118':'#fff'}
+
+function rodona(g,px,py,w,h,r){
+  g.beginPath();
+  g.moveTo(px+r,py);g.lineTo(px+w-r,py);g.quadraticCurveTo(px+w,py,px+w,py+r);
+  g.lineTo(px+w,py+h-r);g.quadraticCurveTo(px+w,py+h,px+w-r,py+h);
+  g.lineTo(px+r,py+h);g.quadraticCurveTo(px,py+h,px,py+h-r);
+  g.lineTo(px,py+r);g.quadraticCurveTo(px,py,px+r,py);
+  g.closePath();
+}
+function bloc(px,py,n,escala,alpha,rot){
+  const m=CELA-4;
+  x.save();
+  if(alpha!=null)x.globalAlpha=alpha;
+  x.translate(px,py);
+  if(rot)x.rotate(rot);
+  if(escala&&escala!==1)x.scale(escala,escala);
+  x.fillStyle=colorBloc(n);
+  rodona(x,-m/2,-m/2,m,m,5);x.fill();
+  x.strokeStyle='rgba(0,0,0,.35)';x.lineWidth=1;x.stroke();
+  x.fillStyle='rgba(255,255,255,.22)';
+  rodona(x,-m/2+3,-m/2+3,m-6,m/2-3,3);x.fill();
+  x.fillStyle=fosc(n);
+  x.font='bold '+(n>=100?12:n>=10?15:17)+'px monospace';
+  x.textAlign='center';x.textBaseline='middle';
+  x.fillText(String(n),0,1);
+  x.restore();
+  x.textAlign='left';x.textBaseline='alphabetic';
+}
+
+function dibuixaPlat(costat){
+  const e=extrem(costat), t=terraPlat(costat), a=56;
+  // cadenes
+  x.strokeStyle='#6b5d47';x.lineWidth=2;
+  x.beginPath();
+  x.moveTo(e.x,e.y);x.lineTo(t.x-a,t.y);
+  x.moveTo(e.x,e.y);x.lineTo(t.x+a,t.y);
+  x.stroke();
+  // el plat
+  x.fillStyle='#8a7a5e';
+  x.beginPath();
+  x.moveTo(t.x-a,t.y);x.lineTo(t.x+a,t.y);
+  x.lineTo(t.x+a-13,t.y+15);x.lineTo(t.x-a+13,t.y+15);
+  x.closePath();x.fill();
+  x.fillStyle='#b8a67f';
+  x.fillRect(t.x-a,t.y-4,a*2,5);
+}
+
+function draw(){
+  x.clearRect(0,0,W,H);
+
+  // el pal i la peanya, darrere de tot
+  x.fillStyle='#3a3228';
+  x.fillRect(CX-6,CY,12,470);
+  x.beginPath();
+  x.moveTo(CX-58,H-24);x.lineTo(CX+58,H-24);
+  x.lineTo(CX+40,H-42);x.lineTo(CX-40,H-42);
+  x.closePath();x.fill();
+
+  // l'arc de fins on pot arribar, i l'agulla
+  const perill=Math.abs(pes(1)-pes(0))>=MAX_DIF-5;
+  x.strokeStyle=perill?'#5a2a2a':'#3a3228';x.lineWidth=3;
+  x.beginPath();x.arc(CX,CY,44,-Math.PI/2-MAX_ANG,-Math.PI/2+MAX_ANG);x.stroke();
+  for(const s of [-1,1]){
+    x.beginPath();
+    x.moveTo(CX+Math.sin(s*MAX_ANG)*38,CY-Math.cos(s*MAX_ANG)*38);
+    x.lineTo(CX+Math.sin(s*MAX_ANG)*50,CY-Math.cos(s*MAX_ANG)*50);
+    x.stroke();
+  }
+  x.strokeStyle=perill&&Math.floor(temps*6)%2===0?'#ff5a5a':'#d9c89a';
+  x.lineWidth=3;
+  x.beginPath();x.moveTo(CX,CY);
+  x.lineTo(CX+Math.sin(ang)*46,CY-Math.cos(ang)*46);x.stroke();
+
+  dibuixaPlat(0);dibuixaPlat(1);
+
+  // el bracet
+  const e0=extrem(0),e1=extrem(1);
+  x.strokeStyle='#c9b98f';x.lineWidth=9;x.lineCap='round';
+  x.beginPath();x.moveTo(e0.x,e0.y);x.lineTo(e1.x,e1.y);x.stroke();
+  x.lineCap='butt';
+  x.fillStyle='#e0d3ab';
+  x.beginPath();x.arc(CX,CY,9,0,6.29);x.fill();
+
+  // les peces dels plats
+  const fon=state==='buidant';
+  const pujada=fon?buidatT*70:0, alfa=fon?Math.max(0,1-buidatT/.85):1;
+  for(let costat=0;costat<2;costat++)
+    for(let col=0;col<COLS;col++)
+      plats[costat][col].forEach((b,fila)=>{
+        const p=posCela(costat,col,fila);
+        bloc(p.x,p.y-pujada,b.n,1+(1-b.t)*0.3,alfa);
+      });
+
+  for(const l of lliures)bloc(l.x,l.y,l.n,1,1,l.rot);
+
+  // els pesos, a sota de cada plat
+  const pE=pes(0),pD=pes(1);
+  for(const costat of [0,1]){
+    const t=terraPlat(costat), meu=costat?pD:pE, altre=costat?pE:pD;
+    x.fillStyle=(pE===pD&&pE>=minBuida())?'#7dff9b':'#e8dcc0';
+    x.font='bold 22px monospace';x.textAlign='center';
+    x.fillText(String(meu),t.x,t.y+40);
+    if(meu<altre){
+      x.fillStyle='#ffd24a';x.font='11px monospace';
+      x.fillText('+'+(altre-meu),t.x,t.y+55);
+    }
+  }
+  x.textAlign='left';
+
+  // la peca que tens a la ma i per on anira
+  if(state==='play'&&!caient){
+    const px=xRanura(sel), plenaAra=plena(sel);
+    const t=terraPlat(ranuraCostat(sel));
+    x.strokeStyle=plenaAra?'rgba(255,90,90,.5)':'rgba(255,255,255,.18)';
+    x.lineWidth=2;x.setLineDash([5,9]);
+    x.beginPath();x.moveTo(px,Y_MA+20);x.lineTo(px,t.y);x.stroke();
+    x.setLineDash([]);
+    bloc(px,Y_MA,actual,1,plenaAra?.45:1);
+    if(plenaAra&&avis>0){
+      x.fillStyle='#ff6a6a';x.font='bold 11px monospace';x.textAlign='center';
+      x.fillText('PLENA',px,Y_MA-26);x.textAlign='left';
+    }
+  }
+  if(caient)bloc(xRanura(sel),caient.y,caient.n);
+
+  for(const p of espurnes){
+    x.globalAlpha=Math.max(0,p.t);
+    x.fillStyle=p.col;x.fillRect(p.x-2,p.y-2,4,4);
+  }
+  x.globalAlpha=1;
+
+  // la que ve ara, a dalt a la dreta
+  x.strokeStyle='#4a4236';x.lineWidth=1;
+  x.strokeRect(W-52,8,44,44);
+  bloc(W-30,30,seguent,.8);
+  x.fillStyle='#8a7f6a';x.font='8px monospace';x.textAlign='center';
+  x.fillText('VE ARA',W-30,62);
+
+  // el nivell, a dalt a l'esquerra
+  x.fillStyle='#8a7f6a';x.font='11px monospace';x.textAlign='left';
+  x.fillText('NIVELL '+nivell(),10,20);
+  x.fillStyle='#d9c89a';x.font='bold 12px monospace';
+  x.fillText('BUIDAR: '+minBuida(),10,36);
+
+  if(state==='buidant'){
+    x.fillStyle='#7dff9b';x.font='bold 24px monospace';x.textAlign='center';
+    x.fillText('BUIDADA!',CX,CY+210);
+  }
+
+  // la regla del joc, escrita a la pantalla: aixi no cal recordar-la
+  x.fillStyle='#6a6152';x.font='10px monospace';x.textAlign='center';
+  x.fillText('es buida quan els dos plats pesen igual, de '+minBuida()+' amunt',CX,H-6);
+  x.textAlign='left';
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',CX,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last)/1000;last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// Igual que al Sindria: llisques el dit per triar la columna i, en aixecar-lo,
+// la peca hi cau. Els botons hi son per a qui prefereixi picar o jugui amb
+// teclat.
+function xCanvas(ev){
+  const r=c.getBoundingClientRect();
+  return (ev.clientX-r.left)/r.width*W;
+}
+function ranuraMesAprop(px){
+  let millor=0,dist=1e9;
+  for(let i=0;i<COLS*2;i++){
+    const d=Math.abs(xRanura(i)-px);
+    if(d<dist){dist=d;millor=i}
+  }
+  return millor;
+}
+let arrossegant=false;
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')return;
+  arrossegant=true;sel=ranuraMesAprop(xCanvas(ev));
+});
+c.addEventListener('pointermove',ev=>{
+  if(!arrossegant)return;
+  ev.preventDefault();sel=ranuraMesAprop(xCanvas(ev));
+});
+function solta(ev){
+  if(!arrossegant)return;
+  arrossegant=false;
+  if(ev&&ev.clientX!=null)sel=ranuraMesAprop(xCanvas(ev));
+  deixaAnar();
+}
+c.addEventListener('pointerup',solta);
+c.addEventListener('pointercancel',()=>{arrossegant=false});
+c.addEventListener('pointerleave',()=>{arrossegant=false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function mou(d){sel=Math.max(0,Math.min(COLS*2-1,sel+d))}
+let repeteix=null;
+function bindMou(id,d){
+  const b=document.getElementById(id);
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();mou(d);
+    clearInterval(repeteix);repeteix=setInterval(()=>mou(d),140)});
+  const atura=()=>clearInterval(repeteix);
+  b.addEventListener('pointerup',atura);
+  b.addEventListener('pointercancel',atura);
+  b.addEventListener('pointerleave',atura);
+}
+bindMou('left',-1);bindMou('right',1);
+document.getElementById('deixa').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state==='over')start(); else deixaAnar();
+});
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();mou(-1)}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();mou(1)}
+  if(e.code==='Space'){e.preventDefault();if(!e.repeat)deixaAnar()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

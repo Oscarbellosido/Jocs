@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-dos jocs clàssics dels salons recreatius i un de modern, fets amb HTML i
+Vint-i-dos jocs clàssics dels salons recreatius i quatre de moderns, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -37,13 +37,14 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I un de modern
+### I quatre de moderns
 
 | Fitxer | Joc | Any |
 |---|---|---|
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
 | `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
+| `balanca.html` | Balança | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -58,6 +59,9 @@ apartat tingui els jocs que li toquen.
 I com que aquests sí que són jocs d'empreses vives —no màquines de fa quaranta
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
 nom de l'original.
+
+La **Balança** és l'excepció: no s'assembla a res, és nostra de cap a peus. Si
+algun dia se'n fan més d'inventades, van aquí mateix, amb l'any que es fan.
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
 
@@ -165,6 +169,40 @@ que ja s'han hagut d'ajustar:
 
 Provat amb dos jugadors automàtics: un que apunta a ull arriba a la ronda 15,
 i un que prova seixanta angles i tria el millor passa de la 28.
+
+## La Balança: un joc nostre
+
+No ve de cap màquina ni de cap joc de mòbil: la regla és **iguala el pes dels
+dos plats i es buida**. Les peces són potències de dos i dues d'iguals de
+seguides en una columna se'n fan una del doble.
+
+Quatre decisions que no s'han de desfer sense entendre-les:
+
+- **Ajuntar no canvia el pes** (1+1=2), només allibera un forat. És l'única
+  manera de guanyar lloc, i per això el joc va de saber quan ajuntar i quan no.
+  Si ajuntar canviés el pes, la meitat del joc —quadrar els dos costats—
+  quedaria a mans de l'atzar.
+- **El mínim per buidar-la puja cada nivell** (`minBuida()`). Amb un mínim fix,
+  un jugador que compti bé no es mor mai: el vam provar amb un jugador
+  automàtic que mira les sis columnes i n'hi va fer tres mil de tirades sense
+  perdre. Ara, com més va, més pes has d'acumular per poder-la buidar, i el
+  lloc dels plats no creix: al final no hi ha manera de quadrar-ho.
+- **La peça més pesada que pot sortir és un 8 i la balança es tomba als 18 de
+  diferència.** Ha de ser prou més que la peça més pesada: si una sola peça et
+  pogués matar, no hi hauria res a fer i seria una loteria.
+- **Els plats no giren, pengen.** Van lligats al braç amb cadenes i sempre
+  queden plans, com una balança de debò, i així les peces s'hi apilen dretes
+  sense haver de calcular res. El braç sí que es mou com una molla —passa una
+  mica de llarg i torna—, que si el pes canviés de cop no es veuria.
+
+Com està calibrat, amb dos jugadors automàtics: un que sempre tira al plat que
+pesa menys aguanta unes 80 tirades i la buida dues vegades; un que mira les sis
+columnes i tria la millor arriba a 367 tirades i a uns 50.000 punts. Trenta-cinc
+vegades més punts per jugar bé: és la diferència que volem.
+
+La regla i el mínim de cada moment **van escrits a la pantalla** (a dalt a
+l'esquerra i a sota de tot): és un joc inventat i ningú no en sap les regles
+d'abans.
 
 ## El Síndria: com funciona la física
 

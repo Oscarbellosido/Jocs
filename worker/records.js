@@ -41,6 +41,7 @@ const JOCS = {
   sindria:          999999,
   amunt:            999999,
   boles:              9999,
+  balanca:          999999,
 };
 const TOP = 10;
 
