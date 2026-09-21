@@ -204,9 +204,11 @@ const Records = (() => {
   function posaBotoSo() {
     const hud = document.getElementById('hud') || document.getElementById('h');
     if (!hud || !connectaOriginal || document.getElementById('rec-so')) return;
-    // si el marcador va just, val mes que baixi de linia que no pas que se
-    // surti de la pantalla i no es pugui prémer
-    hud.style.flexWrap = 'wrap';
+    // Aixo abans posava flexWrap='wrap' aqui mateix i s'hi quedava per sempre:
+    // el marcador baixava de linia en comptes de sortir-se'n, pero es quedava
+    // partit i menjant camp de joc. Ara qui mana es l'ajustaMarcador, que
+    // primer prova d'encongir la lletra i nomes deixa que es parteixi si ni
+    // aixi hi cap.
     const b = document.createElement('button');
     b.id = 'rec-so';
     b.type = 'button';
@@ -265,10 +267,17 @@ const Records = (() => {
   // Com que cada joc ensenya coses diferents i els numeros creixen mentre
   // jugues, en comptes d'anar mida per mida a cada joc, aqui s'encongeix la
   // lletra del marcador fins que hi cap, i para de seguida que hi cap.
-  function esPartit(hud) {
-    const rs = [...hud.children].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
-    for (const a of rs) for (const b of rs) if (a.bottom <= b.top + 0.5) return true;
-    return false;
+  // Mirava si dos retols havien quedat a alcades diferents. Aixo nomes passa
+  // si el marcador pot baixar de linia, i cap no pot: tots son display:flex
+  // sense flex-wrap. El que passa de debo es que es parteix el text de DINS
+  // d'un retol ("PUNTS" a dalt i "999999" a sota): el marcador creix d'alt,
+  // menja camp de joc i cap germa no s'ha mogut, aixi que no ho veiem mai i
+  // la lletra no s'encongia. Al Defender, amb sis xifres, el marcador passava
+  // de 38 a 52 px.
+  // Ara s'obliga el marcador a una sola ratlla i es mira si el que hi ha a
+  // dins es mes ample del que hi cap, que aixo si que es veu.
+  function nocap(hud) {
+    return hud.scrollWidth > hud.clientWidth + 1;
   }
   function ajustaMarcador() {
     const hud = document.getElementById('hud') || document.getElementById('h');
@@ -281,10 +290,18 @@ const Records = (() => {
     // no baixem de 10px: mes petit no es llegeix, i si ni aixi hi cap val
     // mes que baixi de linia que no pas que no es vegi
     const abans = hud.style.fontSize;
+    // Una sola ratlla mentre es mesura: ni els retols es parteixen pel mig
+    // (white-space) ni en baixa cap a sota (flex-wrap). Aixi el que no hi cap
+    // sobresurt, i sobresortir si que es pot mesurar.
+    hud.style.whiteSpace = 'nowrap';
+    hud.style.flexWrap = 'nowrap';
     for (let mida = base; mida >= 10; mida -= 0.5) {
       hud.style.fontSize = mida >= base ? '' : mida + 'px';
-      if (!esPartit(hud)) break;
+      if (!nocap(hud)) break;
     }
+    // Si ni a 10 px hi cap, val mes que es parteixi que no pas que se'n vagi
+    // fora de la pantalla i no es pugui llegir.
+    if (nocap(hud)) { hud.style.whiteSpace = ''; hud.style.flexWrap = 'wrap'; }
     // Si la lletra ha canviat, el marcador te una altra alcada. Hi ha jocs que
     // col·loquen el tauler a partir d'aquesta alcada (el Tetris ho fa al seu
     // resizeCanvas), i s'han d'assabentar del canvi.

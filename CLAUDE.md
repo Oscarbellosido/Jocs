@@ -381,6 +381,23 @@ Ara el `records.js` fa tres coses, per aquest ordre:
    Defender cabia amb quatre xifres i es partia amb cinc.
 3. Si tot i així no hi cap, baixa de línia abans que sortir de la pantalla.
 
+**Com es mira si hi cap** (això va estar malament molt de temps): es mirava si
+dos rètols havien quedat a alçades diferents. Però el marcador es partia de
+dues maneres que allò no veia:
+
+- El `records.js` mateix posava `flex-wrap:wrap` al marcador en afegir-hi el
+  botó del so, i s'hi quedava per sempre. Així no se sortia de la pantalla,
+  però es quedava partit i menjant camp de joc, i la lletra no s'encongia mai
+  perquè, un cop partit, ja hi cabia tot.
+- O es partia el text de **dins** d'un rètol («PUNTS» a dalt i «999999» a
+  sota). El marcador creix d'alt i cap germà no s'ha mogut de lloc.
+
+Ara, mentre mesura, el marcador s'obliga a **una sola ratlla** (`white-space`
+i `flex-wrap` a `nowrap`): el que no hi cap sobresurt, i sobresortir sí que es
+pot mesurar (`scrollWidth`). Només si ni a 10 px hi cap se'l deixa partir.
+Amb l'arreglo, el Galaxian i el Galaga ja no es parteixen amb un rècord de sis
+xifres a la barra, i el Defender encongeix de debò fins a 10 px.
+
 Dos jocs han hagut d'escurçar els seus rètols perquè en tenen més que ningú:
 `EDIFICI` → `EDIF.` al Crazy Climber, i `ONADA`/`NAUS`/`BOMBES` →
 `ONA.`/`NAU`/`BOM.` al Defender.
