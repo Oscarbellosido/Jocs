@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Garbuix</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* boles amb lletres: corbes i lletra grossa, res de pixels quadrats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#14110d;touch-action:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:10px;align-items:center}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:84px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+/* SACSEJA et fa caure lletres de mes: petit, d'un altre color i a l'altra punta */
+#sacseja{width:76px;font-size:12px;color:#ffb05a;border-color:#8a5a2a;margin-right:10px}
+#fet{width:112px;color:#7dff9b}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="640"></canvas></div>
+  <div id="controls">
+    <button id="sacseja">SACSEJA</button><button id="esborra">ESBORRA</button><button id="fet">D'ACORD</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Fes paraules amb lletres que es toquen: desapareixen i en cauen de noves; s'acaba si la caixa vessa.</b> llisca el dit de lletra en lletra i aixeca'l, o toca-les una a una i D'ACORD · sense plurals ni verbs conjugats · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+// cada lletra que afegeixes sona una mica mes aguda: se sent com creix la paraula
+function sndTria(n){aInit();tone(440*Math.pow(1.09,n),.06,"triangle",.16)}
+function sndBe(n){aInit();[523,659,784,1047,1319].slice(0,Math.min(5,n-1)).forEach((f,i)=>setTimeout(()=>tone(f,.16,"triangle",.26),i*70))}
+function sndNo(){aInit();tone(160,.18,"square",.16,-60)}
+function sndCau(){aInit();noise(.03,.05)}
+function sndSacseja(){aInit();noise(.35,.25);tone(90,.3,"sawtooth",.12,40)}
+function sndFi(){aInit();[340,280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=640;
+
+// ===== LA CAIXA =====
+const PARET=20, TERRA=H-14, SOSTRE=176;   // SOSTRE es la ratlla de vessar
+const CAIXA_E=PARET, CAIXA_D=W-PARET;
+const R=23;                                // totes iguals: s'empaqueten en rusc
+// Dues boles es toquen si els centres son a menys d'aixo. El solucionador de
+// xocs les deixa just tocant-se (com al Ram), aixi que cal una mica de marge.
+const TOCA=2*R+5;
+
+// ===== LES FITXES =====
+// La freqüencia surt de les paraules del diccionari que mes es fan servir
+// (comptades en subtitols de pel·licules), o sigui com surt cada lletra en el
+// catala de cada dia. El valor va al reves: com mes rara, mes punts.
+// La Q i la Y nomes surten com a QU i NY: soles no servirien per a res.
+const FITXES={
+  a:[13.5,1], e:[12.3,1], r:[11.3,1], t:[7.2,1], o:[6.8,1], i:[6.6,1], s:[6.6,1],
+  c:[4.8,2], n:[4.7,2], p:[4.6,2], l:[4.3,2], m:[4.1,2], d:[2.8,2], u:[2.7,3],
+  v:[1.5,3], g:[1.4,4], f:[1.4,4], b:[1.3,4], x:[0.5,5], h:[0.5,5],
+  qu:[0.3,6], j:[0.3,6], ny:[0.3,6], 'ç':[0.1,8], z:[0.1,8],
+};
+const VOCALS=new Set(['a','e','i','o','u']);
+const LLETRES=Object.keys(FITXES);
+// Les rares surten una mica mes que al catala real (la potencia aplana les
+// diferencies): una partida sense cap H ni cap X seria avorrida.
+const PES=LLETRES.map(l=>Math.pow(FITXES[l][0],0.75));
+const PES_TOT=PES.reduce((a,b)=>a+b,0);
+const valor=t=>FITXES[t][1];
+// Com mes llarga, mes multiplica: les paraules llargues son les que buiden la caixa.
+const MULT=[0,0,0,1,1.5,2,2.5,3,4,5,6,7,8];
+function puntsDe(tiles){
+  let s=0;for(const t of tiles)s+=valor(t);
+  const ll=tiles.join('').length;
+  return Math.round(s*(MULT[Math.min(ll,MULT.length-1)]||8));
+}
+
+// ===== EL DICCIONARI =====
+// Ve del de Softcatala (vegeu dades/LLICENCIA-paraules.txt). Es carrega a part
+// perque son 90.000 paraules i el service worker el desa per jugar sense xarxa.
+let DIC=null, errorDic=false;
+fetch('dades/paraules.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+  const s=new Set();
+  for(const l of t.split('\n'))if(l&&l[0]!=='#')s.add(l.trim());
+  DIC=s;
+}).catch(()=>{errorDic=true});
+
+// ===== FISICA (la del Sindria) =====
+const PAS=1/120, G=0.13, AIRE=0.992, ITER=8;
+
+let boles=[],score=0,state='play',paused=false,idSeg=1,temps=0;
+let sel=[],gest=null,cua=0,cuaT=0,vessantT=0,brillo=[],rotuls=[];
+let fetes=0,millor=null,avis='',avisT=0,avisCol='#fff',tremola=0,ultima=null;
+
+const JOC='garbuix';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){document.getElementById('score').textContent=score;saveBest()}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+// ===== QUINA LLETRA CAU =====
+// A l'atzar segons la freqüencia, pero vigilant les vocals: sense vocals no hi
+// ha paraules, i amb massa tampoc. Es mira la proporcio de la caixa.
+function novaLletra(){
+  let v=0;for(const b of boles)if(VOCALS.has(b.t))v++;
+  const n=boles.length+cua, prop=n?v/n:0.45;
+  for(let intent=0;intent<40;intent++){
+    let r=Math.random()*PES_TOT, l=LLETRES[0];
+    for(let i=0;i<LLETRES.length;i++){r-=PES[i];if(r<=0){l=LLETRES[i];break}}
+    const esV=VOCALS.has(l);
+    if(prop<0.36&&!esV)continue;
+    if(prop>0.52&&esV)continue;
+    return l;
+  }
+  return 'a';
+}
+// Quantes en cauen despres de cada paraula: comença amb tres i, a mesura
+// que en fas, en cauen mes. Una paraula llarga treu mes boles de les que
+// cauen; una de curta, no. Aixo es tota la dificultat.
+// Amb quatre de sortida, qui fa paraules curtes (com tothom quan comença)
+// omplia la caixa a la paraula 33. Amb tres al principi, hi ha temps
+// d'agafar-hi la mà abans que apreti.
+function quantesNoves(){return Math.min(7,3+Math.floor(fetes/12))}
+
+function afegeix(t,px,py){
+  boles.push({t,x:px,y:py,px:px,py:py,r:R,id:idSeg++,neix:temps});
+}
+function deixaCaure(n){cua+=n}
+
+function start(){
+  boles=[];score=0;state='play';paused=false;idSeg=1;temps=0;
+  sel=[];gest=null;cua=0;cuaT=0;vessantT=0;brillo=[];rotuls=[];
+  fetes=0;millor=null;avis='';avisT=0;ultima=null;
+  hideMsg();updateHUD();
+  // la caixa comença amb quatre fileres
+  for(let i=0;i<32;i++){
+    const t=novaLletra();
+    afegeix(t,CAIXA_E+R+((i%8)*2*R+(Math.floor(i/8)%2)*R)%(CAIXA_D-CAIXA_E-2*R),TERRA-R-Math.floor(i/8)*2*R);
+  }
+}
+
+function passaFisica(){
+  for(const b of boles){
+    const vx=(b.x-b.px)*AIRE, vy=(b.y-b.py)*AIRE;
+    b.px=b.x;b.py=b.y;
+    b.x+=vx;b.y+=vy+G;
+  }
+  for(let k=0;k<ITER;k++){
+    for(let i=0;i<boles.length;i++){
+      const a=boles[i];
+      for(let j=i+1;j<boles.length;j++){
+        const b=boles[j];
+        let dx=b.x-a.x, dy=b.y-a.y;
+        const rr=a.r+b.r;
+        if(Math.abs(dx)>rr||Math.abs(dy)>rr)continue;
+        let d=Math.hypot(dx,dy);
+        if(d>=rr)continue;
+        if(d<0.0001){dx=Math.random()-0.5;dy=-1;d=1}
+        const corr=(rr-d)/d*0.5;
+        a.x-=dx*corr;a.y-=dy*corr;b.x+=dx*corr;b.y+=dy*corr;
+      }
+    }
+    for(const b of boles){
+      if(b.x-b.r<CAIXA_E)b.x=CAIXA_E+b.r;
+      if(b.x+b.r>CAIXA_D)b.x=CAIXA_D-b.r;
+      if(b.y+b.r>TERRA){b.y=TERRA-b.r;b.px+=(b.x-b.px)*0.35}
+    }
+  }
+}
+
+// ===== FER PARAULES =====
+const perId=id=>boles.find(b=>b.id===id);
+function toquen(a,b){return Math.hypot(a.x-b.x,a.y-b.y)<=TOCA}
+function paraulaSel(){return sel.map(id=>perId(id)).filter(Boolean).map(b=>b.t)}
+
+function diu(t,col,s=1.6){avis=t;avisCol=col;avisT=s}
+
+function envia(){
+  if(state!=='play'||paused)return;
+  const tiles=paraulaSel(), p=tiles.join('');
+  if(!tiles.length)return;
+  if(!DIC){diu(errorDic?'no s\'ha pogut carregar el diccionari':'encara carrego el diccionari…','#ffb05a');return}
+  if(p.length<3){diu('com a mínim tres lletres','#ffb05a');sndNo();tremola=.3;sel=[];return}
+  if(!DIC.has(p)){
+    diu('«'+p.toUpperCase()+'» no és al diccionari','#ff8a8a');sndNo();tremola=.35;sel=[];return;
+  }
+  const punts=puntsDe(tiles);
+  score+=punts;fetes++;
+  let mx=0,my=0;
+  const fora=new Set(sel);
+  for(const id of sel){const b=perId(id);mx+=b.x;my+=b.y;espurna(b.x,b.y,'#ffe7a8',7)}
+  mx/=sel.length;my/=sel.length;
+  rotuls.push({x:mx,y:my,t:1.2,txt:p.toUpperCase()+'  +'+punts});
+  boles=boles.filter(b=>!fora.has(b.id));
+  if(!millor||punts>millor.punts)millor={p,punts};
+  ultima={p,punts};
+  sel=[];
+  sndBe(p.length);
+  diu(p.length>=7?'QUINA PARAULA!':(p.length>=5?'MOLT BÉ':''),'#7dff9b',1.2);
+  deixaCaure(quantesNoves());
+  updateHUD();
+}
+
+// Sacsejar la caixa: totes les boles salten i, en tornar a caure, es toquen
+// amb altres. Va be quan no hi veus res, pero en cauen tres de mes.
+function sacseja(){
+  if(state!=='play'||paused)return;
+  sel=[];
+  for(const b of boles){b.py=b.y+3+Math.random()*4;b.px=b.x+(Math.random()-0.5)*5}
+  deixaCaure(3);
+  sndSacseja();
+}
+
+function espurna(px,py,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.28, v=1+Math.random()*3.5;
+    brillo.push({x:px,y:py,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.2,t:1,col});
+  }
+}
+
+async function finalPartida(){
+  const t='LA CAIXA HA VESSAT<br><small>'+fetes+(fetes===1?' paraula':' paraules')+
+    (millor?' · la millor, '+millor.p.toUpperCase()+' ('+millor.punts+')':'')+'</small>';
+  msg(t);
+  const r=await Records.fiPartida(JOC,score);
+  msg(t+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+function update(dt){
+  if(state!=='play'||paused)return;
+  temps+=dt;
+  if(avisT>0)avisT-=dt;
+  if(tremola>0)tremola-=dt;
+  // les noves cauen d'una en una, que es vegi la pluja de lletres
+  if(cua>0){
+    cuaT-=dt;
+    if(cuaT<=0){
+      cua--;cuaT=0.11;
+      afegeix(novaLletra(),CAIXA_E+R+Math.random()*(CAIXA_D-CAIXA_E-2*R),SOSTRE-R-14);
+      sndCau();
+    }
+  }
+  let acc=Math.min(dt,0.05);
+  while(acc>0){passaFisica();acc-=PAS}
+
+  for(let i=brillo.length-1;i>=0;i--){
+    const p=brillo[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.25;p.t-=dt*2.2;
+    if(p.t<=0)brillo.splice(i,1);
+  }
+  for(let i=rotuls.length-1;i>=0;i--){
+    const r=rotuls[i];r.y-=dt*24;r.t-=dt*0.9;if(r.t<=0)rotuls.splice(i,1);
+  }
+  // si una bola triada s'ha separat de la seguent (el munt s'ha mogut), la
+  // cadena es talla alli
+  for(let i=1;i<sel.length;i++){
+    const a=perId(sel[i-1]),b=perId(sel[i]);
+    if(!a||!b||!toquen(a,b)){sel=sel.slice(0,i);break}
+  }
+
+  // Vessar: com al Sindria i al Ram, una bola quieta per sobre de la ratlla
+  // durant dos segons.
+  let vessa=false;
+  for(const b of boles){
+    if(temps-b.neix<1.2)continue;
+    const quieta=Math.hypot(b.x-b.px,b.y-b.py)<0.6;
+    if(quieta&&b.y-b.r<SOSTRE){vessa=true;break}
+  }
+  vessantT=vessa?vessantT+dt:0;
+  if(vessantT>2){state='over';sel=[];sndFi();setTimeout(finalPartida,700)}
+}
+
+// ===== DIBUIX =====
+// Cada bola es pinta un sol cop en un llencol a part, com les fruites del
+// Sindria: amb vuitanta boles a la caixa, fer el degradat i la lletra a cada
+// fotograma no cabria al pressupost.
+const llencols={};
+function sprite(t,triada){
+  const clau=t+(triada?'*':'');
+  if(llencols[clau])return llencols[clau];
+  const pad=4, ll=document.createElement('canvas');
+  ll.width=ll.height=Math.ceil((R+pad)*2);
+  const g=ll.getContext('2d');
+  g.translate(R+pad,R+pad);
+  const v=valor(t), rara=v>=4;
+  const grad=g.createRadialGradient(-R*0.32,-R*0.38,R*0.15,0,0,R);
+  // Les rares van de blau i les triades de daurat. Abans les rares eren
+  // daurades també, i no sabies si una B estava triada o era rara.
+  if(triada){grad.addColorStop(0,'#fff6c8');grad.addColorStop(.6,'#ffd75e');grad.addColorStop(1,'#b8860b')}
+  else if(rara){grad.addColorStop(0,'#f2f7ff');grad.addColorStop(.62,'#b9d0ee');grad.addColorStop(1,'#5f7fa8')}
+  else{grad.addColorStop(0,'#fffaf0');grad.addColorStop(.62,'#ece0c8');grad.addColorStop(1,'#a8987a')}
+  g.fillStyle=grad;g.beginPath();g.arc(0,0,R,0,6.29);g.fill();
+  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1.5;g.stroke();
+  g.fillStyle='#2a1f12';g.textAlign='center';g.textBaseline='middle';
+  const txt=t.toUpperCase();
+  g.font='bold '+(txt.length>1?18:23)+'px monospace';
+  g.fillText(txt,txt.length>1?-1:-1,1);
+  g.font='bold 9px monospace';g.fillStyle='#6b5232';
+  g.fillText(String(v),R*0.55,R*0.52);
+  ll.__pad=R+pad;
+  llencols[clau]=ll;
+  return ll;
+}
+
+function draw(){
+  x.clearRect(0,0,W,H);
+  // la caixa
+  x.fillStyle='#0e0b08';
+  x.fillRect(CAIXA_E,SOSTRE-34,CAIXA_D-CAIXA_E,TERRA-SOSTRE+34);
+  x.strokeStyle='#4a3a28';x.lineWidth=3;
+  x.beginPath();x.moveTo(CAIXA_E-1,SOSTRE-34);x.lineTo(CAIXA_E-1,TERRA+2);
+  x.lineTo(CAIXA_D+1,TERRA+2);x.lineTo(CAIXA_D+1,SOSTRE-34);x.stroke();
+  const perill=vessantT>0.4;
+  x.strokeStyle=perill?'#ff5050':'#5a4632';x.lineWidth=2;x.setLineDash([9,7]);
+  x.beginPath();x.moveTo(CAIXA_E,SOSTRE);x.lineTo(CAIXA_D,SOSTRE);x.stroke();x.setLineDash([]);
+
+  const ts=sel.map(perId).filter(Boolean);
+  const sac=tremola>0?(Math.random()-.5)*6:0;
+  const triades=new Set(sel);
+  for(const b of boles){
+    const ll=sprite(b.t,triades.has(b.id));
+    const dx=triades.has(b.id)?sac:0;
+    x.drawImage(ll,b.x-ll.__pad+dx,b.y-ll.__pad);
+  }
+  // La cadena de la paraula que fas, PER SOBRE de les boles: com que es
+  // toquen, per sota quedava amagada i no es veia en quin ordre anaven.
+  if(ts.length>1){
+    x.strokeStyle='rgba(200,90,0,.8)';x.lineWidth=4;x.lineCap='round';x.lineJoin='round';
+    x.beginPath();x.moveTo(ts[0].x+sac,ts[0].y);
+    for(let i=1;i<ts.length;i++)x.lineTo(ts[i].x+sac,ts[i].y);
+    x.stroke();x.lineCap='butt';
+    // un puntet a la primera, que es vegi on comença
+    x.fillStyle='rgba(200,90,0,.9)';x.beginPath();x.arc(ts[0].x+sac,ts[0].y,6,0,6.29);x.fill();
+  }
+  for(const p of brillo){x.globalAlpha=Math.max(0,p.t);x.fillStyle=p.col;x.fillRect(p.x-2,p.y-2,4,4)}
+  x.globalAlpha=1;
+  x.textAlign='center';
+  for(const r of rotuls){
+    x.globalAlpha=Math.max(0,Math.min(1,r.t));x.fillStyle='#ffe680';
+    x.font='bold 16px monospace';x.fillText(r.txt,r.x,r.y);
+  }
+  x.globalAlpha=1;
+
+  // ===== el tauler de dalt =====
+  // La paraula que estas fent, en gros, amb els punts que valdria.
+  const tiles=ts.map(b=>b.t), p=tiles.join('');
+  if(p){
+    x.fillStyle='#ffd75e';x.font='bold '+(p.length>9?24:30)+'px monospace';
+    x.fillText(p.toUpperCase(),W/2+sac,62);
+    x.fillStyle='#b9a27a';x.font='12px monospace';
+    x.fillText(p.length>=3?'valdria '+puntsDe(tiles)+' punts':'tria lletres que es toquin',W/2,84);
+  }else if(!DIC){
+    x.fillStyle='#8a7a6a';x.font='13px monospace';
+    x.fillText(errorDic?'no s\'ha pogut carregar el diccionari':'carregant el diccionari…',W/2,64);
+  }else if(ultima){
+    x.fillStyle='#8a7a6a';x.font='12px monospace';
+    x.fillText('última: '+ultima.p.toUpperCase()+' (+'+ultima.punts+')',W/2,64);
+  }else{
+    x.fillStyle='#8a7a6a';x.font='12px monospace';
+    x.fillText('llisca el dit per sobre de lletres que es toquin',W/2,64);
+  }
+  if(avisT>0&&avis){
+    x.globalAlpha=Math.min(1,avisT*2);x.fillStyle=avisCol;x.font='bold 13px monospace';
+    x.fillText(avis,W/2,110);x.globalAlpha=1;
+  }
+  x.fillStyle='#7d6b55';x.font='10px monospace';x.textAlign='left';
+  x.fillText('PARAULES '+fetes,12,18);
+  x.textAlign='right';
+  x.fillText(millor?'MILLOR: '+millor.p.toUpperCase()+' '+millor.punts:'',W-12,18);
+  x.textAlign='center';
+  x.fillText('després de cada paraula en cauen '+quantesNoves(),W/2,136);
+  x.textAlign='left';
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(t){const dt=Math.min(40,t-last)/1000;last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== EL DIT =====
+// Dues maneres, i totes dues valen:
+//  - lliscar el dit de bola en bola i aixecar-lo: la paraula s'envia sola;
+//  - tocar-les una a una i premer D'ACORD (tocar l'ultima la treu).
+// Mentre llisques, per afegir una bola cal passar a prop del centre (no
+// n'hi ha prou de fregar-ne la vora), que si no se t'enganxaven les veines.
+function punt(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W,y:(ev.clientY-r.top)/r.height*H};
+}
+function bolaA(p,radi){
+  let millorB=null,d0=radi;
+  for(const b of boles){const d=Math.hypot(b.x-p.x,b.y-p.y);if(d<=d0){d0=d;millorB=b}}
+  return millorB;
+}
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(state!=='play'||paused)return;
+  try{c.setPointerCapture(ev.pointerId)}catch(e){}
+  const b=bolaA(punt(ev),R*1.08);
+  if(!b){gest=null;return}
+  const ultimaId=sel[sel.length-1];
+  gest={mogut:false,tocaUltima:false};
+  if(ultimaId===b.id)gest.tocaUltima=true;
+  else if(sel.length&&!sel.includes(b.id)&&toquen(perId(ultimaId),b)){sel.push(b.id);sndTria(sel.length)}
+  else{sel=[b.id];sndTria(1)}
+});
+c.addEventListener('pointermove',ev=>{
+  if(!gest||state!=='play')return;
+  ev.preventDefault();
+  const b=bolaA(punt(ev),R*0.8);
+  if(!b)return;
+  const ultimaId=sel[sel.length-1];
+  if(b.id===ultimaId)return;
+  if(sel.length>=2&&b.id===sel[sel.length-2]){sel.pop();gest.mogut=true;return}   // enrere
+  if(!sel.includes(b.id)&&toquen(perId(ultimaId),b)){sel.push(b.id);gest.mogut=true;sndTria(sel.length)}
+});
+function aixeca(){
+  if(!gest)return;
+  if(gest.mogut&&sel.length>=2)envia();
+  else if(gest.tocaUltima&&!gest.mogut)sel.pop();
+  gest=null;
+}
+c.addEventListener('pointerup',aixeca);
+c.addEventListener('pointercancel',()=>{gest=null});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function boto(id,fn){
+  document.getElementById(id).addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();fn()});
+}
+boto('fet',()=>{if(state==='over')start();else envia()});
+boto('esborra',()=>{sel=[]});
+boto('sacseja',sacseja);
+
+// teclat: escriure la paraula no te sentit aqui (cal resseguir-la), pero
+// ENTER envia, ESC esborra i S sacseja
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;return}
+  if(e.code==='Enter'){e.preventDefault();if(state==='over')start();else envia()}
+  if(e.code==='Escape'||e.code==='Backspace'){e.preventDefault();sel=[]}
+  if(e.code==='KeyS'){sacseja()}
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

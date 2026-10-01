@@ -61,6 +61,7 @@ const JOCS = {
   xifres:             9999,
   ram:               99999,
   lunar_lander:      99999,
+  garbuix:          999999,
 };
 const TOP = 10;
 
@@ -98,6 +99,7 @@ const FITXA = {
   xifres:          ['Xifres',          'al Xifres',          'xifres.html'],
   ram:             ['El Ram',          'al Ram',             'ram.html'],
   lunar_lander:    ['Lunar Lander',    'al Lunar Lander',    'lunar_lander.html'],
+  garbuix:         ['Garbuix',         'al Garbuix',         'garbuix.html'],
 };
 
 const cors = {

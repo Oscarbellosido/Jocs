@@ -1,7 +1,8 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i sis que no ho són, fets amb HTML i
-JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
+Vint-i-tres jocs clàssics dels salons recreatius i set que no ho són, fets amb HTML i
+JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
+(menys el diccionari del Garbuix, que va a part a `dades/`). Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
 - Publicat a: https://oscarbellosido.github.io/Jocs/ (compte: la **J majúscula**)
@@ -38,7 +39,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I sis que no són de saló
+### I set que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -48,6 +49,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
 | `balanca.html` | Balança | 2026 |
 | `ram.html` | El Ram | 2026 |
+| `garbuix.html` | Garbuix | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -69,7 +71,7 @@ I com que aquests sí que són jocs d'empreses vives —no màquines de fa quara
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
 nom de l'original.
 
-La **Balança** i **el Ram** són l'excepció: no s'assemblen a res, són nostres de
+La **Balança**, **el Ram** i **el Garbuix** són l'excepció: no s'assemblen a res, són nostres de
 cap a peus. Les inventades van aquí mateix, amb l'any que es fan.
 
 `asteroid_belt.html` és una versió antiga que ja no s'enllaça enlloc.
@@ -342,6 +344,60 @@ ser només per a qui hi juga bé.
 Amb cent boles a la caixa, dibuixar costa 0,15 mil·lèsimes i la física més
 buscar els rams 0,31: el pressupost sencer d'un fotograma són 16.
 
+## El Garbuix: paraules amb lletres que es toquen
+
+El motor del Síndria un altre cop, però les boles porten **lletres**: fas una
+paraula resseguint boles que es toquen (lliscant el dit, o tocant-les una a una
+i D'ACORD), les boles desapareixen, el munt s'esfondra i en cauen de noves. Si
+la caixa vessa, s'ha acabat. És nostre: els jocs de paraules en català que hi
+ha (els de cada dia, d'endevinar una paraula o de fer-ne amb set lletres) són
+de pensar quiets; aquí el tauler es mou sol i cada paraula canvia què toca què.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **El diccionari va a part** (`dades/paraules.txt`), i és l'única excepció a
+  la regla d'un sol fitxer. Són 91.000 paraules i 820 KB (250 comprimit): dins
+  de l'HTML el faria il·legible, i a més té **llicència pròpia**. Surt del
+  diccionari de **Softcatalà** (`catalan-dict-tools`, LGPL 2.1 / GPL 2), que
+  demana dir d'on surt i que la llista que en fem segueixi amb la mateixa
+  llicència: per això la capçalera del fitxer ho explica i al costat hi ha
+  `dades/LLICENCIA-paraules.txt`. El `sw.js` el desa, així que sense connexió
+  també es juga.
+- **Què hi entra**: noms, adjectius en masculí i en femení, i verbs en
+  infinitiu; sense plurals, sense verbs conjugats, sense noms propis ni sigles
+  ni paraules marcades d'antigues o de dialecte. Sense accents (la bola diu
+  «A», no «À»), la `l·l` com a `ll`, i de 3 a 10 lletres. Amb els plurals, la
+  meitat de les paraules serien «la mateixa amb una S», i la S sortiria a totes.
+- **La QU i la NY van en una sola bola.** Una Q sola no serveix de res i una Y
+  gairebé tampoc; així no et queden boles mortes al munt. Per això al
+  diccionari només hi ha les paraules que es poden fer amb aquestes fitxes.
+- **Quantes lletres de cada surten** ve de comptar-les en paraules catalanes de
+  debò, ponderades per com de sovint es diuen (una llista de freqüències de
+  subtítols). S'ensuavitza (`freq^0,75`) perquè la Z i la Ç surtin alguna
+  vegada, i les vocals es mantenen entre el 36% i el 52% del munt: amb massa
+  poques no es pot fer res, amb massa no surt cap paraula llarga.
+- **Les lletres s'han de tocar**, amb el mateix marge de contacte que el Ram.
+  Si mentre fas la paraula el munt es mou i dues boles triades se separen, la
+  cadena es talla allà mateix.
+- **El que fa difícil la partida és quantes en cauen** (`quantesNoves`): 3
+  després de cada paraula al principi, i una més cada 12 paraules fins a 7.
+  Fent paraules de tres lletres, com més va més en cauen que no pas en treus.
+- **Les lletres rares van en blau** (les que valen 4 o més: G, F, B, X, H, QU,
+  J, NY, Ç, Z) i les triades **en or**, amb la cadena taronja dibuixada **per
+  sobre** de les boles: per sota no es veia per on passava.
+
+Com està calibrat, amb pilots automàtics que veuen totes les paraules que es
+poden fer a cada moment: un que fa el que faria una persona (de les paraules
+comunes, una qualsevol) arriba a unes 49 paraules i 330 punts; un que busca la
+més llarga que coneix, a 57 i 735. A cap torn de cap partida no s'ha quedat
+sense res per fer: la mediana és de 64 a 103 paraules possibles al munt.
+
+**Per provar-lo cal un servidor**: el diccionari es llegeix amb `fetch`, i des
+d'una pàgina `file://` el navegador no deixa llegir cap altre fitxer. El
+`scripts/prova-garbuix.mjs` serveix el repositori ell mateix. Les altres proves
+l'obren com a fitxer i el joc va igual, només que diu que no ha pogut carregar
+el diccionari.
+
 ## El Síndria: com funciona la física
 
 És l'únic joc amb física de debò, i té dues decisions que no s'han de desfer
@@ -377,6 +433,7 @@ records.js          codi comú dels rècords compartits (el carreguen tots els j
 sw.js               service worker (cache per poder jugar sense connexió)
 manifest.json       perquè es pugui instal·lar com a app
 thumbs/             captures reals de cada joc, 240x240
+dades/              el diccionari del Garbuix i la seva llicència
 worker/             el Worker de Cloudflare dels rècords (còpia del que hi ha desplegat)
 scripts/            proves
 ```
@@ -660,6 +717,10 @@ comproven el comportament.
 - `node scripts/prova-lander.mjs` — que al Lunar Lander aterrar i estavellar-se
   vagin com toca, que la partida sempre s'acabi (el descens més barat ha de
   costar més que el premi) i que un pilot automàtic hi aterri.
+- `node scripts/prova-garbuix.mjs` — que el diccionari del Garbuix es
+  carregui, que es rebutgin les paraules curtes i les que no existeixen, que
+  només s'encadenin lletres que es toquen, que sempre hi hagi paraules per fer
+  i que la partida s'acabi.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.
