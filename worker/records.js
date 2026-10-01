@@ -44,6 +44,7 @@ const JOCS = {
   balanca:          999999,
   xifres:             9999,
   ram:               99999,
+  lunar_lander:      99999,
 };
 const TOP = 10;
 

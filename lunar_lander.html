@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lunar Lander</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* linies vectorials primes: amb pixelated quedarien en escala */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#000;touch-action:none}
+#controls{flex:none;display:flex;gap:6px;margin-top:10px;align-items:center}
+button{font:15px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:56px;height:52px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+/* el motor es el que prems sense parar: gros i a l'altra punta de l'ABORTA */
+#motor{width:108px;color:#7dff9b;margin-left:8px}
+/* l'ABORTA gasta combustible: petit, d'un altre color i lluny del motor */
+#aborta{width:54px;font-size:11px;color:#ffb05a;border-color:#8a5a2a;margin-right:10px}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
+#msg small{display:block;margin-top:8px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="440" height="520"></canvas></div>
+  <div id="controls">
+    <button id="aborta">ABORTA</button><button id="esq">⟲</button><button id="dre">⟳</button><button id="motor">MOTOR</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Posa el mòdul dret i a poc a poc damunt d'una plataforma; s'acaba quan no queda combustible, i les plataformes estretes valen més.</b> ⟲ ⟳ per girar i MOTOR per frenar · ABORTA gasta combustible però et salva · teclat: ← → ↑ i A · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null,motorSo=null;
+function aInit(){
+  if(!AC){
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination);
+    // El motor: un soroll que no para mai i que puja i baixa amb la palanca.
+    const n=AC.sampleRate*2,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);
+    let ult=0;
+    for(let i=0;i<n;i++){ult=ult*0.86+(Math.random()*2-1)*0.14;d[i]=ult*3}
+    const s=AC.createBufferSource();s.buffer=b;s.loop=true;
+    motorSo=AC.createGain();motorSo.gain.value=0;
+    s.connect(motorSo);motorSo.connect(MG);s.start();
+  }
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndBo(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.18,"triangle",.28),i*110))}
+function sndDur(){aInit();tone(220,.18,"square",.18);noise(.08,.12)}
+function sndXoc(){aInit();noise(.7,.4);tone(90,.5,"sawtooth",.22,-50)}
+function sndPoc(){aInit();tone(1350,.06,"square",.12)}
+function sndFi(){aInit();[340,280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=440,H=520;
+
+// ===== LA LLUNA =====
+// A la maquina el paisatge era sempre el mateix: era la gracia, que aprenies
+// on eren les plataformes. Aqui tambe, i per aixo surt d'una llavor fixa i no
+// a l'atzar de cada partida. Es tres pantalles d'ample i dona la volta.
+const SEG=10, WW=1320, N=WW/SEG;
+function llavor(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const terra=[];
+(function(){
+  const r=llavor(1979);
+  let y=420;
+  for(let i=0;i<N;i++){
+    y+=(r()-0.5)*30+(415-y)*0.05;
+    if(r()<0.07)y-=35+r()*55;              // de tant en tant, un pic
+    terra.push(Math.max(230,Math.min(495,y)));
+  }
+  // que les dues puntes casin, que el paisatge dona la volta
+  for(let k=1;k<=14;k++){const f=k/15;terra[N-k]=terra[N-k]*f+terra[0]*(1-f)}
+})();
+// Les plataformes, de l'ampla a l'estreta. Com mes estreta, mes multiplica:
+// es el que feia la maquina amb els 2X, 3X, 4X i 5X que pampallugaven.
+// El modul fa 24 px de peu a peu, o sigui que a la de 5X queden tres pixels
+// a cada costat.
+const PLATAFORMES=[
+  {i:8,  n:7, m:2},
+  {i:30, n:3, m:5},
+  {i:48, n:5, m:3},
+  {i:72, n:7, m:2},
+  {i:94, n:4, m:4},
+  {i:114,n:5, m:3},
+];
+const plats=PLATAFORMES.map(p=>{
+  let s=0;for(let k=p.i;k<=p.i+p.n;k++)s+=terra[k];
+  const y=Math.round(s/(p.n+1));
+  for(let k=p.i;k<=p.i+p.n;k++)terra[k]=y;
+  // la de 5X, enclotada entre dues muntanyes, que no hi arribis de qualsevol manera
+  if(p.m===5){terra[p.i-1]=y-38;terra[p.i-2]=y-60;terra[p.i+p.n+1]=y-42;terra[p.i+p.n+2]=y-64}
+  return {x0:p.i*SEG, x1:(p.i+p.n)*SEG, y, m:p.m};
+});
+function emb(v){return ((v%WW)+WW)%WW}
+function alcadaTerra(px){
+  const xx=emb(px), i=Math.floor(xx/SEG), f=(xx-i*SEG)/SEG;
+  return terra[i]*(1-f)+terra[(i+1)%N]*f;
+}
+function plataformaSota(px){
+  const xx=emb(px);
+  for(const p of plats)if(xx>=p.x0-14&&xx<=p.x1+14)return p;
+  return null;
+}
+// distancia amb signe pel cami curt, que el mon dona la volta
+function dist(a,b){let d=emb(b-a);if(d>WW/2)d-=WW;return d}
+
+// ===== EL MODUL =====
+// Fisica en pixels per segon. Gravetat de lluna: poca. El motor ple empeny
+// dues vegades i mitja el que estira la lluna, prou per frenar pero no per
+// fer el que vulguis.
+// El gir: a 1,6 radians per segon (92 graus), un toc rapid al mobil ja et
+// passava dels 8 graus que admet un aterratge bo. A 1,25 un toc fa uns 6.
+const G=16, EMPENTA=42, GIR=1.25;         // px/s2, px/s2, radians per segon
+// El consum va lligat al premi de 50 de combustible per aterratge bo. Si el
+// descens mes barat possible costes menys de 50, un jugador fi en guanyaria a
+// cada volta i la partida no s'acabaria mai. Calculat per a cada plataforma
+// (caure lliure i frenar a fons a l'ultim moment, sortint amb la velocitat de
+// costat mes petita): amb 20 per segon, a la 4X costava 47; amb 26, el mes
+// barat de totes en costa 61. Si es toca la gravetat, l'empenta, l'altura de
+// sortida o les plataformes, s'ha de tornar a fer aquest compte.
+const CREMA=26;                           // unitats de combustible per segon a ple motor
+const COMBUSTIBLE0=750;                   // el que donava la maquina per moneda (una de les quatre opcions)
+const PAS=1/120;
+// Que vol dir aterrar be. La maquina mostrava les velocitats amb numeros; aqui
+// es el mateix: el que surt a la pantalla es px/s partit per dos.
+//  - BO:  vertical fins a 7, horitzontal fins a 6 i inclinat 8 graus com a molt
+//  - DUR: vertical fins a 15, horitzontal fins a 15 i 16 graus
+//  - mes que aixo, o fora d'una plataforma: t'estavelles
+const BO={vy:7,vx:6,ang:8}, DUR={vy:15,vx:15,ang:16};
+const PEUS=[[-12,11],[12,11]];
+const COS=[[-8,-10],[8,-10],[-9,3],[9,3],[0,-13]];
+
+let m,ctrl={esq:0,dre:0,motor:0,aborta:0};
+let score=0,combustible=COMBUSTIBLE0,temps=0,state='vol',paused=false;
+let zoom=1,missatge=null,missT=0,trossos=[],avisT=0,aterratges=0;
+
+const JOC='lunar_lander';
+Records.migra(JOC,null);
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function saveBest(){
+  if(score>bestScore){bestScore=score;Records.desaLocal(JOC,score)}
+  Records.marcador(JOC,document.getElementById('best'),score);
+}
+function updateHUD(){
+  document.getElementById('score').textContent=score;
+  saveBest();
+}
+function msg(t){const e=document.getElementById('msg');e.innerHTML=t;e.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+
+function nouDescens(){
+  // Entra per dalt anant de costat, com a la maquina: el primer que has de
+  // fer es aturar-te.
+  const dir=Math.random()<.5?-1:1;
+  m={x:Math.random()*WW,y:46,vx:dir*(30+Math.random()*26),vy:6,ang:0,
+     palanca:0,abortaT:0,t0:temps};
+  trossos=[];missatge=null;state='vol';
+}
+function start(){
+  score=0;combustible=COMBUSTIBLE0;temps=0;paused=false;zoom=1;aterratges=0;
+  hideMsg();updateHUD();nouDescens();
+}
+
+function puntMon(lx,ly){
+  const cs=Math.cos(m.ang),sn=Math.sin(m.ang);
+  return {x:m.x+lx*cs-ly*sn, y:m.y+lx*sn+ly*cs};
+}
+function alcada(){return alcadaTerra(m.x)-(m.y+11)}
+// les velocitats tal com surten a la pantalla
+function vH(){return Math.round(Math.abs(m.vx)/2)}
+function vV(){return Math.round(m.vy/2)}
+
+function pas(dt){
+  // La palanca: a la maquina era una palanca de debo i el motor no anava de
+  // zero a tot de cop. Aqui el boto la va empenyent i, en deixar-lo, torna.
+  const vol=(ctrl.motor&&combustible>0)?1:0;
+  m.palanca+=(vol-m.palanca)*Math.min(1,dt*(vol>m.palanca?5:7));
+  if(ctrl.esq)m.ang-=GIR*dt;
+  if(ctrl.dre)m.ang+=GIR*dt;
+  let empenta=EMPENTA*m.palanca, crema=CREMA*m.palanca;
+  // ABORTA: es posa dret sol i tira a fons, gastant el doble. Et salva d'una
+  // baixada massa rapida, pero et costa car.
+  if(m.abortaT>0&&combustible>0){
+    m.abortaT-=dt;
+    m.ang+=(-m.ang)*Math.min(1,dt*6);
+    empenta=EMPENTA*1.5;crema=CREMA*2;
+  }
+  m.ang=Math.max(-Math.PI/2,Math.min(Math.PI/2,m.ang));
+  if(combustible<=0){empenta=0;crema=0}
+  m.vx+=empenta*Math.sin(m.ang)*dt;
+  m.vy+=(G-empenta*Math.cos(m.ang))*dt;
+  m.x=emb(m.x+m.vx*dt);
+  m.y+=m.vy*dt;
+  if(m.y<14){m.y=14;if(m.vy<0)m.vy=0}
+  combustible=Math.max(0,combustible-crema*dt);
+  m.cremant=empenta>0;
+
+  // Toca? Es mira a cada passet i no un cop per fotograma: si no, a tota
+  // velocitat el peu podria travessar la cresta d'una muntanya sense tocar-la.
+  for(const [lx,ly] of COS){
+    const p=puntMon(lx,ly);
+    if(p.y>=alcadaTerra(p.x)){toca(false);return}
+  }
+  for(const [lx,ly] of PEUS){
+    const p=puntMon(lx,ly);
+    if(p.y>=alcadaTerra(p.x)){toca(true);return}
+  }
+}
+
+function toca(ambElsPeus){
+  const ang=Math.abs(m.ang)*180/Math.PI, vy=vV(), vx=vH();
+  const p=plataformaSota(m.x);
+  let damunt=false;
+  if(p&&ambElsPeus){
+    const e=puntMon(PEUS[0][0],PEUS[0][1]), d=puntMon(PEUS[1][0],PEUS[1][1]);
+    damunt=emb(e.x)>=p.x0-1&&emb(d.x)<=p.x1+1;
+  }
+  let que='xoc';
+  if(damunt&&vy<=BO.vy&&vx<=BO.vx&&ang<=BO.ang)que='bo';
+  else if(damunt&&vy<=DUR.vy&&vx<=DUR.vx&&ang<=DUR.ang)que='dur';
+  const mult=damunt?p.m:1;
+  let punts, linies;
+  if(que==='bo'){
+    punts=50*mult;combustible+=50;aterratges++;
+    linies=['HAS ATERRAT','+'+punts+' PUNTS'+(mult>1?'  ('+mult+'X)':''),'+50 DE COMBUSTIBLE'];
+    sndBo();
+  }else if(que==='dur'){
+    punts=15*mult;aterratges++;
+    linies=['ATERRATGE DUR','+'+punts+' PUNTS'+(mult>1?'  ('+mult+'X)':''),'has trencat una pota'];
+    sndDur();
+  }else{
+    punts=5;
+    linies=['T\'HAS ESTAVELLAT','+5 PUNTS',
+            !damunt?'fora de plataforma':(vy>DUR.vy?'baixaves massa de pressa':(vx>DUR.vx?'anaves massa de costat':'anaves massa tort'))];
+    esclata();sndXoc();
+  }
+  if(que!=='xoc'){
+    // queda quiet on ha tocat, dret damunt la plataforma
+    m.y=p.y-11;m.ang=0;
+  }
+  m.vx=0;m.vy=0;m.palanca=0;m.abortaT=0;m.cremant=false;
+  score+=punts;updateHUD();
+  missatge={que,linies,mult};missT=2.8;state='missatge';
+}
+
+function esclata(){
+  // el modul es desfa en les linies que el dibuixen
+  const segs=[[-8,-10,8,-10],[8,-10,10,0],[10,0,-10,0],[-10,0,-8,-10],[-9,3,9,3],
+              [-7,3,-12,11],[7,3,12,11],[-15,11,-9,11],[9,11,15,11],[-4,-13,4,-13]];
+  for(const [a,b,cc,d] of segs){
+    const p=puntMon((a+cc)/2,(b+d)/2), an=Math.random()*6.28, v=20+Math.random()*60;
+    trossos.push({x:p.x,y:p.y,vx:Math.cos(an)*v,vy:Math.sin(an)*v-40,
+                  l:Math.hypot(cc-a,d-b),rot:Math.random()*6.28,vr:(Math.random()-.5)*8});
+  }
+}
+
+async function finalPartida(){
+  state='over';sndFi();
+  const t='S\'HA ACABAT EL COMBUSTIBLE<br><small>'+aterratges+(aterratges===1?' aterratge':' aterratges')+'</small>';
+  msg(t);
+  const r=await Records.fiPartida(JOC,score);
+  msg(t+(r.posicio?'<br><small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+      '<div style="margin:10px 0">'+r.html+'</div>'+
+      Records.peuFinal('o prem ENTER per tornar a jugar'));
+  Records.pintaMillor(JOC,document.getElementById('best'),score);
+}
+
+function update(dt){
+  if(paused){if(motorSo)motorSo.gain.value=0;return}
+  temps+=dt;
+  if(state==='vol'){
+    let acc=Math.min(dt,0.05);
+    while(acc>0&&state==='vol'){pas(Math.min(PAS,acc));acc-=PAS}
+    // poc combustible: la maquina pitava
+    if(combustible>0&&combustible<100){avisT-=dt;if(avisT<=0){sndPoc();avisT=.8}}
+  }else if(state==='missatge'){
+    missT-=dt;
+    for(const t of trossos){t.x+=t.vx*dt;t.y+=t.vy*dt;t.vy+=G*2.2*dt;t.rot+=t.vr*dt;
+      const h=alcadaTerra(t.x);if(t.y>h){t.y=h;t.vy*=-0.3;t.vx*=0.6;t.vr*=0.5}}
+    if(missT<=0){
+      if(combustible<=0){state='over';setTimeout(finalPartida,200)}
+      else nouDescens();
+    }
+  }
+  if(motorSo)motorSo.gain.value=state==='vol'&&m.cremant?0.9*Math.max(m.palanca,m.abortaT>0?1:0):0;
+
+  // El zoom: quan t'acostes a terra la camera s'hi apropa, que era la cosa
+  // que mes va sorprendre de la maquina. Al mobil, a mes, es imprescindible:
+  // de lluny el modul fa 24 pixels i no es veu si vas tort.
+  const vol=(state==='vol'&&alcada()<120)||(state==='missatge'&&zoom>1.5)?2.2:1;
+  zoom+=(vol-zoom)*Math.min(1,dt*5);
+}
+
+// ===== DIBUIX =====
+let cx=0,cy=H/2;
+function aPantalla(wx,wy){return [dist(cx,wx)*zoom+W/2,(wy-cy)*zoom+H/2]}
+const estels=[];
+(function(){const r=llavor(42);for(let i=0;i<70;i++)estels.push([r()*WW,r()*300,r()])})();
+
+function draw(){
+  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  if(!m)return;
+  cx=m.x;
+  const t=(zoom-1)/1.2;
+  cy=(H/2)*(1-t)+(m.y+20)*t;
+
+  // estels
+  for(const [ex,ey,b] of estels){
+    const [sx,sy]=aPantalla(ex,ey);
+    if(sx<0||sx>W||sy<0||sy>H)continue;
+    x.fillStyle='rgba(255,255,255,'+(0.25+b*0.45)+')';x.fillRect(sx,sy,1.4,1.4);
+  }
+
+  // el terra
+  const meitat=W/2/zoom;
+  const i0=Math.floor((cx-meitat)/SEG)-1, i1=Math.ceil((cx+meitat)/SEG)+1;
+  x.strokeStyle='#d8dde2';x.lineWidth=1.4;
+  x.beginPath();
+  for(let i=i0;i<=i1;i++){
+    const wx=i*SEG, [sx,sy]=aPantalla(wx,terra[((i%N)+N)%N]);
+    if(i===i0)x.moveTo(sx,sy);else x.lineTo(sx,sy);
+  }
+  x.stroke();
+  // Les plataformes, mes gruixudes, i el multiplicador que batega. A la
+  // maquina s'apagava i s'encenia; al mobil, de lluny, quan era apagat no
+  // sabies on era cada plataforma. Ara batega de brillantor pero no marxa.
+  const pamp=Math.floor(temps*2.5)%2;
+  const batec=0.55+0.45*Math.abs(Math.sin(temps*3.2));
+  for(const p of plats){
+    const [a,ay]=aPantalla(p.x0,p.y), [b]=aPantalla(p.x1,p.y);
+    if(b<-40||a>W+40)continue;
+    x.strokeStyle='#ffffff';x.lineWidth=3;
+    x.beginPath();x.moveTo(a,ay);x.lineTo(b,ay);x.stroke();
+    x.globalAlpha=batec;
+    x.fillStyle=p.m>=4?'#ffd75e':'#cfe8ff';
+    x.font='bold '+Math.round(12*Math.min(zoom,1.6))+'px monospace';x.textAlign='center';
+    x.fillText(p.m+'X',(a+b)/2,ay+15*Math.min(zoom,1.6));
+    x.globalAlpha=1;
+  }
+  x.textAlign='left';
+
+  // el modul
+  if(state!=='missatge'||missatge.que!=='xoc'){
+    x.save();
+    const [sx,sy]=aPantalla(m.x,m.y);
+    x.translate(sx,sy);x.rotate(m.ang);x.scale(zoom,zoom);
+    x.strokeStyle='#ffffff';x.lineWidth=1.3/zoom;
+    x.beginPath();
+    // la cabina
+    x.moveTo(-4,-13);x.lineTo(4,-13);x.lineTo(8,-10);x.lineTo(8,-5);x.lineTo(4,-2);
+    x.lineTo(-4,-2);x.lineTo(-8,-5);x.lineTo(-8,-10);x.closePath();
+    // la base i les potes
+    x.moveTo(-9,-2);x.lineTo(9,-2);x.lineTo(9,3);x.lineTo(-9,3);x.closePath();
+    x.moveTo(-7,3);x.lineTo(-12,11);x.moveTo(7,3);x.lineTo(12,11);
+    x.moveTo(-15,11);x.lineTo(-9,11);x.moveTo(9,11);x.lineTo(15,11);
+    x.moveTo(-3,3);x.lineTo(-4,6);x.lineTo(4,6);x.lineTo(3,3);
+    x.stroke();
+    // la flama
+    if(state==='vol'&&m.cremant){
+      const ll=6+14*Math.max(m.palanca,m.abortaT>0?1.3:0)*(0.75+Math.random()*0.5);
+      x.strokeStyle=m.abortaT>0?'#ffb05a':'#9fd8ff';
+      x.beginPath();x.moveTo(-3,6);x.lineTo(0,6+ll);x.lineTo(3,6);x.stroke();
+    }
+    x.restore();
+  }
+  for(const tr of trossos){
+    const [sx,sy]=aPantalla(tr.x,tr.y);
+    const dx=Math.cos(tr.rot)*tr.l/2*zoom, dy=Math.sin(tr.rot)*tr.l/2*zoom;
+    x.strokeStyle='#ffffff';x.lineWidth=1.3;
+    x.beginPath();x.moveTo(sx-dx,sy-dy);x.lineTo(sx+dx,sy+dy);x.stroke();
+  }
+
+  // ===== EL TAULER, com a la maquina =====
+  // Les velocitats van de colors: verd si ara mateix aterraries be, groc si
+  // seria un aterratge dur, vermell si t'estavellaries. A la maquina eren
+  // numeros blancs i calia saber-se els limits de memoria; al mobil, d'una
+  // ullada mentre jugues, el color es el que es veu.
+  const al=Math.max(0,Math.round(alcada()/2));
+  const h=vH(), v=vV(), a=Math.abs(m.ang)*180/Math.PI;
+  const col=(val,bo,dur)=>val<=bo?'#7dff9b':(val<=dur?'#ffd75e':'#ff6a6a');
+  x.font='12px monospace';x.textAlign='left';
+  x.fillStyle='#cfd6dc';
+  x.fillText('TEMPS       '+String(Math.floor(temps/60)).padStart(1,'0')+':'+String(Math.floor(temps%60)).padStart(2,'0'),10,18);
+  x.fillStyle=combustible<100?(pamp?'#ff6a6a':'#ffb05a'):'#cfd6dc';
+  x.fillText('COMBUSTIBLE '+Math.round(combustible),10,34);
+  x.fillStyle='#22303a';x.fillRect(10,40,120,4);
+  x.fillStyle=combustible<100?'#ff6a6a':'#7dff9b';
+  x.fillRect(10,40,120*Math.min(1,combustible/COMBUSTIBLE0),4);
+  x.textAlign='right';
+  x.fillStyle='#cfd6dc';
+  x.fillText('ALTITUD '+al,W-10,18);
+  x.fillStyle=state==='vol'?col(h,BO.vx,DUR.vx):'#cfd6dc';
+  x.fillText('HORITZONTAL '+h+' '+(m.vx>0.5?'→':(m.vx<-0.5?'←':' ')),W-10,34);
+  x.fillStyle=state==='vol'?col(v,BO.vy,DUR.vy):'#cfd6dc';
+  x.fillText('VERTICAL '+Math.abs(v)+' '+(m.vy>1?'↓':(m.vy<-1?'↑':' ')),W-10,50);
+  x.fillStyle=state==='vol'?col(a,BO.ang,DUR.ang):'#cfd6dc';
+  x.fillText('INCLINACIÓ '+Math.round(a)+'°',W-10,66);
+  x.textAlign='left';
+
+  if(state==='missatge'&&missatge){
+    x.textAlign='center';
+    x.fillStyle='rgba(0,0,0,.7)';x.fillRect(40,H/2-62,W-80,96);
+    x.strokeStyle='#555';x.lineWidth=1;x.strokeRect(40,H/2-62,W-80,96);
+    x.fillStyle=missatge.que==='bo'?'#7dff9b':(missatge.que==='dur'?'#ffd75e':'#ff6a6a');
+    x.font='bold 22px monospace';x.fillText(missatge.linies[0],W/2,H/2-30);
+    x.fillStyle='#fff';x.font='15px monospace';x.fillText(missatge.linies[1],W/2,H/2-4);
+    x.fillStyle='#aab';x.font='13px monospace';x.fillText(missatge.linies[2],W/2,H/2+20);
+    x.textAlign='left';
+  }
+
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 26px monospace';x.textAlign='center';
+    x.fillText('PAUSA',W/2,H/2);x.textAlign='left';
+  }
+}
+
+let last=performance.now();
+function loop(tt){const dt=Math.min(40,tt-last)/1000;last=tt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== CONTROLS =====
+// Els tres de moure's es mantenen premuts; l'ABORTA es un sol toc.
+function mante(id,clau){
+  const b=document.getElementById(id);
+  const fora=()=>{ctrl[clau]=0};
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();
+    if(state==='over')return;ctrl[clau]=1});
+  b.addEventListener('pointerup',fora);
+  b.addEventListener('pointercancel',fora);
+  b.addEventListener('pointerleave',fora);
+}
+mante('esq','esq');mante('dre','dre');mante('motor','motor');
+function aborta(){
+  if(state!=='vol'||paused||combustible<=0)return;
+  m.abortaT=1.6;
+}
+document.getElementById('aborta').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();aborta()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='ArrowLeft'){e.preventDefault();ctrl.esq=1}
+  if(e.code==='ArrowRight'){e.preventDefault();ctrl.dre=1}
+  if(e.code==='ArrowUp'||e.code==='Space'){e.preventDefault();ctrl.motor=1}
+  if(e.code==='KeyA'){e.preventDefault();aborta()}
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused}
+  if(e.code==='Enter'&&state==='over')start();
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft')ctrl.esq=0;
+  if(e.code==='ArrowRight')ctrl.dre=0;
+  if(e.code==='ArrowUp'||e.code==='Space')ctrl.motor=0;
+});
+document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});
+
+start();
+
+// En entrar al joc, els rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

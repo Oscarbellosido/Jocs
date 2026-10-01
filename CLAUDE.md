@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-dos jocs clàssics dels salons recreatius i sis que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i sis que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut. Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
@@ -14,6 +14,7 @@ mòbil, instal·lat com a aplicació.
 | `pong.html` | Pong | 1972 |
 | `breakout.html` | Breakout | 1976 |
 | `space_invaders.html` | Space Invaders | 1978 |
+| `lunar_lander.html` | Lunar Lander | 1979 |
 | `galaxian.html` | Galaxian | 1979 |
 | `asteroid_belt_joc.html` | Asteroids | 1979 |
 | `comecocos.html` | Pac-Man | 1980 |
@@ -84,6 +85,51 @@ Donkey Kong té les quatre pantalles de l'original —les botes, la fàbrica del
 pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
 pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
+
+## El Lunar Lander: el combustible és la partida
+
+Atari, agost del 1979: abans que el Galaxian (octubre) i que l'Asteroids
+(novembre), que de fet va aprofitar la seva placa vectorial. Com a la màquina:
+dos botons per girar, el motor, un botó d'**ABORTA** que et posa dret i tira a
+fons gastant el doble, i **no hi ha vides**: la partida dura el combustible.
+Aterratge bo, 50 punts pel multiplicador de la plataforma i 50 de combustible
+de premi; dur, 15 pel multiplicador; estavellar-se, 5. Les plataformes estretes
+multipliquen més (de 2X a 5X), el paisatge és sempre el mateix (surt d'una
+llavor fixa, que a la màquina també ho era) i, quan t'acostes a terra, la
+càmera s'hi apropa.
+
+Tres coses que no s'han de tocar a la lleugera:
+
+- **El consum va lligat al premi de 50.** Si el descens més barat possible
+  costés menys de 50, un jugador fi guanyaria combustible a cada aterratge i
+  la partida no s'acabaria mai. Va passar: amb 20 unitats per segon, a la 4X
+  un aterratge perfecte en costava 47. Amb 26, el més barat de totes les
+  plataformes en costa 61. Ho calcula el `scripts/prova-lander.mjs` (caure
+  lliure i frenar a fons a l'últim moment, sortint amb la velocitat de costat
+  més petita), i si es toca la gravetat, l'empenta, el consum, l'altura de
+  sortida o les plataformes, és la primera prova que s'ha de mirar.
+- **Els límits del bo i del dur són nostres.** Les fonts diuen que la màquina
+  estavellava a més de 15 de vertical, però no deixen clar on acabava el bo.
+  Aquí: bo fins a 7 de vertical, 6 de costat i 8 graus; dur fins a 15, 15 i
+  16 graus. Els números de la pantalla són píxels per segon partits per dos.
+- **Es mira si toca a cada passet de física, no a cada fotograma**, com al
+  Space Invaders: a tota velocitat un peu podria travessar la cresta d'una
+  muntanya sense tocar-la.
+
+Coses on ens separem de la màquina, a posta:
+
+- **Les velocitats van de colors**: verd si ara mateix aterraries bé, groc si
+  seria dur, vermell si t'estavellaries. Allà eren números blancs i els límits
+  te'ls havies de saber; al mòbil, d'una ullada mentre jugues, es veu el color.
+- **El gir és més lent** (72 graus per segon): a 92, un toc ràpid al mòbil ja
+  et passava dels 8 graus que admet un aterratge bo.
+- **Els multiplicadors bateguen però no s'apaguen.** A la màquina pampallugaven
+  i, de lluny i al mòbil, quan eren apagats no sabies on era cada plataforma.
+- El motor no va de zero a tot de cop: puja i baixa en una fracció de segon,
+  que és el que feia la palanca de la màquina.
+
+Botons: `ABORTA` a l'esquerra, petit i d'un altre color, i `MOTOR`, que és el
+que prems sense parar, gros i a l'altra punta (la trampa 3).
 
 ## El Nibbler és el Snake de debò
 
@@ -539,6 +585,9 @@ comproven el comportament.
   racons sense sortida ni passadissos llargs on no puguis girar.
 - `node scripts/prova-xifres.mjs` — que cap ronda del Xifres surti sense
   solució, que la dificultat pugi de debò i que es pugui jugar tocant.
+- `node scripts/prova-lander.mjs` — que al Lunar Lander aterrar i estavellar-se
+  vagin com toca, que la partida sempre s'acabi (el descens més barat ha de
+  costar més que el premi) i que un pilot automàtic hi aterri.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

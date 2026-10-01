@@ -14,7 +14,7 @@ const ARREL = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // per ordre de sortida, que es com han de sortir
 const ORDRE = [
-  ['pong', 1972], ['breakout', 1976], ['space_invaders', 1978],
+  ['pong', 1972], ['breakout', 1976], ['space_invaders', 1978], ['lunar_lander', 1979],
   ['galaxian', 1979], ['asteroids', 1979],
   ['comecocos', 1980], ['missile_command', 1980], ['crazy_climber', 1980],
   ['battlezone', 1980], ['defender', 1980],

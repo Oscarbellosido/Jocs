@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v69';
+const CACHE = 'jocs-v70';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
@@ -9,6 +9,7 @@ const FILES = [
   '/Jocs/asteroid_belt_joc.html',
   '/Jocs/breakout.html',
   '/Jocs/missile_command.html',
+  '/Jocs/lunar_lander.html',
   '/Jocs/galaxian.html',
   '/Jocs/frogger.html',
   '/Jocs/battlezone.html',
@@ -37,6 +38,7 @@ const FILES = [
   '/Jocs/thumbs/asteroids.png',
   '/Jocs/thumbs/breakout.png',
   '/Jocs/thumbs/missile_command.png',
+  '/Jocs/thumbs/lunar_lander.png',
   '/Jocs/thumbs/galaxian.png',
   '/Jocs/thumbs/frogger.png',
   '/Jocs/thumbs/battlezone.png',
