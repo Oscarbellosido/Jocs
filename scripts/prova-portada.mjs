@@ -66,6 +66,16 @@ for (const [w, h] of MIDES) {
       // sobre l'aspect-ratio (ens va passar amb les etiquetes width/height)
       // els dos apartats han de tenir títol
       titols: [...document.querySelectorAll('h2.seccio')].map(h => h.textContent.trim()),
+      // el boto del bot de Telegram: que es vegi, que porti al bot i que
+      // no quedi tallat
+      tg: (() => {
+        const a = document.getElementById('tg');
+        if (!a) return 'no hi és';
+        if (a.hidden || a.getBoundingClientRect().height === 0) return 'no es veu';
+        if (a.getAttribute('href') !== 'https://t.me/jocs_carles_bot') return 'no porta al bot';
+        if (a.scrollWidth > a.clientWidth + 1) return 'el text no hi cap';
+        return null;
+      })(),
       imgEstirades: [...document.images].filter(i => {
         const r = i.getBoundingClientRect();
         return Math.abs(r.width - r.height) > 2;
@@ -87,6 +97,7 @@ for (const [w, h] of MIDES) {
   if (r.imgTrencades) problemes.push(`${r.imgTrencades} miniatures trencades`);
   if (r.imgEstirades) problemes.push(`${r.imgEstirades} miniatures estirades`);
   if (r.titols.length !== 2) problemes.push(`hi ha ${r.titols.length} títols d'apartat i n'hi ha d'haver 2`);
+  if (r.tg) problemes.push('el botó de Telegram: ' + r.tg);
   if (errors.length) problemes.push(errors[0]);
 
   if (problemes.length) malament++;

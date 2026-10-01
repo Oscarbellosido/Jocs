@@ -129,6 +129,24 @@
   h2.seccio i { font-style: normal; color: #6a6a6a; }
   @media (min-width: 560px) { h2.seccio { max-width: 760px; } }
   @media (min-width: 900px) { h2.seccio { max-width: 1020px; } }
+  /* El boto del bot de Telegram. NO es "a.btn": aquell nom el porten les
+     fitxes dels jocs i el fa servir el codi que recorda l'ultim joc obert. */
+  a.tg {
+    display: inline-block;
+    max-width: calc(100% - 2rem);
+    padding: 0.45rem 0.9rem;
+    border: 1px solid #2aabee;
+    border-radius: 999px;
+    color: #9fdcff;
+    background: #0b2433;
+    font: normal 0.72rem monospace;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  a.tg:active { background: #12384f; }
   a.btn em .rec {
     min-width: 0;
     overflow: hidden;
@@ -140,6 +158,7 @@
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
+  <a class="tg" id="tg" href="https://t.me/jocs_carles_bot" target="_blank" rel="noopener" hidden>🏆 RÈCORDS AL MOMENT A TELEGRAM</a>
   <h2 class="seccio">CLÀSSICS DELS SALONS <i>1972 — 1984</i></h2>
   <div class="games" id="classics">
     <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em><i class="any">1972</i><b class="rec" data-joc="pong"></b></em></a>
@@ -178,6 +197,16 @@
 <script src="records.js"></script>
 <script>
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// El boto del bot de Telegram surt a la portada, pero NO quan ja hi jugues
+// des de dins de Telegram, que no te sentit. El records.js ja ha apuntat a
+// sessionStorage si som a dins (ho sap pel #tgWebAppData de l'adreca).
+// Enllaca al bot i no al grup: la web es publica, i amb l'enllac del grup
+// qualsevol desconegut s'hi podria apuntar.
+try{
+  const dinsTelegram=/tgWebAppData/.test(location.hash)||sessionStorage.getItem('jocs-tg')==='1';
+  if(!dinsTelegram)document.getElementById('tg').hidden=false;
+}catch(e){document.getElementById('tg').hidden=false}
 
 // En tornar d'un joc, la portada et deixava sempre a dalt de tot: amb vint
 // jocs, per tornar a jugar a un del final calia baixar tota la llista un

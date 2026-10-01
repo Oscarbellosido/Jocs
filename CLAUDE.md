@@ -486,6 +486,14 @@ exactament igual que abans i no envia res a ningú.
 - **Al xat privat amb el bot hi ha un botó «Jocs»** que obre tota la col·lecció
   dins de Telegram. Als grups, Telegram no deixa posar aquest botó: per això
   allà els avisos porten un enllaç normal.
+- **A la portada hi ha un botó «🏆 RÈCORDS AL MOMENT A TELEGRAM»** que porta al
+  bot, **@jocs_carles_bot** (el nom d'usuari és públic; la clau, no). Enllaça al
+  bot i **mai al grup**: la web és pública, i amb l'enllaç d'invitació del grup
+  qualsevol desconegut s'hi podria apuntar. Quan ja jugues des de dins de
+  Telegram no surt, que no té sentit. És `a.tg` i no `a.btn`, perquè `a.btn` el
+  porten les fitxes dels jocs i el fa servir el codi que recorda l'últim joc
+  obert. El `scripts/prova-portada.mjs` comprova que es vegi, que porti al bot i
+  que el text hi càpiga a totes les mides.
 
 Com està fet, i per què:
 
