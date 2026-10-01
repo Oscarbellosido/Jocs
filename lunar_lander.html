@@ -145,7 +145,13 @@ const G=16, EMPENTA=42, GIR=1.25;         // px/s2, px/s2, radians per segon
 // barat de totes en costa 61. Si es toca la gravetat, l'empenta, l'altura de
 // sortida o les plataformes, s'ha de tornar a fer aquest compte.
 const CREMA=26;                           // unitats de combustible per segon a ple motor
-const COMBUSTIBLE0=750;                   // el que donava la maquina per moneda (una de les quatre opcions)
+// A la maquina, cada moneda donava 750 (era una de les quatre opcions de
+// l'operador) i, quan se t'acabava, en podies posar mes per seguir. Aqui no hi
+// ha monedes, i amb 750 la partida durava un sospir: un pilot automatic
+// prudent feia quatre baixades i una persona al mobil, dues o tres. Ara
+// comences amb dues monedes. El consum i el premi no es toquen: son els que
+// fan que la partida sempre s'acabi.
+const COMBUSTIBLE0=1500;
 const PAS=1/120;
 // Que vol dir aterrar be. La maquina mostrava les velocitats amb numeros; aqui
 // es el mateix: el que surt a la pantalla es px/s partit per dos.
@@ -202,6 +208,9 @@ function pas(dt){
   // zero a tot de cop. Aqui el boto la va empenyent i, en deixar-lo, torna.
   const vol=(ctrl.motor&&combustible>0)?1:0;
   m.palanca+=(vol-m.palanca)*Math.min(1,dt*(vol>m.palanca?5:7));
+  // sense aixo, en deixar anar el boto la palanca s'acostava a zero pero no
+  // hi arribava mai, i cremava una engruna de combustible per sempre
+  if(!vol&&m.palanca<0.02)m.palanca=0;
   if(ctrl.esq)m.ang-=GIR*dt;
   if(ctrl.dre)m.ang+=GIR*dt;
   let empenta=EMPENTA*m.palanca, crema=CREMA*m.palanca;

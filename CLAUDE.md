@@ -118,6 +118,13 @@ Tres coses que no s'han de tocar a la lleugera:
 
 Coses on ens separem de la màquina, a posta:
 
+- **Comences amb dues monedes de combustible (1.500), no amb una (750).** A
+  la màquina, quan se t'acabava, en podies posar més per seguir; aquí no hi ha
+  monedes, i amb 750 en Carles es quedava sense propulsió de seguida. El
+  pilot automàtic que baixa ràpid i frena a l'últim moment feia 5 baixades;
+  un de prudent, que baixa a poc a poc com fa una persona, 4. Ara en fan 10 i
+  8. El consum i el premi no es van tocar: són els que fan que la partida
+  sempre s'acabi.
 - **Les velocitats van de colors**: verd si ara mateix aterraries bé, groc si
   seria dur, vermell si t'estavellaries. Allà eren números blancs i els límits
   te'ls havies de saber; al mòbil, d'una ullada mentre jugues, es veu el color.

@@ -1,4 +1,4 @@
-const CACHE = 'jocs-v72';
+const CACHE = 'jocs-v73';
 const FILES = [
   '/Jocs/',
   '/Jocs/index.html',
