@@ -472,6 +472,62 @@ Regles que no s'han de trencar:
   hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del
   servidor (`'servidor'`) i el missatge diu la veritat.
 
+## El bot de Telegram
+
+Dues coses, i totes dues **opcionals**: sense la clau del bot, el Worker va
+exactament igual que abans i no envia res a ningú.
+
+- **Avisa el grup quan algú passa a ser el número 1** d'un joc: «🏆 MAR ha fet
+  5.100 al Ram i passa davant de CAR (4.320)», amb un botó per anar a jugar a
+  aquell joc. **Només el número 1**: amb cada entrada al top 10, el grup seria
+  un degoteig. Ordres al grup: `/aqui` (avisa aquí), `/prou` (deixa d'avisar),
+  `/records` (qui mana a cada joc) i `/records ram` (la taula d'un joc; troba el
+  joc pel principi del nom i sense fer cas dels accents).
+- **Al xat privat amb el bot hi ha un botó «Jocs»** que obre tota la col·lecció
+  dins de Telegram. Als grups, Telegram no deixa posar aquest botó: per això
+  allà els avisos porten un enllaç normal.
+
+Com està fet, i per què:
+
+- **La clau del bot no és enlloc del repositori.** Va al tauler de Cloudflare
+  com a *secret* amb el nom `TELEGRAM_TOKEN`. Aquest repositori és públic, i
+  qui té la clau pot fer parlar el bot. Els secrets no es perden quan es torna a
+  enganxar el codi del Worker.
+- **Només Telegram pot parlar amb el Worker.** Telegram envia una contrasenya a
+  cada missatge (`X-Telegram-Bot-Api-Secret-Token`), i qualsevol petició sense
+  ella rep un 403. La contrasenya surt de la clau (un resum SHA-256), així no
+  cal guardar-ne una segona.
+- **Connectar-lo és obrir una pàgina**: `…/telegram/activa`. El Worker mateix
+  diu a Telegram on ha d'enviar els missatges, posa el botó «Jocs» i registra
+  la llista d'ordres. Ningú no ha d'escriure adreces amb la clau a dins.
+- **L'avís va després de respondre al joc** (`ctx.waitUntil`). El joc rep la
+  resposta de seguida i, si Telegram falla o va lent, la puntuació ja està
+  desada igualment. Ho comprova la prova del Worker fent fallar Telegram.
+- El xat on s'avisa es guarda al KV, a `telegram:xat`.
+- Cada joc ha de ser a la llista `FITXA` del Worker (com es diu —«al Ram», «a les
+  Boles»— i quin fitxer s'obre). La prova del Worker falla si n'hi falta cap o
+  si el fitxer no existeix.
+
+**Dins de Telegram, lliscar el dit cap avall tanca la finestra**, i al Síndria,
+al Ram o al Tetris és just el que fas per jugar. El `records.js` ho desactiva
+(`disableVerticalSwipes`), però **només dins de Telegram**: ho sap perquè la
+primera pàgina arriba amb `#tgWebAppData` a l'adreça, i ho apunta a
+`sessionStorage` per quan passes a un joc. Fora de Telegram no es carrega res
+de nou. És l'únic codi de fora que carrega la col·lecció.
+
+Per posar-lo en marxa (ho fa en Carles, una sola vegada):
+
+1. Enganxar el `worker/records.js` nou a Cloudflare i **Implementar**.
+2. A Telegram, parlar amb **@BotFather**, `/newbot`, i copiar la clau que dona.
+3. Al tauler de Cloudflare, al Worker, **Configuració → Variables i secrets →
+   Afegir**, de tipus **Secret**, amb el nom `TELEGRAM_TOKEN` i la clau com a
+   valor.
+4. Obrir `https://jocs-records.oscarbellosido.workers.dev/telegram/activa`: ha
+   de dir «Fet!».
+5. Afegir el bot al grup i escriure-hi `/aqui`.
+6. Recomanat: al @BotFather, `/setjoingroups` → *Disable*, perquè ningú més el
+   pugui ficar al seu grup i fer-hi `/aqui`.
+
 ## El marcador de dalt: pausa i so
 
 Tots dos botons els posa el `records.js` sol, a `#hud` (o `#h`, a l'Asteroids).
@@ -567,7 +623,8 @@ No hi ha framework: proves amb Playwright (ja instal·lat a
 `/opt/node22/lib/node_modules/playwright`) que obren el joc de veritat i
 comproven el comportament.
 
-- `node scripts/prova-worker.mjs` — el Worker contra un KV simulat.
+- `node scripts/prova-worker.mjs` — el Worker contra un KV simulat, i el bot de
+  Telegram contra un Telegram de mentida (res no surt a internet).
 - `node scripts/prova-dialeg.mjs` — que el quadre de les inicials es vegi bé a
   tots els jocs.
 - `node scripts/prova-menu.mjs` — que en acabar la partida tots els jocs
@@ -638,9 +695,9 @@ comproven el comportament.
 - **Cada canvi de fitxers: pujar la versió de la cache a `sw.js`** (`jocs-vN`).
   Si no, l'app instal·lada pot seguir servint la versió antiga.
 - **Cada joc nou**: afegir-lo a `index.html` (a l'apartat que li toqui), a
-  `sw.js` (el fitxer i la miniatura), a la descripció del `manifest.json`, a la
-  llista `JOCS` de `worker/records.js`, a la taula d'aquí dalt i a la llista del
-  `scripts/prova-portada.mjs`. I posar-li la línia d'ajuda
+  `sw.js` (el fitxer i la miniatura), a la descripció del `manifest.json`, a les
+  llistes `JOCS` i `FITXA` de `worker/records.js`, a la taula d'aquí dalt i a la
+  llista del `scripts/prova-portada.mjs`. I posar-li la línia d'ajuda
   començant per l'objectiu. I **tornar a desplegar el
   Worker**, que això no va sol.
 - **Miniatures**: es generen obrint cada joc i capturant el canvas. Compte: el

@@ -5,6 +5,7 @@ const store = new Map();
 const env = { RECORDS: {
   get: async k => (store.has(k) ? store.get(k) : null),
   put: async (k, v) => { store.set(k, v); },
+  delete: async k => { store.delete(k); },
 }};
 const call = async (method, path, body) => {
   const r = await worker.fetch(new Request('https://x.dev' + path, {
@@ -15,7 +16,8 @@ const call = async (method, path, body) => {
   try { data = await r.json(); } catch {}
   return { status: r.status, data, cors: r.headers.get('Access-Control-Allow-Origin') };
 };
-const ok = (c, msg) => console.log(`${c ? '✓' : '✗'} ${msg}`);
+let malament = 0;
+const ok = (c, msg) => { if (!c) malament++; console.log(`${c ? '✓' : '✗'} ${msg}`); };
 
 // 1. llista buida al principi
 let r = await call('GET', '/records/tetris');
@@ -86,3 +88,155 @@ ok(r.status === 405, 'rebutja metodes que no toquen');
 store.set('joc:galaxian', 'aixo no es json');
 r = await call('GET', '/records/galaxian');
 ok(r.status === 200 && Array.isArray(r.data), 'aguanta un valor corromput al KV');
+
+
+// ===== 11. TELEGRAM =====
+// Un Telegram de mentida que apunta tot el que se li envia. Res no surt a
+// internet.
+const enviats = [];
+let telegramFalla = false;
+globalThis.fetch = async (u, opts) => {
+  const metode = String(u).split('/').pop();
+  enviats.push({ url: String(u), metode, cos: opts && opts.body ? JSON.parse(opts.body) : null });
+  if (telegramFalla) throw new Error('sense xarxa');
+  if (metode === 'getMe') return new Response(JSON.stringify({ ok: true, result: { username: 'JocsBot' } }));
+  return new Response(JSON.stringify({ ok: true, result: true }));
+};
+const TOKEN = '123456:clau-de-prova';
+const envTg = { RECORDS: env.RECORDS, TELEGRAM_TOKEN: TOKEN };
+const crida = async (e, method, path, body, capcaleres = {}) => {
+  const r = await worker.fetch(new Request('https://jocs-records.x.dev' + path, {
+    method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...capcaleres },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }), e);
+  const text = await r.text();
+  let data = null; try { data = JSON.parse(text); } catch {}
+  return { status: r.status, data, text };
+};
+const missatges = () => enviats.filter(x => x.metode === 'sendMessage');
+
+// sense clau no s'envia res, i tot va com abans
+r = await crida(env, 'POST', '/records/ram', { nom: 'ZZZ', punts: 10 });
+ok(r.status === 200 && enviats.length === 0, 'sense la clau de Telegram, un rècord no envia res a ningú');
+store.delete('joc:ram');
+
+r = await crida(env, 'GET', '/telegram/activa');
+ok(r.status === 200 && /Falta la clau/.test(r.text), 'activar sense clau: diu que falta la clau, en una pàgina que es llegeix');
+
+// activar
+r = await crida(envTg, 'GET', '/telegram/activa');
+const hook = enviats.find(x => x.metode === 'setWebhook');
+ok(r.status === 200 && /@JocsBot/.test(r.text), 'activar: la pàgina diu que el bot @JocsBot ja està connectat');
+ok(hook && hook.cos.url === 'https://jocs-records.x.dev/telegram' && hook.cos.secret_token,
+   'activar: diu a Telegram on ha d\'enviar els missatges, amb contrasenya');
+const menu = enviats.find(x => x.metode === 'setChatMenuButton');
+ok(menu && menu.cos.menu_button.type === 'web_app' && menu.cos.menu_button.web_app.url === 'https://oscarbellosido.github.io/Jocs/',
+   'activar: posa el botó «Jocs» que obre la web dins de Telegram');
+ok(enviats.some(x => x.metode === 'setMyCommands'), 'activar: registra la llista d\'ordres');
+ok(!enviats.some(x => JSON.stringify(x.cos || '').includes(TOKEN)), 'la clau no viatja dins de cap missatge');
+const SECRET = hook.cos.secret_token;
+
+// només Telegram pot parlar amb el Worker
+const msg = (text, chat = -1001) => ({ update_id: 1, message: { message_id: 1, text, chat: { id: chat, type: 'supergroup' } } });
+r = await crida(envTg, 'POST', '/telegram', msg('/aqui'));
+ok(r.status === 403 && !store.has('telegram:xat'), 'un missatge sense la contrasenya de Telegram: fora');
+r = await crida(envTg, 'POST', '/telegram', msg('/aqui'), { 'X-Telegram-Bot-Api-Secret-Token': 'inventada' });
+ok(r.status === 403 && !store.has('telegram:xat'), 'amb una contrasenya inventada: fora');
+
+const tg = (text, chat) => crida(envTg, 'POST', '/telegram', msg(text, chat), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+
+// /aqui
+enviats.length = 0;
+r = await tg('/aqui@JocsBot');
+ok(r.status === 200 && store.get('telegram:xat') === '-1001', '/aqui al grup: a partir d\'ara avisa en aquell grup');
+ok(missatges().length === 1 && missatges()[0].cos.chat_id === -1001, '/aqui: respon al grup que d\'acord');
+
+// els avisos
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/ram', { nom: 'CAR', punts: 4320 });
+let m = missatges()[0];
+ok(m && m.cos.chat_id === '-1001' && /Primer rècord al Ram/.test(m.cos.text) && /CAR/.test(m.cos.text) && /4\.320/.test(m.cos.text),
+   'primer rècord d\'un joc: «' + (m ? m.cos.text.replace(/<[^>]+>/g, '') : '—') + '»');
+ok(m && m.cos.reply_markup.inline_keyboard[0][0].url === 'https://oscarbellosido.github.io/Jocs/ram.html',
+   'l\'avís porta el botó per anar a jugar a aquell joc');
+
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/ram', { nom: 'MAR', punts: 5100 });
+m = missatges()[0];
+ok(m && /MAR.*5\.100.*passa davant de.*CAR.*4\.320/.test(m.cos.text),
+   'algú passa davant: «' + (m ? m.cos.text.replace(/<[^>]+>/g, '') : '—') + '»');
+
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/ram', { nom: 'MAR', punts: 6000 });
+m = missatges()[0];
+ok(m && /MAR.*millora el seu rècord.*6\.000.*abans 5\.100/.test(m.cos.text),
+   'es millora a si mateix: «' + (m ? m.cos.text.replace(/<[^>]+>/g, '') : '—') + '»');
+
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/ram', { nom: 'JOA', punts: 5500 });
+ok(missatges().length === 0, 'un segon lloc no avisa: només el número 1, que si no seria massa');
+
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/track_field', { nom: 'CAR', punts: 80000 });
+m = missatges()[0];
+ok(m && /Track &amp; Field/.test(m.cos.text), 'els noms amb «&» s\'escriuen bé (Track & Field)');
+
+// si Telegram falla, el rècord es desa igualment
+telegramFalla = true;
+r = await crida(envTg, 'POST', '/records/ram', { nom: 'ERR', punts: 7000 });
+telegramFalla = false;
+ok(r.status === 200 && r.data.posicio === 1 && JSON.parse(store.get('joc:ram'))[0].n === 'ERR',
+   'si Telegram no respon, el rècord es desa igualment i el joc no se n\'assabenta');
+
+// /records
+enviats.length = 0;
+await tg('/records ram');
+m = missatges()[0];
+ok(m && /El Ram/.test(m.cos.text) && /1\.\s+ERR\s+7\.000/.test(m.cos.text) && /MAR\s+6\.000/.test(m.cos.text),
+   '/records ram: respon amb la taula');
+enviats.length = 0;
+await tg('/records@JocsBot lunar');
+ok(missatges()[0] && /Lunar Lander/.test(missatges()[0].cos.text), '/records lunar: troba el Lunar Lander pel principi del nom');
+enviats.length = 0;
+await tg('/records síndria');
+ok(missatges()[0] && /Síndria/.test(missatges()[0].cos.text), '/records síndria: amb accent també');
+enviats.length = 0;
+await tg('/records patata');
+ok(missatges()[0] && /No sé quin joc/.test(missatges()[0].cos.text), '/records d\'un joc que no existeix: ho diu');
+enviats.length = 0;
+await tg('/records');
+ok(missatges()[0] && /Qui mana/.test(missatges()[0].cos.text) && /El Ram: <b>ERR<\/b> 7\.000/.test(missatges()[0].cos.text),
+   '/records sol: qui mana a cada joc');
+
+// el que no és una ordre, ni es contesta
+enviats.length = 0;
+r = await tg('hola a tothom');
+ok(r.status === 200 && enviats.length === 0, 'el que s\'escriu al grup que no és una ordre, el bot ni ho mira');
+
+// /prou
+enviats.length = 0;
+await tg('/prou', -2002);
+ok(store.get('telegram:xat') === '-1001' && /no estava avisant/.test(missatges()[0].cos.text),
+   '/prou des d\'un altre xat: no toca res');
+await tg('/prou');
+ok(!store.has('telegram:xat'), '/prou al grup: deixa d\'avisar');
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/ram', { nom: 'NOU', punts: 9000 });
+ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
+
+// cada joc té el seu nom i el seu fitxer, i el fitxer existeix
+const fsm = await import('fs');
+const codi = fsm.readFileSync(fitxerWorker, 'utf8');
+const idsJocs = codi.match(/const JOCS = \{([\s\S]*?)\}/)[1].split('\n').map(l => (l.match(/^\s*(\w+):/) || [])[1]).filter(Boolean);
+const fitxa = codi.match(/const FITXA = \{([\s\S]*?)\n\};/)[1];
+const fitxers = [...fitxa.matchAll(/^\s*(\w+):\s*\[.*'([\w.]+\.html)'\]/gm)].map(x => [x[1], x[2]]);
+const ids = fitxers.map(x => x[0]);
+const falten = idsJocs.filter(id => !ids.includes(id));
+const noHiSon = fitxers.filter(([, f]) => !fsm.existsSync(new URL('../' + f, import.meta.url)));
+ok(!falten.length && !noHiSon.length,
+   falten.length ? 'a la FITXA hi falten: ' + falten.join(', ')
+   : noHiSon.length ? 'fitxers que no existeixen: ' + noHiSon.map(x => x[1]).join(', ')
+   : `els ${ids.length} jocs tenen nom per als missatges i el seu fitxer existeix`);
+
+console.log(malament ? `\n${malament} coses malament` : '\nel Worker, bé');
+process.exit(malament ? 1 : 0);

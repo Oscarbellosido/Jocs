@@ -7,6 +7,34 @@
  */
 const Records = (() => {
   const URL_BASE = 'https://jocs-records.oscarbellosido.workers.dev';
+
+  // ---- dins de Telegram ----
+  // Quan els jocs s'obren des del boto "Jocs" del bot, Telegram afegeix
+  // #tgWebAppData=... a l'adreça de la primera pagina. Alla dins, lliscar el
+  // dit cap avall tanca la finestra, i al Sindria, al Ram o al Tetris es just
+  // el que fas per jugar. Per aixo, NOMES dins de Telegram, es carrega el seu
+  // codi i es desactiva aquell gest (i de passada s'aprofita tota l'alcada).
+  // Fora de Telegram no es carrega res de nou. La marca es guarda a
+  // sessionStorage perque, en passar de la portada a un joc, l'adreca ja no
+  // porta el #tgWebAppData.
+  try {
+    if (/tgWebAppData/.test(location.hash)) sessionStorage.setItem('jocs-tg', '1');
+    if (sessionStorage.getItem('jocs-tg') === '1') {
+      const s = document.createElement('script');
+      s.src = 'https://telegram.org/js/telegram-web-app.js';
+      s.async = true;
+      s.onload = () => {
+        try {
+          const wa = window.Telegram && window.Telegram.WebApp;
+          if (!wa) return;
+          wa.ready();
+          wa.expand();
+          if (wa.isVersionAtLeast && wa.isVersionAtLeast('7.7')) wa.disableVerticalSwipes();
+        } catch (e) { }
+      };
+      document.head.appendChild(s);
+    }
+  } catch (e) { }
   const TEMPS_MAX = 6000;                 // no esperem mai mes de 6 segons
 
   // Quan una crida falla volem saber per que: no es el mateix que no hi
