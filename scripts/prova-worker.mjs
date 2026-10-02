@@ -224,6 +224,24 @@ enviats.length = 0;
 await crida(envTg, 'POST', '/records/ram', { nom: 'NOU', punts: 9000 });
 ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
 
+// la partida del dia de La Impremta: una taula per a cada dia
+{
+  const avui = new Date().toISOString().slice(0, 10);
+  const fa = d => new Date(Date.now() - d * 86400e3).toISOString().slice(0, 10);
+  let r = await call('GET', '/records/impremta_dia/' + avui);
+  ok(r.status === 200 && Array.isArray(r.data) && !r.data.length, 'partida del dia: la taula d\'avui comença buida');
+  r = await call('POST', '/records/impremta_dia/' + avui, { nom: 'CRE', punts: 5400 });
+  ok(r.status === 200 && r.data.posicio === 1, 'partida del dia: s\'hi apunta qui juga avui');
+  r = await call('GET', '/records/impremta_dia/' + fa(1));
+  ok(r.status === 200 && !r.data.length, 'partida del dia: la d\'ahir és una altra taula');
+  r = await call('POST', '/records/impremta_dia/' + fa(5), { nom: 'TRA', punts: 99 });
+  ok(r.status === 400, 'partida del dia: a la d\'un dia passat ja no s\'hi pot apuntar ningú');
+  r = await call('GET', '/records/impremta_dia/ahir');
+  ok(r.status === 400, 'partida del dia: un dia mal escrit es rebutja');
+  r = await call('GET', '/records');
+  ok(r.status === 200 && !Object.keys(r.data).some(k => k.includes('dia')), 'les partides del dia no surten a la llista de tots els jocs');
+}
+
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix
 const fsm = await import('fs');
 const codi = fsm.readFileSync(fitxerWorker, 'utf8');

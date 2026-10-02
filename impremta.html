@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Impremta</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* lletra de debo i cantonades rodones: res de pixels quadrats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#1a1410;touch-action:none}
+#controls{flex:none;width:94%;display:flex;gap:8px;margin-top:8px;align-items:center;justify-content:center}
+button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:84px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+/* IMPRIMEIX es el que prems sempre: al mig i gros. DESCARTA gasta un
+   descart: a l'altra punta, petit i d'un altre color (la trampa 3). */
+#b2{width:150px;font-size:16px;color:#ffe08a;border-color:#a8873a}
+#b1{width:84px;font-size:12px;color:#ff9b8a;border-color:#8a4a3a}
+#b3{width:76px;font-size:12px;color:#aaa}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.6;display:none;background:rgba(0,0,0,.92);border:1px solid #555;border-radius:10px;padding:14px 20px;max-width:84%;max-height:88%;overflow:auto;box-sizing:border-box}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="580"></canvas></div>
+  <div id="controls">
+    <button id="b1">DESCARTA</button><button id="b2">IMPRIMEIX</button><button id="b3">BARREJA</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Fes paraules amb les lletres de la mà i arriba als punts que demana cada pàgina; amb els rals, compra segells que multipliquen.</b> toca les lletres en ordre i IMPRIMEIX · toca un segell per saber què fa · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function noise(dur=.1,vol=.2){
+  if(!AC)return;
+  const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=AC.createBufferSource(),g=AC.createGain(),now=AC.currentTime;
+  s.buffer=b;g.gain.setValueAtTime(vol,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  s.connect(g);g.connect(MG);s.start();s.stop(now+dur);
+}
+function sndToc(){aInit();tone(620,.04,"triangle",.14)}
+function sndTreu(){aInit();tone(380,.05,"triangle",.12)}
+function sndNo(){aInit();tone(160,.18,"square",.16,-60)}
+// cada pas del recompte sona una mica mes agut: se sent com creix
+function sndCompta(k){aInit();tone(330*Math.pow(1.06,Math.min(k,30)),.07,"triangle",.18)}
+function sndMult(k){aInit();tone(220*Math.pow(1.06,Math.min(k,30)),.12,"sawtooth",.12)}
+function sndPremsa(){aInit();noise(.12,.35);tone(70,.18,"sine",.4,-20)}
+function sndRals(){aInit();[1320,1760].forEach((f,i)=>setTimeout(()=>tone(f,.09,"square",.08),i*60))}
+function sndBe(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.18,"triangle",.24),i*90))}
+function sndFi(){aInit();[340,280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.26,-70),i*230))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=580;
+
+// ===== ATZAR AMB LLAVOR =====
+// Tot el que surt a l'atzar (l'ordre de les lletres, la botiga, els
+// paquets, els censors) surt d'una llavor. Amb la mateixa llavor, la mateixa
+// partida: aixi la partida del dia es igual per a tothom i un repte es pot
+// tornar a jugar exactament. Cada cosa te el seu fil (la bossa de la pagina 4,
+// la botiga de la pagina 7...) perque el que compres no canvii la sort de la
+// resta.
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rng(...parts){return mulberry(hashText(P.llavor+'|'+parts.join('|')))}
+function barreja(r,a){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const triaDe=(r,a)=>a[Math.floor(r()*a.length)];
+
+// ===== ELS TIPUS (les lletres de plom) =====
+// El valor ve del Garbuix: com mes rara en catala, mes val. La QU i la NY van
+// en un sol tipus, que soles la Q i la Y no servirien per a res.
+const VALOR={a:1,e:1,r:1,t:1,o:1,i:1,s:1,c:2,n:2,p:2,l:2,m:2,d:2,u:3,v:3,
+  g:4,f:4,b:4,x:5,h:5,qu:6,j:6,ny:6,'ç':8,z:8};
+const LLETRES=Object.keys(VALOR);
+const VOC=new Set(['a','e','i','o','u']);
+// La caixa de sortida: 57 tipus, un 40% de vocals, com el catala escrit. Sense
+// Ç ni Z, que es poden comprar.
+const CAIXA0={a:7,e:7,i:4,o:3,u:2,r:4,s:4,t:3,n:3,l:3,c:2,m:2,d:2,p:2,
+  b:1,g:1,f:1,v:1,x:1,qu:1,ny:1,j:1,h:1};
+const MILLORES={
+  negreta:{nom:'NEGRETA',txt:'+4 mult quan s\'imprimeix'},
+  vermella:{nom:'TINTA VERMELLA',txt:'×1,5 quan s\'imprimeix'},
+  daurada:{nom:'DAURADA',txt:'2 rals quan s\'imprimeix'},
+  gravada:{nom:'GRAVADA',txt:'+15 punts quan s\'imprimeix'},
+};
+const NOMS_MILLORA=Object.keys(MILLORES);
+
+// ===== LES PARAULES =====
+// Com mes llarga, mes punts de base i mes multiplicador. Els manuals de la
+// botiga en pugen el nivell.
+const NIV0={2:[4,1],3:[8,1],4:[14,2],5:[22,3],6:[32,4],7:[44,5],8:[60,7],9:[80,9]};
+const PUJA={2:[3,1],3:[5,1],4:[8,1],5:[10,1],6:[14,1],7:[18,2],8:[24,2],9:[30,2]};
+
+// ===== ELS SEGELLS =====
+// Els comodins del joc: canvien les regles a favor teu. Com a molt en tens cinc.
+const MAX_SEGELLS=5;
+const esAbc=t=>{for(let i=1;i<t.length;i++)if(t[i]<t[i-1])return false;return t.length>=3};
+const SEGELLS={
+  tinta:{nom:'Tinta fresca',txt:'+4 mult a totes les paraules',preu:4,paraula:()=>({m:4})},
+  vocals:{nom:'Vocalista',txt:'cada vocal de la paraula, +6 punts',preu:4,lletra:(c,i)=>VOC.has(c.lletres[i])?{p:6}:null},
+  ploma:{nom:"Ploma d'oca",txt:'cada lletra de la paraula, +4 punts',preu:4,lletra:()=>({p:4})},
+  cares:{nom:'Lletres cares',txt:'cada lletra que val 4 o més, +4 mult',preu:5,lletra:(c,i)=>c.valors[i]>=4?{m:4}:null},
+  erudit:{nom:'Erudit',txt:'cada lletra que val 5 o més, ×1,5',preu:7,lletra:(c,i)=>c.valors[i]>=5?{x:1.5}:null},
+  infinitiu:{nom:'Infinitiu',txt:'si la paraula acaba en R, +8 mult',preu:5,paraula:c=>c.text.endsWith('r')?{m:8}:null},
+  lipo:{nom:'Lipograma',txt:'si la paraula no té cap E, +7 mult',preu:4,paraula:c=>!c.text.includes('e')?{m:7}:null},
+  obertura:{nom:'Obertura',txt:'si la paraula comença per vocal, +6 mult',preu:4,paraula:c=>VOC.has(c.text[0])?{m:6}:null},
+  abc:{nom:'Abecedari',txt:'si les lletres van per ordre alfabètic (com CEL), +15 mult',preu:5,paraula:c=>esAbc(c.text)?{m:15}:null},
+  capicua:{nom:'Capicua',txt:'si es llegeix igual del revés (com ARA), ×4',preu:5,paraula:c=>c.text.length>=3&&c.text===[...c.text].reverse().join('')?{x:4}:null},
+  doble:{nom:'Lletra doble',txt:'si té dues lletres iguals de costat (LL, SS, RR…), ×2',preu:6,paraula:c=>/(.)\1/.test(c.text)?{x:2}:null},
+  rodoli:{nom:'Rodolí',txt:"si acaba amb les mateixes dues lletres que l'anterior, ×3",preu:5,paraula:c=>c.anterior&&c.anterior.slice(-2)===c.text.slice(-2)?{x:3}:null},
+  curta:{nom:'Poc i bo',txt:'les paraules de 4 lletres o menys, ×2',preu:5,paraula:c=>c.n<=4?{x:2}:null},
+  llarga:{nom:'Enciclopèdia',txt:'les paraules de 6 lletres o més, ×2',preu:6,paraula:c=>c.n>=6?{x:2}:null},
+  ultima:{nom:"L'última",txt:"l'última impressió de cada pàgina, ×3",preu:6,paraula:c=>c.ultima?{x:3}:null},
+  estalvi:{nom:'Estalviador',txt:'+3 mult per cada descart que et queda',preu:5,paraula:c=>c.descarts>0?{m:3*c.descarts}:null},
+  guardiola:{nom:'Guardiola',txt:'+1 mult per cada 4 rals que tens',preu:5,paraula:c=>c.rals>=4?{m:Math.floor(c.rals/4)}:null},
+  vell:{nom:'Vell impressor',txt:s=>'+1 mult per cada paraula de 6 lletres o més que imprimeixis (ara +'+(s.n||0)+')',preu:6,
+    paraula:(c,s)=>s.n?{m:s.n}:null,despres:(c,s)=>{if(c.n>=6){s.n=(s.n||0)+1;return 'VELL IMPRESSOR +'+s.n}}},
+  or:{nom:"Paraula d'or",txt:'cada paraula de 7 lletres o més, 4 rals',preu:4,rals:c=>c.n>=7?4:0},
+  mecenes:{nom:'Mecenes',txt:'1 ral per cada paraula que imprimeixes',preu:5,rals:()=>1},
+  calaix:{nom:'Calaix gran',txt:'una lletra més a la mà',preu:6,ma:1},
+  paperera:{nom:'Paperera',txt:'un descart més a cada pàgina',preu:4,desc:1},
+  premsa:{nom:'Premsa doble',txt:'una impressió més a cada pàgina',preu:7,impr:1},
+};
+const IDS_SEGELL=Object.keys(SEGELLS);
+const textSegell=s=>{const d=SEGELLS[s.id];return typeof d.txt==='function'?d.txt(s):d.txt};
+
+// ===== EL CENSOR =====
+// La tercera pagina de cada capitol la vigila el censor, que posa una
+// prohibicio i demana el doble de punts. A la impremta de debo tambe hi era.
+const CENSORS={
+  sense_e:{nom:'SENSE E',txt:'cap paraula amb E',valida:c=>c.text.includes('e')?'el censor no deixa passar la E':null},
+  sense_a:{nom:'SENSE A',txt:'cap paraula amb A',valida:c=>c.text.includes('a')?'el censor no deixa passar la A':null},
+  curtes:{nom:'PARAULES CURTES',txt:'com a molt 4 lletres',valida:c=>c.n>4?'el censor només vol paraules de 4 lletres o menys':null},
+  llargues:{nom:'PARAULES LLARGUES',txt:'com a mínim 5 lletres',valida:c=>c.n<5?'el censor només vol paraules de 5 lletres o més':null},
+  menys:{nom:'UNA IMPRESSIÓ MENYS',txt:'una impressió menys',inici:P=>{P.impressions=Math.max(1,P.impressions-1)}},
+  sense_desc:{nom:'SENSE DESCARTS',txt:'no pots descartar',inici:P=>{P.descarts=0}},
+  vocals:{nom:'VOCALS MUDES',txt:'les vocals no sumen punts'},
+  calaix:{nom:'CALAIX PETIT',txt:'dues lletres menys a la mà',ma:-2},
+  segrest:{nom:'SEGELL SEGRESTAT',txt:'el primer segell no fa res'},
+  repetir:{nom:'CAP REPETICIÓ',txt:'no pots repetir llargada',valida:c=>P.llargades.includes(c.n)?'ja n\'has imprès una de '+c.n+' lletres':null},
+};
+// el primer censor de la partida, un dels suaus: el primer capitol es per aprendre
+const CENSORS_SUAUS=['menys','sense_desc','segrest','repetir','sense_a'];
+
+// ===== QUANTS PUNTS DEMANA CADA PAGINA =====
+// Cada capitol te tres pagines: la petita, la gran (×1,5) i la del censor
+// (×2). Al principi es pot amb paraules soles; mes enlla, nomes amb segells.
+const OBJ=[100,260,560,1100,2100,3900,7000,12500];
+function arrodoneix(n){const e=Math.pow(10,Math.max(0,Math.floor(Math.log10(n))-1));return Math.round(n/e)*e}
+function objectiuDe(cap,pag){
+  const b=cap<=OBJ.length?OBJ[cap-1]:OBJ[OBJ.length-1]*Math.pow(1.8,cap-OBJ.length);
+  return arrodoneix(b*[1,1.5,2][pag-1]);
+}
+
+// ===== EL DICCIONARI =====
+// Ve del de Softcatala (vegeu dades/LLICENCIA-paraules.txt). Aqui, a
+// diferencia del Garbuix, hi ha totes les formes: plurals, femenins i verbs
+// conjugats. Amb vuit lletres a la ma, tothom prova CASES o MENJO.
+let DIC=null,errorDic=false;
+fetch('dades/formes.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+  const s=new Set();
+  for(const l of t.split('\n'))if(l&&l[0]!=='#')s.add(l.trim());
+  DIC=s;
+}).catch(()=>{errorDic=true});
+
+// ===== LA PARTIDA =====
+const JOC='impremta';
+let P=null;                       // la partida
+let state='inici',paused=false;
+let anim=null,rotuls=[],avis='',avisT=0,avisCol='#fff',tremola=0,info=null,temps=0;
+let idSeg=1;
+
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+function llavorNova(){
+  const L='ABCDEFGHJKLMNPRSTUVXZ23456789';let s='';
+  for(let i=0;i<6;i++)s+=L[Math.floor(Math.random()*L.length)];
+  return s;
+}
+// #repte=LLAVOR&n=CRE&p=12340&c=3&g=2: algu t'ha reptat a la seva partida
+function llegeixRepte(){
+  const h=location.hash.replace(/^#/,'');
+  if(!/repte=/.test(h))return null;
+  const q=new URLSearchParams(h);
+  const ll=(q.get('repte')||'').toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20);
+  if(!ll)return null;
+  return {llavor:ll,n:(q.get('n')||'???').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3),
+    p:Math.max(0,parseInt(q.get('p')||'0',10)||0),c:parseInt(q.get('c')||'0',10)||0,g:parseInt(q.get('g')||'0',10)||0};
+}
+const REPTE=llegeixRepte();
+let liderDia=null;
+
+function nouTipus(l,e=null,comodi=false){return {id:idSeg++,l,e,comodi}}
+
+function novaPartida(mode,llavor,repte=null){
+  P={mode,llavor,repte,capitol:1,pagina:1,objectiu:0,impres:0,impressions:0,descarts:0,
+     rals:4,segells:[],nivells:{2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0},caixa:[],pila:[],ma:[],comp:[],
+     total:0,paraules:0,millor:null,anterior:'',llargades:[],fetes:[],censor:null,
+     botiga:null,paquet:null,cobrament:null,fora:false};
+  idSeg=1;
+  for(const l of LLETRES)for(let k=0;k<(CAIXA0[l]||0);k++)P.caixa.push(nouTipus(l));
+  if(mode==='dia'){
+    // la del dia compta nomes la primera vegada: si no, qui la repeteix ja
+    // sap quines lletres li tocaran
+    let jugada=null;try{jugada=localStorage.getItem('impremta-dia')}catch(e){}
+    P.fora=jugada===P.llavor.slice(4);
+    try{localStorage.setItem('impremta-dia',P.llavor.slice(4))}catch(e){}
+  }
+  rotuls=[];anim=null;info=null;avis='';
+  comencaPagina();
+  hideMsg();updateHUD();
+}
+
+const g=()=>(P.capitol-1)*3+P.pagina;           // numero de pagina de tota la partida
+const teSegell=id=>P.segells.some(s=>s.id===id);
+const quants=k=>P.segells.reduce((a,s)=>a+(SEGELLS[s.id][k]||0),0);
+const censor=()=>P.censor?CENSORS[P.censor]:null;
+function midaMa(){return Math.max(4,8+quants('ma')+((censor()&&censor().ma)||0))}
+
+function censorDe(cap){
+  if(cap===1)return triaDe(rng('censor1'),CENSORS_SUAUS);
+  const ordre=barreja(rng('censors'),Object.keys(CENSORS));
+  return ordre[(cap-2)%ordre.length];
+}
+
+function comencaPagina(){
+  P.objectiu=objectiuDe(P.capitol,P.pagina);
+  P.impres=0;P.llargades=[];P.fetes=[];
+  P.impressions=4+quants('impr');
+  P.descarts=3+quants('desc');
+  P.censor=P.pagina===3?censorDe(P.capitol):null;
+  if(censor()&&censor().inici)censor().inici(P);
+  // la bossa es barreja de nou a cada pagina, amb tots els tipus que tens
+  P.pila=barreja(rng('bossa',g()),P.caixa.slice());
+  P.ma=[];P.comp=[];
+  roba();
+  state='pagina';
+}
+function roba(){
+  const m=midaMa();
+  while(P.ma.length<m&&P.pila.length)P.ma.push(P.pila.pop());
+}
+
+// ===== VALIDAR I PUNTUAR =====
+const lletraDe=t=>t.comodi?'?':t.l;
+// Les lletres de la paraula, amb els comodins (?) ja decidits: es prova cada
+// lletra possible i es queda la que dona mes punts.
+function resol(tiles){
+  if(!DIC)return {ok:false,motiu:errorDic?'no s\'ha pogut carregar el diccionari':'encara carrego el diccionari…'};
+  if(tiles.length<2)return {ok:false,motiu:''};
+  const forats=[];tiles.forEach((t,i)=>{if(t.comodi)forats.push(i)});
+  const base=tiles.map(t=>t.comodi?'':t.l);
+  let millor=null;
+  const prova=ll=>{
+    const text=ll.join('');
+    if(!DIC.has(text))return;
+    const ctx=context(tiles,ll,text);
+    const err=censor()&&censor().valida?censor().valida(ctx):null;
+    if(err){if(!millor)millor={ok:false,motiu:err,text};return}
+    const r=calcula(tiles,ll,text);
+    if(!millor||!millor.ok||r.total>millor.res.total)millor={ok:true,lletres:ll,text,res:r};
+  };
+  if(!forats.length)prova(base);
+  else{
+    const rec=(k,ll)=>{if(k===forats.length){prova(ll.slice());return}
+      for(const l of LLETRES){ll[forats[k]]=l;rec(k+1,ll)}};
+    rec(0,base.slice());
+  }
+  if(millor)return millor;
+  const vist=tiles.map(t=>t.comodi?'?':t.l).join('').toUpperCase();
+  return {ok:false,motiu:'«'+vist+'» no és al diccionari'};
+}
+function context(tiles,ll,text){
+  return {tiles,lletres:ll,text,n:tiles.length,
+    valors:tiles.map((t,i)=>t.comodi?0:VALOR[ll[i]]),
+    ultima:P.impressions===1,descarts:P.descarts,rals:P.rals,anterior:P.anterior};
+}
+const baseDe=n=>{const b=NIV0[n],u=PUJA[n],k=P.nivells[n]||0;return [b[0]+u[0]*k,b[1]+u[1]*k]};
+
+// Torna la llista de passos del recompte (per ensenyar-los un per un) i el
+// resultat. No canvia res de la partida.
+function calcula(tiles,ll,text){
+  const ctx=context(tiles,ll,text);
+  const ev=[];
+  let [p,m]=baseDe(tiles.length);
+  let rals=0;
+  ev.push({k:'base',p,m});
+  const vocalsMudes=P.censor==='vocals';
+  const actius=P.segells.map((s,i)=>({s,i,d:SEGELLS[s.id]}))
+    .filter(o=>!(P.censor==='segrest'&&o.i===0));
+  const aplica=(e,on)=>{
+    if(!e)return;
+    if(e.p){p+=e.p;ev.push({...on,dp:e.p})}
+    if(e.m){m+=e.m;ev.push({...on,dm:e.m})}
+    if(e.x){m*=e.x;ev.push({...on,dx:e.x})}
+  };
+  tiles.forEach((t,i)=>{
+    const v=vocalsMudes&&VOC.has(ll[i])?0:ctx.valors[i];
+    p+=v;ev.push({k:'t',i,dp:v});
+    if(t.e==='gravada'){p+=15;ev.push({k:'t',i,dp:15})}
+    if(t.e==='negreta'){m+=4;ev.push({k:'t',i,dm:4})}
+    if(t.e==='vermella'){m*=1.5;ev.push({k:'t',i,dx:1.5})}
+    if(t.e==='daurada'){rals+=2;ev.push({k:'t',i,dr:2})}
+    for(const o of actius)if(o.d.lletra)aplica(o.d.lletra(ctx,i,o.s),{k:'s',s:o.i,i});
+  });
+  for(const o of actius)if(o.d.paraula)aplica(o.d.paraula(ctx,o.s),{k:'s',s:o.i});
+  for(const o of actius)if(o.d.rals){const r=o.d.rals(ctx,o.s);if(r){rals+=r;ev.push({k:'s',s:o.i,dr:r})}}
+  return {ev,p,m,total:Math.floor(p*m+1e-9),rals};
+}
+
+// ===== JUGAR =====
+function imprimeix(){
+  if(state!=='pagina'||paused||anim)return;
+  if(!P.comp.length)return;
+  const r=resol(P.comp);
+  if(!r.ok){if(r.motiu)diu(r.motiu,'#ff9b8a');else diu('calen com a mínim dues lletres','#ff9b8a');sndNo();tremola=.35;return}
+  sndPremsa();
+  anim={r,i:0,t:.25,p:0,m:0,rals:0,fase:'compta',vel:1,k:0};
+  state='puntua';
+}
+function descarta(){
+  if(state!=='pagina'||paused||anim)return;
+  if(!P.comp.length){diu('posa al componedor les lletres que vols llençar','#aaa');return}
+  if(P.descarts<=0){diu('no et queden descarts','#ff9b8a');sndNo();return}
+  const fora=new Set(P.comp.map(t=>t.id));
+  P.ma=P.ma.filter(t=>!fora.has(t.id));P.comp=[];
+  P.descarts--;roba();sndTreu();
+}
+function barrejaMa(){
+  if(state!=='pagina'||paused||anim)return;
+  // es barregen nomes les de la ma: no es cap trampa, nomes ajuda a veure-hi paraules
+  const r=mulberry((Math.random()*4294967296)>>>0);
+  barreja(r,P.ma);sndToc();
+}
+function tocaMa(t){
+  if(P.comp.includes(t)){P.comp=P.comp.filter(o=>o!==t);sndTreu()}
+  else{P.comp.push(t);sndToc()}
+}
+
+// Acaba el recompte: la paraula queda impresa al full.
+function aplicaImpressio(){
+  const {r}=anim;anim=null;
+  const res=r.res,text=r.text,n=P.comp.length;
+  P.impres+=res.total;P.total+=res.total;P.paraules++;
+  P.rals+=res.rals;
+  if(!P.millor||res.total>P.millor.punts)P.millor={p:text,punts:res.total};
+  P.fetes.push({text,punts:res.total});
+  const ctx=context(P.comp,r.lletres,text);
+  for(const s of P.segells){const d=SEGELLS[s.id];if(d.despres){const t=d.despres(ctx,s);if(t)diu(t,'#ffe08a')}}
+  P.anterior=text;P.llargades.push(n);
+  const fora=new Set(P.comp.map(t=>t.id));
+  P.ma=P.ma.filter(t=>!fora.has(t.id));P.comp=[];
+  P.impressions--;
+  roba();
+  updateHUD();
+  if(P.impres>=P.objectiu){cobra();return}
+  if(P.impressions<=0||!P.ma.length){perd();return}
+  state='pagina';
+}
+
+function cobra(){
+  const base=[3,4,5][P.pagina-1];
+  const interes=Math.min(5,Math.floor(P.rals/5));
+  P.cobrament={base,imp:P.impressions,interes,total:base+P.impressions+interes};
+  state='cobra';sndBe();
+}
+function aLaBotiga(){
+  P.rals+=P.cobrament.total;P.cobrament=null;sndRals();
+  P.botiga={canvis:0,preuCanvi:2,items:[],tria:-1};
+  const r=rng('botiga',g());
+  const ns=[3,4,4,5,5,5,6,6,7,8];
+  P.botiga.items=[null,null,{tipus:'manual',n:triaDe(r,ns),preu:3},
+    {tipus:'paquet',k:triaDe(r,['tipus','tipus','tinta','lima']),preu:0}];
+  const pq=P.botiga.items[3];pq.preu=pq.k==='lima'?3:4;
+  posaSegellsBotiga();
+  state='botiga';
+}
+function posaSegellsBotiga(){
+  const r=rng('botiga',g(),'segells',P.botiga.canvis);
+  const lliures=IDS_SEGELL.filter(id=>!teSegell(id));
+  barreja(r,lliures);
+  P.botiga.items[0]=lliures[0]?{tipus:'segell',id:lliures[0],preu:SEGELLS[lliures[0]].preu}:null;
+  P.botiga.items[1]=lliures[1]?{tipus:'segell',id:lliures[1],preu:SEGELLS[lliures[1]].preu}:null;
+  P.botiga.tria=-1;
+}
+function canvia(){
+  if(state!=='botiga'||paused)return;
+  if(P.rals<P.botiga.preuCanvi){diu('no tens prou rals','#ff9b8a');sndNo();return}
+  P.rals-=P.botiga.preuCanvi;P.botiga.preuCanvi++;P.botiga.canvis++;
+  posaSegellsBotiga();sndRals();
+}
+function compra(i){
+  const it=P.botiga.items[i];
+  if(!it||it.venut)return;
+  if(P.rals<it.preu){diu('no tens prou rals','#ff9b8a');sndNo();return}
+  if(it.tipus==='segell'&&P.segells.length>=MAX_SEGELLS){diu('ja tens cinc segells: ven-ne un abans','#ff9b8a');sndNo();return}
+  P.rals-=it.preu;it.venut=true;P.botiga.tria=-1;sndRals();
+  if(it.tipus==='segell'){P.segells.push({id:it.id,n:0});diu(SEGELLS[it.id].nom.toUpperCase()+' és teu','#7dff9b')}
+  else if(it.tipus==='manual'){P.nivells[it.n]++;diu('les paraules de '+it.n+' lletres pugen de nivell','#7dff9b')}
+  else obrePaquet(it.k);
+}
+function ven(i){
+  const s=P.segells[i];if(!s)return;
+  const v=Math.max(1,Math.floor(SEGELLS[s.id].preu/2));
+  P.segells.splice(i,1);P.rals+=v;info=null;sndRals();
+  diu('venut per '+v+(v===1?' ral':' rals'),'#ffe08a');
+}
+// Un paquet: tries una de les opcions. «tipus» afegeix un tipus nou a la
+// caixa, «tinta» en millora un dels teus, «lima» en llença un.
+function obrePaquet(k){
+  const r=rng('paquet',g(),k);
+  const op=[];
+  if(k==='tipus'){
+    const pesos=LLETRES.map(l=>(CAIXA0[l]||0)+0.6);
+    const tot=pesos.reduce((a,b)=>a+b,0);
+    for(let j=0;j<3;j++){
+      if(r()<0.14){op.push({t:nouTipus('a',null,true)});continue}
+      let q=r()*tot,l='a';for(let i=0;i<LLETRES.length;i++){q-=pesos[i];if(q<=0){l=LLETRES[i];break}}
+      op.push({t:nouTipus(l,r()<0.4?triaDe(r,NOMS_MILLORA):null)});
+    }
+  }else{
+    const meus=barreja(r,P.caixa.filter(t=>k!=='tinta'||!t.e).slice());
+    for(const t of meus.slice(0,k==='lima'?4:3))op.push({t,e:k==='tinta'?triaDe(r,NOMS_MILLORA):null});
+  }
+  P.paquet={k,op};state='paquet';
+}
+function triaPaquet(j){
+  const pq=P.paquet,o=pq.op[j];if(!o)return;
+  if(pq.k==='tipus'){P.caixa.push(o.t);diu('un tipus nou a la caixa','#7dff9b')}
+  else if(pq.k==='tinta'){o.t.e=o.e;diu('la '+o.t.l.toUpperCase()+' ara és '+MILLORES[o.e].nom.toLowerCase(),'#7dff9b')}
+  else{P.caixa=P.caixa.filter(t=>t!==o.t);diu('la '+o.t.l.toUpperCase()+' fora de la caixa','#7dff9b')}
+  sndToc();P.paquet=null;state='botiga';
+}
+function seguentPagina(){
+  if(state!=='botiga'||paused)return;
+  P.botiga=null;P.pagina++;
+  if(P.pagina>3){P.pagina=1;P.capitol++}
+  comencaPagina();sndToc();
+}
+function perd(){
+  state='over';anim=null;sndFi();
+  setTimeout(finalPartida,900);
+}
+
+// ===== EL FINAL =====
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+function enllacRepte(){
+  const base=location.href.split('#')[0];
+  const nom=Records.nom()||'???';
+  return base+'#repte='+encodeURIComponent(P.llavor)+'&n='+nom+'&p='+P.total+'&c='+P.capitol+'&g='+P.pagina;
+}
+async function finalPartida(){
+  state='over';
+  if(!P){msg('LA IMPREMTA HA TANCAT'+Records.peuFinal('o toca per tornar a començar'));return}
+  const on='capítol '+P.capitol+', pàgina '+P.pagina;
+  let t='LA IMPREMTA HA TANCAT<br><small>'+on+' · '+xifra(P.total)+' punts'+
+    (P.millor?'<br>la millor, '+P.millor.p.toUpperCase()+' ('+xifra(P.millor.punts)+')':'')+'</small>';
+  if(P.repte){
+    const guanyes=P.total>P.repte.p,empat=P.total===P.repte.p;
+    t+='<small style="color:'+(guanyes?'#7dff9b':empat?'#ffe08a':'#ff9b8a')+'">REPTE DE '+P.repte.n+': '+
+      xifra(P.repte.p)+' punts'+(P.repte.c?' (capítol '+P.repte.c+')':'')+'<br>'+
+      (guanyes?'L\'HAS GUANYAT!':empat?'EMPAT!':'T\'HA GUANYAT')+'</small>';
+  }
+  if(P.mode==='dia'&&P.fora)t+='<small style="color:#aaa">la partida del dia ja l\'havies jugada: aquesta no compta</small>';
+  msg(t+'<div style="color:#888;font-size:12px;margin-top:8px">…</div>');
+  let r={html:'',posicio:0};
+  if(P.mode==='dia'&&!P.fora)r=await Records.fiPartida(JOC+'_dia/'+P.llavor.slice(4),P.total);
+  else if(P.mode!=='dia')r=await Records.fiPartida(JOC,P.total);
+  if(state!=='over')return;
+  const enl=enllacRepte();
+  const txt='T\'he reptat a La Impremta: he fet '+xifra(P.total)+' punts. A veure si ho superes amb les mateixes lletres!';
+  const reptes='<div class="reptes">'+
+    '<a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(txt)+'">REPTA PER TELEGRAM</a>'+
+    '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt+' '+enl)+'">PER WHATSAPP</a>'+
+    '<a href="#" id="copia">COPIA L\'ENLLAÇ</a></div>';
+  msg(t+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+(P.mode==='dia'?' d\'avui':'')+'!</small>':'')+
+    (P.mode==='dia'&&!P.fora?'<div style="color:#ffe08a;font-size:13px;margin-top:6px">LA PARTIDA DEL DIA</div>':'')+
+    '<div style="margin:8px 0">'+r.html+'</div>'+reptes+
+    Records.peuFinal('o toca per tornar a començar'));
+  const cp=document.getElementById('copia');
+  if(cp)cp.addEventListener('click',async e=>{
+    e.preventDefault();e.stopPropagation();
+    try{await navigator.clipboard.writeText(txt+' '+enl);cp.textContent='COPIAT!'}
+    catch(err){prompt('Copia aquest enllaç:',enl)}
+  });
+  Records.pintaMillor(JOC,document.getElementById('best'),P.total);
+}
+
+// ===== MARCADOR =====
+let bestScore=Records.local(JOC);
+Records.pintaMillor(JOC,document.getElementById('best'));
+function updateHUD(){
+  const s=P?P.total:0;
+  document.getElementById('score').textContent=s;
+  if(s>bestScore){bestScore=s;if(!P||P.mode!=='dia')Records.desaLocal(JOC,s)}
+  Records.marcador(JOC,document.getElementById('best'),s);
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+function diu(t,col,s=2.2){avis=t;avisCol=col;avisT=s}
+
+// ===== EL RECOMPTE, PAS A PAS =====
+// Com a les maquines escurabutxaques: cada lletra i cada segell que fa
+// alguna cosa salta i suma davant teu. Es la gracia del joc. Tocant la
+// pantalla va mes de pressa.
+function update(dt){
+  temps+=dt;
+  if(paused)return;
+  if(avisT>0)avisT-=dt;
+  if(tremola>0)tremola-=dt;
+  for(let i=rotuls.length-1;i>=0;i--){const r=rotuls[i];r.y-=dt*30;r.t-=dt*1.1;if(r.t<=0)rotuls.splice(i,1)}
+  if(state!=='puntua'||!anim)return;
+  anim.t-=dt*anim.vel;
+  if(anim.t>0)return;
+  const ev=anim.r.res.ev;
+  if(anim.fase==='compta'){
+    if(anim.i>=ev.length){anim.fase='final';anim.t=.7;sndPremsa();return}
+    const e=ev[anim.i++];
+    if(e.k==='base'){anim.p=e.p;anim.m=e.m;anim.t=.3;sndCompta(0);return}
+    const [px,py]=e.k==='t'?posComp(e.i):posSegell(e.s);
+    if(e.k==='s')anim.brilla={s:e.s,t:.3};
+    if(e.dp!==undefined){anim.p+=e.dp;rotuls.push({x:px,y:py-20,t:1,txt:'+'+e.dp,col:'#8ac4ff'});sndCompta(++anim.k)}
+    if(e.dm){anim.m+=e.dm;rotuls.push({x:px,y:py-20,t:1,txt:'+'+e.dm+' mult',col:'#ff8a8a'});sndMult(++anim.k)}
+    if(e.dx){anim.m*=e.dx;rotuls.push({x:px,y:py-20,t:1.2,txt:'×'+fmt(e.dx),col:'#ff5a5a',gran:true});sndMult(++anim.k+4)}
+    if(e.dr){anim.rals+=e.dr;rotuls.push({x:px,y:py-20,t:1,txt:'+'+e.dr+' rals',col:'#ffe08a'});sndRals()}
+    anim.t=Math.max(.09,.2-anim.i*.006);
+    return;
+  }
+  if(anim.fase==='final'){aplicaImpressio()}
+}
+const fmt=v=>Number.isInteger(v)?String(v):v.toFixed(1).replace('.',',');
+
+// ===== DIBUIX =====
+let zones=[];
+const zona=(x0,y0,w,h,fn)=>zones.push({x0,y0,w,h,fn});
+function rrect(x0,y0,w,h,r){x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);
+  x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath()}
+function text(t,px,py,col='#fff',font='14px monospace',al='left'){x.fillStyle=col;x.font=font;x.textAlign=al;x.fillText(t,px,py)}
+function embolcalla(t,max,font){
+  x.font=font;const par=t.split(' '),out=[];let l='';
+  for(const w of par){const p=l?l+' '+w:w;if(x.measureText(p).width>max&&l){out.push(l);l=w}else l=p}
+  if(l)out.push(l);return out;
+}
+
+// Un tipus de plom: un bloc de fusta clara amb la lletra en tinta.
+function dibuixaTipus(t,px,py,w,h,opts={}){
+  const e=t.e;
+  let fons='#e9dcc0',vora='#8c7350',tinta='#2b2116';
+  if(e==='daurada'){fons='#f1c65a';vora='#9a7420'}
+  if(e==='negreta'){fons='#2f3a4a';vora='#8fb4e8';tinta='#f3f6fb'}
+  if(e==='vermella'){fons='#f3e3d6';vora='#c0392b';tinta='#c0392b'}
+  if(e==='gravada'){fons='#cfd6dc';vora='#6c7a86'}
+  if(t.comodi){fons='#d9cdf0';vora='#7a5cc0';tinta='#4a2f8a'}
+  x.save();
+  if(opts.alt){x.translate(0,-6)}
+  x.fillStyle='rgba(0,0,0,.45)';rrect(px+2,py+3,w,h,7);x.fill();
+  const gr=x.createLinearGradient(0,py,0,py+h);gr.addColorStop(0,fons);gr.addColorStop(1,shade(fons,-18));
+  x.fillStyle=gr;rrect(px,py,w,h,7);x.fill();
+  x.lineWidth=e?2.5:1.5;x.strokeStyle=opts.marcat?'#ffcf4a':vora;if(opts.marcat)x.lineWidth=3;
+  rrect(px,py,w,h,7);x.stroke();
+  if(e==='gravada'){x.strokeStyle='rgba(60,70,80,.25)';x.lineWidth=1;for(let k=6;k<w;k+=6){x.beginPath();x.moveTo(px+k,py+3);x.lineTo(px+k-6,py+h-3);x.stroke()}}
+  const l=opts.lletra||lletraDe(t);
+  const L=l.toUpperCase();
+  x.fillStyle=tinta;x.textAlign='center';
+  x.font=(L.length>1?'bold '+Math.round(h*0.36):'bold '+Math.round(h*0.52))+'px Georgia,serif';
+  x.fillText(L,px+w/2,py+h*0.64);
+  if(!t.comodi){x.font=Math.round(h*0.2)+'px monospace';x.textAlign='right';x.fillStyle=e==='negreta'?'#bcd':'#6b5a40';
+    x.fillText(String(VALOR[t.l]),px+w-4,py+h-5)}
+  x.restore();
+}
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  const f=v=>Math.max(0,Math.min(255,v+amt));
+  return 'rgb('+f(n>>16)+','+f((n>>8)&255)+','+f(n&255)+')';
+}
+
+// posicions
+const Y_SEG=104,H_SEG=64,Y_FULL=176,Y_COMP=338,Y_MA=436;
+function posSegell(i){return [10+i*81+38,Y_SEG+H_SEG/2]}
+function midaTipus(n){const w=Math.min(46,Math.floor((W-24)/Math.max(n,1))-4);return [w,Math.round(w*1.18)]}
+function posComp(i){
+  const n=P.comp.length,[w]=midaTipus(Math.max(8,n));
+  const x0=(W-n*(w+4)+4)/2;return [x0+i*(w+4)+w/2,Y_COMP+30];
+}
+
+function dibuixaCap(){
+  // a l'esquerra, l'objectiu de la pagina
+  x.fillStyle='#120d09';rrect(8,6,236,90,10);x.fill();x.strokeStyle='#4a3a28';x.lineWidth=1;x.stroke();
+  text('CAPÍTOL '+P.capitol+' · PÀGINA '+P.pagina+'/3',18,24,'#c9b28a','12px monospace');
+  text('OBJECTIU',18,46,'#888','11px monospace');
+  text(xifra(P.objectiu),96,47,'#ffe08a','bold 20px monospace');
+  const imp=state==='puntua'&&anim&&anim.fase==='final'?P.impres+anim.r.res.total:P.impres;
+  const fr=Math.min(1,imp/P.objectiu);
+  x.fillStyle='#2a2018';rrect(18,58,216,12,6);x.fill();
+  x.fillStyle=fr>=1?'#7dff9b':'#d9a441';rrect(18,58,Math.max(12,216*fr),12,6);x.fill();
+  text('IMPRÈS '+xifra(imp),18,88,'#fff','bold 13px monospace');
+  // a la dreta, el que et queda
+  const caixes=[['IMPRESS.',P.impressions,'#8ac4ff'],['DESCARTS',P.descarts,'#ff9b8a'],['RALS',P.rals,'#ffe08a']];
+  caixes.forEach(([n,v,col],k)=>{
+    const bx=252+k*55;
+    x.fillStyle='#120d09';rrect(bx,6,51,90,10);x.fill();x.strokeStyle='#4a3a28';x.stroke();
+    text(n,bx+25.5,24,'#888','9px monospace','center');
+    text(String(v),bx+25.5,64,col,'bold 26px monospace','center');
+  });
+}
+
+function dibuixaSegells(potVendre){
+  for(let i=0;i<MAX_SEGELLS;i++){
+    const sx=10+i*81,sy=Y_SEG,s=P.segells[i];
+    if(!s){x.strokeStyle='#3a2e22';x.setLineDash([4,4]);rrect(sx,sy,76,H_SEG,9);x.stroke();x.setLineDash([]);continue}
+    const d=SEGELLS[s.id];
+    const segrestat=P.censor==='segrest'&&i===0&&(state==='pagina'||state==='puntua');
+    const brilla=anim&&anim.brilla&&anim.brilla.s===i&&anim.brilla.t>0;
+    x.save();
+    if(brilla){x.translate(sx+38,sy+H_SEG/2);x.scale(1.08,1.08);x.translate(-(sx+38),-(sy+H_SEG/2))}
+    x.fillStyle=segrestat?'#2a2a2a':'#5a1f1f';rrect(sx,sy,76,H_SEG,9);x.fill();
+    x.strokeStyle=info&&info.s===i?'#ffcf4a':brilla?'#fff':'#c0392b';x.lineWidth=2;rrect(sx,sy,76,H_SEG,9);x.stroke();
+    // un segell de cera: el cercle i la inicial
+    x.fillStyle=segrestat?'#555':'#b03a2e';x.beginPath();x.arc(sx+38,sy+24,15,0,7);x.fill();
+    x.strokeStyle='rgba(255,220,200,.5)';x.lineWidth=1.5;x.beginPath();x.arc(sx+38,sy+24,11,0,7);x.stroke();
+    text(d.nom[0].toUpperCase(),sx+38,sy+30,'#ffe9dc','bold 16px Georgia,serif','center');
+    const curt=d.nom.length>11?d.nom.slice(0,10)+'.':d.nom;
+    text(curt.toUpperCase(),sx+38,sy+56,segrestat?'#888':'#ffd9cf','9px monospace','center');
+    if(segrestat){x.strokeStyle='#ff5a5a';x.lineWidth=3;x.beginPath();x.moveTo(sx+8,sy+8);x.lineTo(sx+68,sy+H_SEG-8);x.stroke()}
+    x.restore();
+    zona(sx,sy,76,H_SEG,()=>{
+      if(info&&info.s===i&&potVendre){ven(i);return}
+      info={s:i,t:4};sndToc();
+    });
+  }
+}
+
+function dibuixaInfo(y0){
+  if(!info)return;
+  const s=P.segells[info.s];if(!s){info=null;return}
+  const d=SEGELLS[s.id];
+  x.fillStyle='rgba(20,12,8,.96)';rrect(14,y0,W-28,74,10);x.fill();x.strokeStyle='#c0392b';x.lineWidth=2;x.stroke();
+  text(d.nom.toUpperCase(),26,y0+22,'#ffd9cf','bold 14px monospace');
+  embolcalla(textSegell(s),W-56,'13px monospace').slice(0,2).forEach((l,k)=>text(l,26,y0+42+k*17,'#eee','13px monospace'));
+  if(state==='botiga')text('toca\'l un altre cop per vendre\'l per '+Math.max(1,Math.floor(d.preu/2))+' rals',W-26,y0+22,'#ffe08a','10px monospace','right');
+}
+
+function dibuixaFull(){
+  // el full on queden les paraules impreses
+  x.fillStyle='#efe6d2';rrect(14,Y_FULL,W-28,96,6);x.fill();
+  x.fillStyle='rgba(120,90,50,.12)';for(let k=0;k<4;k++)x.fillRect(24,Y_FULL+28+k*22,W-48,1);
+  if(!P.fetes.length)text('el full d\'aquesta pàgina',W/2,Y_FULL+(P.censor?66:54),'#b9a888','italic 14px Georgia,serif','center');
+  // a la pagina del censor, la primera ratlla del full es la seva prohibicio
+  const cs=censor(),y1=cs?1:0;
+  if(cs){
+    x.fillStyle='#7a1f1f';rrect(20,Y_FULL+6,W-40,22,5);x.fill();
+    text('CENSOR: '+cs.nom+' · '+cs.txt,W/2,Y_FULL+21,'#fff','bold 11px monospace','center');
+  }
+  const fetes=P.fetes.slice(-(4-y1));
+  fetes.forEach((f,k)=>{
+    const yy=Y_FULL+24+(k+y1)*22;
+    text(f.text.toUpperCase(),28,yy,'#2b2116','bold 17px Georgia,serif');
+    text(xifra(f.punts),W-28,yy,'#6b5a40','15px Georgia,serif','right');
+  });
+}
+
+function dibuixaPuntuacio(){
+  const y0=Y_FULL+104;
+  let p=null,m=null,etiq='';
+  if(state==='puntua'&&anim){p=anim.p;m=anim.m;etiq=anim.r.text.toUpperCase()}
+  else if(P.comp.length>=2){
+    const n=P.comp.length;[p,m]=baseDe(n);
+    const niv=P.nivells[n]||0;etiq=n+' LLETRES'+(niv?' · NIVELL '+(niv+1):'');
+  }else etiq=P.comp.length?'una lletra més, com a mínim':'toca lletres de la mà';
+  text(etiq,W/2,y0+12,'#c9b28a','12px monospace','center');
+  x.fillStyle='#1d4f8a';rrect(70,y0+18,120,32,8);x.fill();
+  x.fillStyle='#8a2323';rrect(230,y0+18,120,32,8);x.fill();
+  text(p===null?'—':xifra(Math.floor(p)),130,y0+41,'#fff','bold 20px monospace','center');
+  text(m===null?'—':fmt(Math.round(m*10)/10),290,y0+41,'#fff','bold 20px monospace','center');
+  text('×',W/2,y0+42,'#fff','bold 22px monospace','center');
+  if(state==='puntua'&&anim&&anim.fase==='final'){
+    x.fillStyle='rgba(0,0,0,.75)';rrect(90,y0+10,240,46,10);x.fill();
+    text('+'+xifra(anim.r.res.total),W/2,y0+44,'#ffe08a','bold 30px monospace','center');
+  }
+}
+
+function dibuixaComponedor(){
+  // el componedor: la regleta on el caixista posava les lletres en ordre
+  x.fillStyle='#3b3f45';rrect(10,Y_COMP+2,W-20,70,8);x.fill();
+  x.fillStyle='#55595f';x.fillRect(14,Y_COMP+62,W-28,6);
+  const n=P.comp.length,[w,h]=midaTipus(Math.max(8,n));
+  const lletres=state==='puntua'&&anim?anim.r.lletres:null;
+  const dx=tremola>0?Math.sin(temps*60)*5:0;
+  P.comp.forEach((t,i)=>{
+    const [cx]=posComp(i);
+    dibuixaTipus(t,cx-w/2+dx,Y_COMP+8,w,h,{lletra:lletres&&t.comodi?lletres[i]:null});
+    if(state==='pagina')zona(cx-w/2,Y_COMP+4,w+4,h+8,()=>tocaMa(t));
+  });
+  if(!n)text('aquí hi va la paraula',W/2,Y_COMP+42,'#8a8f96','italic 14px Georgia,serif','center');
+}
+
+function dibuixaMa(){
+  const ma=P.ma,n=Math.max(ma.length,8),[w,h]=midaTipus(n);
+  const x0=(W-ma.length*(w+4)+4)/2;
+  text('LA MÀ',14,Y_MA-8,'#6b5a40','10px monospace');
+  ma.forEach((t,i)=>{
+    const tx=x0+i*(w+4);
+    const usat=P.comp.includes(t);
+    if(usat){x.strokeStyle='#3a2e22';x.setLineDash([3,3]);rrect(tx,Y_MA,w,h,7);x.stroke();x.setLineDash([]);}
+    else dibuixaTipus(t,tx,Y_MA,w,h);
+    if(state==='pagina')zona(tx,Y_MA-4,w+4,h+8,()=>tocaMa(t));
+  });
+  // la caixa: quants tipus et queden per sortir
+  const yc=Y_MA+h+22;
+  x.fillStyle='#120d09';rrect(14,yc,W-28,40,8);x.fill();x.strokeStyle='#4a3a28';x.lineWidth=1;x.stroke();
+  text('CAIXA: '+P.pila.length+' de '+P.caixa.length+' tipus per sortir',26,yc+25,'#c9b28a','12px monospace');
+  text('VEURE-LA ›',W-26,yc+25,'#ffe08a','12px monospace','right');
+  if(state==='pagina')zona(14,yc,W-28,40,()=>{state='caixa';sndToc()});
+}
+
+function dibuixaCaixa(){
+  x.fillStyle='rgba(10,7,5,.96)';x.fillRect(0,0,W,H);
+  text('LA TEVA CAIXA',W/2,40,'#ffe08a','bold 18px monospace','center');
+  text('les que queden per sortir / les que tens',W/2,62,'#888','11px monospace','center');
+  const tot={},queda={};
+  for(const t of P.caixa){const k=lletraDe(t);tot[k]=(tot[k]||0)+1}
+  for(const t of P.pila){const k=lletraDe(t);queda[k]=(queda[k]||0)+1}
+  const ks=[...LLETRES,'?'].filter(k=>tot[k]);
+  ks.forEach((k,i)=>{
+    const col=i%5,row=Math.floor(i/5),bx=24+col*78,by=80+row*64;
+    const t=k==='?'?{l:'a',comodi:true}:{l:k};
+    dibuixaTipus(t,bx,by,38,46);
+    text((queda[k]||0)+'/'+tot[k],bx+48,by+32,(queda[k]||0)?'#fff':'#666','13px monospace');
+  });
+  const esp=P.caixa.filter(t=>t.e);
+  if(esp.length)embolcalla('millorades: '+esp.map(t=>t.l.toUpperCase()+' '+MILLORES[t.e].nom.toLowerCase()).join(', '),W-40,'11px monospace')
+    .slice(0,3).forEach((l,k)=>text(l,W/2,H-82+k*15,'#c9b28a','11px monospace','center'));
+  text('toca per tornar',W/2,H-24,'#888','12px monospace','center');
+  zona(0,0,W,H,()=>{state='pagina';sndToc()});
+}
+
+function dibuixaCobra(){
+  const cb=P.cobrament;
+  x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,Y_FULL-8,W,H-Y_FULL+8);
+  x.fillStyle='#120d09';rrect(30,Y_FULL+10,W-60,250,14);x.fill();x.strokeStyle='#7dff9b';x.lineWidth=2;x.stroke();
+  text('PÀGINA IMPRESA!',W/2,Y_FULL+50,'#7dff9b','bold 22px monospace','center');
+  const files=[['per la pàgina',cb.base],['impressions que et sobren',cb.imp],['interès (1 per cada 5 rals)',cb.interes]];
+  files.forEach(([n,v],k)=>{text(n,56,Y_FULL+96+k*28,'#ddd','13px monospace');text('+'+v,W-56,Y_FULL+96+k*28,'#ffe08a','bold 14px monospace','right')});
+  x.fillStyle='#4a3a28';x.fillRect(56,Y_FULL+172,W-112,1);
+  text('RALS',56,Y_FULL+200,'#fff','bold 15px monospace');
+  text('+'+cb.total,W-56,Y_FULL+200,'#ffe08a','bold 20px monospace','right');
+  text('ara a la botiga',W/2,Y_FULL+238,'#888','12px monospace','center');
+}
+
+function dibuixaBotiga(){
+  const b=P.botiga;
+  text('LA BOTIGA',W/2,Y_FULL+6,'#ffe08a','bold 16px monospace','center');
+  b.items.forEach((it,i)=>{
+    const cl=i%2,row=Math.floor(i/2),bx=16+cl*198,by=Y_FULL+18+row*118,bw=190,bh=110;
+    if(!it){x.strokeStyle='#3a2e22';rrect(bx,by,bw,bh,10);x.stroke();return}
+    const tria=b.tria===i;
+    x.fillStyle=it.venut?'#151110':'#241a12';rrect(bx,by,bw,bh,10);x.fill();
+    x.strokeStyle=tria?'#ffcf4a':it.venut?'#2a2018':'#6b5235';x.lineWidth=tria?3:1.5;rrect(bx,by,bw,bh,10);x.stroke();
+    if(it.venut){text('VENUT',bx+bw/2,by+60,'#555','bold 16px monospace','center');return}
+    let nom,txt,col;
+    if(it.tipus==='segell'){nom=SEGELLS[it.id].nom;txt=textSegell({id:it.id,n:0});col='#ffd9cf'}
+    else if(it.tipus==='manual'){nom='Manual de '+it.n+' lletres';const u=PUJA[it.n];txt='les paraules de '+it.n+' lletres: +'+u[0]+' punts i +'+u[1]+' mult';col='#b9dcff'}
+    else{nom={tipus:'Paquet de tipus',tinta:'Pot de tinta',lima:'Llima'}[it.k];
+      txt={tipus:'tria 1 de 3 tipus nous per a la caixa (n\'hi pot haver de millorats i comodins)',
+           tinta:'tria 1 de 3 tipus teus per millorar-lo',lima:'tria 1 de 4 tipus teus per llençar-lo'}[it.k];col='#d7f5c4'}
+    text(nom.toUpperCase(),bx+10,by+22,col,'bold 12px monospace');
+    embolcalla(txt,bw-20,'11px monospace').slice(0,4).forEach((l,k)=>text(l,bx+10,by+42+k*15,'#ccc','11px monospace'));
+    text(it.preu+' rals',bx+bw-10,by+bh-10,P.rals>=it.preu?'#ffe08a':'#7a6a40','bold 13px monospace','right');
+    if(tria)text('TOCA PER COMPRAR',bx+10,by+bh-10,'#ffcf4a','bold 10px monospace');
+    zona(bx,by,bw,bh,()=>{if(b.tria===i)compra(i);else{b.tria=i;info=null;sndToc()}});
+  });
+  const yb=Y_FULL+262;
+  if(info){dibuixaInfo(yb-4);return}
+  text('Toca un dels teus segells per vendre\'l.',W/2,yb+8,'#888','11px monospace','center');
+  text('Els rals que guardes donen interès: 1 per cada 5.',W/2,yb+26,'#888','11px monospace','center');
+  // les teves paraules, per decidir quin manual val la pena
+  const nv=Object.keys(P.nivells).filter(n=>P.nivells[n]).map(n=>n+':'+(P.nivells[n]+1));
+  if(nv.length)text('nivells: '+nv.join('  '),W/2,yb+44,'#b9dcff','11px monospace','center');
+  text('PROPERA: capítol '+(P.pagina===3?P.capitol+1:P.capitol)+', pàgina '+(P.pagina%3+1)+' · objectiu '+
+    xifra(objectiuDe(P.pagina===3?P.capitol+1:P.capitol,P.pagina%3+1)),W/2,yb+70,'#c9b28a','12px monospace','center');
+  if(P.pagina===2)text('(la del censor: '+CENSORS[censorDe(P.capitol)].nom+' — '+CENSORS[censorDe(P.capitol)].txt+')',W/2,yb+88,'#ff9b8a','11px monospace','center');
+}
+
+function dibuixaPaquet(){
+  const pq=P.paquet;
+  const tit={tipus:'TRIA UN TIPUS NOU',tinta:'TRIA QUIN MILLORES',lima:'TRIA QUIN LLENCES'}[pq.k];
+  text(tit,W/2,Y_FULL+16,'#ffe08a','bold 16px monospace','center');
+  const n=pq.op.length,bw=86,gap=12,x0=(W-n*bw-(n-1)*gap)/2;
+  pq.op.forEach((o,j)=>{
+    const bx=x0+j*(bw+gap),by=Y_FULL+46;
+    x.fillStyle='#241a12';rrect(bx,by,bw,170,10);x.fill();x.strokeStyle='#6b5235';x.lineWidth=1.5;x.stroke();
+    const mostra=pq.k==='tinta'?{...o.t,e:o.e}:o.t;
+    dibuixaTipus(mostra,bx+13,by+16,60,72);
+    let desc;
+    if(o.t.comodi)desc='COMODÍ: fa de qualsevol lletra';
+    else{const e=pq.k==='tinta'?o.e:o.t.e;desc=o.t.l.toUpperCase()+(e?' '+MILLORES[e].nom+': '+MILLORES[e].txt:', normal')}
+    embolcalla(desc,bw-12,'10px monospace').slice(0,6).forEach((l,k)=>text(l,bx+bw/2,by+110+k*14,'#ddd','10px monospace','center'));
+    zona(bx,by,bw,170,()=>triaPaquet(j));
+  });
+  text('toca el que vulguis, o SALTA si no en vols cap',W/2,Y_FULL+244,'#888','12px monospace','center');
+}
+
+function dibuixaInici(){
+  // el titol, compost amb tipus de debo
+  const tit='IMPREMTA';
+  const w=40,h=48,x0=(W-tit.length*(w+4)+4)/2;
+  text('LA',W/2,56,'#c9b28a','bold 18px Georgia,serif','center');
+  [...tit].forEach((ch,i)=>dibuixaTipus({l:ch.toLowerCase()},x0+i*(w+4),70+Math.sin(temps*2+i)*2,w,h));
+  const linies=['Fes paraules amb les 8 lletres de la mà.','Cada pàgina demana uns punts: si hi','arribes, cobres rals i vas a la botiga',
+    'a comprar segells que canvien les regles.','La partida s\'acaba quan una pàgina no','arriba als punts.'];
+  linies.forEach((l,k)=>text(l,W/2,152+k*18,'#ddd','12px monospace','center'));
+  let y=274;
+  const boto=(t1,t2,col,fn)=>{
+    x.fillStyle='#241a12';rrect(30,y,W-60,74,12);x.fill();x.strokeStyle=col;x.lineWidth=2;x.stroke();
+    text(t1,W/2,y+32,col,'bold 18px monospace','center');
+    text(t2,W/2,y+54,'#aaa','11px monospace','center');
+    zona(30,y,W-60,74,fn);y+=88;
+  };
+  if(REPTE)boto('REPTE DE '+REPTE.n,xifra(REPTE.p)+' punts'+(REPTE.c?' (capítol '+REPTE.c+')':'')+' · mateixes lletres','#7dff9b',
+    ()=>{novaPartida('lliure',REPTE.llavor,REPTE);sndBe()});
+  const dia=diaAvui();
+  let jugada=null;try{jugada=localStorage.getItem('impremta-dia')}catch(e){}
+  boto('PARTIDA DEL DIA',jugada===dia?'ja l\'has jugada avui: ara no compta':
+    'la mateixa per a tothom, '+nomDia(dia)+(liderDia?' · mana '+liderDia.n+' amb '+xifra(liderDia.p):''),'#ffe08a',
+    ()=>{novaPartida('dia','DIA-'+dia);sndBe()});
+  boto('PARTIDA LLIURE','lletres a l\'atzar · després pots reptar els amics','#8ac4ff',()=>{novaPartida('lliure',llavorNova());sndBe()});
+}
+
+function draw(){
+  zones=[];
+  x.fillStyle='#1a1410';x.fillRect(0,0,W,H);
+  if(state==='inici'||!P){dibuixaInici()}
+  else if(state==='caixa'){dibuixaCaixa()}
+  else{
+    dibuixaCap();
+    dibuixaSegells(state==='botiga');
+    if(state==='botiga')dibuixaBotiga();
+    else if(state==='paquet')dibuixaPaquet();
+    else{
+      dibuixaFull();dibuixaPuntuacio();dibuixaComponedor();dibuixaMa();
+      if(state==='cobra')dibuixaCobra();
+      if(info&&state==='pagina')dibuixaInfo(Y_FULL+8);
+    }
+  }
+  for(const r of rotuls){
+    x.globalAlpha=Math.max(0,Math.min(1,r.t));
+    text(r.txt,r.x,r.y,r.col,(r.gran?'bold 18px':'bold 14px')+' monospace','center');
+  }
+  x.globalAlpha=1;
+  if(avisT>0&&avis&&state!=='inici'&&state!=='caixa'){
+    x.globalAlpha=Math.min(1,avisT*2);
+    x.fillStyle='rgba(0,0,0,.82)';rrect(20,H-58,W-40,36,8);x.fill();
+    text(avis,W/2,H-35,avisCol,'13px monospace','center');
+    x.globalAlpha=1;
+  }
+  if(paused){
+    x.fillStyle='rgba(0,0,0,.72)';x.fillRect(0,0,W,H);
+    text('PAUSA',W/2,H/2,'#fff','bold 26px monospace','center');
+  }
+  botons();
+}
+
+// Els tres botons de sota canvien segons on ets.
+const B1=document.getElementById('b1'),B2=document.getElementById('b2'),B3=document.getElementById('b3');
+let botonsAra='';
+function botons(){
+  let cfg;
+  if(state==='pagina'||state==='puntua'||state==='caixa')cfg=['DESCARTA','IMPRIMEIX','BARREJA'];
+  else if(state==='cobra')cfg=['','A LA BOTIGA',''];
+  else if(state==='botiga')cfg=['CANVIA '+P.botiga.preuCanvi,'SEGÜENT PÀGINA',''];
+  else if(state==='paquet')cfg=['','SALTA',''];
+  else cfg=['','',''];
+  const k=cfg.join('|');if(k===botonsAra)return;botonsAra=k;
+  [B1,B2,B3].forEach((b,i)=>{b.textContent=cfg[i];b.style.visibility=cfg[i]?'visible':'hidden'});
+}
+function boto(b,fn){b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused)return;fn()})}
+boto(B1,()=>{if(state==='pagina')descarta();else if(state==='botiga')canvia()});
+boto(B2,()=>{
+  if(state==='pagina')imprimeix();
+  else if(state==='puntua'&&anim)anim.vel=5;
+  else if(state==='cobra')aLaBotiga();
+  else if(state==='botiga')seguentPagina();
+  else if(state==='paquet'){P.paquet=null;state='botiga';sndToc()}
+});
+boto(B3,()=>{if(state==='pagina')barrejaMa()});
+
+let last=performance.now();
+function loop(t){const dt=Math.min(50,t-last)/1000;last=t;
+  if(info&&info.t>0&&state!=='botiga'){info.t-=dt;if(info.t<=0)info=null}
+  if(anim&&anim.brilla)anim.brilla.t-=dt;
+  update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+// ===== EL DIT =====
+function punt(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W,y:(ev.clientY-r.top)/r.height*H};
+}
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused)return;
+  if(state==='puntua'&&anim){anim.vel=5;return}
+  const q=punt(ev);
+  for(let i=zones.length-1;i>=0;i--){
+    const z=zones[i];
+    if(q.x>=z.x0&&q.x<=z.x0+z.w&&q.y>=z.y0&&q.y<=z.y0+z.h){z.fn();return}
+  }
+  if(info){info=null}
+  if(state==='inici')sndToc();
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+// teclat: les lletres posen el tipus al componedor (Q es la QU i Y la NY),
+// ESBORRAR el treu, ENTER imprimeix, ESPAI descarta i P fa pausa
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'&&state!=='over'){paused=!paused;return}
+  if(paused)return;
+  if(e.code==='Enter'){
+    e.preventDefault();
+    if(state==='over'){hideMsg();state='inici';P=null;updateHUD()}
+    else if(state==='pagina')imprimeix();
+    else if(state==='puntua'&&anim)anim.vel=5;
+    else if(state==='cobra')aLaBotiga();
+    else if(state==='botiga')seguentPagina();
+    return;
+  }
+  if(state!=='pagina')return;
+  if(e.code==='Backspace'){e.preventDefault();if(P.comp.length){P.comp.pop();sndTreu()}return}
+  if(e.code==='Space'){e.preventDefault();descarta();return}
+  let k=(e.key||'').toLowerCase();
+  if(k==='q')k='qu';if(k==='y')k='ny';
+  if(!VALOR[k]&&k!=='?')return;
+  const t=P.ma.find(o=>!P.comp.includes(o)&&(k==='?'?o.comodi:(!o.comodi&&o.l===k)))||
+          P.ma.find(o=>!P.comp.includes(o)&&o.comodi);
+  if(t)tocaMa(t);
+});
+document.getElementById('msg').addEventListener('click',e=>{
+  if(e.target.closest('a'))return;
+  if(state==='over'){aInit();hideMsg();state='inici';P=null;updateHUD()}
+});
+
+// qui mana avui a la partida del dia, per ensenyar-ho a la portada del joc
+(async()=>{try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui())}catch(e){}})();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

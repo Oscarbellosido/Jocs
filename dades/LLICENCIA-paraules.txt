@@ -1,4 +1,5 @@
-La llista dades/paraules.txt surt del diccionari de Softcatala:
+Les llistes dades/paraules.txt (el Garbuix) i dades/formes.txt (La Impremta)
+surten del diccionari de Softcatala:
 https://github.com/Softcatala/catalan-dict-tools
 
 La seva llicencia, copiada tal qual del projecte original:

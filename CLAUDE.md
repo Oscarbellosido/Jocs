@@ -1,8 +1,8 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i set que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vuit que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
-(menys el diccionari del Garbuix, que va a part a `dades/`). Pensat per jugar-hi al
+(menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`). Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
 - Publicat a: https://oscarbellosido.github.io/Jocs/ (compte: la **J majúscula**)
@@ -39,7 +39,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I set que no són de saló
+### I vuit que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -50,6 +50,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `balanca.html` | Balança | 2026 |
 | `ram.html` | El Ram | 2026 |
 | `garbuix.html` | Garbuix | 2026 |
+| `impremta.html` | La Impremta (de l'estil del *Balatro*, amb paraules) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -407,6 +408,71 @@ d'una pàgina `file://` el navegador no deixa llegir cap altre fitxer. El
 l'obren com a fitxer i el joc va igual, només que diu que no ha pogut carregar
 el diccionari.
 
+## La Impremta: el Balatro amb paraules
+
+En Carles va demanar un joc de paraules que **enganxés**. Mirant què enganxa
+avui, el fenomen del 2024 va ser el *Balatro* (un joc de cartes): fas una
+jugada, uns comodins la multipliquen, i entre ronda i ronda els compres i
+muntes una combinació teva. Ja n'han sortit versions amb paraules
+(*Wordatro*, *Letterlike*), però en anglès. La Impremta és **inspirada en**
+aquell cicle, amb tema, noms i regles nostres: ets un impressor amb una caixa
+de tipus de plom.
+
+- **Vuit lletres a la mà**, fas una paraula i la imprimeixes. Punts =
+  (base de la llargada + valor de cada lletra) × multiplicador. Cada pàgina
+  demana uns punts amb 4 impressions i 3 descarts. Tres pàgines per capítol:
+  la petita, la gran (×1,5) i la del **censor** (×2), que posa una
+  prohibició (sense E, només paraules curtes, una impressió menys...).
+- **Els segells són els comodins** (`SEGELLS`): com a molt cinc. Els manuals
+  pugen el nivell d'una llargada, i els paquets afegeixen tipus a la caixa
+  (n'hi ha de millorats i comodins), en milloren o en llimen.
+- **El recompte es veu pas a pas**: cada lletra i cada segell que fa alguna
+  cosa salta i suma davant teu, amb un so que puja. És la gràcia del joc;
+  tocant la pantalla va més de pressa.
+- **El primer censor és dels suaus** (`CENSORS_SUAUS`): el primer capítol és
+  per aprendre.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Tot el que surt a l'atzar surt d'una llavor** (`rng(...)`), i cada cosa
+  té el seu fil: la bossa de la pàgina 4, la botiga de la pàgina 7, els
+  censors. Així el que compres no canvia la sort de la resta, i **la mateixa
+  llavor és la mateixa partida**. D'això depenen dues coses:
+  - **La partida del dia**: llavor `DIA-<data de Madrid>`, igual per a
+    tothom. Té una taula pròpia al Worker, `/records/impremta_dia/<data>`,
+    que no surt a la llista de tots els jocs ni avisa per Telegram (el primer
+    de cada matí ja seria el número 1). Només compta **la primera vegada**
+    que la jugues (`localStorage` `impremta-dia`): si no, qui la repeteix ja
+    sap quines lletres li tocaran. El Worker no hi deixa apuntar ningú a un
+    dia passat, i cada taula s'esborra sola als 60 dies.
+  - **El repte**: en acabar, els enllaços REPTA PER TELEGRAM / PER WHATSAPP /
+    COPIA porten `#repte=LLAVOR&n=INICIALS&p=PUNTS&c=CAPÍTOL`. Qui l'obre juga
+    la mateixa partida i, en acabar, veu qui ha guanyat. No cal cap servidor:
+    els punts de l'altre van dins de l'enllaç.
+- **El diccionari és un altre que el del Garbuix**: `dades/formes.txt`, amb
+  **totes les formes** (plurals, femenins, verbs conjugats, també els
+  valencians i balears, adverbis, numerals...). Amb vuit lletres a la mà,
+  tothom prova CASES o MENJO, i rebutjar-les faria enfadar. Surt del
+  `resultats/lt/diccionari.txt` de Softcatalà, quedant-se només els noms,
+  adjectius i verbs el lema dels quals és a `dades/paraules.txt` (així els
+  filtres d'obsoletes, noms propis i sigles del Garbuix hi valen igual). Són
+  184.000 formes, 1,5 MB (425 KB comprimit). Mateixa llicència.
+- **La caixa de sortida és de 57 tipus amb un 40% de vocals** (`CAIXA0`),
+  com el català escrit. Amb les proporcions de freqüència pura, sortien massa
+  lletres rares i massa poques vocals.
+
+Com està calibrat, amb jugadors automàtics que juguen amb el codi de debò: un
+que juga com una persona (coneix 6.000 paraules corrents i en tria una de les
+més llargues) arriba de mitjana a la pàgina 13 (capítol 5), i un que les
+coneix totes i tria la que fa més punts, a la 18. Gairebé tots dos cauen a
+la pàgina del censor, que és el que ha de passar, i quasi ningú no cau al
+primer capítol. Els objectius són `OBJ` (i a partir del capítol 9, ×1,8 cada
+capítol, que vol dir que la partida sempre s'acaba).
+
+Botons: `DESCARTA` a l'esquerra, petit i d'un altre color (gasta un
+descart), `IMPRIMEIX` gros al mig i `BARREJA` (només remena la mà, per veure-hi
+paraules) a la dreta. La trampa 3.
+
 ## El Síndria: com funciona la física
 
 És l'únic joc amb física de debò, i té dues decisions que no s'han de desfer
@@ -442,7 +508,7 @@ records.js          codi comú dels rècords compartits (el carreguen tots els j
 sw.js               service worker (cache per poder jugar sense connexió)
 manifest.json       perquè es pugui instal·lar com a app
 thumbs/             captures reals de cada joc, 240x240
-dades/              el diccionari del Garbuix i la seva llicència
+dades/              els diccionaris del Garbuix i de La Impremta, i la seva llicència
 worker/             el Worker de Cloudflare dels rècords (còpia del que hi ha desplegat)
 scripts/            proves
 ```
@@ -730,6 +796,12 @@ comproven el comportament.
   carregui, que es rebutgin les paraules curtes i les que no existeixen, que
   només s'encadenin lletres que es toquen, que sempre hi hagi paraules per fer
   i que la partida s'acabi.
+- `node scripts/prova-impremta.mjs` — que La Impremta es pugui jugar tocant
+  la pantalla, que les paraules inventades no costin res, que el censor
+  prohibeixi de debò, que la mateixa llavor doni la mateixa partida, que la
+  partida del dia vagi a la seva taula una sola vegada, que el repte s'obri
+  des de l'enllaç i que un jugador automàtic hi arribi lluny i la partida
+  s'acabi. També serveix el repositori per http, com la del Garbuix.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

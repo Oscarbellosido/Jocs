@@ -62,7 +62,17 @@ const JOCS = {
   ram:               99999,
   lunar_lander:      99999,
   garbuix:          999999,
+  impremta:      999999999,
 };
+
+// Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
+// No surten a la llista de tots els jocs ni avisen per Telegram: el primer
+// que hi juga cada mati ja seria el numero 1, i el grup s'ompliria d'avisos.
+// Cada taula s'esborra sola al cap de seixanta dies.
+const DIARIS = {
+  impremta_dia:  999999999,
+};
+const DIES_DIARI = 60;
 const TOP = 10;
 
 // Per als missatges de Telegram: com es diu cada joc ("al Ram", "a les Boles")
@@ -100,6 +110,7 @@ const FITXA = {
   ram:             ['El Ram',          'al Ram',             'ram.html'],
   lunar_lander:    ['Lunar Lander',    'al Lunar Lander',    'lunar_lander.html'],
   garbuix:         ['Garbuix',         'al Garbuix',         'garbuix.html'],
+  impremta:        ['La Impremta',     'a la Impremta',      'impremta.html'],
 };
 
 const cors = {
@@ -271,6 +282,29 @@ async function activa(env, origen) {
     '<li>Al xat privat amb el bot hi ha el botó <b>Jocs</b>, que obre tota la col·lecció dins de Telegram.</li></ol>');
 }
 
+// Una partida del dia. Nomes s'hi pot apuntar el mateix dia (amb un dia de
+// marge per les hores de diferencia): les dels dies passats ja estan tancades.
+async function diari(request, env, joc, dia) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia || '') || isNaN(Date.parse(dia + 'T00:00:00Z')))
+    return json({ error: 'dia invalid' }, 400);
+  const clau = joc + ':' + dia;
+  if (request.method === 'GET') return json(await llegir(env, clau));
+  if (request.method !== 'POST') return json({ error: 'metode no permes' }, 405);
+  const dif = Date.now() - Date.parse(dia + 'T00:00:00Z');
+  if (dif < -36 * 3600e3 || dif > 60 * 3600e3) return json({ error: 'aquest dia ja esta tancat' }, 400);
+  let cos;
+  try { cos = await request.json(); } catch { return json({ error: 'cos invalid' }, 400); }
+  const punts = Math.floor(Number(cos.punts));
+  if (!Number.isFinite(punts) || punts <= 0 || punts > DIARIS[joc]) return json({ error: 'puntuacio fora de rang' }, 400);
+  const entrada = { n: netejaNom(cos.nom), p: punts, t: Date.now() };
+  const llista = await llegir(env, clau);
+  llista.push(entrada);
+  llista.sort((a, b) => b.p - a.p || a.t - b.t);
+  const retallada = llista.slice(0, TOP);
+  await env.RECORDS.put('joc:' + clau, JSON.stringify(retallada), { expirationTtl: DIES_DIARI * 86400 });
+  return json({ top: retallada, posicio: retallada.indexOf(entrada) + 1 });
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -300,6 +334,8 @@ export default {
     }
 
     const joc = parts[1];
+
+    if (joc in DIARIS) return diari(request, env, joc, parts[2]);
 
     // tots els jocs de cop, per pintar la taula de la pagina principal
     if (!joc) {
