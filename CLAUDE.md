@@ -388,7 +388,9 @@ Coses que no s'han de desfer sense entendre-les:
   paraula ja s'envia sola, o sigui que cap dels dos botons no feia res. Tampoc
   no cal desfer: una paraula equivocada no costa res (les boles es queden on
   eren), i per treure lletres a mig dibuix es torna enrere pel mateix camí.
-  SACSEJA, que et fa caure tres lletres més, va arraconat a la dreta i petit.
+  SACSEJA primer va anar arraconat a la dreta i petit, perquè et fa caure tres
+  lletres més; però com que és l'únic botó i no en tapa cap altre, en Carles el
+  va voler **al mig i gros**.
 - **Les lletres rares van en blau** (les que valen 4 o més: G, F, B, X, H, QU,
   J, NY, Ç, Z) i les triades **en or**, amb la cadena taronja dibuixada **per
   sobre** de les boles: per sota no es veia per on passava.
