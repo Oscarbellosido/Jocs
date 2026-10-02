@@ -12,11 +12,11 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
 /* boles amb lletres: corbes i lletra grossa, res de pixels quadrats */
 canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#14110d;touch-action:none}
-#controls{flex:none;display:flex;gap:8px;margin-top:10px;align-items:center}
+#controls{flex:none;width:94%;display:flex;justify-content:flex-end;margin-top:10px;align-items:center}
 button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:84px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
-/* SACSEJA et fa caure lletres de mes: petit, d'un altre color i a l'altra punta */
-#sacseja{width:76px;font-size:12px;color:#ffb05a;border-color:#8a5a2a;margin-right:10px}
-#fet{width:112px;color:#7dff9b}
+/* SACSEJA et fa caure lletres de mes: es l'unic boto, petit, d'un altre color
+   i arraconat, que no el toquis sense voler en acabar de lliscar */
+#sacseja{width:76px;height:40px;font-size:12px;color:#ffb05a;border-color:#8a5a2a}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:20px;line-height:1.7;display:none;background:rgba(0,0,0,.88);border:1px solid #555;border-radius:10px;padding:16px 24px;max-width:80%}
 #msg small{display:block;margin-top:8px;font-size:13px}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
@@ -28,10 +28,10 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="420" height="640"></canvas></div>
   <div id="controls">
-    <button id="sacseja">SACSEJA</button><button id="esborra">ESBORRA</button><button id="fet">D'ACORD</button>
+    <button id="sacseja">SACSEJA</button>
   </div>
   <div id="msg"></div>
-  <small><b style="color:#ddd">Fes paraules amb lletres que es toquen: desapareixen i en cauen de noves; s'acaba si la caixa vessa.</b> llisca el dit de lletra en lletra i aixeca'l, o toca-les una a una i D'ACORD · sense plurals ni verbs conjugats · pausa: P</small>
+  <small><b style="color:#ddd">Fes paraules amb lletres que es toquen: desapareixen i en cauen de noves; s'acaba si la caixa vessa.</b> llisca el dit de lletra en lletra i aixeca'l · sense plurals ni verbs conjugats · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -421,9 +421,11 @@ function loop(t){const dt=Math.min(40,t-last)/1000;last=t;update(dt);draw();requ
 requestAnimationFrame(loop);
 
 // ===== EL DIT =====
-// Dues maneres, i totes dues valen:
-//  - lliscar el dit de bola en bola i aixecar-lo: la paraula s'envia sola;
-//  - tocar-les una a una i premer D'ACORD (tocar l'ultima la treu).
+// Es llisca el dit de bola en bola i, en aixecar-lo, la paraula s'envia sola.
+// Abans tambe es podien tocar d'una en una i premer D'ACORD, i hi havia un
+// boto d'ESBORRA, pero jugant lliscant cap dels dos no servia per a res. Una
+// paraula equivocada no costa res (les boles es queden on eren), o sigui que
+// tampoc no cal desfer-la: per treure lletres, tornar enrere pel mateix cami.
 // Mentre llisques, per afegir una bola cal passar a prop del centre (no
 // n'hi ha prou de fregar-ne la vora), que si no se t'enganxaven les veines.
 function punt(ev){
@@ -440,12 +442,9 @@ c.addEventListener('pointerdown',ev=>{
   if(state!=='play'||paused)return;
   try{c.setPointerCapture(ev.pointerId)}catch(e){}
   const b=bolaA(punt(ev),R*1.08);
+  sel=[];
   if(!b){gest=null;return}
-  const ultimaId=sel[sel.length-1];
-  gest={mogut:false,tocaUltima:false};
-  if(ultimaId===b.id)gest.tocaUltima=true;
-  else if(sel.length&&!sel.includes(b.id)&&toquen(perId(ultimaId),b)){sel.push(b.id);sndTria(sel.length)}
-  else{sel=[b.id];sndTria(1)}
+  gest={};sel=[b.id];sndTria(1);
 });
 c.addEventListener('pointermove',ev=>{
   if(!gest||state!=='play')return;
@@ -454,33 +453,31 @@ c.addEventListener('pointermove',ev=>{
   if(!b)return;
   const ultimaId=sel[sel.length-1];
   if(b.id===ultimaId)return;
-  if(sel.length>=2&&b.id===sel[sel.length-2]){sel.pop();gest.mogut=true;return}   // enrere
-  if(!sel.includes(b.id)&&toquen(perId(ultimaId),b)){sel.push(b.id);gest.mogut=true;sndTria(sel.length)}
+  if(sel.length>=2&&b.id===sel[sel.length-2]){sel.pop();return}   // enrere
+  if(!sel.includes(b.id)&&toquen(perId(ultimaId),b)){sel.push(b.id);sndTria(sel.length)}
 });
 function aixeca(){
   if(!gest)return;
-  if(gest.mogut&&sel.length>=2)envia();
-  else if(gest.tocaUltima&&!gest.mogut)sel.pop();
+  // amb dues lletres, envia() ja diu que en calen tres; amb una, no era
+  // cap paraula sino un toc
+  if(sel.length>=2)envia();else sel=[];
   gest=null;
 }
 c.addEventListener('pointerup',aixeca);
-c.addEventListener('pointercancel',()=>{gest=null});
+c.addEventListener('pointercancel',()=>{gest=null;sel=[]});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
 function boto(id,fn){
   document.getElementById(id).addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();fn()});
 }
-boto('fet',()=>{if(state==='over')start();else envia()});
-boto('esborra',()=>{sel=[]});
 boto('sacseja',sacseja);
 
 // teclat: escriure la paraula no te sentit aqui (cal resseguir-la), pero
-// ENTER envia, ESC esborra i S sacseja
+// S sacseja i ENTER torna a comencar quan s'acaba
 document.addEventListener('keydown',e=>{
   aInit();
   if(e.code==='KeyP'&&state!=='over'){paused=!paused;return}
-  if(e.code==='Enter'){e.preventDefault();if(state==='over')start();else envia()}
-  if(e.code==='Escape'||e.code==='Backspace'){e.preventDefault();sel=[]}
+  if(e.code==='Enter'){e.preventDefault();if(state==='over')start()}
   if(e.code==='KeyS'){sacseja()}
 });
 document.getElementById('msg').addEventListener('click',()=>{if(state==='over'){aInit();start()}});

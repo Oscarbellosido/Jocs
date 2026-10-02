@@ -88,12 +88,25 @@ diu(r.fetes === 1 && r.score > 0 && r.queden === 0,
   `lliscant el dit per C-A-S-A es fa la paraula i les boles desapareixen (${r.score} punts)`);
 diu(r.cua + r.boles >= 3, `després en cauen de noves (${r.cua + r.boles})`);
 
+// tornant enrere pel mateix cami es treuen lletres: G-A-T-A i enrere fins a la T
+pos = await posa('gata');
+{
+  const [x0, y0] = aPant(...pos[0]);
+  await p.mouse.move(x0, y0); await p.mouse.down();
+  for (const q of [...pos.slice(1), pos[2]]) { const [xx, yy] = aPant(...q); await p.mouse.move(xx, yy, { steps: 6 }); }
+  await p.mouse.up(); await p.waitForTimeout(150);
+}
+r = await p.evaluate(() => ({ fetes, ultima }));
+diu(r.fetes === 1 && r.ultima && r.ultima.p === 'gat',
+  `lliscant per G-A-T-A i tornant enrere fins a la T queda «gat» (${JSON.stringify(r.ultima)})`);
+
+// tocar lletres d'una en una ja no fa cap paraula, i sota la caixa nomes hi ha SACSEJA
 pos = await posa('gat');
 for (const q of pos) { const [xx, yy] = aPant(...q); await p.mouse.click(xx, yy); await p.waitForTimeout(80); }
-const triades = await p.evaluate(() => sel.length);
-await p.click('#fet'); await p.waitForTimeout(150);
-r = await p.evaluate(() => ({ fetes }));
-diu(triades === 3 && r.fetes === 1, `tocant G, A, T una a una i D'ACORD també es fa`);
+r = await p.evaluate(() => ({ sel: sel.length, fetes,
+  botons: [...document.querySelectorAll('#controls button')].map(b => b.id) }));
+diu(r.sel === 0 && r.fetes === 0, `tocar les lletres d'una en una no deixa res marcat`);
+diu(r.botons.join() === 'sacseja', `sota la caixa només hi ha el botó SACSEJA (${r.botons.join(', ')})`);
 
 pos = await posa('xzt');
 await llisca(pos);
@@ -106,9 +119,15 @@ r = await p.evaluate(() => ({ fetes, avis, boles: boles.length }));
 diu(r.fetes === 0 && r.boles === 3, `una de dues lletres no compta («${r.avis}»)`);
 
 pos = await posa('sol', [2]);
-for (const q of pos) { const [xx, yy] = aPant(...q); await p.mouse.click(xx, yy); await p.waitForTimeout(80); }
+{
+  const [x0, y0] = aPant(...pos[0]);
+  await p.mouse.move(x0, y0); await p.mouse.down();
+  for (const q of pos.slice(1)) { const [xx, yy] = aPant(...q); await p.mouse.move(xx, yy, { steps: 6 }); }
+}
 r = await p.evaluate(() => sel.map(id => perId(id).t).join(''));
-diu(r !== 'sol', `S, O i una L que no els toca no s'encadenen (la tria és «${r}»)`);
+await p.mouse.up(); await p.waitForTimeout(150);
+const fetesSol = await p.evaluate(() => fetes);
+diu(r === 'so' && fetesSol === 0, `S, O i una L que no els toca no s'encadenen (la tria és «${r}»)`);
 
 pos = await posa('pinyol');
 await llisca(pos);

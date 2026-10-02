@@ -347,8 +347,8 @@ buscar els rams 0,31: el pressupost sencer d'un fotograma són 16.
 ## El Garbuix: paraules amb lletres que es toquen
 
 El motor del Síndria un altre cop, però les boles porten **lletres**: fas una
-paraula resseguint boles que es toquen (lliscant el dit, o tocant-les una a una
-i D'ACORD), les boles desapareixen, el munt s'esfondra i en cauen de noves. Si
+paraula resseguint boles que es toquen (lliscant el dit i aixecant-lo), les
+boles desapareixen, el munt s'esfondra i en cauen de noves. Si
 la caixa vessa, s'ha acabat. És nostre: els jocs de paraules en català que hi
 ha (els de cada dia, d'endevinar una paraula o de fer-ne amb set lletres) són
 de pensar quiets; aquí el tauler es mou sol i cada paraula canvia què toca què.
@@ -382,6 +382,13 @@ Coses que no s'han de desfer sense entendre-les:
 - **El que fa difícil la partida és quantes en cauen** (`quantesNoves`): 3
   després de cada paraula al principi, i una més cada 12 paraules fins a 7.
   Fent paraules de tres lletres, com més va més en cauen que no pas en treus.
+- **Només es juga lliscant el dit, i a sota només hi ha SACSEJA.** Al
+  principi també es podien tocar les lletres d'una en una i prémer D'ACORD, i hi
+  havia un botó d'ESBORRA. En Carles ho va veure jugant: en aixecar el dit la
+  paraula ja s'envia sola, o sigui que cap dels dos botons no feia res. Tampoc
+  no cal desfer: una paraula equivocada no costa res (les boles es queden on
+  eren), i per treure lletres a mig dibuix es torna enrere pel mateix camí.
+  SACSEJA, que et fa caure tres lletres més, va arraconat a la dreta i petit.
 - **Les lletres rares van en blau** (les que valen 4 o més: G, F, B, X, H, QU,
   J, NY, Ç, Z) i les triades **en or**, amb la cadena taronja dibuixada **per
   sobre** de les boles: per sota no es veia per on passava.
