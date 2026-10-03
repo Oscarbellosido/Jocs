@@ -12,7 +12,23 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
 /* boles amb lletres: corbes i lletra grossa, res de pixels quadrats */
 canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#14110d;touch-action:none}
-#controls{flex:none;width:94%;display:flex;justify-content:center;margin-top:10px;align-items:center}
+/* SACSEJA al mig de debo i el boto del tema a la dreta: una graella de tres
+   columnes, que amb flex el boto petit el desplaçaria del centre */
+#controls{flex:none;width:94%;display:grid;grid-template-columns:1fr auto 1fr;margin-top:10px;align-items:center}
+#tema{grid-column:3;justify-self:end;width:64px;height:40px;font-size:11px;color:#c9b28a;border-color:#5a4632}
+#sacseja{grid-column:2}
+@media (max-width:360px){#sacseja{width:150px!important}}
+/* el tema clar: tot el que no es el canvas */
+body.clar,html.clar{background:#f3ead8;color:#2a1f12}
+body.clar canvas{background:#fbf6ec;border-color:#cbb894}
+body.clar #hud{color:#2a1f12}
+body.clar #best{color:#a06a00}
+body.clar #back{color:#6b5a40;border-color:#b49a74}
+body.clar button{background:#fffaf0;color:#2a1f12;border-color:#b49a74}
+body.clar #sacseja{color:#b85a00;border-color:#c98a4a}
+body.clar #tema{color:#6b5a40}
+body.clar small{color:#6b5a40}
+body.clar small b{color:#2a1f12!important}
 button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;border-radius:8px;width:84px;height:48px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
 /* SACSEJA et fa caure lletres de mes, pero es l'unic boto que hi ha i no en
    pot tapar cap altre: al mig i gros, que es trobi sense mirar */
@@ -28,7 +44,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="screen"><canvas id="game" width="420" height="640"></canvas></div>
   <div id="controls">
-    <button id="sacseja">SACSEJA</button>
+    <button id="sacseja">SACSEJA</button><button id="tema">☀ CLAR</button>
   </div>
   <div id="msg"></div>
   <small><b style="color:#ddd">Fes paraules amb lletres que es toquen: desapareixen i en cauen de noves; s'acaba si la caixa vessa.</b> llisca el dit de lletra en lletra i aixeca'l · sense plurals ni verbs conjugats · pausa: P</small>
@@ -340,16 +356,39 @@ function sprite(t,triada){
   return ll;
 }
 
+// ===== EL TEMA: FOSC O CLAR =====
+// En Carles el va demanar per jugar-hi amb llum de dia. Es recorda a
+// localStorage i nomes canvia el fons, la caixa i els rotols: les boles son
+// les mateixes, que ja eren clares.
+const TEMES={
+  fosc:{caixa:'#0e0b08',vora:'#4a3a28',ratlla:'#5a4632',perill:'#ff5050',text:'#e8d6b0',
+        groc:'#ffd75e',verd:'#8fd16a',taronja:'#ffb05a',rotul:'#ffe680',cadena:'rgba(200,90,0,.8)',
+        avis:{}},
+  clar:{caixa:'#e9dcc2',vora:'#a08460',ratlla:'#b49a74',perill:'#e03030',text:'#3b2a18',
+        groc:'#a86f00',verd:'#2f7d20',taronja:'#b85a00',rotul:'#a86f00',cadena:'rgba(200,80,0,.85)',
+        avis:{'#ffb05a':'#b85a00','#ff8a8a':'#c0392b','#7dff9b':'#1e8a3e'}},
+};
+let tema='fosc';
+try{if(localStorage.getItem('garbuix-tema')==='clar')tema='clar'}catch(e){}
+function posaTema(t){
+  tema=t;
+  try{localStorage.setItem('garbuix-tema',t)}catch(e){}
+  document.body.classList.toggle('clar',t==='clar');
+  document.documentElement.classList.toggle('clar',t==='clar');
+  document.getElementById('tema').textContent=t==='clar'?'☾ FOSC':'☀ CLAR';
+}
+
 function draw(){
+  const T=TEMES[tema];
   x.clearRect(0,0,W,H);
   // la caixa
-  x.fillStyle='#0e0b08';
+  x.fillStyle=T.caixa;
   x.fillRect(CAIXA_E,SOSTRE-34,CAIXA_D-CAIXA_E,TERRA-SOSTRE+34);
-  x.strokeStyle='#4a3a28';x.lineWidth=3;
+  x.strokeStyle=T.vora;x.lineWidth=3;
   x.beginPath();x.moveTo(CAIXA_E-1,SOSTRE-34);x.lineTo(CAIXA_E-1,TERRA+2);
   x.lineTo(CAIXA_D+1,TERRA+2);x.lineTo(CAIXA_D+1,SOSTRE-34);x.stroke();
   const perill=vessantT>0.4;
-  x.strokeStyle=perill?'#ff5050':'#5a4632';x.lineWidth=2;x.setLineDash([9,7]);
+  x.strokeStyle=perill?T.perill:T.ratlla;x.lineWidth=2;x.setLineDash([9,7]);
   x.beginPath();x.moveTo(CAIXA_E,SOSTRE);x.lineTo(CAIXA_D,SOSTRE);x.stroke();x.setLineDash([]);
 
   const ts=sel.map(perId).filter(Boolean);
@@ -363,7 +402,7 @@ function draw(){
   // La cadena de la paraula que fas, PER SOBRE de les boles: com que es
   // toquen, per sota quedava amagada i no es veia en quin ordre anaven.
   if(ts.length>1){
-    x.strokeStyle='rgba(200,90,0,.8)';x.lineWidth=4;x.lineCap='round';x.lineJoin='round';
+    x.strokeStyle=T.cadena;x.lineWidth=4;x.lineCap='round';x.lineJoin='round';
     x.beginPath();x.moveTo(ts[0].x+sac,ts[0].y);
     for(let i=1;i<ts.length;i++)x.lineTo(ts[i].x+sac,ts[i].y);
     x.stroke();x.lineCap='butt';
@@ -374,7 +413,7 @@ function draw(){
   x.globalAlpha=1;
   x.textAlign='center';
   for(const r of rotuls){
-    x.globalAlpha=Math.max(0,Math.min(1,r.t));x.fillStyle='#ffe680';
+    x.globalAlpha=Math.max(0,Math.min(1,r.t));x.fillStyle=T.rotul;
     x.font='bold 16px monospace';x.fillText(r.txt,r.x,r.y);
   }
   x.globalAlpha=1;
@@ -383,12 +422,12 @@ function draw(){
   // La paraula que estas fent, en gros, amb els punts que valdria.
   const tiles=ts.map(b=>b.t), p=tiles.join('');
   if(p){
-    x.fillStyle='#ffd75e';x.font='bold '+(p.length>9?24:30)+'px monospace';
+    x.fillStyle=T.groc;x.font='bold '+(p.length>9?24:30)+'px monospace';
     x.fillText(p.toUpperCase(),W/2+sac,62);
-    x.fillStyle='#e8d6b0';x.font='16px monospace';
+    x.fillStyle=T.text;x.font='16px monospace';
     x.fillText(p.length>=3?'valdria '+puntsDe(tiles)+' punts':'tria lletres que es toquin',W/2,88);
   }else if(!DIC){
-    x.fillStyle='#e8d6b0';x.font='16px monospace';
+    x.fillStyle=T.text;x.font='16px monospace';
     x.fillText(errorDic?'no s\'ha pogut carregar el diccionari':'carregant el diccionari…',W/2,64);
   }else if(ultima){
     // l'ultima paraula: l'etiqueta en clar i la paraula en groc, ben grossa
@@ -396,30 +435,30 @@ function draw(){
     x.font='bold 22px monospace';const wp=x.measureText(pa).width;
     x.font='16px monospace';const we=x.measureText(et).width;
     const x0=W/2-(we+wp)/2;x.textAlign='left';
-    x.fillStyle='#e8d6b0';x.fillText(et,x0,66);
-    x.fillStyle='#ffd75e';x.font='bold 22px monospace';x.fillText(pa,x0+we,66);x.textAlign='center';
+    x.fillStyle=T.text;x.fillText(et,x0,66);
+    x.fillStyle=T.groc;x.font='bold 22px monospace';x.fillText(pa,x0+we,66);x.textAlign='center';
   }else{
-    x.fillStyle='#e8d6b0';x.font='16px monospace';
+    x.fillStyle=T.text;x.font='16px monospace';
     x.fillText('llisca el dit per sobre de lletres',W/2,58);
     x.fillText('que es toquin',W/2,80);
   }
   if(avisT>0&&avis){
-    x.globalAlpha=Math.min(1,avisT*2);x.fillStyle=avisCol;x.font='bold 16px monospace';
+    x.globalAlpha=Math.min(1,avisT*2);x.fillStyle=T.avis[avisCol]||avisCol;x.font='bold 16px monospace';
     x.fillText(avis,W/2,112);x.globalAlpha=1;
   }
   // Els rotols de dalt, grossos i de colors: al mobil, a 10 px i en marro
   // sobre negre, en Carles gairebe no els veia.
   x.font='bold 15px monospace';x.textAlign='left';
-  x.fillStyle='#e8d6b0';x.fillText('PARAULES ',12,24);
-  x.fillStyle='#ffd75e';x.fillText(String(fetes),12+x.measureText('PARAULES ').width,24);
+  x.fillStyle=T.text;x.fillText('PARAULES ',12,24);
+  x.fillStyle=T.groc;x.fillText(String(fetes),12+x.measureText('PARAULES ').width,24);
   x.textAlign='right';
   if(millor){
     const v=millor.p.toUpperCase()+' '+millor.punts;
-    x.fillStyle='#8fd16a';x.fillText(v,W-12,24);
-    x.fillStyle='#e8d6b0';x.fillText('MILLOR: ',W-12-x.measureText(v).width,24);
+    x.fillStyle=T.verd;x.fillText(v,W-12,24);
+    x.fillStyle=T.text;x.fillText('MILLOR: ',W-12-x.measureText(v).width,24);
   }
   x.textAlign='center';
-  x.fillStyle='#ffb05a';x.font='15px monospace';
+  x.fillStyle=T.taronja;x.font='15px monospace';
   x.fillText('després de cada paraula en cauen '+quantesNoves(),W/2,138);
   x.textAlign='left';
 
@@ -485,6 +524,8 @@ function boto(id,fn){
   document.getElementById(id).addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();fn()});
 }
 boto('sacseja',sacseja);
+boto('tema',()=>posaTema(tema==='clar'?'fosc':'clar'));
+posaTema(tema);
 
 // teclat: escriure la paraula no te sentit aqui (cal resseguir-la), pero
 // S sacseja i ENTER torna a comencar quan s'acaba

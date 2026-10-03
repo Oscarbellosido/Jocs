@@ -106,7 +106,20 @@ for (const q of pos) { const [xx, yy] = aPant(...q); await p.mouse.click(xx, yy)
 r = await p.evaluate(() => ({ sel: sel.length, fetes,
   botons: [...document.querySelectorAll('#controls button')].map(b => b.id) }));
 diu(r.sel === 0 && r.fetes === 0, `tocar les lletres d'una en una no deixa res marcat`);
-diu(r.botons.join() === 'sacseja', `sota la caixa només hi ha el botó SACSEJA (${r.botons.join(', ')})`);
+diu(r.botons.join() === 'sacseja,tema', `sota la caixa hi ha SACSEJA i el botó del tema, i res més (${r.botons.join(', ')})`);
+
+// el tema clar: es canvia amb el boto i es recorda
+await p.click('#tema'); await p.waitForTimeout(100);
+r = await p.evaluate(() => ({ tema, clar: document.body.classList.contains('clar'), desat: localStorage.getItem('garbuix-tema'),
+  fons: getComputedStyle(document.body).backgroundColor }));
+await p.reload(); await p.waitForFunction(() => DIC !== null || errorDic, null, { timeout: 30000 });
+const tornat = await p.evaluate(() => tema);
+diu(r.tema === 'clar' && r.clar && r.desat === 'clar' && r.fons !== 'rgb(0, 0, 0)' && tornat === 'clar',
+  `el botó del tema posa el joc en clar, i en tornar-hi segueix en clar`);
+await p.click('#tema'); await p.waitForTimeout(100);
+r = await p.evaluate(() => tema);
+diu(r === 'fosc', `i un altre toc el torna a deixar fosc`);
+await p.waitForTimeout(3800);
 
 pos = await posa('xzt');
 await llisca(pos);

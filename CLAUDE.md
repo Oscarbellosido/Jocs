@@ -393,6 +393,11 @@ Coses que no s'han de desfer sense entendre-les:
   SACSEJA primer va anar arraconat a la dreta i petit, perquè et fa caure tres
   lletres més; però com que és l'únic botó i no en tapa cap altre, en Carles el
   va voler **al mig i gros**.
+- **Es pot triar entre fosc i clar** (el botó petit de la dreta, al costat de
+  SACSEJA). En Carles el va demanar per jugar-hi de dia. Es recorda a
+  `localStorage` (`garbuix-tema`) i només canvia el fons, la caixa i els
+  rètols (`TEMES`); les boles són les mateixes. SACSEJA segueix al mig de
+  debò: la filera és una graella de tres columnes.
 - **Les lletres rares van en blau** (les que valen 4 o més: G, F, B, X, H, QU,
   J, NY, Ç, Z) i les triades **en or**, amb la cadena taronja dibuixada **per
   sobre** de les boles: per sota no es veia per on passava.
