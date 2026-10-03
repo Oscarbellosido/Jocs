@@ -385,28 +385,42 @@ function draw(){
   if(p){
     x.fillStyle='#ffd75e';x.font='bold '+(p.length>9?24:30)+'px monospace';
     x.fillText(p.toUpperCase(),W/2+sac,62);
-    x.fillStyle='#b9a27a';x.font='12px monospace';
-    x.fillText(p.length>=3?'valdria '+puntsDe(tiles)+' punts':'tria lletres que es toquin',W/2,84);
+    x.fillStyle='#e8d6b0';x.font='16px monospace';
+    x.fillText(p.length>=3?'valdria '+puntsDe(tiles)+' punts':'tria lletres que es toquin',W/2,88);
   }else if(!DIC){
-    x.fillStyle='#8a7a6a';x.font='13px monospace';
+    x.fillStyle='#e8d6b0';x.font='16px monospace';
     x.fillText(errorDic?'no s\'ha pogut carregar el diccionari':'carregant el diccionari…',W/2,64);
   }else if(ultima){
-    x.fillStyle='#8a7a6a';x.font='12px monospace';
-    x.fillText('última: '+ultima.p.toUpperCase()+' (+'+ultima.punts+')',W/2,64);
+    // l'ultima paraula: l'etiqueta en clar i la paraula en groc, ben grossa
+    x.font='16px monospace';const et='última: ',pa=ultima.p.toUpperCase()+' (+'+ultima.punts+')';
+    x.font='bold 22px monospace';const wp=x.measureText(pa).width;
+    x.font='16px monospace';const we=x.measureText(et).width;
+    const x0=W/2-(we+wp)/2;x.textAlign='left';
+    x.fillStyle='#e8d6b0';x.fillText(et,x0,66);
+    x.fillStyle='#ffd75e';x.font='bold 22px monospace';x.fillText(pa,x0+we,66);x.textAlign='center';
   }else{
-    x.fillStyle='#8a7a6a';x.font='12px monospace';
-    x.fillText('llisca el dit per sobre de lletres que es toquin',W/2,64);
+    x.fillStyle='#e8d6b0';x.font='16px monospace';
+    x.fillText('llisca el dit per sobre de lletres',W/2,58);
+    x.fillText('que es toquin',W/2,80);
   }
   if(avisT>0&&avis){
-    x.globalAlpha=Math.min(1,avisT*2);x.fillStyle=avisCol;x.font='bold 13px monospace';
-    x.fillText(avis,W/2,110);x.globalAlpha=1;
+    x.globalAlpha=Math.min(1,avisT*2);x.fillStyle=avisCol;x.font='bold 16px monospace';
+    x.fillText(avis,W/2,112);x.globalAlpha=1;
   }
-  x.fillStyle='#7d6b55';x.font='10px monospace';x.textAlign='left';
-  x.fillText('PARAULES '+fetes,12,18);
+  // Els rotols de dalt, grossos i de colors: al mobil, a 10 px i en marro
+  // sobre negre, en Carles gairebe no els veia.
+  x.font='bold 15px monospace';x.textAlign='left';
+  x.fillStyle='#e8d6b0';x.fillText('PARAULES ',12,24);
+  x.fillStyle='#ffd75e';x.fillText(String(fetes),12+x.measureText('PARAULES ').width,24);
   x.textAlign='right';
-  x.fillText(millor?'MILLOR: '+millor.p.toUpperCase()+' '+millor.punts:'',W-12,18);
+  if(millor){
+    const v=millor.p.toUpperCase()+' '+millor.punts;
+    x.fillStyle='#8fd16a';x.fillText(v,W-12,24);
+    x.fillStyle='#e8d6b0';x.fillText('MILLOR: ',W-12-x.measureText(v).width,24);
+  }
   x.textAlign='center';
-  x.fillText('després de cada paraula en cauen '+quantesNoves(),W/2,136);
+  x.fillStyle='#ffb05a';x.font='15px monospace';
+  x.fillText('després de cada paraula en cauen '+quantesNoves(),W/2,138);
   x.textAlign='left';
 
   if(paused){
