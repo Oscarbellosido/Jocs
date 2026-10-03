@@ -242,6 +242,24 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(r.status === 200 && !Object.keys(r.data).some(k => k.includes('dia')), 'les partides del dia no surten a la llista de tots els jocs');
 }
 
+// La Gofra: la taula de les estrelles acumulades te cadascu una sola vegada
+{
+  await call('POST', '/records/gofra', { nom: 'CRE', punts: 12 });
+  await call('POST', '/records/gofra', { nom: 'TRA', punts: 9 });
+  await call('POST', '/records/gofra', { nom: 'CRE', punts: 15 });
+  let r = await call('GET', '/records/gofra');
+  ok(r.data.length === 2 && r.data[0].n === 'CRE' && r.data[0].p === 15,
+     'la Gofra: cadascú surt una sola vegada a la taula, amb les estrelles que té ara');
+  await call('POST', '/records/gofra', { nom: 'CRE', punts: 3 });
+  r = await call('GET', '/records/gofra');
+  ok(r.data[0].p === 15, 'la Gofra: una puntuació més baixa no li treu la que tenia');
+  const avui = new Date().toISOString().slice(0, 10);
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'CRE', punts: 4 });
+  ok(r.status === 200 && r.data.posicio === 1, 'la Gofra: la gofra del dia té la seva taula');
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'CRE', punts: 6 });
+  ok(r.status === 400, 'la Gofra: més de 5 estrelles en un dia no pot ser');
+}
+
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix
 const fsm = await import('fs');
 const codi = fsm.readFileSync(fitxerWorker, 'utf8');

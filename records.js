@@ -492,6 +492,20 @@ const Records = (() => {
 
     taulaHTML,
 
+    // Envia la puntuacio sense demanar res, amb les inicials que ja hi ha.
+    // Per als jocs que en un mateix final pugen dues taules (La Gofra: la del
+    // dia i la de les estrelles acumulades): dues finestretes seguides per
+    // demanar les inicials serien una nosa.
+    async envia(joc, punts) {
+      const n = nom();
+      if (!n || !punts) return null;
+      return await crida('/records/' + joc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: n, punts }),
+      });
+    },
+
     // per a les proves i per si algun joc vol saber si el so esta engegat
     so: () => soActiu,
     posaSo,

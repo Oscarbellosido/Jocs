@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Gofra</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* lletra grossa i cantonades rodones: res de pixels quadrats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#17120c;touch-action:none}
+#controls{flex:none;display:flex;gap:10px;margin-top:8px;align-items:center;justify-content:center}
+button{font:14px monospace;background:#111;color:#aaa;border:1px solid #555;border-radius:8px;width:140px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+button.actiu{color:#ffd27a;border-color:#c98f3c;background:#241a0e}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.55;display:none;background:rgba(0,0,0,.94);border:1px solid #555;border-radius:10px;padding:14px 18px;width:84%;max-width:380px;max-height:88%;overflow:auto;box-sizing:border-box}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>ESTRELLES <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="600"></canvas></div>
+  <div id="controls">
+    <button id="dia">LA DEL DIA</button><button id="practica">PRÀCTICA</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Torna les sis paraules a lloc intercanviant lletres de dues en dues: verd, ja hi és; groc, és d'aquesta paraula però en un altre lloc; gris, no és d'aquí.</b> toca dues lletres (o arrossega'n una sobre l'altra) · una gofra nova cada dia · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndToc(){aInit();tone(560,.05,"triangle",.15)}
+function sndNo(){aInit();tone(170,.12,"square",.1,-40)}
+function sndCanvi(){aInit();tone(330,.07,"triangle",.16);setTimeout(()=>tone(440,.07,"triangle",.14),55)}
+// cada lletra que es posa verda sona una mica mes aguda que l'anterior
+function sndVerd(n){aInit();tone(523*Math.pow(1.06,n),.16,"sine",.22)}
+function sndParaula(){aInit();[659,784,988].forEach((f,i)=>setTimeout(()=>tone(f,.16,"triangle",.22),i*70))}
+function sndGuanya(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.22,"triangle",.24),i*110))}
+function sndPerd(){aInit();[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.24,-40),i*200))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=600;
+
+// ===== LES PARAULES =====
+// Paraules corrents de cinc lletres: les que surten al diccionari de
+// Softcatala (vegeu dades/LLICENCIA-paraules.txt) i, a mes, entre les 14.000
+// que mes es fan servir. Aqui no s'escriu res: la solucio es la que es, i ha
+// de ser una paraula que tothom reconegui. Sense accents a les fitxes; despres
+// dels dos punts, com s'escriu de debo, per ensenyar-la al final.
+const PARAULES=`
+nomes:només estic veure acord estat temps tambe:també sobre abans passa coses altre estar haver
+doncs tenir altra segur massa homes tenia deixa saber porta quina feina matar germa:germà creus
+poder morir terra donar cotxe venir amics ajuda quant aviat filla favor queda aigua fills petit
+posar dones gaire junts unica:única hores tipus força marit forma parla viure reina rapid:ràpid
+torna final poble culpa pensa molta banda donat igual resta mesos agent facil:fàcil morts sopar
+feliç faria negre ultim:últim canvi festa noies segon equip preso:presó pares grans sabeu troba
+armes mirar morta futur posat prova broma pagar error honor calma oncle falta bonic capaç dolor
+somni passi vista plaer metge perdo:perdó beure espai comte caure taula voler llarg tarda porto
+minut rebut amiga truca baixa marxa propi vides rebre parar robar regal jugar pobre costa
+linia:línia dubte arreu tocar hotel llest reial paper dreta haure:hauré atura obrir caixa amunt
+lluna causa opcio:opció anima:ànima major units blanc carta fugir fotos plena entes:entès heroi
+motiu volta sabut triar color bossa forta mitja tanca regne vella moure pedra ganes llocs diari
+casar pujar bomba bella lider:líder desti:destí minim:mínim ferro pista joves noves vells forat
+crear magia:màgia cames plans cuina canço:cançó serie:sèrie valor busca mobil:mòbil front
+legal cases ferit dades trist xicot desig estiu seure volar crida tants deure venia droga dinar
+quiet riure clara jutge local menja acces:accés crims camio:camió drets dracs casat total flors
+punts torre idees arbre accio:acció calor estil dents mires video:vídeo parts anell tirar
+apres:après paret ossos cinta milio:milió bojos lleis negra patir xarxa epoca:època ficar doble
+radio:ràdio presa pilot llums rebel enmig visio:visió vares poses flota antic talla crema pinta
+tieta jardi:jardí cares freda amant jurat tomba noces forts palau ombra angel:àngel premi bales
+marca conte anant humor segle feble cruel parat plata pluja patro:patró famos:famós certa quart
+endur colla jurar nuvia:núvia terme raons soles fumar dolça lliço:lliçó corda sabes:sabés
+illes abric prego rates tribu pecat nenes abast verge tassa salva trets passo caçar fusta noble
+extra atacs deute santa virus notes nacio:nació rossa maxim:màxim males mates cales:calés fosca
+nebot prens plaça tasca marge pobra arxiu barri dames cerca junta reals corbs dutxa remei dotze
+buida espia titol:títol tenda sucre model obres pasta vidre venda limit:límit trair grups
+copia:còpia surts camps verda crits regla negar veins:veïns moral motor panic:pànic graus
+debil:dèbil ferir ocell herba joies botes hereu vital panxa vidua:vídua jueus votar cursa bruta
+punta sorra actes febre pesta plens salsa crisi porcs girar eines fidel tabac tunel:túnel rodes
+frase tancs canto:cantó blaus carro unics:únics criar escut falsa llops ritme treus diana flama
+civil curar placa debat venut penes franc mares peces visca polis ronda gelat fresc fulla tirat
+armat motel boira dolar:dòlar canal fisic:físic justa medic:mèdic repte cites digne gossa blava
+sonar matis copes estes padri:padrí ments setge senat pizza espos:espòs badia menor parer
+sabre:sabré robot plats pegar lliga coixi:coixí manca mines temes aliat nuvol:núvol rifle balla
+barba lleig laser:làser piano tipic:típic venes trucs barat serps barra crist ideal socis fonts
+magic:màgic firma dansa curta bancs pegat norma rabia:ràbia boles russa fetge recte afers etern
+mogut notar trons fatal rient resar rumor micos diner barca crani bates temer:témer pacte greix
+genet pomes gener curat odiar atzar llits greus durar trens actiu nedar sagal drama fusio:fusió
+cable mafia:màfia eixos eixir humil imant ocupa falla actor metro tigre veres petar jugat volum
+metal aires cabra urpes roses clima adult pausa reves:revés ramat certs bufet picar colom pesat
+autor regio:regió lents pesca letal museu ruina:ruïna savis signe logic:lògic altes bases
+carbo:carbó tanco marro:marró rodar nucli ferma criat estel boges gerda radar mudar manar
+aeria:aèria mosca delta obeir altar borsa burro bisbe gorra capes gespa besar prima groga ambre
+novia:nòvia nines cavar curts exili gabia:gàbia picat raigs llati:llatí potes milla farao:faraó
+farsa solar licor files merit:mèrit serum:sèrum cicle pesar astut fetes rares lenta taiga
+violi:violí puces tutor farta unida inici treva timid:tímid moria exces:excés apunt multa preus
+xofer selva guiar arees:àrees talls furia:fúria verds parir mapes pupil rodet ample gerro
+savia:sàvia organ:òrgan sobri pisos sabor dures metre arrel sobra vocal suite resum manta
+falco:falcó legio:legió lotus abril ancia:ancià culte bleda grams urani arros:arròs llamp vents
+grega veina:veïna serra coves comic:còmic ploro sales ofici arena poema fruit bruts borda xocar
+vater:vàter tires tallo cosir novio:nòvio ninot codis solta dates humit vapor nocio:noció sonda
+habit:hàbit escac pells recta runes torns lleva basic:bàsic clars danes:danès repos:repòs fixar
+modul:mòdul avanç jueva llana poeta girat bufar miler temor brusa forca pulmo:pulmó falda vives
+marea panta:pantà capsa plana dosis llars monjo hoste utils:útils nusos agost frens exits:èxits
+colze films tries plego dieta bassa suaus begui pages:pagès missa porxo casal gasos zones triga
+draps palla perla banca index:índex tumor gotes rival hindu:hindú madur remot pocio:poció
+anims:ànims arabs:àrabs guant veles tones digna cobra pebre motos menta alçar basto:bastó onada
+intim:íntim duana flanc batut solid:sòlid valer natiu opera:òpera basta corea coure molls
+mocio:moció fitxa fonda negat cedir clans pelar etica:ètica besso:bessó corro races tacte gatet
+penal robes grava lapse edats menut netes lunar mocos:mocós blocs benes setze oblit aroma atent
+caces posta previ quilo venus orfes tinta album:àlbum baixo ocult viola sants manat rajos esper
+regim:règim fluix orina munta ganxo tapar casis ganga obvia:òbvia roure ferms xifra xampu:xampú
+buits oides:oïdes renda grocs finca corba luxos:luxós ullet sever allau tropa ampli piles salts
+refer genis mitat venja avant picor calar ferri alfil arran secta oliva merce:mercè brisa guies
+repel jeure quota mudat monte ponts jures batec viuda traça alien balco:balcó freds himne citar
+bells bodes music:músic audaç forum:fòrum llast mania anada munts batre volts habil:hàbil polze
+clava melic burra clubs mules estim tauts:taüts llavi alies:àlies fossa rutes lloga micro ninja
+cebes cries casta gerra ampla cinic:cínic nadar islam fibra usura filet tapes racio:ració
+ansia:ànsia fuita zebra bufal:búfal devot acres euros mamut taser amors propa:propà horda eunuc
+rulot trama pixes blaso:blasó roncs monja doris drive vomit:vòmit banjo valid:vàlid sueca cabot
+mosso solet salat polar cigar taxes botxi:botxí penic lesio:lesió lloro atoms:àtoms oques truja
+cosit peres breus lords culet sogre garfi ratxa nervi proba prest sonia hades tronc cafes:cafès
+`.trim().split(/\s+/).map(s=>s.split(':'));
+const LLISTA=PARAULES.map(p=>p[0]);
+const ESCRITA={};for(const [w,e] of PARAULES)ESCRITA[w]=e||w;
+
+// ===== ATZAR AMB LLAVOR =====
+// La gofra del dia surt d'una llavor feta amb la data: tothom te la mateixa.
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== FER UNA GOFRA =====
+// Tres paraules en horitzontal (files 0, 2 i 4) i tres en vertical (columnes
+// 0, 2 i 4) que es creuen en nou caselles. Es busca a l'atzar: s'agafa la de
+// dalt, les tres verticals han de començar per la seva primera, tercera i
+// cinquena lletra, i llavors les dues horitzontals de sota queden lligades.
+const PER_INICI={},PER_PATRO={};
+for(const w of LLISTA){
+  (PER_INICI[w[0]]=PER_INICI[w[0]]||[]).push(w);
+  const k=w[0]+w[2]+w[4];(PER_PATRO[k]=PER_PATRO[k]||[]).push(w);
+}
+function construeix(r){
+  for(const h0 of barreja(r,LLISTA))
+    for(const v0 of barreja(r,PER_INICI[h0[0]]||[]))
+      for(const v2 of barreja(r,PER_INICI[h0[2]]||[]))
+        for(const v4 of barreja(r,PER_INICI[h0[4]]||[])){
+          const h2s=PER_PATRO[v0[2]+v2[2]+v4[2]],h4s=PER_PATRO[v0[4]+v2[4]+v4[4]];
+          if(!h2s||!h4s)continue;
+          for(const h2 of barreja(r,h2s))for(const h4 of barreja(r,h4s))
+            if(new Set([h0,h2,h4,v0,v2,v4]).size===6)return [h0,h2,h4,v0,v2,v4];
+        }
+  return null;
+}
+const FORAT=(f,k)=>f%2===1&&k%2===1;
+const CASELLES=[];for(let f=0;f<5;f++)for(let k=0;k<5;k++)if(!FORAT(f,k))CASELLES.push([f,k]);
+// les sis paraules, com a llistes de caselles: H0 H2 H4 V0 V2 V4
+const PARAULES_GRAELLA=[0,2,4].map(f=>[0,1,2,3,4].map(k=>[f,k])).concat([0,2,4].map(k=>[0,1,2,3,4].map(f=>[f,k])));
+
+// Barrejar: es mouen entre 14 i 16 lletres en cicles, de manera que amb 10
+// intercanvis es pot resoldre (cada cicle de N lletres en demana N-1). Tens
+// 15: les estrelles son els que et sobren, fins a cinc. Les que no es mouen
+// comencen verdes. Si una lletra mogudo cau per casualitat en una casella amb
+// la mateixa lletra (hi ha lletres repetides), es torna a provar: si no, la
+// gofra seria mes facil del compte.
+const INTERCANVIS=15,CALEN=10;
+function barrejaGofra(sol,r){
+  for(let intent=0;intent<500;intent++){
+    const M=14+Math.floor(r()*3),k=M-CALEN;
+    const llargs=Array(k).fill(2);for(let i=0;i<M-2*k;i++)llargs[Math.floor(r()*k)]++;
+    const triades=barreja(r,CASELLES).slice(0,M);
+    const cur=sol.map(f=>f.slice());
+    let p=0,bona=true;
+    for(const L of llargs){
+      const cic=triades.slice(p,p+L);p+=L;
+      for(let i=0;i<L;i++){const [a,b]=cic[i],[c2,d]=cic[(i+1)%L];cur[c2][d]=sol[a][b]}
+    }
+    for(const [f,kk] of triades)if(cur[f][kk]===sol[f][kk]){bona=false;break}
+    if(bona){
+      // els intercanvis que la desfan, per si cal comprovar-ho
+      const desfer=[];p=0;
+      for(const L of llargs){const cic=triades.slice(p,p+L);p+=L;for(let i=L-1;i>0;i--)desfer.push([cic[0],cic[i]])}
+      return {cur,desfer};
+    }
+  }
+  return {cur:sol.map(f=>f.slice()),desfer:[]};
+}
+function novaGofra(llavor){
+  const r=mulberry(hashText(llavor));
+  const ps=construeix(r);
+  const sol=Array.from({length:5},()=>Array(5).fill(null));
+  [0,2,4].forEach((f,i)=>{for(let k=0;k<5;k++)sol[f][k]=ps[i][k]});
+  [0,2,4].forEach((k,i)=>{for(let f=0;f<5;f++)sol[f][k]=ps[3+i][f]});
+  const b=barrejaGofra(sol,r);
+  return {paraules:ps,sol,cur:b.cur,desfer:b.desfer};
+}
+
+// ===== ELS COLORS =====
+// Com al Wordle: verd si la lletra es al seu lloc; groc si es d'alguna de les
+// paraules on hi ha la casella pero en un altre lloc (comptant-les: si la
+// paraula nomes en te una de lliure, nomes una surt groga); gris si no.
+function colors(G){
+  const col=Array.from({length:5},()=>Array(5).fill(null));
+  for(const [f,k] of CASELLES)col[f][k]=G.cur[f][k]===G.sol[f][k]?'v':'x';
+  for(const cas of PARAULES_GRAELLA){
+    const resta={};
+    for(const [f,k] of cas)if(col[f][k]!=='v'){const l=G.sol[f][k];resta[l]=(resta[l]||0)+1}
+    for(const [f,k] of cas){
+      if(col[f][k]==='v')continue;
+      const l=G.cur[f][k];
+      if(resta[l]>0){resta[l]--;col[f][k]='g'}
+    }
+  }
+  return col;
+}
+const verdes=G=>CASELLES.filter(([f,k])=>G.cur[f][k]===G.sol[f][k]).length;
+const resolta=G=>verdes(G)===CASELLES.length;
+
+// ===== LA PARTIDA =====
+const JOC='gofra';
+let G=null,mode='dia',dia='',numero=0,state='play',paused=false;
+let sel=null,arr=null,anim=null,saltaT=0,saltaW=[],avis='',avisT=0,temps=0,brillo=[];
+
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+// la primera gofra va ser la del 3 d'octubre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-10-03T12:00:00Z'))/864e5)+1;
+
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix('gofra-stats',{jugades:0,guanyades:0,estrelles:0,ratxa:0,millor:0,ultim:''});
+
+// La del dia es desa a cada intercanvi: si tanques i tornes, la trobes igual
+// i no la pots tornar a començar de zero.
+function desaDia(){
+  if(mode!=='dia')return;
+  desa('gofra-'+dia,{cur:G.cur.map(f=>f.map(l=>l||'.').join('')).join(''),queden:G.queden,fi:G.fi||null});
+}
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  G=novaGofra('GOFRA-'+dia);G.queden=INTERCANVIS;G.fi=null;
+  const d=llegeix('gofra-'+dia,null);
+  if(d&&d.cur&&d.cur.length===25){
+    for(let i=0;i<25;i++){const f=Math.floor(i/5),k=i%5;if(!FORAT(f,k))G.cur[f][k]=d.cur[i]}
+    G.queden=d.queden;G.fi=d.fi;
+  }
+  comenca();
+  if(G.fi)setTimeout(finalPartida,400);
+}
+function obrePractica(){
+  mode='practica';
+  G=novaGofra('PRACTICA-'+Math.random());G.queden=INTERCANVIS;G.fi=null;
+  comenca();
+}
+function comenca(){
+  sel=null;arr=null;anim=null;brillo=[];avis='';hideMsg();
+  state=G.fi?'over':'play';
+  G.verdesAbans=verdes(G);
+  G.paraulesFetes=new Set(PARAULES_GRAELLA.map((cas,i)=>cas.every(([f,k])=>G.cur[f][k]===G.sol[f][k])?i:-1).filter(i=>i>=0));
+  botons();
+}
+
+function intercanvia(a,b){
+  if(state!=='play'||G.queden<=0)return;
+  const [f1,k1]=a,[f2,k2]=b;
+  [G.cur[f1][k1],G.cur[f2][k2]]=[G.cur[f2][k2],G.cur[f1][k1]];
+  G.queden--;
+  anim={a,b,t:0};
+  sndCanvi();
+  // el que s'ha posat verd sona, i si una paraula s'acaba, salta
+  const v=verdes(G);
+  if(v>G.verdesAbans)setTimeout(()=>sndVerd(v-6),120);
+  G.verdesAbans=v;
+  PARAULES_GRAELLA.forEach((cas,i)=>{
+    if(!G.paraulesFetes.has(i)&&cas.every(([f,k])=>G.cur[f][k]===G.sol[f][k])){
+      G.paraulesFetes.add(i);saltaW.push({i,t:0});setTimeout(sndParaula,200);
+    }
+  });
+  if(resolta(G)){G.fi='guanyat';acaba()}
+  else if(G.queden<=0){G.fi='perdut';acaba()}
+  desaDia();
+}
+function estrelles(){return G.fi==='guanyat'?Math.min(5,G.queden):0}
+
+async function acaba(){
+  state='over';sel=null;arr=null;
+  if(G.fi==='guanyat'){setTimeout(sndGuanya,350);saltaT=1.2}
+  else setTimeout(sndPerd,300);
+  if(mode==='dia'){
+    // les estadistiques nomes es compten una vegada per dia
+    if(stats.ultim!==dia){
+      stats.jugades++;
+      if(G.fi==='guanyat'){
+        stats.guanyades++;stats.estrelles+=estrelles();
+        const ahir=new Date(Date.parse(dia+'T12:00:00Z')-864e5).toISOString().slice(0,10);
+        stats.ratxa=stats.ultim===ahir?stats.ratxa+1:1;
+        stats.millor=Math.max(stats.millor,stats.ratxa);
+      }else stats.ratxa=0;
+      stats.ultim=dia;desa('gofra-stats',stats);
+      G.nova=true;
+    }
+    desaDia();updateHUD();
+  }
+  setTimeout(finalPartida,G.fi==='guanyat'?1500:900);
+}
+
+// ===== EL QUADRE DEL FINAL =====
+function graellaEmoji(){
+  const col=colors(G);
+  return [0,1,2,3,4].map(f=>[0,1,2,3,4].map(k=>FORAT(f,k)?'⬛':
+    col[f][k]==='v'?'🟩':col[f][k]==='g'?'🟨':'⬜').join('')).join('\n');
+}
+function textCompartir(){
+  const est=estrelles();
+  const cap='La Gofra'+(mode==='dia'?' #'+numero:'')+' '+(G.fi==='guanyat'?'⭐'.repeat(est)+'☆'.repeat(5-est):'❌');
+  return cap+'\n'+graellaEmoji();
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!G){msg('LA GOFRA'+Records.peuFinal('o toca per tancar'));return}
+    const est=estrelles();
+    const ps=G.paraules.map(w=>(ESCRITA[w]||w).toUpperCase()).join(' · ');
+    let t;
+    if(G.fi==='guanyat')t='<div style="color:#8fd16a">FETA!</div><div style="font-size:26px;color:#ffd27a">'+
+      '★'.repeat(est)+'<span style="color:#555">'+'★'.repeat(5-est)+'</span></div>'+
+      '<small>t\'han sobrat '+G.queden+(G.queden===1?' intercanvi':' intercanvis')+'</small>';
+    else if(G.fi==='perdut')t='<div style="color:#ff9b8a">T\'HAS QUEDAT SENSE INTERCANVIS</div>';
+    else t='<div>LA GOFRA</div><small>encara a mig fer</small>';
+    t+='<small style="color:#ccc">'+ps+'</small>';
+    if(mode==='dia')t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+
+      ' · '+stats.estrelles+' estrelles en '+stats.jugades+(stats.jugades===1?' dia':' dies')+'</small>';
+    const enl=location.href.split('#')[0];
+    const tx=textCompartir();
+    const reptes=G.fi?'<div class="reptes">'+
+      '<a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+      '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a>'+
+      '<a href="#" id="copia">COPIA</a></div>':'';
+    const peu=Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar');
+    msg(t+reptes+(mode==='dia'&&G.fi?'<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>':'')+peu);
+    lligaCopia(tx+'\n'+enl);
+    if(mode==='dia'&&G.fi){
+      // la taula del dia: qui l'ha feta amb mes estrelles. Nomes s'hi apunta
+      // el primer cop que l'acabes.
+      let r={html:'',posicio:0};
+      if(G.nova&&est>0)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
+      else r={html:Records.taulaHTML(null),posicio:0};
+      if(G.nova&&est>0&&Records.nom())await Records.envia(JOC,stats.estrelles);
+      G.nova=false;
+      const el=document.getElementById('taula');
+      if(el)el.innerHTML='<div style="color:#ffd27a;font-size:13px">LA TAULA D\'AVUI</div>'+r.html+
+        (r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+      Records.pintaMillor(JOC,document.getElementById('best'),stats.estrelles);
+    }
+  }finally{enFinal=false}
+}
+function lligaCopia(text){
+  const cp=document.getElementById('copia');
+  if(cp)cp.addEventListener('click',async e=>{
+    e.preventDefault();e.stopPropagation();
+    try{await navigator.clipboard.writeText(text);cp.textContent='COPIAT!'}
+    catch(err){prompt('Copia això:',text)}
+  });
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+function updateHUD(){
+  document.getElementById('score').textContent=stats.estrelles;
+  Records.desaLocal(JOC,stats.estrelles);
+  Records.marcador(JOC,document.getElementById('best'),stats.estrelles);
+}
+
+// ===== DIBUIX =====
+const MIDA=60,ESP=12,X0=(W-(5*MIDA+4*ESP))/2,Y0=104;
+const posCasella=(f,k)=>[X0+k*(MIDA+ESP),Y0+f*(MIDA+ESP)];
+function casellaA(px,py){
+  for(const [f,k] of CASELLES){const [cx,cy]=posCasella(f,k);
+    if(px>=cx-ESP/2&&px<=cx+MIDA+ESP/2&&py>=cy-ESP/2&&py<=cy+MIDA+ESP/2)return [f,k]}
+  return null;
+}
+function rrect(x0,y0,w,h,r){x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);
+  x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath()}
+function text(t,px,py,col='#fff',font='14px monospace',al='center'){x.fillStyle=col;x.font=font;x.textAlign=al;x.fillText(t,px,py)}
+const COL={v:['#6aaa64','#4e8a49'],g:['#d7b545','#b0912c'],x:['#4a4a4f','#36363a']};
+function fitxa(l,col,px,py,mida=MIDA,opts={}){
+  const [a,b]=COL[col];
+  x.save();
+  if(opts.alt){x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=14;x.shadowOffsetY=6}
+  x.fillStyle='rgba(0,0,0,.35)';rrect(px+1,py+4,mida,mida,10);x.fill();
+  const gr=x.createLinearGradient(0,py,0,py+mida);gr.addColorStop(0,a);gr.addColorStop(1,b);
+  x.fillStyle=gr;rrect(px,py,mida,mida,10);x.fill();
+  x.restore();
+  if(opts.marc){x.strokeStyle='#fff';x.lineWidth=3;rrect(px-1,py-1,mida+2,mida+2,11);x.stroke()}
+  text(l.toUpperCase(),px+mida/2,py+mida*0.69,'#fff','bold '+Math.round(mida*0.55)+'px Georgia,serif');
+}
+
+function draw(){
+  x.fillStyle='#17120c';x.fillRect(0,0,W,H);
+  if(!G)return;
+  text('LA GOFRA',W/2,40,'#ffd27a','bold 26px Georgia,serif');
+  text(mode==='dia'?'#'+numero+' · '+nomDia(dia):'PRÀCTICA · no compta',W/2,66,'#a08860','13px monospace');
+  // la gofra: la pasta i els forats
+  x.fillStyle='#c98f3c';rrect(X0-14,Y0-14,5*MIDA+4*ESP+28,5*MIDA+4*ESP+28,18);x.fill();
+  x.strokeStyle='#e0a957';x.lineWidth=2;x.stroke();
+  for(let f=0;f<5;f++)for(let k=0;k<5;k++)if(FORAT(f,k)){
+    const [cx,cy]=posCasella(f,k);
+    x.fillStyle='#8a5a20';rrect(cx+4,cy+4,MIDA-8,MIDA-8,8);x.fill();
+    x.fillStyle='rgba(0,0,0,.25)';rrect(cx+4,cy+4,MIDA-8,8,4);x.fill();
+  }
+  const col=colors(G);
+  const mou=anim&&anim.t<1?anim:null;
+  for(const [f,k] of CASELLES){
+    if(arr&&arr.mogut&&arr.f===f&&arr.k===k)continue;
+    let [cx,cy]=posCasella(f,k);
+    if(mou){
+      const e=1-Math.pow(1-mou.t,3);
+      const esA=mou.a[0]===f&&mou.a[1]===k,esB=mou.b[0]===f&&mou.b[1]===k;
+      if(esA||esB){const o=esA?mou.b:mou.a,[ox,oy]=posCasella(o[0],o[1]);cx=ox+(cx-ox)*e;cy=oy+(cy-oy)*e}
+    }
+    // les paraules que s'acaben de completar fan un saltet
+    for(const s of saltaW){if(PARAULES_GRAELLA[s.i].some(([a,b])=>a===f&&b===k))cy-=Math.sin(Math.min(1,s.t)*Math.PI)*12}
+    if(saltaT>0)cy-=Math.abs(Math.sin((1.2-saltaT)*9+(f+k)*0.6))*10*saltaT;
+    const marc=sel&&sel[0]===f&&sel[1]===k;
+    fitxa(G.cur[f][k],col[f][k],cx,cy-(marc?5:0),MIDA,{marc});
+  }
+  if(arr&&arr.mogut){fitxa(G.cur[arr.f][arr.k],col[arr.f][arr.k],arr.x-MIDA/2,arr.y-MIDA/2-8,MIDA+6,{alt:true})}
+  // el que queda
+  const yb=Y0+5*MIDA+4*ESP+50;
+  text(String(G.queden),W/2,yb+12,G.queden<=3&&!G.fi?'#ff9b8a':'#fff','bold 40px monospace');
+  text(G.queden===1?'INTERCANVI':'INTERCANVIS',W/2,yb+36,'#a08860','12px monospace');
+  if(G.fi==='guanyat'){const e=estrelles();text('★'.repeat(e)+'☆'.repeat(5-e),W/2,yb+66,'#ffd27a','26px serif')}
+  else if(G.fi==='perdut')text('toca LA DEL DIA o PRÀCTICA',W/2,yb+64,'#a08860','12px monospace');
+  else{
+    // la llegenda, a sota de tot
+    const ly=yb+52;
+    [['v','al seu lloc'],['g','mal posada'],['x','d\'una altra']].forEach(([cl,t],i)=>{
+      const lx=24+i*134;fitxa('a',cl,lx,ly,22);text(t,lx+28,ly+16,'#bbb','11px monospace','left');
+    });
+  }
+  if(avisT>0&&avis){x.globalAlpha=Math.min(1,avisT*2);x.fillStyle='rgba(0,0,0,.85)';rrect(30,H-46,W-60,32,8);x.fill();
+    text(avis,W/2,H-25,'#ffd27a','13px monospace');x.globalAlpha=1}
+  if(paused){x.fillStyle='rgba(0,0,0,.75)';x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,'#fff','bold 26px monospace')}
+}
+
+let last=performance.now();
+function loop(t){
+  const dt=Math.min(50,t-last)/1000;last=t;temps+=dt;
+  if(!paused){
+    if(anim){anim.t+=dt/0.22;if(anim.t>=1)anim=null}
+    for(const s of saltaW)s.t+=dt/0.5;
+    saltaW=saltaW.filter(s=>s.t<1);
+    if(saltaT>0)saltaT=Math.max(0,saltaT-dt);
+    if(avisT>0)avisT-=dt;
+  }
+  draw();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ===== EL DIT =====
+// Dues maneres: tocar una lletra i despres l'altra, o arrossegar-ne una
+// damunt de l'altra. Les verdes no es mouen: ja son al seu lloc.
+function punt(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W,y:(ev.clientY-r.top)/r.height*H};
+}
+const igual=(a,b)=>a&&b&&a[0]===b[0]&&a[1]===b[1];
+c.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused||!G)return;
+  if(state!=='play'){sndNo();return}
+  const q=punt(ev),cas=casellaA(q.x,q.y);
+  if(!cas){sel=null;sndToc();return}
+  const [f,k]=cas;
+  if(G.cur[f][k]===G.sol[f][k]){sndNo();avis='les verdes ja són al seu lloc';avisT=1.4;return}
+  try{c.setPointerCapture(ev.pointerId)}catch(e){}
+  if(sel&&!igual(sel,cas)){const a=sel;sel=null;intercanvia(a,cas);return}
+  arr={f,k,x:q.x,y:q.y,x0:q.x,y0:q.y,mogut:false,jaTriat:igual(sel,cas)};
+  sel=cas;sndToc();
+});
+c.addEventListener('pointermove',ev=>{
+  if(!arr)return;
+  const q=punt(ev);arr.x=q.x;arr.y=q.y;
+  if(Math.hypot(q.x-arr.x0,q.y-arr.y0)>10)arr.mogut=true;
+});
+function aixeca(ev){
+  if(!arr)return;
+  const a=arr;arr=null;
+  if(a.mogut){
+    const q=punt(ev),cas=casellaA(q.x,q.y);
+    sel=null;
+    if(cas&&!igual(cas,[a.f,a.k])&&G.cur[cas[0]][cas[1]]!==G.sol[cas[0]][cas[1]])intercanvia([a.f,a.k],cas);
+  }else if(a.jaTriat)sel=null;          // tocar la triada un altre cop la deixa anar
+}
+c.addEventListener('pointerup',aixeca);
+c.addEventListener('pointercancel',()=>{arr=null});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'){paused=!paused;return}
+});
+document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a'))hideMsg()});
+
+const BD=document.getElementById('dia'),BP=document.getElementById('practica');
+function botons(){BD.classList.toggle('actiu',mode==='dia');BP.classList.toggle('actiu',mode==='practica')}
+function boto(b,fn){b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused)return;sndToc();fn()})}
+boto(BD,()=>{obreDia()});
+boto(BP,()=>{obrePractica()});
+
+updateHUD();
+Records.pintaMillor(JOC,document.getElementById('best'),stats.estrelles);
+obreDia();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

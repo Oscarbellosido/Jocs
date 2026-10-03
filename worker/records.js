@@ -63,7 +63,13 @@ const JOCS = {
   lunar_lander:      99999,
   garbuix:          999999,
   impremta:      999999999,
+  gofra:             99999,   // les estrelles acumulades de totes les gofres del dia
 };
+
+// Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
+// Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
+// aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
+const UNA_PER_NOM = new Set(['gofra']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -71,6 +77,7 @@ const JOCS = {
 // Cada taula s'esborra sola al cap de seixanta dies.
 const DIARIS = {
   impremta_dia:  999999999,
+  gofra_dia:             5,   // les estrelles d'avui, de 0 a 5
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -111,6 +118,7 @@ const FITXA = {
   lunar_lander:    ['Lunar Lander',    'al Lunar Lander',    'lunar_lander.html'],
   garbuix:         ['Garbuix',         'al Garbuix',         'garbuix.html'],
   impremta:        ['La Impremta',     'a la Impremta',      'impremta.html'],
+  gofra:           ['La Gofra',        'a la Gofra',         'gofra.html'],
 };
 
 const cors = {
@@ -366,8 +374,14 @@ export default {
       const nom = netejaNom(cos.nom);
 
       const entrada = { n: nom, p: punts, t: Date.now() };
-      const llista = await llegir(env, joc);
+      let llista = await llegir(env, joc);
       const abans = llista[0] || null;
+      if (UNA_PER_NOM.has(joc)) {
+        const seva = llista.find(e => e.n === nom);
+        // si ja hi era amb mes punts, no canvia res
+        if (seva && seva.p >= punts) return json({ top: llista, posicio: 0 });
+        llista = llista.filter(e => e.n !== nom);
+      }
       llista.push(entrada);
       llista.sort((a, b) => b.p - a.p || a.t - b.t);   // a igualtat de punts, mana qui hi va arribar abans
       const retallada = llista.slice(0, TOP);
@@ -377,7 +391,10 @@ export default {
       // Numero 1 nou: s'avisa el grup de Telegram. Es fa "despres" (waitUntil):
       // el joc rep la resposta de seguida, i si Telegram falla o va lent, la
       // puntuacio ja esta desada igualment.
-      if (posicio === 1 && env.TELEGRAM_TOKEN) {
+      // A les taules d'una entrada per nom, el primer que suma estrelles cada
+      // dia seguiria essent el numero 1: nomes s'avisa quan canvia qui mana.
+      const mateix = UNA_PER_NOM.has(joc) && abans && abans.n === nom;
+      if (posicio === 1 && !mateix && env.TELEGRAM_TOKEN) {
         const avis = avisaRecord(env, joc, entrada, abans).catch(() => {});
         if (ctx && ctx.waitUntil) ctx.waitUntil(avis); else await avis;
       }

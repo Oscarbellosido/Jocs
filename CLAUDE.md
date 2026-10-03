@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vuit que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i nou que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`). Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
@@ -39,7 +39,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vuit que no són de saló
+### I nou que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -50,6 +50,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `balanca.html` | Balança | 2026 |
 | `ram.html` | El Ram | 2026 |
 | `garbuix.html` | Garbuix | 2026 |
+| `gofra.html` | La Gofra (de l'estil del *Waffle*) | 2026 |
 | `impremta.html` | La Impremta (de l'estil del *Balatro*, amb paraules) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
@@ -407,6 +408,60 @@ d'una pàgina `file://` el navegador no deixa llegir cap altre fitxer. El
 `scripts/prova-garbuix.mjs` serveix el repositori ell mateix. Les altres proves
 l'obren com a fitxer i el joc va igual, només que diu que no ha pogut carregar
 el diccionari.
+
+## La Gofra: una sola regla i colors
+
+En Carles va trobar la Impremta massa complicada i va demanar un joc de
+paraules **més senzill**, amb lletres i colors. Mirant per què han triomfat el
+Wordle, el *Waffle*, el *Connections* o el *2048*, tots fan el mateix: **una
+sola regla que s'explica en una frase**, colors que diuen d'una ullada com
+vas, partides de tres minuts, **el mateix repte per a tothom cada dia**, i un
+resultat que es pot enviar al grup sense desvetllar la solució. La Gofra és
+**inspirada en** el *Waffle* (2022), amb nom i dibuix nostres.
+
+- Sis paraules de cinc lletres, tres en horitzontal i tres en vertical, que es
+  creuen en forma de gofra. Les lletres hi són totes, però barrejades.
+- **L'única cosa que pots fer és intercanviar dues lletres** (tocant-ne dues o
+  arrossegant-ne una sobre l'altra). Verd: al seu lloc, i ja no es mou. Groc:
+  és d'aquella paraula però mal posada. Gris: no és d'aquí. Els grocs es
+  compten com al Wordle: si la paraula només en té una de lliure, només una
+  surt groga.
+- **15 intercanvis, i amb 10 n'hi ha prou.** Les estrelles són els que et
+  sobren, fins a cinc.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **No cal diccionari ni cap fitxer de fora.** Aquí no s'escriu res: la
+  solució és la que és. Les 995 paraules van dins del joc, i són **paraules
+  corrents**: les de cinc lletres del diccionari de Softcatalà que, a més, són
+  entre les 14.000 més dites (els noms propis, les paraulotes i les estranyes
+  es van treure a mà). Una solució ha de ser una paraula que tothom reconegui.
+  Les fitxes van sense accents; al final s'ensenyen ben escrites (ÍNTIM, CANÇÓ).
+- **Cada gofra es construeix al moment**, a partir de la llavor `GOFRA-<data>`:
+  la de dalt a l'atzar, les tres verticals han de començar per la seva lletra,
+  i les dues horitzontals de sota queden lligades (`construeix`). Tarda 0,3
+  mil·lèsimes. La primera gofra, la #1, és la del 3 d'octubre del 2026.
+- **La barreja es fa amb cicles que sumen exactament 10 intercanvis**
+  (`barrejaGofra`): es mouen de 14 a 16 lletres, i un cicle de N lletres en
+  demana N−1. Les que no es mouen comencen verdes (de 5 a 7). Si una lletra
+  moguda cau per casualitat a una casella amb la mateixa lletra, es torna a
+  barrejar, que si no la gofra sortiria més fàcil del compte. Amb lletres
+  repetides, qui les va posant d'una en una sense pensar-hi pot necessitar-ne
+  fins a 13: encara hi cap.
+- **La del dia es desa a cada intercanvi** (`localStorage`, `gofra-<data>`):
+  tancant i obrint no es pot tornar a començar. Les estadístiques (ratxa,
+  estrelles) es compten una sola vegada per dia.
+- **Dues taules**: la del dia (`/records/gofra_dia/<data>`, les estrelles
+  d'avui, de 0 a 5) i la de les **estrelles acumulades** (`gofra`), on
+  **cadascú surt una sola vegada** (`UNA_PER_NOM` al Worker): si no, la taula
+  s'ompliria del mateix jugador amb 12, 15, 19 estrelles. Per Telegram només
+  s'avisa quan **canvia qui mana**, que si no el primer que juga cada dia
+  avisaria cada dia. La segona taula s'envia sense tornar a demanar les
+  inicials (`Records.envia`).
+- **El que s'envia al grup és el dibuix de colors i les estrelles**, mai les
+  paraules.
+- La **PRÀCTICA** són gofres a l'atzar per a qui en vol més: no compten per
+  a res.
 
 ## La Impremta: el Balatro amb paraules
 
@@ -796,6 +851,11 @@ comproven el comportament.
   carregui, que es rebutgin les paraules curtes i les que no existeixen, que
   només s'encadenin lletres que es toquen, que sempre hi hagi paraules per fer
   i que la partida s'acabi.
+- `node scripts/prova-gofra.mjs` — que la Gofra del dia sigui la mateixa per
+  a tothom, que les de l'any que ve es puguin fer i es resolguin amb 10
+  intercanvis justos, que els colors diguin la veritat, que es jugui tocant i
+  arrossegant, que guanyar i perdre vagin com toca, que la del dia no es
+  pugui tornar a començar i que s'apunti a les dues taules.
 - `node scripts/prova-impremta.mjs` — que La Impremta es pugui jugar tocant
   la pantalla, que les paraules inventades no costin res, que el censor
   prohibeixi de debò, que la mateixa llavor doni la mateixa partida, que la
