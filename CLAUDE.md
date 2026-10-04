@@ -505,6 +505,11 @@ Coses que no s'han de desfer sense entendre-les:
     que la jugues (`localStorage` `impremta-dia`): si no, qui la repeteix ja
     sap quines lletres li tocaran. El Worker no hi deixa apuntar ningú a un
     dia passat, i cada taula s'esborra sola als 60 dies.
+    La primera s'apunta **també a la taula de sempre** (`Records.envia`, sense
+    tornar a demanar les inicials): al principi només anava a la d'avui, i
+    en Carles, que jugava la del dia, no entrava mai als rècords. La marca es
+    posa en **començar**-la, no en acabar-la: si la tornes a obrir, ja és la
+    repetida, i el botó ho diu (PARTIDA DEL DIA (JA JUGADA)).
   - **El repte**: en acabar, els enllaços REPTA PER TELEGRAM / PER WHATSAPP /
     COPIA porten `#repte=LLAVOR&n=INICIALS&p=PUNTS&c=CAPÍTOL`. Qui l'obre juga
     la mateixa partida i, en acabar, veu qui ha guanyat. No cal cap servidor:
