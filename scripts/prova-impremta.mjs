@@ -198,8 +198,8 @@ enviats.length = 0;
 await p.evaluate(() => { hideMsg(); novaPartida('dia', 'DIA-' + diaAvui()); P.total = 999; perd(); });
 await p.waitForTimeout(2000);
 const segon = await p.evaluate(() => ({ fora: P.fora, text: document.getElementById('msg').textContent }));
-diu(primer.length === 2 && primer[0].endsWith('/records/impremta_dia/' + dia) && primer[1].endsWith('/records/impremta'),
-  `la partida del dia s'apunta a la taula d'avui i a la de sempre (${primer.map(u => u.replace(/.*records/, '…')).join(' ')})`);
+diu(primer.length === 1 && primer[0].endsWith('/records/impremta_dia/' + dia),
+  `la partida del dia s'apunta només a la taula d'avui, separada de la de sempre (${primer.map(u => u.replace(/.*records/, '…')).join(' ')})`);
 diu(enviats.length === 0 && segon.fora && /no compta/.test(segon.text), `tornar-la a jugar el mateix dia ja no compta`);
 
 // el quadre final porta els enllaços per reptar, amb la llavor de la partida

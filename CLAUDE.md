@@ -505,11 +505,18 @@ Coses que no s'han de desfer sense entendre-les:
     que la jugues (`localStorage` `impremta-dia`): si no, qui la repeteix ja
     sap quines lletres li tocaran. El Worker no hi deixa apuntar ningú a un
     dia passat, i cada taula s'esborra sola als 60 dies.
-    La primera s'apunta **també a la taula de sempre** (`Records.envia`, sense
-    tornar a demanar les inicials): al principi només anava a la d'avui, i
-    en Carles, que jugava la del dia, no entrava mai als rècords. La marca es
-    posa en **començar**-la, no en acabar-la: si la tornes a obrir, ja és la
+    **Són dues competicions separades**, i així ho va voler en Carles: la
+    del dia només va a la taula d'avui, i les lliures i els reptes a la de
+    sempre. Mentre jugues la del dia, el marcador de dalt diu qui guanya
+    **avui** (`taula()`). Per un moment la del dia també anava a la de
+    sempre, i en Carles va dir que s'havien de distingir. La marca es posa
+    en **començar**-la, no en acabar-la: si la tornes a obrir, ja és la
     repetida, i el botó ho diu (PARTIDA DEL DIA (JA JUGADA)).
+  - **Cada matí el bot diu al grup qui va guanyar la d'ahir**, amb el podi
+    (`anunciaAhir` al Worker). No cal cap rellotge a Cloudflare: ho fa la
+    primera petició del dia, de qualsevol joc, i es marca a
+    `telegram:anunciat:impremta_dia` **abans** d'enviar perquè no surti dues
+    vegades. `/avui` al grup ensenya com va la d'avui.
   - **El repte**: en acabar, els enllaços REPTA PER TELEGRAM / PER WHATSAPP /
     COPIA porten `#repte=LLAVOR&n=INICIALS&p=PUNTS&c=CAPÍTOL`. Qui l'obre juga
     la mateixa partida i, en acabar, veu qui ha guanyat. No cal cap servidor:

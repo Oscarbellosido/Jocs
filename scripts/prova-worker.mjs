@@ -260,6 +260,27 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(r.status === 400, 'la Gofra: més de 5 estrelles en un dia no pot ser');
 }
 
+// el podi de la partida del dia d'ahir, al grup, una sola vegada
+{
+  const madrid = enrere => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date(Date.now() - enrere * 864e5));
+  store.set('telegram:xat', '-1001');
+  store.delete('telegram:anunciat:impremta_dia');
+  store.set('joc:impremta_dia:' + madrid(1), JSON.stringify([{ n: 'CRE', p: 5400, t: 1 }, { n: 'MAR', p: 3100, t: 2 }]));
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  const m = missatges();
+  ok(m.length === 1 && /partida del dia/.test(m[0].cos.text) && /CRE/.test(m[0].cos.text) && /5\.400/.test(m[0].cos.text) && /MAR/.test(m[0].cos.text),
+     'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/ram');
+  ok(missatges().length === 0, 'i només un cop: la segona vegada ja no avisa');
+  store.set('joc:impremta_dia:' + madrid(0), JSON.stringify([{ n: 'TRA', p: 900, t: 1 }]));
+  enviats.length = 0;
+  await crida(envTg, 'POST', '/telegram', msg('/avui'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+  ok(/TRA/.test((missatges()[0] || { cos: {} }).cos.text || ''), '/avui ensenya com va la partida del dia d\'avui');
+  store.delete('telegram:xat');
+}
+
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix
 const fsm = await import('fs');
 const codi = fsm.readFileSync(fitxerWorker, 'utf8');

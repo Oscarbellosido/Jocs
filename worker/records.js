@@ -222,12 +222,46 @@ async function quiMana(env) {
   return '👑 <b>Qui mana a cada joc</b>\n' + files.join('\n');
 }
 
+// ===== QUI VA GUANYAR LA PARTIDA DEL DIA D'AHIR =====
+// Cada mati, la primera vegada que algu obre qualsevol joc, el Worker mira la
+// taula del dia d'ahir i avisa el grup del podi. No cal cap rellotge al
+// Cloudflare: ho fa la primera peticio del dia. La marca es posa ABANS
+// d'enviar, perque dues peticions alhora no l'avisin dues vegades.
+const ANUNCIA_DIARI = {
+  impremta_dia: ['La Impremta', 'impremta.html', 'punts'],
+};
+function diaMadrid(enrere = 0) {
+  const d = new Date(Date.now() - enrere * 86400e3);
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d); }
+  catch { return d.toISOString().slice(0, 10); }
+}
+const MEDALLES = ['🥇', '🥈', '🥉'];
+async function anunciaAhir(env) {
+  if (!env.TELEGRAM_TOKEN) return;
+  const xat = await env.RECORDS.get('telegram:xat');
+  if (!xat) return;
+  const ahir = diaMadrid(1);
+  for (const [joc, [nom, fitxer, unitat]] of Object.entries(ANUNCIA_DIARI)) {
+    const marca = 'telegram:anunciat:' + joc;
+    if (await env.RECORDS.get(marca) === ahir) continue;
+    await env.RECORDS.put(marca, ahir);
+    const llista = await llegir(env, joc + ':' + ahir);
+    if (!llista.length) continue;
+    const podi = llista.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + xifra(e.p)).join('\n');
+    const text = '☀️ La <b>partida del dia</b> d\'ahir a ' + esc(nom) + ' la va guanyar <b>' + esc(llista[0].n) +
+      '</b> amb ' + xifra(llista[0].p) + ' ' + unitat + '.\n\n' + podi;
+    await telegram(env, 'sendMessage', { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: '🎮 Juga la d\'avui', url: WEB + fitxer }]] } });
+  }
+}
+
 const AJUDA =
   'Sóc el bot dels Jocs. 🎮\n\n' +
   '/aqui — avisaré en aquest xat quan algú faci un rècord nou\n' +
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
-  '/records ram — la taula d\'un joc\n\n' +
+  '/records ram — la taula d\'un joc\n' +
+  '/avui — com va la partida del dia de La Impremta\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {
@@ -249,6 +283,12 @@ async function ordre(env, msg) {
     if (ara !== String(xat)) return respon('Aquí no estava avisant de res.');
     await env.RECORDS.delete('telegram:xat');
     return respon('Fet: ja no avisaré dels rècords. Per tornar-hi, /aqui.');
+  }
+  if (o === 'avui') {
+    const llista = await llegir(env, 'impremta_dia:' + diaMadrid(0));
+    if (!llista.length) return respon('☀️ Avui encara ningú no ha acabat la partida del dia de La Impremta.');
+    return respon('☀️ <b>La partida del dia de La Impremta</b>, com va avui:\n' +
+      llista.map((e, i) => (i + 1 + '.').padEnd(4) + esc(e.n) + '  ' + xifra(e.p)).join('\n'));
   }
   if (o === 'records' || o === 'rècords') {
     if (!resta.length) return respon(await quiMana(env));
@@ -277,6 +317,7 @@ async function activa(env, origen) {
   await telegram(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Jocs', web_app: { url: WEB } } });
   await telegram(env, 'setMyCommands', { commands: [
     { command: 'records', description: 'qui mana a cada joc, o la taula d\'un joc' },
+    { command: 'avui', description: 'com va la partida del dia de La Impremta' },
     { command: 'aqui', description: 'avisa en aquest xat dels rècords nous' },
     { command: 'prou', description: 'deixa d\'avisar' },
     { command: 'ajuda', description: 'què sé fer' },
@@ -316,6 +357,12 @@ async function diari(request, env, joc, dia) {
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    // el podi d'ahir, si encara no s'ha avisat (despres de respondre)
+    if (env.TELEGRAM_TOKEN) {
+      const a = anunciaAhir(env).catch(() => {});
+      if (ctx && ctx.waitUntil) ctx.waitUntil(a); else await a;
+    }
 
     const url = new URL(request.url);
     const parts = url.pathname.split('/').filter(Boolean);   // ['records', 'tetris']

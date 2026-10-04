@@ -243,6 +243,7 @@ function novaPartida(mode,llavor,repte=null){
   rotuls=[];anim=null;info=null;avis='';
   comencaPagina();
   hideMsg();updateHUD();
+  Records.pintaMillor(taula(),document.getElementById('best'),0);
 }
 
 const g=()=>(P.capitol-1)*3+P.pagina;           // numero de pagina de tota la partida
@@ -495,16 +496,14 @@ async function finalPartida(){
       xifra(P.repte.p)+' punts'+(P.repte.c?' (capítol '+P.repte.c+')':'')+'<br>'+
       (guanyes?'L\'HAS GUANYAT!':empat?'EMPAT!':'T\'HA GUANYAT')+'</small>';
   }
-  if(P.mode==='dia'&&P.fora)t+='<small style="color:#ffb05a">Avui ja havies començat la partida del dia: la repetida no compta per als rècords. '+
-    'Les PARTIDES LLIURES, sí.</small>';
+  if(P.mode==='dia'&&P.fora)t+='<small style="color:#ffb05a">Avui ja havies començat la partida del dia: la repetida no compta per a cap taula. '+
+    'Les PARTIDES LLIURES van a la taula de sempre.</small>';
   msg(t+'<div style="color:#888;font-size:12px;margin-top:8px">…</div>');
   let r={html:'',posicio:0};
-  // La del dia va a la taula d'avui i, sense tornar a demanar les inicials,
-  // tambe a la de sempre: si no, qui nomes juga la del dia no hi sortia mai.
-  if(P.mode==='dia'&&!P.fora){
-    r=await Records.fiPartida(JOC+'_dia/'+P.llavor.slice(4),P.total);
-    if(Records.nom()){Records.desaLocal(JOC,P.total);await Records.envia(JOC,P.total)}
-  }
+  // Dues competicions separades: la del dia nomes va a la taula d'avui, i
+  // les lliures (i els reptes) a la de sempre. Qui guanya la d'avui, el bot
+  // ho diu al grup l'endema al mati.
+  if(P.mode==='dia'&&!P.fora)r=await Records.fiPartida(taula(),P.total);
   else if(P.mode!=='dia')r=await Records.fiPartida(JOC,P.total);
   if(state!=='over')return;
   const enl=enllacRepte();
@@ -513,8 +512,12 @@ async function finalPartida(){
     '<a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(txt)+'">REPTA PER TELEGRAM</a>'+
     '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt+' '+enl)+'">PER WHATSAPP</a>'+
     '<a href="#" id="copia">COPIA L\'ENLLAÇ</a></div>';
-  msg(t+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+(P.mode==='dia'?' d\'avui':'')+'!</small>':'')+
-    (P.mode==='dia'&&!P.fora?'<div style="color:#ffe08a;font-size:13px;margin-top:6px">LA PARTIDA DEL DIA</div>':'')+
+  const delDia=P.mode==='dia'&&!P.fora;
+  const posicio=!r.posicio?'':delDia&&r.posicio===1
+    ?'<small style="color:#ff0">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></small>'
+    :'<small style="color:#ff0">Ets el número '+r.posicio+(delDia?' d\'avui':'')+'!</small>';
+  msg(t+posicio+
+    (delDia?'<div style="color:#ffe08a;font-size:13px;margin-top:6px">☀ LA TAULA D\'AVUI</div>':'')+
     '<div style="margin:8px 0">'+r.html+'</div>'+reptes+
     Records.peuFinal('o toca per tornar a començar'));
   const cp=document.getElementById('copia');
@@ -523,17 +526,19 @@ async function finalPartida(){
     try{await navigator.clipboard.writeText(txt+' '+enl);cp.textContent='COPIAT!'}
     catch(err){prompt('Copia aquest enllaç:',enl)}
   });
-  Records.pintaMillor(JOC,document.getElementById('best'),P.total);
+  Records.pintaMillor(taula(),document.getElementById('best'),P.total);
 }
 
 // ===== MARCADOR =====
-let bestScore=Records.local(JOC);
 Records.pintaMillor(JOC,document.getElementById('best'));
+// La partida del dia i les lliures son dues competicions separades: mentre
+// jugues la del dia, el marcador de dalt diu qui guanya AVUI.
+function taula(){return P&&P.mode==='dia'?JOC+'_dia/'+P.llavor.slice(4):JOC}
 function updateHUD(){
   const s=P?P.total:0;
   document.getElementById('score').textContent=s;
-  if(s>bestScore){bestScore=s;if(!P||P.mode!=='dia')Records.desaLocal(JOC,s)}
-  Records.marcador(JOC,document.getElementById('best'),s);
+  if(!(P&&P.fora)&&s>Records.local(taula()))Records.desaLocal(taula(),s);
+  Records.marcador(taula(),document.getElementById('best'),s);
 }
 function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
 function hideMsg(){document.getElementById('msg').style.display='none'}
