@@ -465,6 +465,10 @@ Coses que no s'han de desfer sense entendre-les:
   inicials (`Records.envia`).
 - **El que s'envia al grup és el dibuix de colors i les estrelles**, mai les
   paraules.
+- **Cada matí el bot diu al grup qui va guanyar la Gofra d'ahir**, igual que
+  amb la partida del dia de La Impremta (`ANUNCIA_DIARI` al Worker). Com que
+  hi haurà molts empats a cinc estrelles, mana qui la va acabar abans, i el
+  missatge ho diu. `/avui` ensenya com van totes dues.
 - La **PRÀCTICA** són gofres a l'atzar per a qui en vol més: no compten per
   a res.
 

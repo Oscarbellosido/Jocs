@@ -265,19 +265,26 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   const madrid = enrere => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date(Date.now() - enrere * 864e5));
   store.set('telegram:xat', '-1001');
   store.delete('telegram:anunciat:impremta_dia');
+  store.delete('telegram:anunciat:gofra_dia');
   store.set('joc:impremta_dia:' + madrid(1), JSON.stringify([{ n: 'CRE', p: 5400, t: 1 }, { n: 'MAR', p: 3100, t: 2 }]));
+  store.set('joc:gofra_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 5, t: 1 }, { n: 'CRE', p: 5, t: 2 }, { n: 'MAR', p: 3, t: 3 }]));
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/tetris');
   const m = missatges();
-  ok(m.length === 1 && /partida del dia/.test(m[0].cos.text) && /CRE/.test(m[0].cos.text) && /5\.400/.test(m[0].cos.text) && /MAR/.test(m[0].cos.text),
-     'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir');
+  const imp = m.find(x => /Impremta/.test(x.cos.text)), gof = m.find(x => /Gofra/.test(x.cos.text));
+  ok(m.length === 2 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
+     'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir de La Impremta');
+  ok(gof && /guanyar <b>TRA<\/b>/.test(gof.cos.text) && /★★★★★/.test(gof.cos.text) && /gofra\.html/.test(JSON.stringify(gof.cos.reply_markup)),
+     'i la de La Gofra, amb les estrelles i qui la va acabar abans en cas d\'empat');
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/ram');
   ok(missatges().length === 0, 'i només un cop: la segona vegada ja no avisa');
   store.set('joc:impremta_dia:' + madrid(0), JSON.stringify([{ n: 'TRA', p: 900, t: 1 }]));
+  store.set('joc:gofra_dia:' + madrid(0), JSON.stringify([{ n: 'BOB', p: 4, t: 1 }]));
   enviats.length = 0;
   await crida(envTg, 'POST', '/telegram', msg('/avui'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
-  ok(/TRA/.test((missatges()[0] || { cos: {} }).cos.text || ''), '/avui ensenya com va la partida del dia d\'avui');
+  const t = (missatges()[0] || { cos: {} }).cos.text || '';
+  ok(/TRA/.test(t) && /BOB/.test(t) && /★★★★☆/.test(t), '/avui ensenya com van les dues partides del dia d\'avui');
   store.delete('telegram:xat');
 }
 

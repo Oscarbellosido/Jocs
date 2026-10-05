@@ -227,9 +227,14 @@ async function quiMana(env) {
 // taula del dia d'ahir i avisa el grup del podi. No cal cap rellotge al
 // Cloudflare: ho fa la primera peticio del dia. La marca es posa ABANS
 // d'enviar, perque dues peticions alhora no l'avisin dues vegades.
+// [nom, fitxer, com s'escriu la puntuacio]. A la Gofra son estrelles (de 0 a
+// 5) i hi haura molts empats: mana qui la va acabar abans, i aixi es diu.
+const estrelles = p => '★'.repeat(p) + '☆'.repeat(Math.max(0, 5 - p));
 const ANUNCIA_DIARI = {
-  impremta_dia: ['La Impremta', 'impremta.html', 'punts'],
+  impremta_dia: ['La Impremta', 'impremta.html', p => xifra(p) + ' punts'],
+  gofra_dia:    ['La Gofra',    'gofra.html',    p => estrelles(p) + ' (a igualtat d\'estrelles, mana qui la va acabar abans)'],
 };
+const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
 function diaMadrid(enrere = 0) {
   const d = new Date(Date.now() - enrere * 86400e3);
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d); }
@@ -241,15 +246,15 @@ async function anunciaAhir(env) {
   const xat = await env.RECORDS.get('telegram:xat');
   if (!xat) return;
   const ahir = diaMadrid(1);
-  for (const [joc, [nom, fitxer, unitat]] of Object.entries(ANUNCIA_DIARI)) {
+  for (const [joc, [nom, fitxer, forma]] of Object.entries(ANUNCIA_DIARI)) {
     const marca = 'telegram:anunciat:' + joc;
     if (await env.RECORDS.get(marca) === ahir) continue;
     await env.RECORDS.put(marca, ahir);
     const llista = await llegir(env, joc + ':' + ahir);
     if (!llista.length) continue;
-    const podi = llista.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + xifra(e.p)).join('\n');
+    const podi = llista.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + curt(joc, e.p)).join('\n');
     const text = '☀️ La <b>partida del dia</b> d\'ahir a ' + esc(nom) + ' la va guanyar <b>' + esc(llista[0].n) +
-      '</b> amb ' + xifra(llista[0].p) + ' ' + unitat + '.\n\n' + podi;
+      '</b> amb ' + forma(llista[0].p) + '.\n\n' + podi;
     await telegram(env, 'sendMessage', { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true,
       reply_markup: { inline_keyboard: [[{ text: '🎮 Juga la d\'avui', url: WEB + fitxer }]] } });
   }
@@ -261,7 +266,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com va la partida del dia de La Impremta\n\n' +
+  '/avui — com van les partides del dia (La Impremta i La Gofra)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {
@@ -285,10 +290,14 @@ async function ordre(env, msg) {
     return respon('Fet: ja no avisaré dels rècords. Per tornar-hi, /aqui.');
   }
   if (o === 'avui') {
-    const llista = await llegir(env, 'impremta_dia:' + diaMadrid(0));
-    if (!llista.length) return respon('☀️ Avui encara ningú no ha acabat la partida del dia de La Impremta.');
-    return respon('☀️ <b>La partida del dia de La Impremta</b>, com va avui:\n' +
-      llista.map((e, i) => (i + 1 + '.').padEnd(4) + esc(e.n) + '  ' + xifra(e.p)).join('\n'));
+    const avui = diaMadrid(0), parts = [];
+    for (const [joc, [nom]] of Object.entries(ANUNCIA_DIARI)) {
+      const llista = await llegir(env, joc + ':' + avui);
+      parts.push('☀️ <b>' + esc(nom) + '</b>\n' + (llista.length
+        ? llista.map((e, i) => (i + 1 + '.').padEnd(4) + esc(e.n) + '  ' + curt(joc, e.p)).join('\n')
+        : 'encara no l\'ha acabada ningú'));
+    }
+    return respon('Les partides del dia, com van avui:\n\n' + parts.join('\n\n'));
   }
   if (o === 'records' || o === 'rècords') {
     if (!resta.length) return respon(await quiMana(env));
@@ -317,7 +326,7 @@ async function activa(env, origen) {
   await telegram(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: 'Jocs', web_app: { url: WEB } } });
   await telegram(env, 'setMyCommands', { commands: [
     { command: 'records', description: 'qui mana a cada joc, o la taula d\'un joc' },
-    { command: 'avui', description: 'com va la partida del dia de La Impremta' },
+    { command: 'avui', description: 'com van les partides del dia' },
     { command: 'aqui', description: 'avisa en aquest xat dels rècords nous' },
     { command: 'prou', description: 'deixa d\'avisar' },
     { command: 'ajuda', description: 'què sé fer' },

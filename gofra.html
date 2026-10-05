@@ -382,7 +382,8 @@ async function finalPartida(){
       G.nova=false;
       const el=document.getElementById('taula');
       if(el)el.innerHTML='<div style="color:#ffd27a;font-size:13px">LA TAULA D\'AVUI</div>'+r.html+
-        (r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+        (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
       Records.pintaMillor(JOC,document.getElementById('best'),stats.estrelles);
     }
   }finally{enFinal=false}
