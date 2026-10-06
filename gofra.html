@@ -31,7 +31,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
     <button id="dia">LA DEL DIA</button><button id="practica">PRÀCTICA</button>
   </div>
   <div id="msg"></div>
-  <small><b style="color:#ddd">Torna les sis paraules a lloc intercanviant lletres de dues en dues: verd, ja hi és; groc, és d'aquesta paraula però en un altre lloc; gris, no és d'aquí.</b> toca dues lletres (o arrossega'n una sobre l'altra) · una gofra nova cada dia · pausa: P</small>
+  <small><b style="color:#ddd">Torna les sis paraules a lloc intercanviant lletres de dues en dues: verd, ja hi és; groc, és d'aquesta paraula però en un altre lloc; gris, no és d'aquí. Com menys intercanvis, més estrelles (5 amb 10 o menys).</b> toca dues lletres (o arrossega'n una sobre l'altra) · una gofra nova cada dia · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -354,6 +354,17 @@ function textCompartir(){
   const cap='La Gofra'+(mode==='dia'?' #'+numero:'')+' '+(G.fi==='guanyat'?'⭐'.repeat(est)+'☆'.repeat(5-est):'❌');
   return cap+'\n'+graellaEmoji();
 }
+// Com es guanyen les estrelles, amb la fila que t'ha tocat ressaltada: si
+// no, qui l'acabava amb 19 intercanvis no sabia per que nomes en tenia una.
+function taulaEstrelles(est){
+  let ant=0;
+  return '<div style="font:12px monospace;color:#888;margin-top:8px;line-height:1.5">'+
+    TRAMS.map(([n,e])=>{const de=ant+1;ant=n;
+      const quants=de===1?n+' o menys':de+' a '+n;
+      const st=e===est?'color:#ffd27a;font-weight:bold':'';
+      return '<div style="'+st+'">'+'★'.repeat(e)+'<span style="color:#444">'+'★'.repeat(5-e)+'</span> '+quants+' intercanvis</div>'}).join('')+
+    '</div>';
+}
 let enFinal=false;
 async function finalPartida(){
   if(enFinal)return;enFinal=true;
@@ -364,9 +375,10 @@ async function finalPartida(){
     let t;
     if(G.fi==='guanyat')t='<div style="color:#8fd16a">FETA!</div><div style="font-size:26px;color:#ffd27a">'+
       '★'.repeat(est)+'<span style="color:#555">'+'★'.repeat(5-est)+'</span></div>'+
-      '<small>l\'has feta amb '+(INTERCANVIS-G.queden)+' intercanvis'+(est<5?' (amb 10 o menys, cinc estrelles)':'')+'</small>';
+      '<small>l\'has feta amb '+(INTERCANVIS-G.queden)+' intercanvis</small>'+taulaEstrelles(est);
     else if(G.fi==='perdut')t='<div style="color:#ff9b8a">T\'HAS QUEDAT SENSE INTERCANVIS</div>';
     else t='<div>LA GOFRA</div><small>encara a mig fer</small>';
+    if(G.fi&&mode==='practica')t+='<small style="color:#a08860">és de PRÀCTICA: no compta per a cap taula</small>';
     t+='<small style="color:#ccc">'+ps+'</small>';
     if(mode==='dia')t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+
       ' · '+stats.estrelles+' estrelles en '+stats.jugades+(stats.jugades===1?' dia':' dies')+'</small>';

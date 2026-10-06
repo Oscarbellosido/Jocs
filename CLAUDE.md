@@ -439,6 +439,11 @@ resultat que es pot enviar al grup sense desvetllar la solució. La Gofra és
   qui l'acaba en treu almenys una, i les cinc segueixen costant el mateix.
   A sota del comptador hi diu les estrelles que encara pots treure i fins
   quants intercanvis.
+  La regla també surt a la línia d'ajuda i, en acabar, el quadre ensenya la
+  taula sencera amb la teva fila ressaltada: en Carles va fer una gofra amb
+  19 intercanvis, en va treure una estrella i no entenia per què.
+  El marcador de dalt (ESTRELLES) és el que porta acumulat **aquest mòbil**
+  amb les del dia; la taula de sempre és la del Worker.
 
 Coses que no s'han de desfer sense entendre-les:
 

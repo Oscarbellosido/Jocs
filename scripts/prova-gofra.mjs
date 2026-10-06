@@ -200,6 +200,8 @@ await p.waitForTimeout(1000);
 r = await p.evaluate(() => ({ fi: G.fi, q: G.queden, est: estrelles(), stats, text: document.getElementById('msg').textContent,
   links: [...document.querySelectorAll('#msg .reptes a')].map(a => decodeURIComponent(a.getAttribute('href'))), comparteix: textCompartir() }));
 const dia = await p.evaluate(() => dia);
+diu(/10 o menys intercanvis/.test(r.text) && /17 a 20 intercanvis/.test(r.text),
+  `el quadre del final explica quantes estrelles dona cada nombre d'intercanvis`);
 diu(r.fi === 'guanyat' && r.est === estrellesDe(20 - r.q) && /FETA/.test(r.text), `resolta en ${usats} intercanvis: ${r.est} estrelles`);
 diu(r.links.length === 3 && /t\.me\/share/.test(r.links[0]) && r.comparteix.includes('#') && r.comparteix.includes('🟩') &&
   !r.comparteix.toLowerCase().includes(await p.evaluate(() => G.paraules[0])),
