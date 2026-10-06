@@ -472,6 +472,12 @@ Coses que no s'han de desfer sense entendre-les:
 - La **PRÀCTICA** són gofres a l'atzar per a qui en vol més: no compten per
   a res.
 
+**A la Gofra i a la Impremta es veuen sempre les dues taules**, cadascuna
+amb el seu títol, perquè en Carles deia que si no, no quedava clar quina era
+quina ni qui guanyava la del dia: en entrar (`Records.pantallaInicial` amb el
+quart paràmetre, una llista de `[títol, taula]`), a la pantalla del joc (una
+filera amb qui mana a cadascuna) i al quadre del final.
+
 ## La Impremta: el Balatro amb paraules
 
 En Carles va demanar un joc de paraules que **enganxés**. Mirant què enganxa

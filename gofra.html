@@ -26,7 +26,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
 <body>
 <div id="wrap">
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>ESTRELLES <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
-  <div id="screen"><canvas id="game" width="420" height="600"></canvas></div>
+  <div id="screen"><canvas id="game" width="420" height="640"></canvas></div>
   <div id="controls">
     <button id="dia">LA DEL DIA</button><button id="practica">PRÀCTICA</button>
   </div>
@@ -62,7 +62,7 @@ function sndGuanya(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout((
 function sndPerd(){aInit();[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,.3,"sine",.24,-40),i*200))}
 
 const c=document.getElementById('game'),x=c.getContext('2d');
-const W=420,H=600;
+const W=420,H=640;
 
 // ===== LES PARAULES =====
 // Paraules corrents de cinc lletres: les que surten al diccionari de
@@ -370,21 +370,26 @@ async function finalPartida(){
       '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a>'+
       '<a href="#" id="copia">COPIA</a></div>':'';
     const peu=Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar');
-    msg(t+reptes+(mode==='dia'&&G.fi?'<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>':'')+peu);
+    msg(t+reptes+(G.fi?'<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>':'')+peu);
     lligaCopia(tx+'\n'+enl);
-    if(mode==='dia'&&G.fi){
-      // la taula del dia: qui l'ha feta amb mes estrelles. Nomes s'hi apunta
-      // el primer cop que l'acabes.
+    if(G.fi){
+      // Les dues taules, sempre i cadascuna amb el seu titol: la d'avui (qui
+      // l'ha feta amb mes estrelles; nomes s'hi apunta el primer cop que
+      // l'acabes) i la de les estrelles de sempre.
       let r={html:'',posicio:0};
-      if(G.nova&&est>0)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
-      else r={html:Records.taulaHTML(null),posicio:0};
-      if(G.nova&&est>0&&Records.nom())await Records.envia(JOC,stats.estrelles);
-      G.nova=false;
+      if(mode==='dia'&&G.nova&&est>0)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
+      else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
+      if(mode==='dia'&&G.nova&&est>0&&Records.nom())await Records.envia(JOC,stats.estrelles);
+      if(mode==='dia')G.nova=false;
+      const sempre=Records.taulaHTML(await Records.llista(JOC));
+      const titol=t2=>'<div style="color:#ffd27a;font-size:13px;margin-top:8px">'+t2+'</div>';
       const el=document.getElementById('taula');
-      if(el)el.innerHTML='<div style="color:#ffd27a;font-size:13px">LA TAULA D\'AVUI</div>'+r.html+
+      if(el)el.innerHTML=titol('☀ LA GOFRA D\'AVUI')+r.html+
         (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
-         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
+        titol('★ ESTRELLES DE SEMPRE')+sempre;
       Records.pintaMillor(JOC,document.getElementById('best'),stats.estrelles);
+      refrescaLiders();
     }
   }finally{enFinal=false}
 }
@@ -471,6 +476,12 @@ function draw(){
       const lx=24+i*134;fitxa('a',cl,lx,ly,22);text(t,lx+28,ly+16,'#bbb','11px monospace','left');
     });
   }
+  // qui mana a les dues taules, sempre a la vista
+  x.fillStyle='rgba(0,0,0,.35)';rrect(14,H-40,W-28,30,8);x.fill();
+  const ld=liderDia?liderDia.n+' '+'★'.repeat(liderDia.p):'ningú encara';
+  const ls=liderSempre?liderSempre.n+' '+liderSempre.p+'★':'ningú encara';
+  text('☀ AVUI: '+ld,W/4+6,H-20,'#ffd27a','bold 12px monospace');
+  text('DE SEMPRE: '+ls,W*3/4-6,H-20,'#c9b28a','bold 12px monospace');
   if(avisT>0&&avis){x.globalAlpha=Math.min(1,avisT*2);x.fillStyle='rgba(0,0,0,.85)';rrect(30,H-46,W-60,32,8);x.fill();
     text(avis,W/2,H-25,'#ffd27a','13px monospace');x.globalAlpha=1}
   if(paused){x.fillStyle='rgba(0,0,0,.75)';x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,'#fff','bold 26px monospace')}
@@ -543,10 +554,16 @@ boto(BP,()=>{obrePractica()});
 
 updateHUD();
 Records.pintaMillor(JOC,document.getElementById('best'),stats.estrelles);
+let liderDia=null,liderSempre=null;
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}
+}
+refrescaLiders();
 obreDia();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
-Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false,
+  [['☀ LA GOFRA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ ESTRELLES DE SEMPRE',JOC]]);
 </script>
 </body>
 </html>

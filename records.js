@@ -367,7 +367,10 @@ const Records = (() => {
   // qui manava. Es tanca sola de seguida i tambe al primer toc, i mentrestant
   // el joc queda en pausa perque no perdis vides mirant-la. Si no hi ha
   // records o no s'hi pot connectar, no la ensenya: no fem esperar per res.
-  async function pantallaInicial(joc, pausa, continua) {
+  // `altres`, per als jocs que tenen mes d'una taula (la partida del dia i
+  // la de sempre): una llista de [titol, joc] i les ensenya totes, cadascuna
+  // amb el seu titol. Si no, nomes la del joc, com sempre.
+  async function pantallaInicial(joc, pausa, continua, altres) {
     if (typeof pausa === 'function') { try { pausa(); } catch {} }
     const fons = document.createElement('div');
     fons.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9997;' +
@@ -392,10 +395,13 @@ const Records = (() => {
     document.addEventListener('keydown', perTecla, true);
     const sostre = setTimeout(tanca, 7000);      // per si la xarxa va lenta
 
-    const llista = await crida('/records/' + joc);
+    const taules = altres || [[null, joc]];
+    const llistes = await Promise.all(taules.map(([, j]) => crida('/records/' + j)));
     if (tancat) return;
-    if (!llista || !llista.length) { clearTimeout(sostre); tanca(); return; }
-    fons.querySelector('.rec-taula').innerHTML = taulaHTML(llista);
+    if (!llistes.some(l => l && l.length)) { clearTimeout(sostre); tanca(); return; }
+    fons.querySelector('.rec-taula').innerHTML = taules.map(([titol], i) =>
+      (titol ? '<div style="color:#ffe08a;font-size:13px;margin:10px 0 4px">' + titol + '</div>' : '') +
+      taulaHTML(llistes[i])).join('');
     fons.querySelector('.rec-peu').textContent = 'toca per començar';
     clearTimeout(sostre);
     setTimeout(tanca, 3500);
@@ -491,6 +497,11 @@ const Records = (() => {
     },
 
     taulaHTML,
+
+    // La llista sencera d'una taula, o null si no s'hi pot connectar.
+    async llista(joc) {
+      return await crida('/records/' + joc);
+    },
 
     // Envia la puntuacio sense demanar res, amb les inicials que ja hi ha.
     // Per als jocs que en un mateix final pugen dues taules (La Gofra: la del

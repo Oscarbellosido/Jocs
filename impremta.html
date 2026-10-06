@@ -222,7 +222,7 @@ function llegeixRepte(){
     p:Math.max(0,parseInt(q.get('p')||'0',10)||0),c:parseInt(q.get('c')||'0',10)||0,g:parseInt(q.get('g')||'0',10)||0};
 }
 const REPTE=llegeixRepte();
-let liderDia=null;
+let liderDia=null,liderSempre=null;
 
 function nouTipus(l,e=null,comodi=false){return {id:idSeg++,l,e,comodi}}
 
@@ -516,10 +516,17 @@ async function finalPartida(){
   const posicio=!r.posicio?'':delDia&&r.posicio===1
     ?'<small style="color:#ff0">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></small>'
     :'<small style="color:#ff0">Ets el número '+r.posicio+(delDia?' d\'avui':'')+'!</small>';
+  // Sempre les dues taules, cadascuna amb el seu titol: si no, no quedava
+  // clar quina era quina ni qui guanyava la del dia.
+  const idDia=JOC+'_dia/'+(P.mode==='dia'?P.llavor.slice(4):diaAvui());
+  const htmlDia=delDia?r.html:Records.taulaHTML(await Records.llista(idDia));
+  const htmlSempre=P.mode!=='dia'?r.html:Records.taulaHTML(await Records.llista(JOC));
+  if(state!=='over')return;
+  const titol=t2=>'<div style="color:#ffe08a;font-size:13px;margin-top:10px">'+t2+'</div>';
   msg(t+posicio+
-    (delDia?'<div style="color:#ffe08a;font-size:13px;margin-top:6px">☀ LA TAULA D\'AVUI</div>':'')+
-    '<div style="margin:8px 0">'+r.html+'</div>'+reptes+
-    Records.peuFinal('o toca per tornar a començar'));
+    titol('☀ LA PARTIDA D\'AVUI')+'<div style="margin:4px 0">'+htmlDia+'</div>'+
+    titol('DE SEMPRE <span style="color:#888">(partides lliures)</span>')+'<div style="margin:4px 0 8px">'+htmlSempre+'</div>'+
+    reptes+Records.peuFinal('o toca per tornar a començar'));
   const cp=document.getElementById('copia');
   if(cp)cp.addEventListener('click',async e=>{
     e.preventDefault();e.stopPropagation();
@@ -854,12 +861,13 @@ function dibuixaInici(){
   const linies=['Fes paraules amb les 8 lletres de la mà.','Cada pàgina demana uns punts: si hi','arribes, cobres rals i vas a la botiga',
     'a comprar segells que canvien les regles.','La partida s\'acaba quan una pàgina no','arriba als punts.'];
   linies.forEach((l,k)=>text(l,W/2,152+k*18,'#ddd','12px monospace','center'));
-  let y=274;
+  let y=REPTE?262:274;
+  const bh=REPTE?66:74,salt=REPTE?76:88;
   const boto=(t1,t2,col,fn)=>{
-    x.fillStyle='#241a12';rrect(30,y,W-60,74,12);x.fill();x.strokeStyle=col;x.lineWidth=2;x.stroke();
-    text(t1,W/2,y+32,col,'bold 18px monospace','center');
-    text(t2,W/2,y+54,'#aaa','11px monospace','center');
-    zona(30,y,W-60,74,fn);y+=88;
+    x.fillStyle='#241a12';rrect(30,y,W-60,bh,12);x.fill();x.strokeStyle=col;x.lineWidth=2;x.stroke();
+    text(t1,W/2,y+bh*0.43,col,'bold 18px monospace','center');
+    text(t2,W/2,y+bh*0.73,'#aaa','11px monospace','center');
+    zona(30,y,W-60,bh,fn);y+=salt;
   };
   if(REPTE)boto('REPTE DE '+REPTE.n,xifra(REPTE.p)+' punts'+(REPTE.c?' (capítol '+REPTE.c+')':'')+' · mateixes lletres','#7dff9b',
     ()=>{novaPartida('lliure',REPTE.llavor,REPTE);sndBe()});
@@ -869,6 +877,11 @@ function dibuixaInici(){
     'la mateixa per a tothom, '+nomDia(dia)+(liderDia?' · mana '+liderDia.n+' amb '+xifra(liderDia.p):''),'#ffe08a',
     ()=>{novaPartida('dia','DIA-'+dia);sndBe()});
   boto('PARTIDA LLIURE','lletres a l\'atzar · després pots reptar els amics','#8ac4ff',()=>{novaPartida('lliure',llavorNova());sndBe()});
+  // qui mana a cada taula, que es vegi abans de triar
+  const yr=H-58;
+  x.fillStyle='#120d09';rrect(30,yr-6,W-60,50,10);x.fill();x.strokeStyle='#4a3a28';x.lineWidth=1;x.stroke();
+  text('☀ AVUI: '+(liderDia?liderDia.n+' amb '+xifra(liderDia.p):'encara ningú'),W/2,yr+14,'#ffe08a','bold 12px monospace','center');
+  text('DE SEMPRE: '+(liderSempre?liderSempre.n+' amb '+xifra(liderSempre.p):'encara ningú'),W/2,yr+32,'#8ac4ff','bold 12px monospace','center');
 }
 
 function draw(){
@@ -986,10 +999,11 @@ document.getElementById('msg').addEventListener('click',e=>{
 });
 
 // qui mana avui a la partida del dia, per ensenyar-ho a la portada del joc
-(async()=>{try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui())}catch(e){}})();
+(async()=>{try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}})();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
-Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false,
+  [['☀ LA PARTIDA D\'AVUI',JOC+'_dia/'+diaAvui()],['DE SEMPRE (partides lliures)',JOC]]);
 </script>
 </body>
 </html>
