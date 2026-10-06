@@ -227,6 +227,36 @@ await p2.waitForTimeout(800);
 r = await p2.evaluate(() => document.getElementById('msg').textContent);
 diu(/REPTE DE CRE/.test(r) && /GUANYAT/.test(r), `en acabar el repte diu qui ha guanyat`);
 
+// --- cap ma sense vocals ---
+// Moltes partides, i a cada pagina es descarta i s'imprimeix a l'atzar fins
+// que s'acaba la bossa: cada ma ha de tenir dues vocals i dues consonants
+// mentre a la pila n'hi quedin.
+r = await p.evaluate(() => {
+  let mans = 0, dolentes = [], semblants = 0;
+  const comprova = () => {
+    mans++;
+    const v = P.ma.filter(esVocal).length, c = P.ma.length - v;
+    const pilaV = P.pila.filter(esVocal).length, pilaC = P.pila.length - pilaV;
+    if ((v < 2 && pilaV > 0) || (c < 2 && pilaC > 0)) dolentes.push(P.ma.map(t => t.l).join(''));
+  };
+  for (let k = 0; k < 150; k++) {
+    novaPartida('lliure', 'VOCALS' + k);
+    comprova();
+    for (let d = 0; d < 6 && P.pila.length; d++) {
+      P.comp = P.ma.slice(0, 1 + (k + d) % P.ma.length); P.descarts = 9; descarta(); comprova();
+    }
+  }
+  // la mateixa llavor, la mateixa ma
+  for (let k = 0; k < 20; k++) {
+    novaPartida('lliure', 'IGUAL' + k); const a = P.ma.map(t => t.l).join('');
+    novaPartida('lliure', 'IGUAL' + k); if (a === P.ma.map(t => t.l).join('')) semblants++;
+  }
+  return { mans, dolentes, semblants };
+});
+diu(r.dolentes.length === 0, `cap mà sense dues vocals i dues consonants (${r.mans} mans` +
+  (r.dolentes.length ? `; dolentes: ${r.dolentes.slice(0, 3).join(' ')}` : '') + ')');
+diu(r.semblants === 20, `i la mateixa llavor segueix donant la mateixa mà`);
+
 // --- partides senceres amb un jugador automatic ---
 // Juga com algu que comença: de les paraules que pot fer, una de les mes
 // llargues fins a sis lletres, i compra segells quan pot.

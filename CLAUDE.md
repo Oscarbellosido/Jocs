@@ -549,6 +549,12 @@ Coses que no s'han de desfer sense entendre-les:
 - **La caixa de sortida és de 57 tipus amb un 40% de vocals** (`CAIXA0`),
   com el català escrit. Amb les proporcions de freqüència pura, sortien massa
   lletres rares i massa poques vocals.
+- **La mà sempre té almenys dues vocals i dues consonants** (`equilibra`).
+  Tot i el 40%, en Carles va rebre M G L R H N NY X i no es podia fer res: era
+  perdre el torn per mala sort. Si en falten, la que sobra es canvia per la
+  propera bona de la pila (i tornarà a sortir més endavant). Com que tot surt
+  de la pila, la mateixa llavor segueix donant la mateixa partida. El comodí
+  compta com a vocal; la QU i la NY, com a consonants.
 
 Com està calibrat, amb jugadors automàtics que juguen amb el codi de debò: un
 que juga com una persona (coneix 6.000 paraules corrents i en tria una de les

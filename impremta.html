@@ -274,6 +274,24 @@ function comencaPagina(){
 function roba(){
   const m=midaMa();
   while(P.ma.length<m&&P.pila.length)P.ma.push(P.pila.pop());
+  equilibra();
+}
+// Una ma de vuit consonants (o de vuit vocals) no deixa fer res: perdies el
+// torn per mala sort. Si n'hi ha menys de dues d'una mena, la que sobra es
+// canvia per la propera bona de la pila, i tornara a sortir mes endavant.
+// Tot surt de la pila, que ve de la llavor: la partida segueix sent la mateixa.
+const MIN_VOC=2,MIN_CONS=2;
+const esVocal=t=>t.comodi||VOC.has(t.l);
+function equilibra(){
+  for(let k=0;k<4;k++){
+    const v=P.ma.filter(esVocal).length,c=P.ma.length-v;
+    let cal;if(v<MIN_VOC)cal=true;else if(c<MIN_CONS)cal=false;else return;
+    let j=-1;for(let i=P.pila.length-1;i>=0;i--)if(esVocal(P.pila[i])===cal){j=i;break}
+    if(j<0)return;
+    let i=-1;for(let q=P.ma.length-1;q>=0;q--){const t=P.ma[q];if(esVocal(t)!==cal&&!t.comodi&&!P.comp.includes(t)){i=q;break}}
+    if(i<0)return;
+    const surt=P.ma[i];P.ma[i]=P.pila[j];P.pila[j]=surt;
+  }
 }
 
 // ===== VALIDAR I PUNTUAR =====
