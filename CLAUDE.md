@@ -431,8 +431,14 @@ resultat que es pot enviar al grup sense desvetllar la solució. La Gofra és
   és d'aquella paraula però mal posada. Gris: no és d'aquí. Els grocs es
   compten com al Wordle: si la paraula només en té una de lliure, només una
   surt groga.
-- **15 intercanvis, i amb 10 n'hi ha prou.** Les estrelles són els que et
-  sobren, fins a cinc.
+- **20 intercanvis, i amb 10 n'hi ha prou.** Cinc estrelles si l'acabes amb
+  10 o menys, quatre amb 12, tres amb 14, dues amb 16 i una fins a 20
+  (`TRAMS`). Al principi n'eren 15 i les estrelles eren els que et sobraven:
+  en Carles la trobava massa dura per començar, i qui s'equivocava uns
+  quants l'acabava amb zero estrelles, i llavors no sortia a cap taula. Ara
+  qui l'acaba en treu almenys una, i les cinc segueixen costant el mateix.
+  A sota del comptador hi diu les estrelles que encara pots treure i fins
+  quants intercanvis.
 
 Coses que no s'han de desfer sense entendre-les:
 
@@ -452,7 +458,8 @@ Coses que no s'han de desfer sense entendre-les:
   moguda cau per casualitat a una casella amb la mateixa lletra, es torna a
   barrejar, que si no la gofra sortiria més fàcil del compte. Amb lletres
   repetides, qui les va posant d'una en una sense pensar-hi pot necessitar-ne
-  fins a 13: encara hi cap.
+  fins a 13: encara hi cap. Les del dia desades quan n'hi havia 15 (sense
+  `v:2`) en reben cinc més en obrir-les.
 - **La del dia es desa a cada intercanvi** (`localStorage`, `gofra-<data>`):
   tancant i obrint no es pot tornar a començar. Les estadístiques (ratxa,
   estrelles) es compten una sola vegada per dia.

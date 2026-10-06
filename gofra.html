@@ -187,12 +187,18 @@ const CASELLES=[];for(let f=0;f<5;f++)for(let k=0;k<5;k++)if(!FORAT(f,k))CASELLE
 const PARAULES_GRAELLA=[0,2,4].map(f=>[0,1,2,3,4].map(k=>[f,k])).concat([0,2,4].map(k=>[0,1,2,3,4].map(f=>[f,k])));
 
 // Barrejar: es mouen entre 14 i 16 lletres en cicles, de manera que amb 10
-// intercanvis es pot resoldre (cada cicle de N lletres en demana N-1). Tens
-// 15: les estrelles son els que et sobren, fins a cinc. Les que no es mouen
+// intercanvis es pot resoldre (cada cicle de N lletres en demana N-1). Les que no es mouen
 // comencen verdes. Si una lletra mogudo cau per casualitat en una casella amb
 // la mateixa lletra (hi ha lletres repetides), es torna a provar: si no, la
 // gofra seria mes facil del compte.
-const INTERCANVIS=15,CALEN=10;
+// Tens 20 intercanvis. Al principi n'eren 15, i les estrelles eren els que
+// et sobraven: qui s'equivocava uns quants l'acabava amb zero estrelles (i
+// llavors no comptava enlloc) o no l'acabava. En Carles la trobava massa dura
+// per començar. Ara qui l'acaba sempre en treu almenys una, i les cinc
+// segueixen essent per a qui la fa amb 10, com abans.
+const INTERCANVIS=20,CALEN=10;
+const TRAMS=[[10,5],[12,4],[14,3],[16,2],[20,1]];       // [com a molt fets, estrelles]
+const estrellesPer=fets=>{for(const [n,e] of TRAMS)if(fets<=n)return e;return 1};
 function barrejaGofra(sol,r){
   for(let intent=0;intent<500;intent++){
     const M=14+Math.floor(r()*3),k=M-CALEN;
@@ -266,7 +272,7 @@ let stats=llegeix('gofra-stats',{jugades:0,guanyades:0,estrelles:0,ratxa:0,millo
 // i no la pots tornar a començar de zero.
 function desaDia(){
   if(mode!=='dia')return;
-  desa('gofra-'+dia,{cur:G.cur.map(f=>f.map(l=>l||'.').join('')).join(''),queden:G.queden,fi:G.fi||null});
+  desa('gofra-'+dia,{cur:G.cur.map(f=>f.map(l=>l||'.').join('')).join(''),queden:G.queden,fi:G.fi||null,v:2});
 }
 function obreDia(){
   mode='dia';dia=diaAvui();numero=numeroDe(dia);
@@ -274,7 +280,8 @@ function obreDia(){
   const d=llegeix('gofra-'+dia,null);
   if(d&&d.cur&&d.cur.length===25){
     for(let i=0;i<25;i++){const f=Math.floor(i/5),k=i%5;if(!FORAT(f,k))G.cur[f][k]=d.cur[i]}
-    G.queden=d.queden;G.fi=d.fi;
+    // les desades quan n'hi havia 15 (sense v) en tenen cinc mes
+    G.queden=d.queden+(d.v?0:INTERCANVIS-15);G.fi=d.fi;
   }
   comenca();
   if(G.fi)setTimeout(finalPartida,400);
@@ -312,7 +319,7 @@ function intercanvia(a,b){
   else if(G.queden<=0){G.fi='perdut';acaba()}
   desaDia();
 }
-function estrelles(){return G.fi==='guanyat'?Math.min(5,G.queden):0}
+function estrelles(){return G.fi==='guanyat'?estrellesPer(INTERCANVIS-G.queden):0}
 
 async function acaba(){
   state='over';sel=null;arr=null;
@@ -357,7 +364,7 @@ async function finalPartida(){
     let t;
     if(G.fi==='guanyat')t='<div style="color:#8fd16a">FETA!</div><div style="font-size:26px;color:#ffd27a">'+
       '★'.repeat(est)+'<span style="color:#555">'+'★'.repeat(5-est)+'</span></div>'+
-      '<small>t\'han sobrat '+G.queden+(G.queden===1?' intercanvi':' intercanvis')+'</small>';
+      '<small>l\'has feta amb '+(INTERCANVIS-G.queden)+' intercanvis'+(est<5?' (amb 10 o menys, cinc estrelles)':'')+'</small>';
     else if(G.fi==='perdut')t='<div style="color:#ff9b8a">T\'HAS QUEDAT SENSE INTERCANVIS</div>';
     else t='<div>LA GOFRA</div><small>encara a mig fer</small>';
     t+='<small style="color:#ccc">'+ps+'</small>';
@@ -466,22 +473,29 @@ function draw(){
   // el que queda
   const yb=Y0+5*MIDA+4*ESP+50;
   text(String(G.queden),W/2,yb+12,G.queden<=3&&!G.fi?'#ff9b8a':'#fff','bold 40px monospace');
-  text(G.queden===1?'INTERCANVI':'INTERCANVIS',W/2,yb+36,'#a08860','12px monospace');
+  text(G.queden===1?'INTERCANVI QUE ET QUEDA':'INTERCANVIS QUE ET QUEDEN',W/2,yb+36,'#a08860','12px monospace');
   if(G.fi==='guanyat'){const e=estrelles();text('★'.repeat(e)+'☆'.repeat(5-e),W/2,yb+66,'#ffd27a','26px serif')}
   else if(G.fi==='perdut')text('toca LA DEL DIA o PRÀCTICA',W/2,yb+64,'#a08860','12px monospace');
   else{
+    // les estrelles que encara pots treure, i fins quan
+    const fets=INTERCANVIS-G.queden,e=estrellesPer(fets),lim=TRAMS.find(([n])=>fets<=n)[0];
+    const est='★'.repeat(e)+'☆'.repeat(5-e),ex=e===1?'si l\'acabes':'si l\'acabes amb '+lim+' fets o menys';
+    x.font='18px serif';const w1=x.measureText(est).width;x.font='12px monospace';const w2=x.measureText(ex).width;
+    const x0=W/2-(w1+8+w2)/2;
+    text(est,x0,yb+60,'#ffd27a','18px serif','left');
+    text(ex,x0+w1+8,yb+59,'#c9b28a','12px monospace','left');
     // la llegenda, a sota de tot
-    const ly=yb+52;
+    const ly=yb+72;
     [['v','al seu lloc'],['g','mal posada'],['x','d\'una altra']].forEach(([cl,t],i)=>{
       const lx=24+i*134;fitxa('a',cl,lx,ly,22);text(t,lx+28,ly+16,'#bbb','11px monospace','left');
     });
   }
   // qui mana a les dues taules, sempre a la vista
-  x.fillStyle='rgba(0,0,0,.35)';rrect(14,H-40,W-28,30,8);x.fill();
+  x.fillStyle='rgba(0,0,0,.35)';rrect(14,H-38,W-28,30,8);x.fill();
   const ld=liderDia?liderDia.n+' '+'★'.repeat(liderDia.p):'ningú encara';
   const ls=liderSempre?liderSempre.n+' '+liderSempre.p+'★':'ningú encara';
-  text('☀ AVUI: '+ld,W/4+6,H-20,'#ffd27a','bold 12px monospace');
-  text('DE SEMPRE: '+ls,W*3/4-6,H-20,'#c9b28a','bold 12px monospace');
+  text('☀ AVUI: '+ld,W/4+6,H-18,'#ffd27a','bold 12px monospace');
+  text('DE SEMPRE: '+ls,W*3/4-6,H-18,'#c9b28a','bold 12px monospace');
   if(avisT>0&&avis){x.globalAlpha=Math.min(1,avisT*2);x.fillStyle='rgba(0,0,0,.85)';rrect(30,H-46,W-60,32,8);x.fill();
     text(avis,W/2,H-25,'#ffd27a','13px monospace');x.globalAlpha=1}
   if(paused){x.fillStyle='rgba(0,0,0,.75)';x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,'#fff','bold 26px monospace')}

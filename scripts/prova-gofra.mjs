@@ -110,8 +110,8 @@ r = await p.evaluate(() => {
 });
 var r;
 diu(!r.mal.length && r.llista, `les gofres dels 365 dies que vénen es poden fer, amb sis paraules de la llista` + (r.mal.length ? ' (' + r.mal.slice(0, 3).join(', ') + ')' : ''));
-diu(r.bo.every(n => n === 10), `totes es resolen amb 10 intercanvis justos, i n'hi ha 15`);
-diu(Math.max(...r.resol) <= 15, `fins i tot posant lletres d'una en una sense pensar-hi, n'hi ha prou amb ${Math.max(...r.resol)}`);
+diu(r.bo.every(n => n === 10), `totes es resolen amb 10 intercanvis justos, i n'hi ha 20`);
+diu(Math.max(...r.resol) <= 20, `fins i tot posant lletres d'una en una sense pensar-hi, n'hi ha prou amb ${Math.max(...r.resol)}`);
 diu(r.verdesMin >= 5 && r.verdesMax <= 7, `comencen amb ${r.verdesMin} a ${r.verdesMax} lletres verdes`);
 
 // --- els colors ---
@@ -145,7 +145,7 @@ let parella = await p.evaluate(() => {
 await p.mouse.click(...aPant(...parella[0])); await p.waitForTimeout(80);
 await p.mouse.click(...aPant(...parella[1])); await p.waitForTimeout(300);
 r = await p.evaluate(([a, c]) => ({ x: G.cur[a[0]][a[1]], y: G.cur[c[0]][c[1]], q: G.queden }), parella);
-diu(r.x === parella[3] && r.y === parella[2] && r.q === 14, `tocant dues lletres s'intercanvien i en queden 14`);
+diu(r.x === parella[3] && r.y === parella[2] && r.q === 19, `tocant dues lletres s'intercanvien i en queden 19`);
 
 parella = await p.evaluate(() => {
   const mal = CASELLES.filter(([f, k]) => G.cur[f][k] !== G.sol[f][k]);
@@ -155,14 +155,14 @@ await p.mouse.move(...aPant(...parella[0])); await p.mouse.down();
 await p.mouse.move(...aPant(...parella[1]), { steps: 8 }); await p.mouse.up();
 await p.waitForTimeout(300);
 r = await p.evaluate(([a, c]) => ({ x: G.cur[a[0]][a[1]], y: G.cur[c[0]][c[1]], q: G.queden }), parella);
-diu(r.x === parella[3] && r.y === parella[2] && r.q === 13, `arrossegant una lletra sobre una altra també`);
+diu(r.x === parella[3] && r.y === parella[2] && r.q === 18, `arrossegant una lletra sobre una altra també`);
 
 const verda = await p.evaluate(() => CASELLES.find(([f, k]) => G.cur[f][k] === G.sol[f][k]));
 const mal1 = await p.evaluate(() => CASELLES.find(([f, k]) => G.cur[f][k] !== G.sol[f][k]));
 await p.mouse.click(...aPant(...verda)); await p.waitForTimeout(80);
 await p.mouse.click(...aPant(...mal1)); await p.waitForTimeout(300);
 r = await p.evaluate(v => ({ q: G.queden, encara: G.cur[v[0]][v[1]] === G.sol[v[0]][v[1]] }), verda);
-diu(r.q === 13 && r.encara, `les verdes no es mouen ni gasten intercanvis`);
+diu(r.q === 18 && r.encara, `les verdes no es mouen ni gasten intercanvis`);
 
 // --- perdre ---
 enviats.length = 0;
@@ -184,6 +184,11 @@ let text = await p.evaluate(() => document.getElementById('msg').textContent);
 diu(r.fi === 'perdut' && r.q === 0 && /SENSE INTERCANVIS/.test(text), `sense intercanvis s'acaba i ensenya les sis paraules`);
 diu(enviats.length === 0, `la de pràctica no s'apunta enlloc`);
 
+// --- les estrelles: les cinc, per a qui la fa amb 10; qui l'acaba, almenys una ---
+const estrellesDe = fets => fets <= 10 ? 5 : fets <= 12 ? 4 : fets <= 14 ? 3 : fets <= 16 ? 2 : 1;
+r = await p.evaluate(() => [10, 11, 12, 13, 14, 15, 16, 17, 20].map(f => estrellesPer(f)).join(''));
+diu(r === '544332211', `amb 10 intercanvis, cinc estrelles; amb 12, quatre; amb 14, tres; amb 16, dues; i fins a 20, una`);
+
 // --- guanyar la del dia ---
 enviats.length = 0;
 await p.evaluate(() => { localStorage.clear(); stats = { jugades: 0, guanyades: 0, estrelles: 0, ratxa: 0, millor: 0, ultim: '' }; obreDia(); });
@@ -195,7 +200,7 @@ await p.waitForTimeout(1000);
 r = await p.evaluate(() => ({ fi: G.fi, q: G.queden, est: estrelles(), stats, text: document.getElementById('msg').textContent,
   links: [...document.querySelectorAll('#msg .reptes a')].map(a => decodeURIComponent(a.getAttribute('href'))), comparteix: textCompartir() }));
 const dia = await p.evaluate(() => dia);
-diu(r.fi === 'guanyat' && r.est === Math.min(5, r.q) && /FETA/.test(r.text), `resolta en ${usats} intercanvis: ${r.est} estrelles`);
+diu(r.fi === 'guanyat' && r.est === estrellesDe(20 - r.q) && /FETA/.test(r.text), `resolta en ${usats} intercanvis: ${r.est} estrelles`);
 diu(r.links.length === 3 && /t\.me\/share/.test(r.links[0]) && r.comparteix.includes('#') && r.comparteix.includes('🟩') &&
   !r.comparteix.toLowerCase().includes(await p.evaluate(() => G.paraules[0])),
   `es pot enviar a Telegram o WhatsApp el dibuix de colors, sense desvetllar les paraules`);
