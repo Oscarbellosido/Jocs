@@ -51,6 +51,8 @@ for (const fitxer of jocs) {
       try { on = false; } catch {}
       if (typeof finalPartida === 'function') finalPartida('GAME OVER');
       else if (typeof gameOver === 'function') gameOver();
+      // La Rotllana no s'acaba mai: el quadre surt en acabar cada nivell
+      else if (typeof finalNivell === 'function') finalNivell(3);
       null;
     }).catch(() => {});
     await p.waitForTimeout(900);

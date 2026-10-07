@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Rotllana</title>
+<style>
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,700px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+/* cercles i lletres grosses: res de pixels quadrats */
+canvas{max-width:96%;max-height:100%;width:auto;height:auto;border:1px solid #333;background:#1b2a3a;touch-action:none}
+#controls{flex:none;display:flex;gap:12px;margin-top:8px;align-items:center;justify-content:center}
+button{font:14px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;width:146px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+button.pobre{color:#777;border-color:#333}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(0,0,0,.94);border:1px solid #555;border-radius:10px;padding:14px 18px;width:84%;max-width:380px;max-height:88%;overflow:auto;box-sizing:border-box}
+#msg small{display:block;margin-top:6px;font-size:13px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>NIVELL <b id="score">1</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><canvas id="game" width="420" height="640"></canvas></div>
+  <div id="controls">
+    <button id="barreja">↻ BARREJA</button><button id="pista">PISTA · 10</button>
+  </div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Uneix les lletres de la rotllana lliscant el dit i omple els mots encreuats.</b> les paraules que hi falten són extres i donen monedes · BARREJA les remena · PISTA destapa una lletra · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+// cada lletra que afegeixes sona una mica mes aguda: la paraula "puja"
+const ESCALA=[523,587,659,698,784,880,988,1047];
+function sndLletra(i){aInit();tone(ESCALA[Math.min(i,7)],.08,"triangle",.16)}
+function sndNo(){aInit();tone(170,.14,"square",.08,-40)}
+function sndParaula(){aInit();[659,784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,.16,"triangle",.2),i*65))}
+function sndMoneda(){aInit();tone(988,.07,"square",.07);setTimeout(()=>tone(1319,.14,"square",.07),70)}
+function sndJaHi(){aInit();tone(440,.08,"sine",.15);setTimeout(()=>tone(440,.08,"sine",.12),110)}
+function sndNivell(){aInit();[523,659,784,1047,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.2,"triangle",.22),i*95))}
+
+const c=document.getElementById('game'),x=c.getContext('2d');
+const W=420,H=640;
+
+// ===== LES PARAULES =====
+// Les formes del diccionari de Softcatala (vegeu dades/LLICENCIA-paraules.txt)
+// que mes es fan servir, de 3 a 7 lletres, de la mes dita a la menys. Sense
+// noms de persona ni de lloc, sense paraulotes i sense els articles i les
+// contraccions (ELS, DEL, PELS...), que no fan gracia en uns mots encreuats.
+// Sense accents, que es com van a les fitxes; despres dels dos punts, com
+// s'escriu de debo, per ensenyar-la quan la trobes.
+const TXT=`
+que per una amb aixo:això com pero:però mes:més aqui:aquí tot vaig esta:està ser molt meu fer has ara aquest
+aquesta quan nomes:només cap res meva dir cosa era soc:sóc seu qui aixi:així son:són estic ets ell teu veure
+puc perque:perquè seva vull fet acord hem gracies:gràcies vas han mai tinc tots estas:estàs teva estat van
+deu:déu pot senyor saps casa home tan vols alguna tens ella temps potser fins pare encara anar dit crec pots
+tambe:també hola dia dona dos sobre despres:després vida gent sempre vol algu:algú sap anys havia passa abans
+coses mateix mare sense sembla millor altre estava voste:vostè tant parlar llavors alla:allà tenim hauria
+ningu:ningú sigui estar veritat mica bona gran haver mort lloc mira anem fora sento doncs plau fill podria
+vinga vist vegada moment podem seus diu estem tenir passat altra estan bon des segur prou ells mon:món clar
+tota massa sera:serà homes nostre meus manera aquests tenia cop deixa passar fas saber porta volia som espera
+tornar tres quin primer quina feina nou matar nom trobar nostra cada sentit nostres agrada rei diners part
+rao:raó totes escolta deixar germa:germà vam amic altres mal creus familia:família hora fent avui sol dins
+policia heu ben amor seves poder noi morir durant noia greu tothom terra punt idea donar teus cotxe algun
+sortir aquell entre venir guerra trobat dic ciutat tenen sang pensar dues fare:faré dius seria amics dies
+contra nois sabia dema:demà vegades acabat pas pensava ajuda menjar cal cas por nova veig quant arribar aviat
+tard filla vingut anat senyora entenc mentre hauries importa ves:vés sentir sols vine dones faig capita:capità
+favor suposo cara queda sort ulls compte veus poden aigua sota cami:camí penso penses tingut persona moltes
+fos davant vostre prendre cinc cert entrar deus:déus hagi adeu:adéu menys primera fills molts portar petit
+costat posar ajudar cor espero tal val veu viu hagues:hagués gaire aquella nens diuen sou creure just mans
+perdut mati:matí fan poc sabem nen junts fem unica:única perdre hores marxar vostra eren hauriem:hauríem
+tornat unic:únic podia minuts any sent tipus mateixa fara:farà meves treball servir força paio viure col marit
+forma faci deixat quatre parla treure doctor quants setmana reina fes estimo podries rapid:ràpid cos nord
+parlant papa digui eres pugui torna set facis final vell conec nena haura:haurà mama poble demanar germana
+buscar foc culpa acabar prop alguns fort telefon:telèfon ahir arribat pla genial llit jove ultima:última
+tampoc pensa volen molta vostres banda darrere farem anava igual dificil:difícil donat teniu resta cel estrany
+facil:fàcil llum mesos teves haig perdona agent aço:açò creu agafar segons lluny gairebe:gairebé qual camp sis
+podriem:podríem portes deia acaba sola pogut morts sopar dormir allo:allò quelcom feia tret esperar pensat
+feliç digues segura mena esteu algunes dire:diré arma petita passant faria dur parell numero:número nau negre
+ultim:últim canvi seguir agafa assassi:assassí salvar quedar dolars:dòlars altesa festa paraula aquells sigut
+perill escola noies dient portat segon lliure equip mig enrere preso:presó recordo anire:aniré dalt joc
+general aci:ací pais:país lluitar posa pares entens pitjor secret canviar grans faras:faràs exercit:exèrcit
+estigui diguis sents boig buscant sere:seré guardia:guàrdia estaves parlat parles surt podeu dret cul pensant
+trucar voleu troba matat feu sabeu pressa vaixell sino:sinó calla gos vagi armes mirar volem tracta morta
+siguis estara:estarà roba tingui comprar hagut senyors futur vulguis control vau segueix havies bastant para
+posat enviar prova broma carrer oficina classe viatge torni veiem llibre demanat voldria pagar milions atac
+sona guanyar sala mil baix maleit:maleït entesos dolent suposa tornare:tornaré atencio:atenció estimat
+perdo:perdó llei grup error honor calma sistema oncle gana consell falta saben quantes estona anira:anirà
+bonic recorda prometo boca real mar canviat conegut acabo mala almenys tenies illa passara:passarà trobes
+capaç nano dolor diria somni passi xerif:xèrif comença vista dimonis foto beure oficial servei llista cavall
+plaer bonica pena idiota agraden avio:avió faltar vestit digue metge tornara:tornarà alt seguent:següent
+relacio:relació hauras:hauràs bons caure cafe:cafè estaria espasa espai comte aneu gust vinc meitat normal sud
+mestre vostes:vostès ull senyal tornada deixi taula trobo voler llarg deixare:deixaré mireu clau govern tarda
+cervell millors tinent seras:seràs venen:vénen sortit porto minut seguida tracte havien rebut fons coll
+reunio:reunió riu pogues:pogués edifici company tindre:tindré gens amiga propia:pròpia correr:córrer voltant
+maleida:maleïda darrera suport majoria rebre mitja baixa mirant truca carrec:càrrec estaven enviat juro marxa
+volies confiar cent propi creia musica:música haurem vides trucat traves:través trucada parar peus robar edat
+coi miri germans ple questio:qüestió entra linia:línia regal decisio:decisió perdoni enemic quedat mur jugar
+coneix estare:estaré vuit pobre costa soldats drogues crim vulgui aire arriba meua amable missio:missió carn
+dubte segona proves hagis batalla ment vendre seran donare:donaré arreu varen huma:humà tocar fred parlem
+corre llegir tingues:tingués tren pres hotel llest energia lluita reial planeta zona paper haure:hauré deixes
+dreta centre vingui banc anima:ànima empresa castell entes:entès pont vius atura silenci infern judici club
+preu alegro cura maquina:màquina obrir sabies port provar negoci caixa posicio:posició demano torno milers
+amunt victima:víctima estupid:estúpid lluna agafat causa mata escapar peu haurien estats negocis opcio:opció
+sergent soldat cita major units cops anirem obre blanc bosc elles maneres siguin carta fugir fotos deixis
+plena pistola veurem tindra:tindrà oblidat advocat estima trencar princep:príncep heroi aturar tema temo
+alli:allí vaja humans cridar motiu tinguis volgut tornem munt pell somnis volta lent encanta permis:permís
+teniem:teníem sabut tresor estavem:estàvem erem:érem viva quasi podrien parlo tros monstre haviem:havíem triar
+maca veuras:veuràs boja excepte base canço:cançó olor neu decidir exit:èxit sovint color noms informe teua
+vens bossa sapiga:sàpiga guanyat vindra:vindrà imbecil:imbècil pis forces gossos tenien moure forta corrent
+seua tanca net nous enlloc quines opinio:opinió puguis enlla:enllà vagis quins exacte tornes esperem avi
+malalt faran codi regne acte vespre hostia:hòstia veniu vella toca trobem bogeria coronel nivell
+portare:portaré marxat esposa aixeca esclaus mentida esquena ous tanta estaras:estaràs visita public:públic
+tindras:tindràs amo arribi pedra tancat ultims:últims bar ganes escolti llocs comptes lider:líder avia:àvia
+diari casar pujar cervesa est alta intenta estarem sortida bomba ganivet trencat vampirs tindrem bella
+camera:càmera sembles escena desti:destí nado:nadó client podra:podrà esperi entrada minim:mínim ferro ajudi
+tancar art veuen vampir llarga llegit content neixer:néixer atacar podras:podràs demana acabes varem:vàrem
+pista risc decidit joves noves botiga simple humana tractar evitar defensa vells podrem ficat sexe amenaça
+intento animals doni quedi tornis forat crear unitat agents mostra recerca saga enemics estimes mentir braç
+metres magia:màgia lliures paios tia cames cabells explica univers fosc exemple plans bany ostres petits cases
+baixar damunt oferta semblar fou partit resulta noticia:notícia memoria:memòria avall mobil:mòbil deixeu cuina
+escrit premsa caigut serie:sèrie matare:mataré valor combat partir caminar busca fets angles:anglès front
+porti parella legal terres dono oest cotxes fotre pols caps ferit entrat ocupat passada seure puguem queden
+mel podre:podré depen:depèn fot valent tallar conduir dura deixo dades trist marxem feines xicot imatge negres
+desig cavalls estiu llar instal foscor promesa robat maco vent cansat malgrat bruixa correu sigues acabi
+primers membre tocat volar tenint xicota efecte alerta obert vermell detalls propera envia dits oblidar privat
+vigila copa anit ossos bebe:bebè llibres pastis:pastís deure records acces:accés crida serem tindria acabem
+tants perdua:pèrdua blanca ximple pren odio gel teoria passes bord moguis bastard riure venia nota creuen
+ballar droga dinar amagar bellesa vindre:vindré espereu surti quiet torn creixer:créixer gracia:gràcia obra
+agradat ciencia:ciència cau llengua clara secrets cadaver:cadàver jutge central aguanta enten:entén posi local
+hivern sant peix adonar adonat cambra matara:matarà paga diras:diràs eleccio:elecció veient salvat nas imagino
+serveix deixem comu:comú menja aniras:aniràs radio:ràdio quedes acaben braços donen taxi mires apres:après
+estimar crims plorar dorm cremar aspecte poders camio:camió gira peto:petó dolenta treu pocs faries vegi drets
+cossos porten via guerrer bala trobare:trobaré video:vídeo interes:interès carrega:càrrega ball dracs gas
+acosta lladre adreça ferida penseu puja esperit casat porc diguem confia feta enfadat total flors punts soroll
+trucare:trucaré haurieu:hauríeu torre tercer portava idees llet arbre carrera mirada buit despatx tron regnes
+accio:acció morint parlava segurs mor morira:morirà solucio:solució oferir calor mirat estil dents alcalde
+promes:promès conte alegra absolut blau parts militar seguit anell corona targeta sobte tirar antiga accions
+hagin trobada pressio:pressió carrers facin quedo donara:donarà dec cantar caram milio:milió canvia creiem
+normes ric cama paret atrapat cartes cinta traidor:traïdor pal calent donant bojos ridicul:ridícul directe
+blancs precios:preciós dintre proper pedres moro epoca:època nervios:nerviós especie:espècie lleis sentia
+negra patir zero milles jugant xarxa mereix animal pertany pit amagat viscut imperi ficar beu autobus:autobús
+semblen fotut aniria acabara:acabarà cua podies tele dubto tancada dira:dirà poses tercera rastre perfil gros
+doble numeros:números ajudant verd mercat assegut quedara:quedarà esser:ésser gloria:glòria maxim:màxim dimoni
+confio bruixes truc ton veieu suprema diable poso pes bombin tantes dolç papers presa sortira:sortirà pilot
+eixe sencer actuar concert posare:posaré nanos capital llums util:útil mori begut proxima:pròxima baralla
+tornen porteu gracios:graciós rebel dama enorme enmig record deuen diaris veia devia llesta tornant natural
+cabell senzill visio:visió beguda cadira portara:portarà volien geni guarda torneu suposat cancer:càncer
+menjat font truco comprat diem vares ajudara:ajudarà esclau mou indis cort arribem alemany estacio:estació
+moments deixara:deixarà cometre angel:àngel passen talla parli flota pagat antic mapa meuca miracle membres
+crema pensen troben cec llevat trobi ensenya mates tractat amos sal eixa dispara pinta oblida creieu aixecar
+errors tieta barret jardi:jardí senyals afanya iguals tira eix:éix petites platja plegats cares solia netejar
+sens neta freda oberta llop clients serveis visc amant jurat tomba covard parlis corb sexual butxaca sabates
+proces:procés super mostrar granja orelles formes vivint complir portem busco noces fabrica:fàbrica
+traicio:traïció forts palau cuida feien drac miro mitjans quedare:quedaré ombra saltar sortim plegat propis
+pobres agradar veura:veurà agafare:agafaré posant premi parlen discurs bestia:bèstia perduda dut portant bales
+tallat marca sostre marxeu trampa parlare:parlaré suicidi:suïcidi vareu:vàreu perdent vestits feies busquem
+viuen usar anant quals pensem pacient arribes fossis curt sortiu comptar respon humor cameres:càmeres mataran
+trobara:trobarà seient desitjo segle afecte bombes doc parc filles vivia cadena veri:verí area:àrea esperes
+avis:avís poma artista provat feble poca cruel inutil:inútil anes:anés adones moto fallat gat pits atacat
+parat rosa famos:famós odi plata aturat arxius pluja data cia reserva nascut patro:patró patates jaqueta
+cansada alcohol poderos:poderós permet talent present certa roca imagina dormit cors descans amaga pietat
+cridant dormint avions avorrit creuar respira pensis quart sabes:sabés ereu:éreu poques endur estudi don colla
+ulleres seguint article ciutats rics agradi mentint voldra:voldrà tinguem planta jurar paquet fossin
+ultimes:últimes agrades complet dilluns arbres nuvia:núvia prenent guardar terme feliços raons anaven estaran
+pati guanya amen moris:morís dijous acer mentit soles auxili obtenir esperen senador ferides vots fumar fals
+siga natura toquis series publica:pública castig:càstig tropes deixen curs posem succeir seguim classes dolça
+volgues:volgués orgull lliço:lliçó neteja corda sorpren:sorprèn comes:comès illes toc regles visitar obriu
+calia tria abric fortuna gegant darrer obstant prego escala rates malson popular ajudat car cançons avisar
+vora casada sabra:sabrà peça tribu pecat ullada molesta alegria hauran podien carrecs:càrrecs doctora opcions
+oblidis funeral matin ponent nenes abast salva posara:posarà maleits:maleïts ala odia verge suprem tassa
+profund intent imatges lladres rollo sabria flor cosi:cosí rapida:ràpida estomac:estómac costum trets passo
+malalta calenta caçar passava puguin genolls sigueu proxim:pròxim cinturo:cinturó demanes traure:trauré fusta
+superar matant rata capaços quedem noble camisa fastic:fàstic sac fiscal viatjar vindran agencia:agència triat
+russos alarma serp escales motius agafeu extra voltes excusa cuidar atacs tim amoinis:amoïnis bell vivim deute
+rumors desitja santa virus pareu versio:versió rere escapat motors llavis armari anomena reis ajudare:ajudaré
+vint sexuals mante:manté ira inclus:inclús honest terror volant dieu lleial anaves moriras:moriràs nan oli
+allunya deien tinguin ampolla moren notes vot nacio:nació caça rossa urgent mida incendi propies:pròpies alba
+segui mina surten males dolents guai aposto aparta misteri serios:seriós ale:alè elegant posis fum sembli perd
+cales:calés quanta amistat fosca raça nebot divisio:divisió copia:còpia penjar esclava poli agafi fam esperat
+donem festes servit pura enviare:enviaré pecats sonat terreny lluitat deies sabien admetre busques canto:cantó
+prens plaça tasca posen juntes sortint marge miris escamot ocea:oceà pobra resolt llança llac donaria conya
+comenci podrieu:podríeu arxiu trossos gaudir indi ordenar cabina surto deixant vigilar barri pensi començo
+dames cerca junta podran diposit:dipòsit credit:crèdit compta embolic fisica:física atrapar conill cantant
+pari linies:línies tregui relaxa arriben essers:éssers truqui restes reals vindria piscina dotze pagina:pàgina
+podiem:podíem anavem:anàvem trair julia:júlia corbs ferits mirava dutxa gola fletxes moira caiguda vehicle
+dimarts cregut pitjors remei omplir teatre patit naus prepara buida nombre boda global jocs pudent evident
+vindras:vindràs plorant morirem arc efectes suau espia titol:títol tenda sucre model obvi tanc llestos savi
+tornin canvis endut metges tara tingueu gai pila japones:japonès mortal lavabo herois siguem despert coratge
+moneda negatiu limit:límit voliem:volíem veins:veïns frances:francès ajudes quinze llegint mirall buscat
+mental escolto dotzena pou sentim venint rius flames gra botes tractes callar obres sincer pasta vagin august
+cobert sagrat vidre venda fots segles degut alhora esforç curios:curiós ocasio:ocasió fugit mato agrait:agraït
+migdia donis vegis grups obligat detall grossa caixes cuc temple surts camps verda federal crits ambient
+adequat cremat estable semblat sereu servira:servirà sopa caldra:caldrà fica fuig demanen seguiu xic parleu
+sessio:sessió regla negar seccio:secció cridat reunir ales moral parets entri rescat expert fang fletxa
+mentres guaita vinguis motor panic:pànic graus aposta debil:dèbil trait:traït mana ruta maten marques
+animes:ànimes sentis pro salt idiotes niu ferir ambdos:ambdós trista sector cercle apagat segrest escuts roja
+unit legals assaig comode:còmode ocell prengui avisa antics herba joies plat mascara:màscara vidua:vídua
+transit:trànsit tunel:túnel acudit nervis estant hereu vital assalt panxa camins retorn sabras:sabràs entrem
+danys social got reaccio:reacció causar onze vegin impacte navegar entreu jueus rostre permes:permès asseure
+mundial vinguin unir trobava votar cultura avisat gelos:gelós parlara:parlarà estes camina sabiem:sabíem
+mataria amigues guia creguis deures bevent cendres capa cursa mostres alçada bitllet mitjana bruta garatge
+punta fila llançar guerres signar gratis sorra accepto formar ocells dirigir actual muntar actes nadons
+lamento secreta buscava parada fareu unio:unió mirem boto:botó visites agafes orella voldras:voldràs escriu
+bandol:bàndol origen febre tindran peticio:petició pilotes mogui pesta pam pesada plens petroli xerrada
+maletes diga pebrots bufo:bufó agrair lleo:lleó ana martell salsa jueu digueu lletra agafem mico morire:moriré
+brut crisi moll forats neboda rus paguen porcs girar vegem eines afecta fidel efectiu tabac aliats
+cocaina:cocaïna veuran futbol estaveu:estàveu rodes vei:veí haguem sortia juga romans violar poseu
+emocio:emoció glop duia nassos frase sagnant cadascu:cadascú saviesa agrado gallet xoc quarts deutes tancs
+unitats vingues:vingués moli:molí espies pixar reveure quadre moda cinema soci previst quedis creat tenc apa
+penjat explico donava passeig sabrem esmena doneu entrant refugi instant blaus carro rica guardes donarem
+sabre:sabré junior nets:néts apagar unics:únics criar escut falsa desert arribo mesura trobeu menjant sencera
+privada pujat agafo roda llops dany vila congres:congrés ritme rebels pagare:pagaré treus passem compra
+servent espases cuinar flama marina apaga obri mereixo civil riquesa deixin grapat revisar curar aniran ningun
+progres:progrés patria:pàtria formula:fórmula bull odiava quedava guapo sia puny nobles calgui pintura
+maxima:màxima sofa:sofà placa fingir perdem molest rumb debat cregui ordenat carai farien venut monedes
+lloguer bec passos penes franc detenir ofendre agulla mirare:miraré divorci trucant quimica:química cercar
+mares cano:canó tindreu malsons analisi:anàlisi mengen diries envien senti tortura cognom guapa
+batallo:batalló llençar serien apunta demanda mataras:mataràs ataca traduit:traduït vencer:vèncer
+sorpres:sorprès veies:veiés busquen gaires blat calleu angels:àngels seues aliança peces trigara:trigarà
+haureu murs suposar visca parany incapaç politic:polític diables pescar polis guanyes beneit:beneït cova
+pastor maleta bola ronda turo:turó velles vulguin regals roques canta gelat durara:durarà trigat pulmons
+apareix ven enlaire avançar fresc certes estimem costar quarta dolar:dòlar confies lligar decebut fulla tall
+fart granger surtin miren tirat cupula:cúpula salo:saló actitud merder armat aturi vulgueu casc begudes xec
+llegeix correus motel taronja direm plastic:plàstic coberta pilota fil absurd dubtes boira apropa magic:màgic
+truques novia:nòvia forense destral sospita termes revista xampany canal tornava provant cartera partida
+element benzina pugi separar accedir acostar municio:munició passio:passió escuder endema:endemà prenc famosa
+diguin logica:lògica malalts aterrar duc fisic:físic pagines:pàgines viatges nuvols:núvols compres cadenes
+paradis:paradís iniciar limits:límits falten justa sabent biblia:bíblia cristia:cristià ajut armats cauen
+donaras:donaràs comtat ocupar solter indica posaras:posaràs religio:religió medic:mèdic bosses civils ninguna
+campio:campió malvat fase donaran repte encaixa caigui grossos normals dol cites guio:guió moriran oxigen
+camions mantega missils:míssils peixos abaixa recordi arribin digne gossa blava jugador toqui banquet
+periode:període retirar parents marxi sonar lat calen comite:comitè fallar acusat notat casats matis copes
+signat grau lliurar galetes gats seieu posada sec fixat centaus profit oberts canvien obligar caputxa avançat
+reunit anunci senten estalvi havieu:havíeu tecnica:tècnica victor padri:padrí cadell ments guants cordes
+afegir apren:aprèn setge natius miseria:misèria fugint senat pizza espos:espòs badia finals ofereix juguem
+fessis antena trenca baixos menor mestra crescut parer culpar encant recent robot menges odies examen
+pacific:pacífic plats trobis malbe:malbé pur medi bestiar pago disseny medallo:medalló pegar tir caura:caurà
+permeti dempeus terapia:teràpia bondat cacera lliga fades esquer veureu acabare:acabaré objecte convido
+confos:confós bordell corbata fans coixi:coixí locals costats planols:plànols manca idioma gastar trec cremant
+desfer ungles abaix plora succeit:succeït toques raco:racó gota sobres fruita mines seguira:seguirà gris temes
+passin ocupada marines delicte materia:matèria armada sentiu surtis baixat quimics:químics acabant nuclear
+aliat lligat donin equips factor dolços rara seny amants xai cega trenta volt galeria rep cartell perds
+nuvol:núvol rifle balla estudis mirin jugo laser:làser capitol:capítol xines:xinès jutjat instint apostes
+masses barba propers daga ordeno arpa assumir passeu admiro carrero:carreró falses demanem invasio:invasió
+foteu calli perduts lleig dibuix socials bandes enteneu bessons gras baixes metal:metàl quiets ofert piano
+darrers xiquet seguire:seguiré tipic:típic pica trobin branca entren venes decent perdis signes pistes toco
+trucs lila suc maig viatger figura foguera espanta atacant actua llença barat boscos pagara:pagarà mals
+ocorrer:ocórrer besties:bèsties prompte espere coma armilla rabia:ràbia seriem:seríem creacio:creació tracto
+comiat experts salvi marcar serps caos podreu cuiner fracas:fracàs moriria veinat:veïnat barra noiet lluitem
+dosi diran turista nivells alts venim colors clavar aturara:aturarà crist accent ideal ocupare:ocuparé cabana
+creix contar tapa passare:passaré ensenyi haguera jugues colonia:colònia atendre medica:mèdica crea bromes pet
+socis deixava bandera fonts generos:generós ajudis entrega mortes sincera lletja firma perfum somiat causat
+dansa alfa reconec coco valors agenda text curta tub bancs egoista similar teulada quilos simbol:símbol taca
+mostren salta llapis oblides marxes:marxés joia vola cosina menteix portis gegants prudent pegat dure:duré
+menjo callat norma pateix boles tanqueu loteria rentat adono galaxia:galàxia inusual escenes russa fetge
+plantes importi cubs acabava venedor emporta costara:costarà sabran feiem:fèiem recte tocant concret
+escoria:escòria liquid:líquid ocupats horror carter entorn afers somiar etern ataquen trafic:tràfic fotuda
+mogut revenja afer notar fixa trons patint fatal torres rient resar estimen usa entenen lluites rumor morim
+trampes micos funcio:funció gravar portin rentar fresca intenti amoinat:amoïnat mons critica:crítica
+estres:estrès envii:enviï terrat xerrar llançat falsos mart diner mansio:mansió prim lidia:lídia barca dormo
+semblo crani coca ombres tirador acabada morfina violent factura fotis comptat bates accepta ximples seguia
+millora caritat estret metall afores admeto temer:témer domini termini dita calmi marcat sabata dorms
+votacio:votació pacte drogo deuria mode pensare:pensaré queixes muller organs:òrgans magica:màgica greix
+amagada valuos:valuós sana gaudeix valuosa ciutada:ciutadà pous bombers veuria tirant genet llegat amables
+anells cobrir nus ploris anim:ànim alumnes visions aeri fama enllaç lot marxis luxe call pugueu pesa produir
+aigues:aigües decada:dècada vestir comerç adormit grip pomes creuat favorit creies fortes pagans
+heroina:heroïna recull ordena ones nuvi cinque:cinquè orbita:òrbita tanques contes entres conjunt apuntar
+gener interna aparell repetir taller adona puga tiet curat musical buides jugada amagues tensio:tensió odiar
+durs atzar arquer pensara:pensarà gelosa llits greus durar acid:àcid barril enfadar pega suplico promets trens
+timbre covards actiu rodamon:rodamón liders:líders baixi vejam episodi seda carnet pensio:pensió posarem
+demes:demés consol creador teues nedar juliol observa penis ritual sagal casino foren disc drama baixant bloc
+fusio:fusió falls goig petons apostar cable nevera dubtar manada juny plantat mafia:màfia supose eixos demani
+cobrar rialles pertot eixir legitim:legítim captura portal matem arrest acordar humil lleials maleti:maletí
+lletres marxin retard riscos superat barreja imant robant ocupa cim falla cercant sabieu:sabíeu
+capella:capellà actor fira lliçons guanyo posaria tomb quieta endins acostis aixecat justos vaca addicte
+directa metro bruixot sentits groc fada jutjar nega curses estirar pujant solen banyera forçar retirat
+submari:submarí llogar canya suma bateria mariner tombes rang essent caus venien cadells fallida meues hostal
+augment mesures cabra cervol:cérvol banya gall bots vies tigre dedicat veres usant bonics petar perdrem jugat
+volum intrus:intrús maques test gallina ocupo rutina horari aires estira saludar busqueu hagim:hàgim educat
+urpes roses clima adult extrem enviant tancats amagant manual estareu pausa vomitar plantar salvara:salvarà
+reves:revés actriu viura:viurà favors cercles pugeu clavat ramat clinica:clínica certs cunyat estirat guardat
+honrar trio romana estatua:estàtua alegre ambicio:ambició bufet valenta beus canalla prenem seriosa aclarir
+premer:prémer valen creuras:creuràs valents perdues:pèrdues separat pregar aturis llances orient soltera full
+honesta dea picar ventre impedir conve:convé posava colom regalar pesat fulles parent autor canell quadrat
+ruina:ruïna pota ferma encen:encén copies:còpies envies regio:regió humanes pintar canten lents eterna puresa
+pesca letal pagant museu classic:clàssic fiquis junt facils:fàcils savis certesa signe portada trigar
+logic:lògic sagrada antidot:antídot altes riba ginebra tecnic:tècnic reactor bases circ plenes mengem gravat
+cadires miqueta carbo:carbó tanco bang doloros:dolorós breu golf cambrer revelar vacuna teories marro:marró
+rodar grec febles postres vidres envieu tretze mors nucli prendra:prendrà octubre revisio:revisió saluda
+llargs caçador sortire:sortiré anessis meta paisos:països trauma març temia fotem teixit rar altura dormia
+ratlla enrenou inclos:inclòs voldran escurço:escurçó bot brutal canviem ferm arrels treuen agafis dedicar
+perdi toqueu roig provare:provaré ensenyo hagueu vençut olorar arquers augusta estaca calaix joguina pobles
+fiar criat comanda positiu apat:àpat escapa tenieu:teníeu ences:encès fiques alça engany guanys sonada enfonsa
+cintes visqui estel tro prenen sortis:sortís granota boges solitud licitud pany recepta preneu lectura amanida
+ros casare:casaré gerda convida escrita sentint radi delicat radar focs mudar buscare:buscaré gastat mitjons
+quedant campus manar ignorar aeria:aèria xiclet segell ofegat entenia mitges hibrid:híbrid foscos raig matarem
+minima:mínima confieu ofegar robots quedeu enviara:enviarà mosca cost pagaran musculs:músculs menjare:menjaré
+volat queixa canvii:canviï conduia:conduïa pagues compren delta permets violat acudits mia obeir amoina:amoïna
+desfet creant follin boti:botí paquets tallare:tallaré sord precis:precís ates:atès pareix duu atzucac daurada
+altar xica venent prepari implica aprecio borsa ibers informa metode:mètode tardis ajudo pagui movent esperin
+presons pendent reduit:reduït devem criada confiat noieta tanqui genoll lluiten mobils:mòbils potent lliurat
+agraida:agraïda tastar burro bisbe gorra referia traura:traurà travis barrils estels costi insult capes gespa
+mona seca fessin triada vivien mercuri mecanic:mecànic culpo campana difunt provoca traurem uniques:úniques
+posin pernil sembleu abatut concurs besar penjant molesti entris prima excuses far groga ambre vistes plou
+apunteu agafen treguis lluiteu oblidem cucs septe tastat ambdues bufa quimic:químic dent abus:abús escacs
+aviam quarter postal mouen rendir ostatge somiant anglesa caient nines gimnas:gimnàs avança racista retira
+cavar tunels:túnels esperis curts esposes exili passis tinenta cub columna pope toquen gabia:gàbia
+comics:còmics violi:violí bustia:bústia harpia talles vinent dormen infeliç esport confus:confús
+milicia:milícia format rebo perruca fossim:fóssim mocador vil perdras:perdràs graner basa ficada criden tetes
+apel collita prestec:préstec babau oblidi venga botons cremada mobles par crit picat turc homens:hòmens llenya
+raigs ruptura volieu:volíeu revolta modern tecnics:tècnics atureu llati:llatí muntat taules vestida macos
+seients guineu qualque entrare:entraré groller envio acabis potes taques actuant entenem xics ofes:ofès xofer
+cola savia:sàvia cridare:cridaré creient fugida dot genets basat milla afectat apartat calculs:càlculs haja
+meuques coloms farao:faraó reuneix firmar farsa ona condol mat taut:taüt solar licor tracten miques exactes
+exacta visual estatal novel files calmar cridava omple homenet ataqueu adient agafant merit:mèrit vet respost
+lliura arribis serum:sèrum cicle pretens faltava basada enviem novio:nòvio pesar fotin nomenar acusar danyat
+rebent llençat virtut cimera ficcio:ficció astut vigileu centim:cèntim entro titols:títols tresors amara fetes
+rares lenta faces daurat confiis:confiïs adults planeja aixequi gerent adoni lligada pirates batuda plaers
+taiga valia apunto pirata suicida:suïcida pateixi puces tutor aeries:aèries tisores sagnar ajuden
+furios:furiós eixes salveu vedella farta existir elefant bressol jardins acosten escric acosti unida foti
+somio llamps devien gest marxare:marxaré usat reps obrin brindis poesia tocava novetat clares desmond forn bol
+toro dominar activa perdria escalar esgotat editor bingo cridi pesols:pèsols agafara:agafarà arca atraure
+organ:òrgan ancora:àncora pugues obris puntada inici deveu engega honrat pardal xaval entrara:entrarà patata
+treva cels llavor fosques formal ballant arregla timid:tímid valgui reparar creixen compto revisat gaudint
+gentil banquer fils marxant clan dugui moria caseta film exces:excés apostat existit amulet mous apunt multa
+quedin vago:vagó lament suro preus beuen tossut barbeta venjar selva grassa vel inicial perden hom guiar
+aranya plom perdono litres arees:àrees beneida:beneïda plegar xiquets caramel triple tractem presos abatre
+consti talls sospito demaneu cuidare:cuidaré obrire:obriré furia:fúria vore nua caldria exposat mami verds
+acabin debils:dèbils parir mapes pagesos suporto guanyen fariem:faríem masculi:masculí tires sones decebre
+gnom proxims:pròxims pupil gots enormes entrin renoi animar retrat menors oblido cobreix saltat mengi
+perdra:perdrà post demanis llunya:llunyà iot dubtis moderna sise:sisè xip obliga reflex safata xinesos espiant
+suec cigala retiro ocellet fabulos:fabulós empipat impuls anec:ànec aligues:àligues canons belles suposem
+jersei plaga bistec viurem llimona donada budells bigoti viatjat servint taxista rodet mascle sexi elegit
+femeni:femení ample sospira esbrina adhuc:àdhuc rebra:rebrà gerro limitat ascens dispari mestres critic:crític
+creuant liderar glorios:gloriós matança garjola corones guanyem comoda:còmoda assec mite divi:diví somia
+consum pilo:piló sobri vigilat fuga escaner:escàner impres:imprès fossiu:fóssiu fondre pure:puré pecador
+apuntat noto fiança corri pisos locutor conyac derrota avisi oblideu tou acut vulguem actors majors acabeu
+corria colpeja viuras:viuràs vigili rapids:ràpids sabor conrear patetic:patètic sofert dures odien ploure top
+aliga:àliga florins evacuar embaras:embaràs enveja rebem enfadis robats acabats estiga vessat sedant vident
+acudir supera ruc sofrir estafa models inspira complex metre arrel sobra obertes envers catifa posaran calces
+videos:vídeos busqui penja quadres brindem vocal estos dormi fiable calmat all oracle nego suite mortals
+somriu simples coet mola avanceu resum ronyo:ronyó flux eina pugem faça herbes produit:produït extres llogat
+manta collar fotent caçant disparo raim:raïm omplert catala:català signa comic:còmic prove:prové causes premis
+gustos canvies falco:falcó existia talp hagiu:hàgiu acordat apagada conegui vuite:vuitè horrors madura
+legio:legió propina lotus massiva carboni empenta malvada melodia envolta pala regular enginy raspall medalla
+jugades cantava prestar apartar estam residus cuidi abril ancia:ancià aviso cuir goses vanitat culte bleda
+fotuts provi grams urani arros:arròs llaunes tribus tractor lleons punyeta ploma ceba promet xicotes enigma
+nocturn conills intacte deessa llamp gabinet gelosia treguin cendrer vents valgut blaves mogueu caporal
+horitzo:horitzó forçat fingint alferes renta modals assolir comuna enfront metodes:mètodes abraçar empleat
+grega veina:veïna pagaras:pagaràs ram curiosa prem llevar dirigit serra rotllo coves afectar errada
+decades:dècades ploro bars taverna sorolls sentira:sentirà fenomen danes:danès tries manager picnic:pícnic
+varies:vàries conduit:conduït asil cosins tancant cuinera trucava ironia coseta pobresa sonava costes ficant
+hisenda aparcat danesa sales forjar ofici boques esten:estén torne aprovat futura serio tanquin truquen baixeu
+globus escapen arena donacio:donació jutjats cereals postura aillat:aïllat papi infinit gravant ratoli:ratolí
+aliment genials patiu caiman uneix vesteix emetre avisare:avisaré sabries baro:baró rendit poema fruit oferim
+vaquer bruts cridis paguem dormire:dormiré banyes poquer:pòquer casaras:casaràs borda publics:públics reforç
+refiar enyoro abraça muralla sensors xocar porno comedia:comèdia bilions sobtat anti venc vater:vàter ficats
+restar gaudit fumo marxo rom podrit picada separa activat agulles recorde tallo cosir zoo agafin parin confiem
+adoptar habit:hàbit bebes:bebès sete:setè robes plasma causant lluito drogat reben viatja obrira:obrirà cuca
+ferotge noruec activar costums furiosa vaga beisbol cendra escoles cat parit ullals robada fregar fugitiu
+provem trigare:trigaré porpra estada parava fessim:féssim beca iber ninot codis encesa denaris rebuts
+mexica:mexicà mano cables rama obro creien culs patrons baixem solta llegues:llegües botzina canals vindrem
+reialme rens morin miting:míting guais mostrat divina recents obrim dates carpeta talo:taló sincers intensa
+xifres vaques tirada humit llanceu ressaca mantinc mars menu:menú arribeu judicis vapor camelot reduir ocults
+coto:cotó treia nomenat fugiu nocio:noció retenir cruilla:cruïlla mosques arrenca privats for emporto sonda
+escac bateig abisme devocio:devoció respons fiqui pells recta runes creo fallada mossega deiem:dèiem pela
+mila:milà vendra:vendrà genetic:genètic lesions truquem esquerp obren procura socors torns cortina llaços ave
+licitat pipi:pipí duen capses corris onades sonant lleva soliem:solíem barbars:bàrbars basic:bàsic tonto clars
+met traiem netejat vudu:vudú vengui lateral repos:repòs porter fixar novena modul:mòdul patia traient avanç
+sentin afanyar pijama amagats remeu aixeta sabo:sabó arne jueva mascota saxons visitat genere:gènere gir
+llitera deriva adoro llana poeta injust apropar absent goma ovella viviu vingueu juguen cremats perfils girat
+adreces pensin billar bufar assegui duien elevat regent operar doctors passe animat audicio:audició enyorat
+escull esborra bici atreure barata havent mugrons rostres alterat miler temor cavalca adulta camells governa
+aprens daus acusa resant brusa vegetal espelma emprar trauran solida:sòlida inutils:inútils dedica utils:útils
+ruines:ruïnes crides confii:confiï crater cambres refusar puntual aprecia pintat pilotar recanvi forca talli
+senties redeu:redéu pulmo:pulmó frena lleuger tarat nacions odiat ajuntar fera pense pagaria anessim:anéssim
+xiulet falda deixe atrau proposo vives marea intens descriu malvats panta:pantà fina unides bios anireu traieu
+acudeix ajudeu febrer capsa plana comuns discret esdeve:esdevé sorgir recurs sirena dosis ego mantes visible
+racial heretar amoinar:amoïnar aturem llars estofat tip hibrids:híbrids cartro:cartró rastres monjo ença:ençà
+gosset jutges vessar petito:petitó evita honors edicio:edició trauras:trauràs vetera:veterà galta escrius
+perdeu muntant acta engegar defecte hoste missil:míssil llauna manejar medics:mèdics ido:idò agraits:agraïts
+intims:íntims profeta closca verdes neix enganya marejat rituals enutjat tocara:tocarà minyona pum taulell
+queia criats polo empeny matins sobtada nusos jornada ferrer noruecs buidar interns marxava fusell elimina
+maniga:màniga descens almoina flotant porte ingenu palanca agost galeta resa xinesa rodona index:índex cantes
+anims:ànims guardo opera:òpera arteria:artèria serieu:seríeu gal:gàl bufal:búfal frens exits:èxits ignora
+invitat picant anuncis perills tonta lasse tequila tragic:tràgic estadi compro trobant adoren colze ovelles
+arregli prenia guanyi predir exigent vendes agra vivent films esbarjo norris bota abusos credits:crèdits
+oculta parlin nosa equacio:equació maldat tiquet alarmes guii:guiï mentals fronts estimeu plego tanquen dieta
+aparti mengeu roben vulgar farina bou abelles bassa camell marxara:marxarà enviin:enviïn iniciat suaus begui
+pages:pagès mirades tocador missa porxo parem caic estany xecs dinars creura:creurà pagarem alumini
+maniac:maníac casal conta farieu:faríeu cremara:cremarà gasos riuen franja preten:pretén mula clienta
+matalas:matalàs oferint quadra parasit:paràsit coctel:còctel muscul:múscul giri tiri zones matareu miraves
+guarden triga draps gais seduir palla afamat salvant actius perla cangur martir:màrtir estimi olora tallen
+cars plores aprovar toquem bevem poetes ancians mani vailet timo:timó inreves:inrevés mandat vestal cuinat
+jazz banca ses galeres cullera heretat tumor caso coberts gotes acusada rival merces:mercès tasques
+hindu:hindú torneig esports movem tendre practic:pràctic tos netes guies cartel:càrtel alies:àlies diaries
+atures:aturés reviure escons madur puntes declaro eco liquids:líquids remot conjur futures sushi aportar
+posats confosa aplicar romanes pocio:poció paren oca famosos tirania adonis lligam fitxes amagava bassal
+cripta arabs:àrabs bretxa guix indicat mereixi intacta amaguen recol turons xiqueta ratlles guant done veles
+ocultar tones punyal experta cardiac:cardíac hostes digna capto fragil:fràgil entrava cobra informi pebre iaio
+creença viatgem desenes subtil motos mourem creuria provo distret brot marits brilla matava truquis barber
+menta banana bolets paia barrera violada alcaid crucial tardor plorava fruits anaveu:anàveu escorta fumes
+acollir cuidant ocupi indies:índies alçar partits naixer:nàixer poguera basto:bastó onada dirigia pretenc
+llunes extasi:èxtasi bourbon pressec:préssec dialeg:diàleg gemecs intim:íntim drap revisa duana redueix
+aterrat ataquem flanc fisics:físics banys fugen ofertes separi pugin pessic fico zoom accepti parle cargols
+recinte aurora fanatic:fanàtic ajustat atret entrepa:entrepà actuat dormies diamant ficare:ficaré
+veniem:veníem batut feblesa solid:sòlid tireu valer peses natiu duel basta postals errat pixat dobles indicar
+sirenes futurs rodejat regalat traduir tortuga porquet delia lema cabres marrons vela satanas:satanàs
+manega:mànega viola obvia:òbvia domino orfe emporti coure tactica:tàctica seguien pilots infidel opi blog
+convent segures platan:plàtan habits:hàbits usen saltant envejo busquis extrema orinar votants enviada bevia
+amoros:amorós davall vitals tallant anessin inferns soni rierol tennis educada navalla canviis:canviïs mot
+menjara:menjarà filmar balena molls absurda granges mocio:moció escuma bofia:bòfia pluges fissura plomes refio
+fitxa ballen formen marbre raptar caro cirera rigut primes enemiga inclou fuet asturs:àsturs mentia fonda
+odiaria potable camines estime moriu ajudem envair euga truqueu grosses truita mirarem voltors pals vigilen
+opines humils negat cedir celler sogra moveu obte:obté clans gelats verges cansats arab:àrab aillada:aïllada
+acostem tus pelar etica:ètica regidor costen asseu morireu admet acabe trucara:trucarà besso:bessó cria
+ronyons malucs corro pindola:píndola filosof:filòsof llençol musulma:musulmà fumant mos noblesa impedit
+calents arts context afluixa vinya races gasta ironic:irònic ardent tacte reforma escau traces pateixo ballet
+viviem:vivíem trompa esfera graduar divuit luxuria:luxúria nans cansar agraim:agraïm gatet casem caminat
+milord pegava amiguet oportu:oportú aniries vals piu hague:hagué envait:envaït fluix dormis cuines licita
+masters cregues:cregués feieu:fèieu music:músic beneits:beneïts curare amoini:amoïni tasta penal moura:mourà
+pagueu ciment laboral figures domina eficaç casaria comodes:còmodes grava exposar signi lapse edats guarir
+pors menut caigues:caigués formigo:formigó penedit delegat auto gale aficio:afició detecto indici pipa apart
+reia bessona cruels asma indicis taurons panys rodo:rodó lunar mocos:mocós musics:músics besat blocs callada
+casola:casolà casara:casarà esperma aturada xef senglar suor tremola apunti creti:cretí primari benes pujada
+setze agonia aguanti atents reposar angoixa revela fregit pugen filtre circuit hurra estesa mesurar oblit
+triomf lligats centra atacada aroma menjava festi:festí firmat parara:pararà guardi atent caces pic posta pujo
+riguis caiem somrius previ nins regnat afirma quilo centrar olives venus donareu espiar grogues penjoll orfes
+adormir titular tinta album:àlbum llenceu centres resol baixo bat planol:plànol enviats ocult botella bum
+amargat castiga tem pregant sants hotels espiral acostat manat beguis aqueixa pilars calibre bolquer agafava
+confien decidim compri talents halo agafada pujare:pujaré bufona rajos tals sorgit tubs palets atur
+qualcu:qualcú emissio:emissió preparo esper regim:règim dus batega tanquem lletges foxtrot paro nomina:nòmina
+cuidara:cuidarà inicia apuntes balco:balcó llences negues acostes seguis:seguís cremes item:ítem creua ioga
+clic mini secs dedico amaguis truquin complau veien pengis birdie mut colera:còlera lluiti ofensiu
+endure:enduré orina munta ganxo aclarit tapar bad joieria alçades fax ensurt bau casis paguis ganga eterns
+molesto guany valdra:valdrà depenen centims:cèntims ocorre trobe roure eclipsi messies ferms oposat xifra
+oloro atom:àtom tiren legions corpus xampu:xampú tambors anonima:anònima servia forçada dux consola tela
+cigars passats afaitar xiques xicotet buits vigilia:vigília oides:oïdes demane patira:patirà tauler criteri
+renda trieu venuda mullat enfada grocs infants calcul:càlcul caçat reunire:reuniré finca polissa:pòlissa
+captat mercats jura corba dirien vivies mussol creuem luxos:luxós aprenen ullet avenir visquis modest mutu
+licitar lligams plor xeringa casella monitor rodatge ventura roman belluga nadius graduat rumiant sagna crane
+galtes manten:mantén banyar ataquin obrers casual curara:curarà deduir tolerar horaris escolar aillats:aïllats
+responc irania:iranià sever ahi:ahí escup atrapem allau cotxer venies retiri ebri ampliar parcial tram cava
+tropa notable girant toxics:tòxics embogir fruites jugarem rivals moc perles ampli jugava terç relaxi rostit
+compti mol ordeneu sagrats lector tap empatia plaure mengis etic:ètic explota rascada fuma caminen franca hui
+piles dubti plovent educar ten danesos imagini salts refer combats orris intern reclama punxat escorça trobats
+correm aniriem:aniríem tracti cera apats:àpats hages examens:exàmens dena metalls dolors reines rebras:rebràs
+difunta altaveu enduras:enduràs ploren disgust revelat portats creuran cito bullint trenqui cuidat genis
+apuntin guardem venja avant picor oposa deixada mire calar pobreta remota clavare:clavaré ferri duria detonar
+ajudava lamente volguda baba:babà alfil arran radical admes:admès polvora:pólvora allunyi secta oliva
+merce:mercè cronica:crònica ordeni escapi brigada retorni paguin sentire:sentiré vota topat nativa alegres
+penals dirigim enterra auxilis brisa ajudin tic insomni sanitat soste:sosté corres mentor gala light coit
+refresc juguis atic:àtic avaluar invalid:invàlid crac voltar oida:oïda enguany preguem ren seguin
+salvare:salvaré espines jeu vegeu repel robava versos vincle recoi armades rudi creguin calabos:calabós jeure
+crideu viuria voldreu atrapin decret rebeu atracat bata creen semafor:semàfor brau orinal tombat rems galons
+matons balada indret duri golfes dubtat quota frases mudat facial alterar monte dormim mantens basica:bàsica
+potassi relleu imam movia calgut camini ponts creixi torpede fundar estreta navals duras:duràs tombar llestes
+vigilis entrego pinxos servim brossa guixar mostri solters jures cremen tasses lavabos batec aparcar penjada
+gendre glacera femella generar corren solien actuem sonen viuda traça vomitat penjats enfora aquari salari
+gandul florir trangol:tràngol accedit tallada trepant obscur alien elixir clava daixo:daixò cauran tapes
+idol:ídol fugi faltes ocupes gires estigue vigiles:vigilés aturare:aturaré orellut suspes:suspès cobrat
+salvats carrego aram rol osca freds creats altitud retorna casen adonara:adonarà terrors asseia abaixar elit
+tigres immune francs pierrot durem casarem obliden caloros:calorós subdits:súbdits galleda creuer endugui
+ideals binari idiomes racions foca aillar:aïllar separen himne enganxa petjada mesa llevant neixen pastar
+estudia ofen:ofèn porcio:porció filtrat consens gravada volara:volarà llepar mengin sed cuido citar infame
+bells rutlla admets hostil penics mafios:mafiós reunint arbitre:àrbitre estafar cantin miraria clatell arreglo
+creible:creïble evitat muda polars llenci espina posades cataleg:catàleg cecs ocupant sencers grises patent
+butaca bodes aula brillar gerres fessiu:féssiu bandols:bàndols benefic:benèfic tossuda jovenet negacio:negació
+soledat alegrar nomeno catorze audaç forum:fòrum simbols:símbols paleta amagui arri aviacio:aviació compost
+llast novell escalfa croada ignicio:ignició cremare:cremaré contant suar setanta partim llatina adora licors
+crido cadenat morter rebost alci mania tor temen nedant agradin venjare:venjaré respir giro fita massiu
+mirara:mirarà fossat anada avancem cacauet munts valoro pesant retrats llueix comprem talons amnesia:amnèsia
+batre cerques numeret duro volts juvenil huit brindar alls clergue frontal tallem batecs merdos:merdós camises
+donaven estrets usada tios habil:hàbil obeeix gaudiu previes:prèvies abusar prestat pertoca segones pagava
+obtenim actues nata imitar polze coixins tauro:tauró soga evitant comboi ties voteu votant taxa reunits
+casquet aixafat ceguesa obrint beneita filtrar ensumar egipci contat impost melic burra angunia:angúnia heroic
+clubs bocins ansios:ansiós baco:bacó faltat maligne canells timida:tímida pets fibres borden atracar liberal
+sacs mules aliens muscle lis ant pinxo ocupara:ocuparà folles cries costos perdes:perdés declara tita:tità
+sio:sió cervols:cérvols momia:mòmia robi tendra master:màster puges manes estim discos pavello:pavelló exdona
+llegia sembrar ballem tauts:taüts obscurs lampada:làmpada plaques somniar fiqueu llavi trampos:trampós fossa
+deliri dori crisis proveir olores morena epoques:èpoques centrat penedir brindo moderns mullers
+asiatic:asiàtic logo suporta encesos besa pintor rutes rancor turmell creatiu jureu podrida remots indigne
+miralls neguen caldera moti:motí imposar trineu pesats samurai diva bandits minimes:mínimes cunyada afanyis
+cabanya reptes confusa disset benze:benzè aguila:àguila podrits anil oblidin lloga urbana armeria micro rucada
+ninja tapat cebes tirem inquiet tambor pensada valenti:valentí lluitin casta gerra distant emprat ampla
+altures afegit oracio:oració pessim:pèssim come perdran argila piquen rebuda dolces aturin europea cinic:cínic
+vers bitlles cintura olive malnom juguin dilema verdura nadar trii:triï formeu islam dividir unira:unirà
+places fibra grat rebuig usura rifles dutxes torrada intents bategar tonyina sisena suborn anormal filet varis
+racio:ració caldran vagons talleu ansia:ànsia denegat xicots hosties:hòsties flueix hostils fuita somniat
+llistes vern torrat durat façana zebra cercava prat immoral anonims:anònims visquin cuinant brutals cerquem
+xocat enfonsi clavada batejat embenat engegat esment estança rajoles adonen panell vortex:vòrtex severa beurem
+contare:contaré fidels resten viuran rendim devot mudança oponent tristos valdria cremi apagui complot admirar
+culpes estimis bunquer:búnquer llegire:llegiré acurat caiguts jutgis baixet acres actuals danyada fermall
+euros palmell noranta desviar mamut tancare:tancaré vistos sabrieu:sabríeu donades escopir gaudim xou urpa
+llom semblem mister encens cardant vici buidat fereix trident monjos jutjo fre moguin prefix tiro preses
+berbena dement buscara:buscarà abdomen prega fix catolic:catòlic vagina medusa bri tulipa gemega donants
+dormira:dormirà barb saliva queixo vulgars incest pasqua digits:dígits amoineu:amoïneu ondia:òndia cuides
+retires amors jungla propa:propà trofeu iceberg novells becaina duus sagnat llobato:llobató expres:exprés
+tocarem omplint captar racons curant coaccio:coacció fredes mags rosari aguanto horda centau mullin eunuc
+morien vorera vega enganys morters safirs volent xiula saltem culpen caiguin insulta ingres:ingrés humida
+rulot bacalla:bacallà trama triant fraccio:fracció deixats visquem bancari baixin rusc bust formava sopat
+disposa blaso:blasó roncs lloat torçat estereo:estèreo monja variar cobrint deurien agraeix tardar fems
+europeu caixer vagant babaus duies atrevit palmes pengi sonara:sonarà xerrant proposa situa apagueu pom xarxes
+vomit:vòmit acosteu menjars fugim higiene banjo compten tirants adorat inclosa inclino vulgues rebi mate
+valid:vàlid tragica:tràgica precisa sueca cabot mosso solet creuada empipar salat anomeno fon tallers ordes
+unicorn admirat rete:reté reunira:reunirà causen aplica polar reixes bipolar sectes espurna poblet oposats
+alertar tallats descrit piroman:piròman ficava enredat pujara:pujarà creureu esglao:esglaó exigeix cigar
+astuts aeronau tallin taxes teixir iris cometem iaia dei honorar calb fugia botxi:botxí fluids cotxet batejar
+rondant fesomia gitanos escura estones orfena:òrfena fums jugaven penic netegeu bombeta martirs:màrtirs
+maduixa doblers bena renilla limita proven lesio:lesió volador lloro atoms:àtoms genera colzes oques coreana
+avancin pugis tardara:tardarà cavant peo:peó excitat marxen cordons bengala xal xopa despren:desprèn dada
+punys vendrem barres restant inflat xaro usuari sopars ans costava viable nascuts excita desitgi posseir
+adapta cigales uneixen cant truja trofeus rebedor arresta mutilat toquin causara:causarà duent eleva drogar
+trauria dossier pujarem cosit peres teixits breus lords nocions culet solemne aranyes intimes:íntimes devorat
+drogada sogre ballo barbar:bàrbar somiava esmenta organic:orgànic opina camino reials hereva comptem elegir
+garfi atacats gentada adorava ratxa estireu nervi bullir lliris pesava jugueu carreto:carretó punxar vera reu
+flonges refusa bufanda rars robem prest cantem coix gestio:gestió barbes tendes hades xocant matriu dida votat
+marrec rondes mill oscil tiraran ocupen figa escampa uter:úter tronc cafes:cafès uniu caiguis fingeix
+existis:existís triem somreia aprovo copiar figues celles claror caserna allotja fallo aspirar pinces colar
+guiara:guiarà respiri brama fines aten:atén resso:ressò enviis:enviïs rinxols:rínxols ompli pales lilas:lilàs
+magics:màgics furgo:furgó dirieu:diríeu patis:patís bel ordenes pollos:pollós botins mutacio:mutació parells
+verinos:verinós usurers valora riques comunes declari rural pobret tengut mugro:mugró bada giris mots brillen
+bucle sender elf trigui dolgut busque golafre poni gamma cru blindat poquet radars ranxo pretext porca tarifa
+ofrenes presses delatar vaquers infant cresta trosset pararan icona invent entitat decisiu llampec hebreu
+renom fosfor:fòsfor senta morals relaxat fondo remolc buidant aparteu rendire:rendiré puding:púding devies
+manuals demati:dematí seia resare:resaré escapes:escapés dete:deté eixam bacteri marins pixant postor esbrini
+ungla comet fixats regna salpat usem florit pelut papes retocs esclata pregueu balança replica:rèplica foten
+andana prec planes sono dividit esculls fiables barrots trenc foll baluard rosada tirare:tiraré baixen jade
+furt fura rectes termic:tèrmic despesa bistecs adorar zel etapa natal radios:ràdios rampa tramant trasto
+morros oda suecs errades ase baixare:baixaré salmo:salmó dens sueter:suèter cicuta funda forçut soda assajar
+afanyi miraven exigir amarg urgents afro estoig polls canina mascles cep fustes nuvis mota rompent vages
+assolit barraca vengut omega bandada camping:càmping dinat odiaves neural tesi confon hangar culpis raonar
+titi:tití parare:pararé sadic:sàdic turcs soja marato:marató vores trien argent moca calles embriac exploti
+arrere curtes sublim separem factors exotica:exòtica espais ambit:àmbit pomada sauna basics:bàsics flaix conca
+manava texans toxina uniran estreny aixafar forçats navegat felices ginjol:gínjol desfa:desfà atrapa
+gabies:gàbies canvio trenco galls ponx afecti manegar previa:prèvia hobbit brutes bilio:bilió sabreu mossa
+calida:càlida elevada insults afaitat provis juraria formem xais xat jutjant llima alumna apartis
+ganapia:ganàpia podrint anecs:ànecs tocs cauras:cauràs mensual xarop alumne casareu mostreu estimin farsant
+bufador vespres parades piga nana agafats pelat amaguem cantat manegat desviat vençuda retiren castigs:càstigs
+odios:odiós governi clixe:clixé tragues:tragués mentire:mentiré congost digital criades venguin acords gruix
+dindi justes empat donats plagui naval cremava aeris uneixi barates talos:talòs pira xuclar famoses manquen
+honra cadi resolem extrems hiverns valida:vàlida busquin fugire:fugiré samba boleta rosseta queixar salpar
+falli expiar setena esponja humitat forti:fortí volarem sopem pongui regnar heus molles marejos iogurt prodigi
+tango valga direu popa sexista enredar carpa arribe beveu jure decorat matinal juntets olla apropem apagats
+armaris avenç sufle:suflé sortien curaras:curaràs tribut flasco:flascó nevada citat tanquis gosaria tensa nyap
+salve runa convenç beneeix deieu:dèieu grassos afamats millori reuniu furgar eixida banyat floreix muntada
+guillat baixada infart pap rentes medium:mèdium erra creixes refies mores:móres ofega falles visques:visqués
+uses porque ofegues teulat ronca rojos totxo simular mall abaixeu ignorat fallen entesa tunica:túnica seguits
+critics:crítics obscura civada bibero:biberó moqueta relatiu drenar dese:desè vinguda bomber radiant cella
+caldo erotics:eròtics fongs permeto cuiners efimer:efímer suat xilings:xílings luxosa vena cursos gitana balls
+tija aprenc fallant ajupits abraço ninots estufa vendria telex:tèlex cossa fotimer cobrara:cobrarà pudents
+beuras:beuràs liti oncles enamora rovell identic:idèntic encaixi mostris afirmar romanen pardals palleta
+gelada vigilin rapides:ràpides adonin alçat neutral imperis amplada rude caprici tallis paller cascall
+odiis:odiïs abolir glories:glòries veuries salons rosses amorosa poblat barrals sermons filmant reso acusats
+glaç miraras:miraràs cascada tiris dental calmada assalts roi:roí afanyat tolit melo:meló plega bous eunucs
+adonava cantare:cantaré molsa cosetes grua honora boris bastien fluixa atomica:atòmica paladar marcs clavats
+absolt estrada flocs danyar elevar estatus sentiem:sentíem artic:àrtic salades penetra gasela posareu
+amistos:amistós rota gastant lasanya llacs estreps vengues:vengués assecat tardat tribal suborns bambu:bambú
+jugaves llepa enyores situat assumit riscs servire:serviré morse colls acampar somies bugada metxa atenta
+hisseu farcit amago ras peons cremem mercant formant cuideu sonats arada celebra deserta caviar egoisme
+reobrir sastre oral orell pera cargol tallara:tallarà dinou alteri hindus:hindús disputa calid:càlid cranc
+cordo:cordó semblin llancem turca pinso llaurar sagals oferire:oferiré pengin jugaria vessant saludo rentant
+pintats emetent burros topar llanci turisme flipant amateur duren pegant plogui ofego pescat haixix flamenc
+graella orgia basquet:bàsquet aparent tors esbos:esbós flaixos cerco aprenem sensor clon cartutx afegeix fuges
+aguait turment audio:àudio cubics:cúbics latitud saudita esprai vetlla cursi madurat manen xinxes agradem
+natacio:natació escullo oxid:òxid ajornar incert fideus telo:teló agil:àgil punxes carros immensa proveu
+udolant imita veloç gossera enduem detesto cures vacant aguda grafica:gràfica negueu verat tenyit textos mera
+creem copets voli llurs crees abraçat tifus tipica:típica agredir rossi defenso jou salvem envit honrats
+sulta:sultà seiem aixeco duresa apujar enceneu ventada paranys clot lletjos mutua:mútua trafica lluitis
+envaint minoria apunten erms glops patents curia:cúria ofensa pegui sensual albada tancara:tancarà oliba:òliba
+copilot usats recolza guapos actives egipcis daurats vellesa alena rau vuitena castany tractin rima polsera
+plebeu lliuri delmes venem nada ofegats aus lli poemes beguem grao:graó tardare:tardaré tocada cegues inversa
+vareta tort tova curosos jugare:jugaré retir consta rasa balanç escolte olorat pagades adaptar fio tinga
+addicta anhel constar drenat salomo:salomó avanci actuen lleu reixa natives influir volo sioux adormis bregar
+gireu vingue:vingué odii:odiï fixes maleir cobres savies:sàvies aferra claves anuncia triis:triïs pinça
+suis:suís donuts apropes ataques salves:salvés fugis:fugís premut lidera iardes deix resolts avisem importo
+braser ensuma temptat rigid:rígid mostro porra canti mandros:mandrós capta manec:mànec aprovi vincles ganduls
+deliris obrirem relaxar orfenat xavals raret anhela miop saludeu formo gades caire gerds boers lama ogre
+virtuos:virtuós arques dard proa bisturi:bisturí tocades boci:bocí guanyis tothora lectors titani calçons
+tuguri detesta collir ensorra rebia aldees comodi:comodí volare:volaré acusant parteix ajust cedit
+satanic:satànic presti burlar valores maneja segador sotmes:sotmès aportat argot xut ajornat cansa
+fragils:fràgils dignes repas:repàs balder sortiem:sortíem fregat sucube:súcube amagare:amagaré besavi trago
+pixum lobul:lòbul causada boxa tocare:tocaré pregat cuino plorat confons cacem esmenar xumet rebreu animant
+adoptat netegi brou partire:partiré moguda lluir retalls solies mataven destil russes espessa aviseu
+penos:penós imagine vigata encarat dispars madurar viam esquiva enuig taulons faccio:facció anguila
+suspen:suspèn graons esquinç honorat fumat feix distreu nyam sermo:sermó anam caparro:caparró bela sorties
+encarar serial nineta alentir pintava penyal mainada convidi formada catifes funebre:fúnebre sabrien citant
+monarca morro gol immens costura maori:maorí pencar arcs minibar fressa endu:endú gambes arrenco plagues
+questa xerrat atrevir venta brodat cabdill embogit nascuda acostin emet signada apretat buf llumins creades
+frescos faena arsenal grasses osset pegues hoquei merla pastes tossir aferrar fetus valc blonda desfeta obtens
+saludi afaita serviu tipa perdin peluix cridara:cridarà gargots satisfa:satisfà inicis atenent cranis punxada
+catxa pilos:pilós buc enfocat barrets algebra:àlgebra gosa assotar afilada commou extret canteu anella espanti
+resem trompes cobrim enceses visat dics rieu cometes sopant empassa dom insecte erronia:errònia colons guiat
+grecs porro diriem:diríem merlets cavitat piadosa odiem pedrera inscrit rebran creixia escampi triaria abella
+temors plorem grisos creuats oposo modesta emprant corrien barques platges doblar afirmen faust llancen
+accents adoptiu gripau refusat vinagre lesa bandit suports xuclant bananes animats jutja bufeta roges
+esco:escó lloar pallus:pallús salvin nevades pego lots tristes bigues taxis dominat suposi ballat reservo
+atreta rictus gastats valorar ensumat canses planxa extern ensumo cobria aposti bridge bagul gatets maneig
+ordi fiquen bronze acuses brunzit reptil:rèptil embus:embús anhelo malmes:malmès fertil:fèrtil esquema
+altipla:altiplà dormiu gorg coopera xandall tirats enxampi onejant rabios:rabiós gerd pagada ampliat bitxo
+salti gosis ema sectors teclat robo ofrena bufons mareig alfabet valdre pics decimal lleves fotra:fotrà
+reduint focus barats externa lapida:làpida papal tocaria dutxar neteges bergant indiqui pintant peli anciana
+sostens xiscla clons parida recolzo traits:traïts anirien tardes peguis somii:somiï errar vagar desena esculli
+sabater mides tems adjunt simis venguis avancen immobil:immòbil previs soca oposar saltare:saltaré noietes
+optica:òptica surant dards recitar llur destins mullada cubell frenar marcats proto:protó cuixes tauleta
+filleta oferia peatge anual fuster negare:negaré gore nul maritim:marítim exercir nausees:nàusees vetllar tifa
+ports abusiu salvada fixi assenta retorno embargo punxa asseuen mullar duanes fores atleta casant grotesc
+titulat invitar girem cuques segells beneir biceps:bíceps revisi sua ami poster:pòster afectes asfixia:asfíxia
+mora avises:avisés voles:volés donut trigues ingenua:ingènua literal insegur tolerem atacara:atacarà nia tona
+aixella refet bes aturo racisme nuclis obeiras:obeiràs tingue:tingué superba treien sella enigmes
+orbites:òrbites bufen tiraria feres sida signara:signarà armar salten fongui eixuga laborar cauria cofre
+llacet baltic:bàltic glaçat civic:cívic cridats ronden indexs:índexs llencis urna macabre sumar
+comunio:comunió recau vinyes pedofil:pedòfil capell afecten cobrire:cobriré mamma defensi panses pelvis
+motivat podreix rendeix sulfat xisclar adoptem llevara:llevarà proisme:proïsme inundar refugis peles gestos
+tinguen rebrem reses garrots semen polones:polonès humits pervers pendo:pendó obriran coça traeix aterra
+jubilar saboros:saborós tristor put facen mancada mitjo:mitjó suposen ranci balenes miravem:miràvem rugbi
+finança nuesa trastos nupcial molla afalaga bora ionquis teler vigilo preveu muntava pesen senderi
+cosmic:còsmic estafat dinant alerons detecta dubteu operari velleta molins preuada unim laca orador saqueig
+endura:endurà cobrant rossos desa somnien salvo tement vacunes sembrat pagareu recula elogis espinos:espinós
+mamar vinil taliba:talibà ehem arrisca sobira:sobirà huraca:huracà estau fregant aria:ària fermes gosen solars
+ocular tacar fluint traguem ballava moderat plors pilar gata visiti sedat rodant mussols agut ver xiscles
+fatiga limitar auro:auró exiliar enamori oxidat nasal fixem baixis gueto adormi cardes acronim:acrònim relax
+jets vagues sabera dolçor crancs gates mudes rodat sous tacat lligueu juris decents tafaner rebutja aboca
+llegim calmant druida eixugar guapes tarima gastes citacio:citació emergir retol:rètol cobrare:cobraré
+grafic:gràfic matisos caldre manco follem capo:capó perilla solos temut nefast animada corbati:corbatí monada
+carall aturats cedeix continu afligit filera excedit calgues:calgués domar gaudire:gaudiré gin sicaris fetges
+marsala piques gossets corn caminis durada coets llevis poltre feixos movien supos:supòs salam estampa asfalt
+pengen partiu totxos guiant forjat aspre anau oferit enterro danyats bombons provava formi aliatge clavin
+marisc costant monoleg:monòleg lasers:làsers rondar demora reunim grapes ajude anotar coronat crua mer traeixi
+enciam ataqui esborri pescant comets sabriem:sabríem seduit:seduït gastem conten fat llanxa robades
+malicia:malícia eviti valorat rematar fixacio:fixació pesos odiada semideu:semidéu trona aplicat espores
+guiats escoces:escocès furtar filma letals xiulets ela pillo aqueix pintes avenços auguri cedira:cedirà
+demanin parats galant atrauen jugui ignoro votara:votarà atrapen gratuit:gratuït pizzes esqui:esquí burla
+externs refreda nansa recluta llevo cues nodreix origens:orígens cuixa superen cosmica:còsmica tulipes calvari
+sorti:sortí curacio:curació adoneu cubana filtra ries vivents cuidem sagnava governs dictats mancat aterrit
+hereta tibat mencio:menció raptat remoure taro tactic:tàctic estanys mestis:mestís refia cascs olfacte veieren
+polzes endurir rosat paf tocaras:tocaràs jubilat diaria:diària espora manetes sobren fanga callin resava
+alçant estudio abusat dimitir grill casades rendira:rendirà polisso:polissó gosses paganes bastida maragda
+gruixut afeccio:afecció collage refredi ajustar abusava epica:èpica batuts rebis ficaras:ficaràs golden
+injusta ubicat quede amples salteu enlaira cremor quiosc afaito ajuntem dutxat simulat cacen penjare:penjaré
+aturen libel covarda atrapi doneta neixi plural situada dominis fai repetia platans:plàtans bidons prement min
+bards jaç poetic:poètic plorara:plorarà alberga genesi:gènesi confort comptis lucid:lúcid embenar fredor
+eter:èter traint guarit tacada ximplet capaces rast queien acudira:acudirà serena dicta sorda flam tacit:tàcit
+esmolat diluvi volava enduc cultiu virtuts olors homenot adopcio:adopció criquet adobar muntara:muntarà
+maniqui:maniquí copejar idoni gravats nove:novè astuta palaus dorment usava peta neus dibuixa men carril
+bobina guardis obeeixo parcs fotrem bulls burles esquaix trust espanto manem mediums:mèdiums cuidava rodetes
+tovallo:tovalló oceans abordar subsidi finques podieu:podíeu degue:degué resi correra:correrà sodi odieu demo
+lligant feren estora druides decidiu esses xerrem ofegui fregida reme gram guetos boli resat delicia:delícia
+conduim:conduïm badalla exotics:exòtics dubtos:dubtós perdia cobriu decorar percep apatia blues vençuts glauc
+violes remeis cafeina:cafeïna desfent baixara:baixarà aiguera:aigüera veneu reculli llistat xips exiliat
+quinta muts hiena premeu salada trivial triguen unis:unís merits:mèrits escalfi penedia hali terços
+llegira:llegirà extens odie massapa:massapà cantina paca gastos sentien viatgi naufrag:nàufrag vip valua:vàlua
+baixava viatgen monges cobrem treta escot trenes tin trairia escalo:escaló prestes senior:sènior
+agraira:agrairà terros:terròs mossen:mossèn saxo:saxó casting:càsting apagues habitat:hàbitat emes:emès
+amplia:àmplia superes especia molto:moltó eden:edén pate saltes anelles plati:platí sodomia percebo lacai
+devorar cavat atansa caseu violen negocia nuet delator ossia:òssia vestia servida guiare:guiaré gasten estiri
+firmi anotat napa solc jutgi apartem veges aturant utopia corbat copiat vendras:vendràs jaguar setges refinat
+cremin enterat iens graners autors pegare:pegaré penyora grafics:gràfics brega trams esferes arrasar dedins
+elogi viatgeu guineus sapia:sàpia recular conduiu:conduïu mills valvula:vàlvula vana retiris lleona honoreu
+deleros:delerós fondes brusc fermesa colat confonc feinada aguiles:àguiles coctels:còctels jumbo agre doblat
+regni beura:beurà pregare:pregaré perdone gestor magrana verins curarem picava aliada sagues pregava puro
+solides:sòlides arrisco ansies:ànsies misto etnica:ètnica bony cridem xili enclusa revocar executa comtes
+acollit veinats:veïnats pecora:pècora ploreu repetim sorteig anota bolcar atesa lentes globuls:glòbuls untar
+garrepa morat fossils:fòssils pararem pesants facials bufat obria fluid auguris mosquit aporta mixtes dar
+refuso versus volatil:volàtil febres eruga dites somnies somien parides illogic:iŀlògic carnal vigor camineu
+buscats definit sords pintors arxivat busties:bústies colgat cornisa patiras:patiràs riures volums causava
+escurat alineat jutjara:jutjarà guanyeu postre noten espigol:espígol entoma desfas:desfàs temible asseus
+entrena atletes biquini faisa:faisà reparat ficaria galba idols:ídols rema duraran implora mocosa peuets
+navega hop invasor irritat nues quadern vestint lligues polida polit fong brea escrits habita grisa
+clavara:clavarà tramits:tràmits beques mesqui:mesquí condons rosella robaven sobta creada oci sequera
+integre:íntegre segol:sègol impropi anonim:anònim hienes tenguis tendeix evitara:evitarà captes pesi rebenta
+obeint globals carona inspiri servits dormida hereus formara:formarà ajupit ajusten drogats venjat verbal
+vessada exigint barman:bàrman calmin esquiar obvis asseura:asseurà tornado acusen atreuen aprova captem baso
+ratllat pagaven dictar ingerit flequer forner antre foradat nius sigil astucia:astúcia insolit:insòlit falti
+censura destaca sobtar votaran resumir plafo:plafó vivenda guitza bru altera astutes doblega euro
+obeire:obeiré brilli eminent rapte dormien brandar dubtant actui:actuï mural optar cuinava quars creguda
+adonem berta firmes rem esvait:esvaït rimes evasiva saldo anular cerebel nabius forge seduint vast
+docils:dòcils aneguet fesols peixets traçar observo enfaden sarro:sarró resen reduim:reduïm malves pixo hort
+usaven gitano minims:mínims medis sulfur fixant reblons caben ajusti rosen dioxid:diòxid fosses basar bigotis
+regirat votem morats fases mineral tirin dictat calat belga uneixin atrets rigor trigo bor eixit purga gestes
+ozo:ozó arsenic:arsènic paria:pària nedat visuals diminut rebatre lona anarem:anàrem caurem ruleta anyell
+escates plec crosses venuts cometis pactar amargor gasoil tractis firmant suspens patim afeblir jurem jutjada
+manant budista geoleg:geòleg fusells relats difos:difós admeten guitar culpava somnio balisa unanime:unànime
+danses servis:servís ferrats cou multes quilla pretes:pretès fumut canviin:canviïn audacia:audàcia fregir
+tanoca fites perdiu actuava tenses portals palma tracteu bordar provara:provarà firmare:firmaré concisa
+banyava recullo olimpic:olímpic vidues:vídues dispers girafa separis sorgira:sorgirà crega notant dots irrita
+guiada pocions exhaust gamarus:gamarús lires zombi docil:dòcil erro anal tutela calmara:calmarà esquitx atles
+usades sedes corrin incerta manin traida:traïda foradar sigma esclat socia:sòcia pedal gupta enfilar office
+llogada tons ortiga purria:púrria condo:condó ritmes quartet atreu forços:forçós pulpit:púlpit sotscap igualar
+enyorar encert relat faisans civisme tirs llencem traster aterri ari capatas:capatàs tous tampons empes:empès
+difunts paella esvaeix segment patinar cons ocorri diada saludem fusters subtils cercat cuini opinen pujava
+domador quest ritu cree atacava consort recrear farcida trinxar avisara:avisarà compreu pintada atorgar
+aveniem:aveníem immund omplira:omplirà perfums emeten reiet reculls vetllat desolat atomic:atòmic sorgeix
+comence basen rector piados:piadós teta vicios:viciós retirem digest agregat neutro:neutró gigolo:gigoló place
+balles delata cala atrapes tel buscada estenen votin abrics segella xifrat suposes informo indult minera
+barris sabatic:sabàtic omplin avortar tori minvat corral sucat magnesi agredit soluble pesco comenta desar
+potents brandi fossats tancava posseia:posseïa admires furtius onejar suspesa carret passiva canyes quid giren
+conreus trina sortits cantara:cantarà exagera llevare:llevaré nombres operant lliri furgant abaixi neci gaudia
+jeuen boc burlant roent asta separin narrats genives cremo bard exitos:exitós narrat rentava drecera avet
+descalç ferros cabanes inventa vellut recaure atorgat fin oficiar csi apropat gremis fingit enviava dagues
+llaç enutjar peluda virtual revifar criant maniaca:maníaca equipo miraran mistos capgros:capgròs sensata
+ofenen apetit viril lectiu desfaci capsula:càpsula posaven casals pomuls:pòmuls pamflet immadur toxines marqui
+cerqueu activen fotudes evitem pris llencen furtat timoner volca:volcà alertat emblema alegrem torxa
+germens:gèrmens omples trailer:tràiler rucs menes observi rugeix editors massis:massís difon vindreu cianur
+cremeu deviem:devíem creixin pradera erratic:erràtic pinya larva uci marees plaent iguala desafia pamela
+amarga morbosa equival intima:íntima exempt paletes comiats assajos cistell autoria rodones ofegant noti
+empasso puncio:punció glaçada mambo fregues braille
+`;
+const LLETRES='abcdefghijklmnopqrstuvwxyzç';
+const PARAULES=[],ESCRITA={},RANG=new Map();
+for(const t of TXT.trim().split(/\s+/)){const [w,e]=t.split(':');RANG.set(w,PARAULES.length);PARAULES.push(w);if(e)ESCRITA[w]=e}
+const comptaLletres=w=>{const v=new Uint8Array(27);for(const ch of w)v[LLETRES.indexOf(ch)]++;return v};
+const mascara=w=>{let m=0;for(const ch of w)m|=1<<LLETRES.indexOf(ch);return m};
+const MASC=PARAULES.map(mascara),CNT=PARAULES.map(comptaLletres);
+const escrita=w=>(ESCRITA[w]||w).toUpperCase();
+
+// Les altres paraules (les extres) poden ser qualsevol forma del diccionari
+// gran de La Impremta. Si no es pot carregar, valen nomes les de la llista.
+let DIC=null;
+fetch('dades/formes.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+  const s=new Set();
+  for(const l of t.split('\n'))if(l&&l[0]!=='#')s.add(l.trim());
+  DIC=s;
+}).catch(()=>{});
+const existeix=w=>RANG.has(w)||(DIC!==null&&DIC.has(w));
+
+// ===== L'ATZAR AMB LLAVOR =====
+// El nivell 37 ha de ser el mateix per a tothom: tot surt d'una llavor.
+function hashText(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rngDe=s=>mulberry(hashText(s));
+
+// ===== ELS NIVELLS =====
+// Les que es poden fer amb les lletres de la base, entre les R mes dites.
+function subparaules(base,R){
+  const bc=comptaLletres(base),bm=mascara(base),out=[];
+  const fins=Math.min(R,PARAULES.length);
+  for(let i=0;i<fins;i++){
+    if(MASC[i]&~bm||PARAULES[i].length>base.length)continue;
+    const v=CNT[i];let ok=true;
+    for(let k=0;k<27;k++)if(v[k]>bc[k]){ok=false;break}
+    if(ok)out.push(PARAULES[i]);
+  }
+  return out;
+}
+// La dificultat puja a trams: quantes lletres te la rotllana (L), fins a quina
+// paraula de la llista es fan servir (R: com mes amunt, mes corrents) i
+// quantes paraules hi ha als encreuats. El primer nivell es de quatre lletres
+// i tres o quatre paraules, per entendre-ho jugant.
+const TRAMS=[
+  {des:1,   fins:4,   L:4, R:1500, min:3, max:4},
+  {des:5,   fins:15,  L:5, R:2500, min:4, max:5},
+  {des:16,  fins:40,  L:5, R:3500, min:5, max:7},
+  {des:41,  fins:80,  L:6, R:4500, min:6, max:8},
+  {des:81,  fins:150, L:6, R:6000, min:7, max:10},
+  {des:151, fins:1e9, L:7, R:7500, min:8, max:12},
+];
+const tramDe=n=>{let t=TRAMS[0];for(const x of TRAMS)if(n>=x.des)t=x;return t};
+// Cada llargada te la seva llista de bases, barrejada sempre igual. El nivell
+// j-essim d'un tram fa servir la j-essima que dona prou paraules, i un tram
+// segueix on el va deixar l'anterior de la mateixa llargada: aixi cap base no
+// es repeteix fins que no s'acaben.
+const BASES={};
+function basesDe(L){
+  if(!BASES[L]){
+    const ll=[];for(let i=0;i<PARAULES.length;i++)if(PARAULES[i].length===L)ll.push(PARAULES[i]);
+    const r=rngDe('ROTLLANA-BASES-'+L);
+    for(let i=ll.length-1;i>0;i--){const k=Math.floor(r()*(i+1));[ll[i],ll[k]]=[ll[k],ll[i]]}
+    BASES[L]={ll};
+  }
+  return BASES[L].ll;
+}
+const BONES={};
+function baseDe(t,j){
+  if(!BONES[t.des]){
+    // on comenca: on va acabar el tram anterior de la mateixa llargada
+    let des=0;
+    for(const a of TRAMS){if(a===t)break;if(a.L===t.L){baseDe(a,a.fins-a.des);des=BONES[a.des].mirades}}
+    BONES[t.des]={mirades:des,bones:[]};
+  }
+  const b=BONES[t.des],ll=basesDe(t.L);
+  while(b.bones.length<=j&&b.mirades<ll.length){
+    const w=ll[b.mirades++];
+    if(RANG.get(w)<t.R&&subparaules(w,t.R).length>=t.min+1)b.bones.push(w);
+  }
+  if(!b.bones.length)return ll[j%ll.length];
+  return b.bones[j%b.bones.length];
+}
+
+// Els mots encreuats: la base va primer, i les altres s'hi enganxen creuant
+// alguna lletra que ja hi sigui. Cap lletra no pot tocar de costat una altra
+// paraula (si no, sortirien paraules que no existeixen), i el conjunt ha de
+// cabre a la pantalla. Es prova trenta vegades i es queda la que en posa mes
+// i ocupa menys.
+const MAXC=10,MAXF=9;
+function disposa(ps,maxim,rng){
+  let millor=null;
+  for(let intent=0;intent<30;intent++){
+    const cel=new Map(),k=(f,c)=>f*1000+c;
+    const col=[];
+    const posa=(w,f,c,d)=>{
+      for(let i=0;i<w.length;i++){
+        const kk=k(f+(d?i:0),c+(d?0:i));const o=cel.get(kk)||{l:w[i],h:0,v:0};
+        o[d?'v':'h']=1;cel.set(kk,o);
+      }
+      col.push({w,f,c,d});
+    };
+    const creua=(w,f,c,d)=>{
+      if(cel.has(k(f-(d?1:0),c-(d?0:1)))||cel.has(k(f+(d?w.length:0),c+(d?0:w.length))))return -1;
+      let n=0;
+      for(let i=0;i<w.length;i++){
+        const ff=f+(d?i:0),cc=c+(d?0:i),o=cel.get(k(ff,cc));
+        if(o){if(o.l!==w[i]||o[d?'v':'h'])return -1;n++}
+        else if(d?(cel.has(k(ff,cc-1))||cel.has(k(ff,cc+1))):(cel.has(k(ff-1,cc))||cel.has(k(ff+1,cc))))return -1;
+      }
+      return n>0&&n<w.length?n:-1;
+    };
+    const ordre=[ps[0],...ps.slice(1).map(w=>[w,rng()]).sort((a,b)=>b[0].length-a[0].length||a[1]-b[1]).map(a=>a[0])];
+    const d0=intent%2;
+    posa(ordre[0],0,0,d0);
+    let f0=0,f1=d0?ordre[0].length-1:0,c0=0,c1=d0?0:ordre[0].length-1;
+    for(const w of ordre.slice(1)){
+      if(col.length>=maxim)break;
+      let bo=null;
+      for(const [kk,o] of cel){
+        const ff=Math.round(kk/1000),cc=kk-ff*1000;
+        for(let i=0;i<w.length;i++){
+          if(w[i]!==o.l)continue;
+          for(const d of [0,1]){
+            if(o[d?'v':'h'])continue;
+            const f=d?ff-i:ff,cg=d?cc:cc-i,n=creua(w,f,cg,d);
+            if(n<0)continue;
+            const nf0=Math.min(f0,f),nf1=Math.max(f1,f+(d?w.length-1:0)),nc0=Math.min(c0,cg),nc1=Math.max(c1,cg+(d?0:w.length-1));
+            const hh=nf1-nf0+1,ww=nc1-nc0+1;
+            if(hh>MAXF||ww>MAXC)continue;
+            const s=n*3-hh*ww/10-Math.abs(hh-ww*0.8)*0.5+rng();
+            if(!bo||s>bo.s)bo={f,c:cg,d,s,nf0,nf1,nc0,nc1};
+          }
+        }
+      }
+      if(!bo)continue;
+      posa(w,bo.f,bo.c,bo.d);f0=bo.nf0;f1=bo.nf1;c0=bo.nc0;c1=bo.nc1;
+    }
+    const sc=col.length*100-(f1-f0+1)*(c1-c0+1);
+    if(!millor||sc>millor.sc)millor={sc,col:col.map(p=>({...p,f:p.f-f0,c:p.c-c0})),files:f1-f0+1,cols:c1-c0+1};
+  }
+  return millor;
+}
+function nivell(n){
+  const t=tramDe(n),rng=rngDe('ROTLLANA-'+n);
+  const base=baseDe(t,n-t.des);
+  const sub=subparaules(base,t.R).filter(w=>w!==base);
+  const d=disposa([base,...sub.slice(0,t.max*2)],t.max,rng);
+  // la rotllana: les lletres de la base barrejades, que no es llegeixi d'entrada
+  let roda=base.split('');
+  for(let k=0;k<20;k++){
+    for(let i=roda.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[roda[i],roda[j]]=[roda[j],roda[i]]}
+    if(roda.join('')!==base)break;
+  }
+  return {n,base,roda,col:d.col,files:d.files,cols:d.cols};
+}
+
+// ===== ELS PAISATGES =====
+// Cada deu nivells, un lloc nou de casa nostra al fons. No fa res mes que
+// acompanyar, com els paisatges dels jocs de roda de lletres.
+const PAISOS=[
+  ['MONTSERRAT',      '#f6b77c','#fbe3c4','#b9785a','#7d4a3a',0],
+  ['CAP DE CREUS',    '#7fc4e8','#d8f0fb','#8a96a8','#5d6b80',1],
+  ["DELTA DE L'EBRE", '#f3c86b','#fff1c9','#9fb65a','#6c8a3c',1],
+  ['EL MONTSENY',     '#8ccbe0','#e3f5ec','#5f9a6a','#3d7350',0],
+  ['EL PEDRAFORCA',   '#b8a3dd','#f3e6f0','#8a7aa8','#5a4d78',0],
+  ['AIGÜESTORTES',    '#86d0d6','#e6fbf6','#6aa39a','#3f7468',1],
+  ['LA GARROTXA',     '#a7d48c','#eff9dc','#77a05a','#4d7a3a',0],
+  ['EL PRIORAT',      '#e6a467','#fbe2bf','#a8744a','#7a4e2e',0],
+  ["LA VALL D'ARAN",  '#9cc2ea','#f1f6fc','#c9d6e6','#8aa0bc',0],
+  ["L'EMPORDÀ",       '#5fa8e0','#d2ecfb','#7f9fb5','#506f8a',1],
+  ['LA COSTA BRAVA',  '#49b6d6','#c9f1fb','#5b8f6e','#3b6b4f',1],
+  ['EL CANIGÓ',       '#e89aa0','#fde3d8','#8f7c9e','#5d5175',0],
+];
+const paisDe=n=>PAISOS[Math.floor((n-1)/10)%PAISOS.length];
+let fonsDe={};
+function fons(n){
+  const i=Math.floor((n-1)/10)%PAISOS.length;
+  if(fonsDe[i])return fonsDe[i];
+  const [,cel1,cel2,lluny,aprop,mar]=PAISOS[i];
+  const o=document.createElement('canvas');o.width=W;o.height=H;const g=o.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,cel1);gr.addColorStop(.55,cel2);gr.addColorStop(1,cel2);
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  const r=rngDe('PAIS-'+i);
+  const muntanya=(y0,amp,col,ones)=>{
+    const fa=[0,1,2].map(()=>r()*6.28);
+    g.fillStyle=col;g.beginPath();g.moveTo(0,H);
+    for(let px=0;px<=W;px+=6){
+      let y=y0;ones.forEach((o,k)=>{y-=Math.sin(px/o+fa[k])*amp/(k+1)});
+      g.lineTo(px,y);
+    }
+    g.lineTo(W,H);g.closePath();g.fill();
+  };
+  muntanya(H*0.56,46,lluny,[60,23,9]);
+  if(mar){const m=g.createLinearGradient(0,H*0.66,0,H);m.addColorStop(0,'#4a9cc8');m.addColorStop(1,'#2d6f9a');g.fillStyle=m;g.fillRect(0,H*0.66,W,H)}
+  muntanya(H*(mar?0.74:0.68),34,aprop,[80,31,13]);
+  fonsDe[i]=o;return o;
+}
+
+// ===== LA PARTIDA =====
+const JOC='rotllana';
+let N=1,monedes=30,L=null,obertes=new Set(),extres=new Set(),state='play',paused=false;
+let roda=[],tria=[],dit=null,avis='',avisT=0,avisCol='#fff',tremola=0,temps=0,girT=0;
+let saltaCel=new Map(),volen=[],festaT=0;
+const PREU_PISTA=10;
+const clauCel=(f,c)=>f+','+c;
+const cellesDe=p=>Array.from({length:p.w.length},(_,i)=>clauCel(p.f+(p.d?i:0),p.c+(p.d?0:i)));
+const trobada=p=>cellesDe(p).every(k=>obertes.has(k));
+
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+// Es desa a cada pas: tancant i tornant, el nivell queda com el vas deixar.
+function desaTot(){desa('rotllana',{n:N,monedes,obertes:[...obertes],extres:[...extres],roda:roda.join('')})}
+
+function comenca(n,res){
+  N=n;L=nivell(n);
+  obertes=new Set(res&&res.obertes||[]);extres=new Set(res&&res.extres||[]);
+  roda=res&&res.roda&&res.roda.split('').sort().join('')===L.base.split('').sort().join('')?res.roda.split(''):L.roda.slice();
+  tria=[];dit=null;state='play';festaT=0;girT=0;saltaCel.clear();volen=[];
+  hideMsg();desaTot();updateHUD();
+}
+
+// --- trobar paraules ---
+function diu(t,col='#fff',dur=1.3){avis=t;avisCol=col;avisT=dur}
+function prova(){
+  const w=tria.map(i=>roda[i]).join('');
+  const posicions=tria.map(i=>posLletra(i));
+  tria=[];
+  if(state!=='play'||!w)return;
+  if(w.length<3){if(w.length>1){diu('com a mínim tres lletres','#ffd27a');sndNo()}return}
+  const p=L.col.find(q=>q.w===w);
+  if(p){
+    if(trobada(p)){
+      diu('aquesta ja hi és','#ffd27a');sndJaHi();
+      cellesDe(p).forEach((k,i)=>saltaCel.set(k,-i*0.05));
+      return;
+    }
+    // les lletres volen de la rotllana a la seva casella
+    cellesDe(p).forEach((k,i)=>{
+      if(obertes.has(k))return;
+      const [f,cc]=k.split(',').map(Number),[tx,ty]=centreCel(f,cc);
+      volen.push({l:w[i],x0:posicions[i][0],y0:posicions[i][1],x1:tx,y1:ty,t:-i*0.05,k});
+    });
+    cellesDe(p).forEach(k=>obertes.add(k));
+    diu(escrita(w),'#fff',1.1);sndParaula();
+    desaTot();
+    if(L.col.every(trobada))acabaNivell();
+    return;
+  }
+  if(existeix(w)){
+    if(extres.has(w)){diu('extra repetida: '+escrita(w),'#ccc');sndJaHi();return}
+    extres.add(w);monedes+=1;desaTot();updateHUD();
+    diu('EXTRA: '+escrita(w)+'  +1 🪙','#ffe08a',1.4);sndMoneda();
+    return;
+  }
+  diu(w.toUpperCase()+'? no hi és','#ffb0a0');sndNo();tremola=0.35;
+}
+
+function pista(){
+  if(state!=='play'||paused)return;
+  if(monedes<PREU_PISTA){diu('et falten monedes: busca paraules extres','#ffb0a0',1.8);sndNo();return}
+  // la paraula on menys en falten, i d'aquesta la primera lletra que no tens
+  const falten=L.col.filter(p=>!trobada(p)).map(p=>({p,q:cellesDe(p).filter(k=>!obertes.has(k))}));
+  if(!falten.length)return;
+  falten.sort((a,b)=>a.q.length-b.q.length);
+  const k=falten[0].q[0];
+  obertes.add(k);monedes-=PREU_PISTA;saltaCel.set(k,0);sndMoneda();
+  desaTot();updateHUD();
+  if(L.col.every(trobada))acabaNivell();
+}
+function barreja(){
+  if(state!=='play'||paused)return;
+  const vell=roda.join('');
+  for(let k=0;k<10;k++){
+    for(let i=roda.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[roda[i],roda[j]]=[roda[j],roda[i]]}
+    if(roda.join('')!==vell)break;
+  }
+  tria=[];girT=0.35;desaTot();
+}
+
+async function acabaNivell(){
+  state='fet';festaT=1.6;
+  const guany=3;monedes+=guany;
+  setTimeout(sndNivell,250);
+  desaTot();updateHUD();
+  setTimeout(()=>finalNivell(guany),1300);
+}
+async function finalNivell(guany){
+  const fet=N;
+  const ps=L.col.map(p=>escrita(p.w)).join(' · ');
+  const ext=[...extres].map(escrita);
+  let t='<div style="color:#8fd16a">NIVELL '+fet+' FET!</div>'+
+    '<small style="color:#ddd">'+ps+'</small>'+
+    (ext.length?'<small style="color:#ffe08a">extres: '+ext.join(' · ')+'</small>':'')+
+    '<small style="color:#ffe08a">+'+guany+' 🪙 per acabar-lo · en tens '+monedes+'</small>'+
+    '<div id="taula" style="margin:8px 0;color:#888;font-size:12px"></div>'+
+    '<div style="margin-top:10px"><a href="#" id="seguent" style="display:inline-block;font:16px monospace;color:#fff;text-decoration:none;background:#2d6a3e;border:1px solid #8fd16a;border-radius:8px;padding:10px 18px">SEGÜENT ▶</a></div>'+
+    Records.peuFinal('o toca per seguir');
+  msg(t);
+  document.getElementById('seguent').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();seguent()});
+  // Els nivells passats son la puntuacio. Amb les inicials ja desades
+  // s'envia sense dir res; la primera vegada, si entres a la taula, te les
+  // demana.
+  try{
+    if(Records.nom()){Records.desaLocal(JOC,fet);await Records.envia(JOC,fet)}
+    else{
+      const r=await Records.fiPartida(JOC,fet);
+      const el=document.getElementById('taula');
+      if(el&&r.posicio)el.innerHTML='<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' de la Rotllana!</div>';
+    }
+  }catch(e){}
+  Records.pintaMillor(JOC,document.getElementById('best'),fet);
+}
+function seguent(){if(state!=='fet')return;hideMsg();comenca(N+1)}
+
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+function updateHUD(){
+  document.getElementById('score').textContent=N;
+  const bp=document.getElementById('pista');
+  bp.textContent='PISTA · '+PREU_PISTA+' 🪙';bp.classList.toggle('pobre',monedes<PREU_PISTA);
+  Records.marcador(JOC,document.getElementById('best'),N-1);
+}
+
+// ===== DIBUIX =====
+const ROC={x:W/2,y:510},RR=84,RL=30;   // la rotllana: centre, radi, i radi de cada lletra
+const AREA={x:12,y:52,w:W-24,h:284};      // on van els encreuats
+function posLletra(i){
+  const a=-Math.PI/2+i*2*Math.PI/roda.length+(girT>0?girT*4:0);
+  return [ROC.x+Math.cos(a)*RR,ROC.y+Math.sin(a)*RR];
+}
+function mides(){
+  const m=Math.min(AREA.w/L.cols,AREA.h/L.files,46);
+  return {m,x0:AREA.x+(AREA.w-m*L.cols)/2,y0:AREA.y+(AREA.h-m*L.files)/2};
+}
+function centreCel(f,cc){const {m,x0,y0}=mides();return [x0+cc*m+m/2,y0+f*m+m/2]}
+function rrect(x0,y0,w,h,r){x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);
+  x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath()}
+function text(t,px,py,col='#fff',font='14px monospace',al='center'){x.fillStyle=col;x.font=font;x.textAlign=al;x.fillText(t,px,py)}
+function textOmbra(t,px,py,col,font,al='center'){x.save();x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=4;x.shadowOffsetY=1;text(t,px,py,col,font,al);x.restore()}
+
+function draw(){
+  if(!L)return;
+  x.drawImage(fons(N),0,0);
+  const pais=paisDe(N);
+  // a dalt: el lloc, el nivell i les monedes
+  textOmbra(pais[0],14,30,'#fff','bold 15px Georgia,serif','left');
+  textOmbra('nivell '+N,14,46,'rgba(255,255,255,.9)','12px monospace','left');
+  x.fillStyle='#f5c542';x.beginPath();x.arc(W-70,24,10,0,7);x.fill();x.strokeStyle='#b8860b';x.lineWidth=2;x.stroke();
+  textOmbra(String(monedes),W-54,30,'#fff','bold 17px monospace','left');
+  if(extres.size)textOmbra('extres: '+extres.size,W-14,46,'rgba(255,255,255,.9)','12px monospace','right');
+
+  // els encreuats
+  const {m,x0,y0}=mides();
+  const tots=new Map();
+  for(const p of L.col)cellesDe(p).forEach((k,i)=>tots.set(k,p.w[i]));
+  const volant=new Set(volen.filter(v=>v.t<1).map(v=>v.k));
+  for(const [k,l] of tots){
+    const [f,cc]=k.split(',').map(Number);
+    let px=x0+cc*m,py=y0+f*m,mm=m-4;
+    const s=saltaCel.get(k);
+    let esc=1;if(s!==undefined&&s>0&&s<1)esc=1+Math.sin(s*Math.PI)*0.25;
+    const cx=px+m/2,cy=py+m/2;mm*=esc;
+    const ob=obertes.has(k)&&!volant.has(k);
+    // buides, blanques i mig transparents; les que ja tens, del color del fil
+    x.fillStyle=ob?'#e86e3c':'rgba(255,255,255,.62)';
+    rrect(cx-mm/2,cy-mm/2,mm,mm,Math.max(3,mm*0.16));x.fill();
+    x.strokeStyle=ob?'#b84a20':'rgba(70,50,30,.28)';x.lineWidth=1.5;x.stroke();
+    if(ob)text(l.toUpperCase(),cx,cy+mm*0.25,'#fff','bold '+Math.round(mm*0.62)+'px Georgia,serif');
+  }
+  if(festaT>0){
+    for(const [k] of tots){const [f,cc]=k.split(',').map(Number);
+      const a=Math.max(0,Math.sin((1.6-festaT)*8-(f+cc)*0.5));
+      if(a>0){const [cx,cy]=centreCel(f,cc);x.fillStyle='rgba(255,230,120,'+(a*0.5)+')';rrect(cx-m/2+2,cy-m/2+2,m-4,m-4,5);x.fill()}}
+  }
+
+  // la paraula que estas fent, o l'avis
+  const yp=360;
+  if(tria.length){
+    const ll=tria.map(i=>roda[i].toUpperCase()),mw=30,tw=ll.length*mw;
+    let sx=W/2-tw/2;
+    x.fillStyle='rgba(30,40,60,.82)';rrect(sx-8,yp-22,tw+16,36,10);x.fill();
+    ll.forEach((l,i)=>text(l,sx+i*mw+mw/2,yp+5,'#fff','bold 24px Georgia,serif'));
+  }else if(N<=2&&!obertes.size&&!(avisT>0&&avis)&&state==='play'){
+    // els dos primers nivells, fins que trobes la primera: com es juga
+    x.globalAlpha=0.6+0.4*Math.sin(temps*4);
+    textOmbra('llisca el dit d\'una lletra a l\'altra',W/2,yp+4,'#fff','bold 15px monospace');
+    x.globalAlpha=1;
+  }else if(avisT>0&&avis){
+    const sh=tremola>0?Math.sin(temps*60)*tremola*14:0;
+    x.globalAlpha=Math.min(1,avisT*2);
+    x.font='bold 16px monospace';const tw=x.measureText(avis).width;
+    x.fillStyle='rgba(20,28,44,.85)';rrect(W/2-tw/2-12+sh,yp-20,tw+24,32,10);x.fill();
+    text(avis,W/2+sh,yp+2,avisCol,'bold 16px monospace');
+    x.globalAlpha=1;
+  }
+
+  // la rotllana
+  x.fillStyle='rgba(255,255,255,.88)';x.beginPath();x.arc(ROC.x,ROC.y,RR+RL+10,0,7);x.fill();
+  x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=2;x.stroke();
+  // el fil que uneix les lletres triades, i fins al dit
+  if(tria.length){
+    x.strokeStyle='rgba(232,110,60,.85)';x.lineWidth=10;x.lineCap='round';x.lineJoin='round';
+    x.beginPath();tria.forEach((i,k)=>{const [px,py]=posLletra(i);k?x.lineTo(px,py):x.moveTo(px,py)});
+    if(dit)x.lineTo(dit.x,dit.y);
+    x.stroke();
+  }
+  roda.forEach((l,i)=>{
+    const [px,py]=posLletra(i),t=tria.includes(i);
+    x.fillStyle=t?'#e86e3c':'#fff';x.beginPath();x.arc(px,py,RL,0,7);x.fill();
+    x.strokeStyle=t?'#b84a20':'rgba(0,0,0,.18)';x.lineWidth=2;x.stroke();
+    text(l.toUpperCase(),px,py+11,t?'#fff':'#2b2b38','bold 32px Georgia,serif');
+  });
+
+  // les lletres que volen cap a la seva casella
+  for(const v of volen){
+    if(v.t<=0||v.t>=1)continue;
+    const e=1-Math.pow(1-v.t,3);
+    const px=v.x0+(v.x1-v.x0)*e,py=v.y0+(v.y1-v.y0)*e,r=RL*(1-e)+m*0.45*e;
+    x.fillStyle='#e86e3c';x.beginPath();x.arc(px,py,r,0,7);x.fill();
+    text(v.l.toUpperCase(),px,py+r*0.36,'#fff','bold '+Math.round(r*1.05)+'px Georgia,serif');
+  }
+  if(paused){x.fillStyle='rgba(0,0,0,.75)';x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,'#fff','bold 26px monospace')}
+}
+
+let last=performance.now();
+function loop(t){
+  const dt=Math.min(50,t-last)/1000;last=t;temps+=dt;
+  if(!paused){
+    if(avisT>0)avisT-=dt;
+    if(tremola>0)tremola=Math.max(0,tremola-dt);
+    if(girT>0)girT=Math.max(0,girT-dt);
+    if(festaT>0)festaT=Math.max(0,festaT-dt);
+    for(const v of volen){const abans=v.t;v.t+=dt/0.35;if(abans<1&&v.t>=1)saltaCel.set(v.k,0.001)}
+    volen=volen.filter(v=>v.t<1);
+    for(const [k,s] of saltaCel){const n=s+dt/0.3;if(n>=1)saltaCel.delete(k);else saltaCel.set(k,n)}
+  }
+  draw();requestAnimationFrame(loop);
+}
+
+// ===== EL DIT =====
+// Es posa el dit en una lletra i es llisca per les altres; en aixecar-lo,
+// la paraula s'envia sola. Tornant a la lletra d'abans es desfa l'ultima.
+function punt(ev){
+  const r=c.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)/r.width*W,y:(ev.clientY-r.top)/r.height*H};
+}
+function lletraA(q,radi){
+  for(let i=0;i<roda.length;i++){const [px,py]=posLletra(i);if(Math.hypot(q.x-px,q.y-py)<radi)return i}
+  return -1;
+}
+c.addEventListener('pointerdown',ev=>{
+  aInit();
+  // mentre la rotllana gira (BARREJA), les lletres no son on el dit les buscaria
+  if(paused||state!=='play'||girT>0)return;
+  const q=punt(ev),i=lletraA(q,RL+8);
+  if(i<0)return;
+  try{c.setPointerCapture(ev.pointerId)}catch(e){}
+  tria=[i];dit=q;avisT=0;sndLletra(0);
+});
+c.addEventListener('pointermove',ev=>{
+  if(!dit)return;
+  const q=punt(ev);dit=q;
+  // un radi una mica mes petit en lliscar: passant entre dues lletres no s'agafa cap
+  const i=lletraA(q,RL-4);
+  if(i<0)return;
+  if(tria.length>1&&i===tria[tria.length-2]){tria.pop();sndLletra(tria.length-1);return}
+  if(!tria.includes(i)){tria.push(i);sndLletra(tria.length-1)}
+});
+function aixeca(){if(!dit)return;dit=null;prova()}
+c.addEventListener('pointerup',aixeca);
+c.addEventListener('pointercancel',()=>{dit=null;tria=[]});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+// Amb teclat (a l'ordinador): s'escriu la paraula i Enter
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'){paused=!paused;return}
+  if(paused)return;
+  if(state==='fet'){if(e.key==='Enter'||e.key===' ')seguent();return}
+  if(e.key==='Enter'){prova();return}
+  if(e.key==='Backspace'){tria.pop();return}
+  if(e.key===' '){barreja();return}
+  const k=e.key.toLowerCase();
+  if(k.length===1){
+    const i=roda.findIndex((l,j)=>l===k&&!tria.includes(j));
+    if(i>=0){tria.push(i);sndLletra(tria.length-1)}
+  }
+});
+document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a'))seguent()});
+
+function boto(b,fn){b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused)return;fn()})}
+boto(document.getElementById('barreja'),barreja);
+boto(document.getElementById('pista'),pista);
+
+// ===== COMENCEM =====
+{
+  const d=llegeix('rotllana',null);
+  if(d&&d.n>=1){monedes=d.monedes;comenca(d.n,d)}
+  else comenca(1);
+}
+Records.pintaMillor(JOC,document.getElementById('best'),N-1);
+requestAnimationFrame(loop);
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

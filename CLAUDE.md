@@ -1,8 +1,9 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i nou que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i deu que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
-(menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`). Pensat per jugar-hi al
+(menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
+La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
 - Publicat a: https://oscarbellosido.github.io/Jocs/ (compte: la **J majúscula**)
@@ -39,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I nou que no són de saló
+### I deu que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -52,6 +53,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `garbuix.html` | Garbuix | 2026 |
 | `gofra.html` | La Gofra (de l'estil del *Waffle*) | 2026 |
 | `impremta.html` | La Impremta (de l'estil del *Balatro*, amb paraules) | 2026 |
+| `rotllana.html` | La Rotllana (de l'estil del *Wordscapes*) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -573,6 +575,55 @@ Botons: `DESCARTA` a l'esquerra, petit i d'un altre color (gasta un
 descart), `IMPRIMEIX` gros al mig i `BARREJA` (només remena la mà, per veure-hi
 paraules) a la dreta. La trampa 3.
 
+## La Rotllana: el joc de paraules fàcil
+
+En Carles va demanar, després dels altres tres, un joc de paraules **fàcil,
+intuïtiu i divertit**. Mirant què es juga: el Wordle és el primer del món
+(4.200 milions de partides el 2025 al New York Times), i el segon és el
+*Wordscapes* (uns 10 milions de jugadors cada dia, sobretot gent de 35 anys
+amunt). En català ja hi ha el Wordle, el Paraulògic i el Mot-li!, però **cap
+de roda de lletres**. La Rotllana n'és **inspirada**, amb nom i dibuix nostres:
+la rotllana és el rotllo de gent agafada de les mans, i aquí les lletres també.
+
+- A sota hi ha de 4 a 7 lletres en rotllana; a dalt, uns mots encreuats buits.
+  **Llisques el dit per les lletres** i, si la paraula hi és, hi vola sola.
+  No hi ha temps, ni vides, ni manera de perdre: només nivells.
+- Les paraules bones que no hi són són **extres**: donen una moneda. La
+  **PISTA** costa 10 monedes i destapa una lletra (la primera que falta de la
+  paraula on en falten menys). En comences amb 30 i en guanyes 3 per nivell.
+- **La puntuació és el nivell**: la taula (`rotllana`) té cadascú una sola
+  vegada (`UNA_PER_NOM`) i s'envia en acabar cada nivell, en silenci si ja hi
+  ha inicials. Telegram diu «37 nivells» i no «37» (`UNITAT` al Worker), i
+  només avisa quan canvia qui mana.
+- Cada deu nivells, un paisatge de casa nostra al fons (`PAISOS`).
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Les paraules són les corrents**: les formes del diccionari de Softcatalà
+  (amb plurals i verbs, que és el que la gent prova) ordenades per com de
+  sovint es diuen, de 3 a 7 lletres, i les 9.000 primeres van dins del joc.
+  S'han tret a mà els noms de persona i de lloc que també són paraules
+  (ROGER, JAN, PARIS...), les paraulotes, les del castellà (COMO, ALTO) i els
+  articles i contraccions (ELS, DEL, PELS), que en uns mots encreuats no fan
+  gràcia. **Les extres** poden ser qualsevol forma de `dades/formes.txt`.
+- **El nivell 37 és el mateix per a tothom**: tot surt de llavors
+  (`ROTLLANA-<n>`), i així la taula és justa. Les paraules base de cada
+  llargada van en una llista barrejada sempre igual, i cada nivell agafa la
+  següent que dona prou paraules: **en mil nivells no se'n repeteix cap**.
+- **La dificultat va a trams** (`TRAMS`): el nivell 1 té 4 lletres i 4
+  paraules de les 1.500 més dites; a partir del 151, 7 lletres i unes 12
+  paraules de les 7.500 més dites. Com més amunt, paraules menys corrents.
+- **Els encreuats es fan sols** (`disposa`): la base primer, i cada altra
+  paraula s'hi creua per una lletra que ja hi sigui. Cap lletra no pot tocar
+  de costat una altra paraula, que si no en sortirien d'inexistents. Es prova
+  trenta vegades i es queda la que en posa més i ocupa menys, sense passar de
+  10 × 9 caselles (així no fan mai menys de 32 px). Un nivell tarda 3
+  mil·lèsimes.
+- **Una paraula queda feta quan té totes les lletres destapades**, encara
+  que sigui a cops de pista o perquè les altres l'han anat creuant.
+- **La rotllana es pot girar (BARREJA), però mentre gira no es pot fer res
+  de nou**: el gir mou les lletres i el dit les buscaria on ja no són.
+
 ## El Síndria: com funciona la física
 
 És l'únic joc amb física de debò, i té dues decisions que no s'han de desfer
@@ -907,6 +958,12 @@ comproven el comportament.
   partida del dia vagi a la seva taula una sola vegada, que el repte s'obri
   des de l'enllaç i que un jugador automàtic hi arribi lluny i la partida
   s'acabi. També serveix el repositori per http, com la del Garbuix.
+- `node scripts/prova-rotllana.mjs` — que els mil primers nivells de La
+  Rotllana siguin uns mots encreuats ben fets (cap tira de lletres que no
+  sigui una paraula, tot connectat, que capiga), amb paraules corrents que es
+  poden fer amb la rotllana i sense bases repetides; que siguin iguals a tots
+  els mòbils; i que es jugui lliscant el dit, amb extres, pista, barreja,
+  nivell acabat apuntat a la taula i tot desat en tornar-hi.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

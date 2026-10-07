@@ -64,12 +64,13 @@ const JOCS = {
   garbuix:          999999,
   impremta:      999999999,
   gofra:             99999,   // les estrelles acumulades de totes les gofres del dia
+  rotllana:          99999,   // el nivell mes alt que has acabat
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -119,6 +120,7 @@ const FITXA = {
   garbuix:         ['Garbuix',         'al Garbuix',         'garbuix.html'],
   impremta:        ['La Impremta',     'a la Impremta',      'impremta.html'],
   gofra:           ['La Gofra',        'a la Gofra',         'gofra.html'],
+  rotllana:        ['La Rotllana',     'a la Rotllana',      'rotllana.html'],
 };
 
 const cors = {
@@ -175,20 +177,25 @@ async function contrasenya(env) {
   return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
 }
 
+// Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
+// no s'entendria: son 37 nivells.
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles' };
+const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
+
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
 async function avisaRecord(env, joc, entrada, abans) {
   if (!env.TELEGRAM_TOKEN) return;
   const xat = await env.RECORDS.get('telegram:xat');
   if (!xat) return;
   const [nom, al, fitxer] = FITXA[joc] || [joc, 'a ' + joc, ''];
-  const qui = '<b>' + esc(entrada.n) + '</b>', punts = '<b>' + xifra(entrada.p) + '</b>';
+  const qui = '<b>' + esc(entrada.n) + '</b>', punts = '<b>' + quant(joc, entrada.p) + '</b>';
   let text;
   if (!abans) text = '🏆 Primer rècord ' + esc(al) + ': ' + qui + ' amb ' + punts;
   else if (abans.n === entrada.n)
-    text = '🏆 ' + qui + ' millora el seu rècord ' + esc(al) + ': ' + punts + ' (abans ' + xifra(abans.p) + ')';
+    text = '🏆 ' + qui + ' millora el seu rècord ' + esc(al) + ': ' + punts + ' (abans ' + quant(joc, abans.p) + ')';
   else
     text = '🏆 ' + qui + ' ha fet ' + punts + ' ' + esc(al) + ' i passa davant de <b>' +
-           esc(abans.n) + '</b> (' + xifra(abans.p) + ')';
+           esc(abans.n) + '</b> (' + quant(joc, abans.p) + ')';
   const dades = { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true };
   if (fitxer) dades.reply_markup = { inline_keyboard: [[{ text: '🎮 Juga ' + al, url: WEB + fitxer }]] };
   await telegram(env, 'sendMessage', dades);

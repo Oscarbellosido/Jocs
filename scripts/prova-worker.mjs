@@ -166,6 +166,17 @@ m = missatges()[0];
 ok(m && /MAR.*5\.100.*passa davant de.*CAR.*4\.320/.test(m.cos.text),
    'algú passa davant: «' + (m ? m.cos.text.replace(/<[^>]+>/g, '') : '—') + '»');
 
+// a la Rotllana el numero son nivells, i el missatge ho ha de dir
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/rotllana', { nom: 'CAR', punts: 12 });
+await crida(envTg, 'POST', '/records/rotllana', { nom: 'MAR', punts: 37 });
+m = missatges()[1];
+ok(m && /MAR.*37 nivells.*a la Rotllana.*passa davant de.*CAR.*12 nivells/.test(m.cos.text),
+   'a la Rotllana diu nivells: «' + (m ? m.cos.text.replace(/<[^>]+>/g, '') : '—') + '»');
+enviats.length = 0;
+await crida(envTg, 'POST', '/records/rotllana', { nom: 'MAR', punts: 38 });
+ok(missatges().length === 0, 'a la Rotllana, passar un nivell més quan ja manes no avisa ningú');
+
 enviats.length = 0;
 await crida(envTg, 'POST', '/records/ram', { nom: 'MAR', punts: 6000 });
 m = missatges()[0];
@@ -253,6 +264,10 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await call('POST', '/records/gofra', { nom: 'CRE', punts: 3 });
   r = await call('GET', '/records/gofra');
   ok(r.data[0].p === 15, 'la Gofra: una puntuació més baixa no li treu la que tenia');
+  await call('POST', '/records/rotllana', { nom: 'CRE', punts: 5 });
+  await call('POST', '/records/rotllana', { nom: 'CRE', punts: 6 });
+  r = await call('GET', '/records/rotllana');
+  ok(r.data.filter(e => e.n === 'CRE').length === 1 && r.data.find(e => e.n === 'CRE').p === 6, 'la Rotllana: cadascú hi surt una sola vegada, amb el nivell més alt');
   const avui = new Date().toISOString().slice(0, 10);
   r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'CRE', punts: 4 });
   ok(r.status === 200 && r.data.posicio === 1, 'la Gofra: la gofra del dia té la seva taula');
