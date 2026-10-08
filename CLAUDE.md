@@ -563,6 +563,15 @@ Coses que no s'han de desfer sense entendre-les:
   de la pila, la mateixa llavor segueix donant la mateixa partida. El comodí
   compta com a vocal; la QU i la NY, com a consonants.
 
+- **La partida es desa sola** (`desaPartida`, a `localStorage`
+  `impremta-partida`), cada segon i en sortir de la pàgina, i a la portada
+  del joc surt **CONTINUA LA PARTIDA**. En Carles va fer més punts que el
+  rècord en una partida lliure, va tornar al menú a mig fer i es va perdre
+  tot: els punts només s'apunten quan la partida s'acaba. Només es desa quan
+  està quieta (mai a mig recompte), i cada tipus es desa un sol cop amb el seu
+  número perquè, en tornar, la mà, la pila i la caixa segueixin compartint
+  els mateixos tipus. La del dia d'un altre dia ja no es pot continuar.
+
 Com està calibrat, amb jugadors automàtics que juguen amb el codi de debò: un
 que juga com una persona (coneix 6.000 paraules corrents i en tria una de les
 més llargues) arriba de mitjana a la pàgina 13 (capítol 5), i un que les

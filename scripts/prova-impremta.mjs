@@ -257,6 +257,47 @@ diu(r.dolentes.length === 0, `cap mà sense dues vocals i dues consonants (${r.m
   (r.dolentes.length ? `; dolentes: ${r.dolentes.slice(0, 3).join(' ')}` : '') + ')');
 diu(r.semblants === 20, `i la mateixa llavor segueix donant la mateixa mà`);
 
+// --- sortir a mig fer i tornar ---
+// Abans, tornant al menu a mitja partida, es perdia amb tots els punts.
+{
+  const q = await obre();
+  errorsDe.push(q);
+  await q.waitForTimeout(3600);
+  await q.evaluate(`(() => {
+    novaPartida('lliure', 'DESA'); P.objectiu = 1;
+    P.comp = ${BUSCA}; imprimeix();
+  })()`);
+  await q.waitForFunction(() => state === 'cobra', null, { timeout: 15000 });
+  await q.evaluate(() => { aLaBotiga(); P.rals = 50; compra(3); if (state === 'paquet') triaPaquet(0); seguentPagina(); P.objectiu = 999999; });
+  await q.evaluate(`(() => { P.comp = ${BUSCA}; imprimeix(); })()`);
+  await q.waitForFunction(() => state === 'pagina' && !anim, null, { timeout: 15000 });
+  const abans = await q.evaluate(() => { desaPartida(); return {
+    total: P.total, cap: P.capitol, pag: P.pagina, imp: P.impressions, rals: P.rals,
+    ma: P.ma.map(t => t.l + (t.e || '')).join(), caixa: P.caixa.length, pila: P.pila.length }; });
+  await q.reload();
+  await q.waitForFunction(() => DIC !== null || errorDic, null, { timeout: 30000 });
+  await q.waitForTimeout(3600);
+  const hiEs = await q.evaluate(() => state === 'inici' && !!partidaDesada());
+  diu(hiEs, `en tornar al joc, la partida a mig fer hi és (${abans.total} punts, capítol ${abans.cap}, pàgina ${abans.pag})`);
+  const bq = await q.locator('#game').boundingBox();
+  await q.mouse.click(bq.x + bq.width / 2, bq.y + (262 + 33) / 580 * bq.height);    // CONTINUA, el primer boto
+  await q.waitForTimeout(200);
+  const despres = await q.evaluate(() => ({
+    total: P.total, cap: P.capitol, pag: P.pagina, imp: P.impressions, rals: P.rals,
+    ma: P.ma.map(t => t.l + (t.e || '')).join(), caixa: P.caixa.length, pila: P.pila.length,
+    mateixos: P.ma.every(t => P.caixa.includes(t)) }));
+  diu(JSON.stringify({ ...abans }) === JSON.stringify({ ...despres, mateixos: undefined }) && despres.mateixos,
+    `CONTINUA la torna tal com era: punts, pàgina, rals, la mà i la caixa`);
+  await q.evaluate(`(() => { P.comp = ${BUSCA}; imprimeix(); })()`);
+  await q.waitForFunction(() => (state === 'pagina' || state === 'cobra') && !anim, null, { timeout: 15000 });
+  const segueix = await q.evaluate(t => P.total > t, abans.total);
+  diu(segueix, 'i s\'hi pot seguir imprimint');
+  await q.evaluate(() => { perd(); });
+  await q.waitForTimeout(1500);
+  if (await q.$('#rec-ok')) { await q.fill('#rec-nom', 'TST'); await q.click('#rec-ok'); }
+  diu(await q.evaluate(() => partidaDesada() === null), 'quan la partida s\'acaba, ja no queda desada');
+}
+
 // --- partides senceres amb un jugador automatic ---
 // Juga com algu que comença: de les paraules que pot fer, una de les mes
 // llargues fins a sis lletres, i compra segells quan pot.

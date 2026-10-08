@@ -241,6 +241,7 @@ function novaPartida(mode,llavor,repte=null){
     try{localStorage.setItem('impremta-dia',P.llavor.slice(4))}catch(e){}
   }
   rotuls=[];anim=null;info=null;avis='';
+  esborraPartida();
   comencaPagina();
   hideMsg();updateHUD();
   Records.pintaMillor(taula(),document.getElementById('best'),0);
@@ -491,7 +492,7 @@ function seguentPagina(){
   comencaPagina();sndToc();
 }
 function perd(){
-  state='over';anim=null;sndFi();
+  state='over';anim=null;sndFi();esborraPartida();
   setTimeout(finalPartida,900);
 }
 
@@ -553,6 +554,58 @@ async function finalPartida(){
   });
   Records.pintaMillor(taula(),document.getElementById('best'),P.total);
 }
+
+// ===== LA PARTIDA DESADA =====
+// Una partida de La Impremta pot durar molta estona. Abans, si tornaves al
+// menu a mig fer, la perdies amb tots els punts: en Carles va fer mes punts
+// que el record en una partida lliure i, en sortir, no es van apuntar
+// enlloc. Ara es desa sola, i en tornar-hi pots CONTINUAR on la vas deixar.
+// Els punts s'apunten a la taula quan s'acaba, com sempre.
+// Nomes es desa quan esta quieta (no a mig recompte), i cada tipus es desa
+// una sola vegada: la ma, la pila i la caixa en guarden el numero, perque
+// despres de tornar-la a obrir segueixin essent el mateix tipus.
+const CLAU_PARTIDA='impremta-partida';
+const QUIETS=new Set(['pagina','cobra','botiga','paquet']);
+let desatAra='';
+function desaPartida(){
+  if(!P||!QUIETS.has(state)||anim)return;
+  const tipus=new Map();
+  const id=t=>{tipus.set(t.id,t);return t.id};
+  const Q={...P,caixa:P.caixa.map(id),pila:P.pila.map(id),ma:P.ma.map(id),comp:P.comp.map(id)};
+  if(P.paquet)Q.paquet={...P.paquet,op:P.paquet.op.map(o=>({...o,t:id(o.t)}))};
+  const txt=JSON.stringify({v:1,state,P:Q,tipus:[...tipus.values()]});
+  if(txt===desatAra)return;
+  desatAra=txt;
+  try{localStorage.setItem(CLAU_PARTIDA,txt)}catch(e){}
+}
+function esborraPartida(){desatAra='';try{localStorage.removeItem(CLAU_PARTIDA)}catch(e){}}
+// (es mira a cada fotograma de la portada del joc: nomes es torna a llegir si ha canviat)
+let llegitTxt=null,llegitVal=null;
+function partidaDesada(){
+  let txt=null;try{txt=localStorage.getItem(CLAU_PARTIDA)}catch(e){}
+  if(txt!==llegitTxt){llegitTxt=txt;llegitVal=null;try{llegitVal=JSON.parse(txt)}catch(e){}}
+  const d=llegitVal;
+  if(!d||d.v!==1||!d.P||!QUIETS.has(d.state))return null;
+  // la del dia d'un altre dia ja no es pot apuntar enlloc: no val la pena
+  if(d.P.mode==='dia'&&d.P.llavor!=='DIA-'+diaAvui())return null;
+  return d;
+}
+function continuaPartida(){
+  if(!partidaDesada())return;
+  const d=JSON.parse(llegitTxt);             // una copia nova, no la que es mira a la portada
+  const tipus=new Map(d.tipus.map(t=>[t.id,t]));
+  const t=i=>tipus.get(i);
+  P=d.P;
+  P.caixa=P.caixa.map(t);P.pila=P.pila.map(t);P.ma=P.ma.map(t);P.comp=P.comp.map(t);
+  if(P.paquet)P.paquet.op=P.paquet.op.map(o=>({...o,t:t(o.t)}));
+  idSeg=Math.max(0,...d.tipus.map(x=>x.id))+1;
+  state=d.state;rotuls=[];anim=null;info=null;avis='';
+  hideMsg();updateHUD();botons();
+  Records.pintaMillor(taula(),document.getElementById('best'),P.total);
+}
+setInterval(desaPartida,1000);
+addEventListener('pagehide',desaPartida);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)desaPartida()});
 
 // ===== MARCADOR =====
 Records.pintaMillor(JOC,document.getElementById('best'));
@@ -879,14 +932,21 @@ function dibuixaInici(){
   const linies=['Fes paraules amb les 8 lletres de la mà.','Cada pàgina demana uns punts: si hi','arribes, cobres rals i vas a la botiga',
     'a comprar segells que canvien les regles.','La partida s\'acaba quan una pàgina no','arriba als punts.'];
   linies.forEach((l,k)=>text(l,W/2,152+k*18,'#ddd','12px monospace','center'));
-  let y=REPTE?262:274;
-  const bh=REPTE?66:74,salt=REPTE?76:88;
+  const desada=partidaDesada();
+  const n=2+(REPTE?1:0)+(desada?1:0);
+  let y=n>=4?252:n===3?262:274;
+  const bh=n>=4?56:n===3?66:74,salt=n>=4?65:n===3?76:88;    // quatre botons: s'han d'estrenyer per no tapar les taules
   const boto=(t1,t2,col,fn)=>{
     x.fillStyle='#241a12';rrect(30,y,W-60,bh,12);x.fill();x.strokeStyle=col;x.lineWidth=2;x.stroke();
     text(t1,W/2,y+bh*0.43,col,'bold 18px monospace','center');
     text(t2,W/2,y+bh*0.73,'#aaa','11px monospace','center');
     zona(30,y,W-60,bh,fn);y+=salt;
   };
+  if(desada){
+    const q=desada.P;
+    boto('CONTINUA LA PARTIDA',(q.mode==='dia'?'la del dia':q.repte?'el repte de '+q.repte.n:'la lliure')+
+      ' · capítol '+q.capitol+', pàgina '+q.pagina+' · '+xifra(q.total)+' punts','#7dff9b',()=>{continuaPartida();sndBe()});
+  }
   if(REPTE)boto('REPTE DE '+REPTE.n,xifra(REPTE.p)+' punts'+(REPTE.c?' (capítol '+REPTE.c+')':'')+' · mateixes lletres','#7dff9b',
     ()=>{novaPartida('lliure',REPTE.llavor,REPTE);sndBe()});
   const dia=diaAvui();
