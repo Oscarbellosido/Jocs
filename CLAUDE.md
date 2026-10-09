@@ -522,6 +522,12 @@ de tipus de plom.
   tocant la pantalla va més de pressa.
 - **El primer censor és dels suaus** (`CENSORS_SUAUS`): el primer capítol és
   per aprendre.
+- **Les millores de la impremta** (`MILLORES_IMP`): a cada botiga n'hi ha una
+  a sota, de punta a punta, que dura tota la partida i no ocupa lloc de
+  segell: una impressió més (10 rals, dues vegades), un descart més (8, dues),
+  una lletra més a la mà (10, dues) o un sisè lloc de segell (12, una). Abans,
+  amb els cinc segells, no hi havia res en què gastar: en Carles en va
+  acumular 28, i l'interès s'atura als 25.
 
 Coses que no s'han de desfer sense entendre-les:
 
@@ -581,11 +587,16 @@ Coses que no s'han de desfer sense entendre-les:
 
 Com està calibrat, amb jugadors automàtics que juguen amb el codi de debò: un
 que juga com una persona (coneix 6.000 paraules corrents i en tria una de les
-més llargues) arriba de mitjana a la pàgina 13 (capítol 5), i un que les
-coneix totes i tria la que fa més punts, a la 18. Gairebé tots dos cauen a
+més llargues) arriba de mitjana a la pàgina 12 (capítol 4), i un que les
+coneix totes i tria la que fa més punts, a la 21. Gairebé tots dos cauen a
 la pàgina del censor, que és el que ha de passar, i quasi ningú no cau al
-primer capítol. Els objectius són `OBJ` (i a partir del capítol 9, ×1,8 cada
-capítol, que vol dir que la partida sempre s'acaba).
+primer capítol. Els objectius són `OBJ` (i a partir del capítol 9, ×1,9 cada
+capítol, que vol dir que la partida sempre s'acaba). Amb les millores, els
+pilots arribaven a la 14 i a la 25: per això, des del capítol 3, els
+objectius pugen més de pressa que abans (620, 1.300, 2.600... en lloc de 560,
+1.100, 2.100). Els dos primers capítols no s'han tocat. Si es toca res de
+l'economia, s'ha de tornar a mirar amb els pilots que les dues mitjanes
+quedin on són.
 
 Botons: `DESCARTA` a l'esquerra, petit i d'un altre color (gasta un
 descart), `IMPRIMEIX` gros al mig i `BARREJA` (només remena la mà, per veure-hi

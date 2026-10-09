@@ -199,6 +199,24 @@ diu(r.pag === r.pg + 1 && r.state === 'pagina', `SEGÜENT PÀGINA porta a la pà
   diu(s.segells.includes(id) && s.venut && s.rals < 50, `a la botiga, un sol toc compra el segell (${id})`);
 }
 
+// --- les millores de la botiga: duren tota la partida i no ocupen lloc ---
+{
+  const r = await p.evaluate(() => {
+    novaPartida('lliure', 'MILLORA'); P.impres = P.objectiu; cobra(); aLaBotiga(); P.rals = 50;
+    const hiEs = P.botiga.items[4] && P.botiga.items[4].tipus === 'millora';
+    P.botiga.items[4] = { tipus: 'millora', k: 'impr', preu: 10 };
+    compra(4);
+    const segells = P.segells.length;
+    seguentPagina();
+    const imp = P.impressions;
+    P.millores.lloc = 1;
+    const max = maxSegells();
+    return { hiEs, imp, rals: P.rals, segells, max };
+  });
+  diu(r.hiEs && r.imp === 5 && r.rals === 40 && r.segells === 0 && r.max === 6,
+    `a la botiga hi ha una millora per sempre: la premsa més gran dona 5 impressions a cada pàgina i no ocupa lloc de segell; el prestatge, 6 segells`);
+}
+
 // --- plegar: sense descarts, el boto de l'esquerra acaba la partida ---
 {
   await p.evaluate(() => { novaPartida('lliure', 'PLEGA'); P.descarts = 0; P.total = 321; });

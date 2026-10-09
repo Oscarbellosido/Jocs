@@ -125,6 +125,18 @@ const PUJA={2:[3,1],3:[5,1],4:[8,1],5:[10,1],6:[14,1],7:[18,2],8:[24,2],9:[30,2]
 // ===== ELS SEGELLS =====
 // Els comodins del joc: canvien les regles a favor teu. Com a molt en tens cinc.
 const MAX_SEGELLS=5;
+// Les millores de la impremta: compres que duren tota la partida i no ocupen
+// lloc de segell. Abans, amb els cinc segells, a la botiga no hi havia res en
+// que gastar els rals i se n'acumulaven trenta sense fer res. N'hi ha una a
+// cada botiga, i cadascuna es pot comprar un nombre limitat de vegades.
+const MILLORES_IMP={
+  impr:{nom:'Premsa més gran',txt:'una impressió més a cada pàgina, per sempre',preu:10,max:2},
+  desc:{nom:'Paperera més gran',txt:'un descart més a cada pàgina, per sempre',preu:8,max:2},
+  ma:{nom:'Calaix més ample',txt:'una lletra més a la mà, per sempre',preu:10,max:2},
+  lloc:{nom:'Prestatge nou',txt:'un lloc més per a segells: en pots tenir sis',preu:12,max:1},
+};
+const mil=k=>(P&&P.millores&&P.millores[k])||0;
+const maxSegells=()=>MAX_SEGELLS+mil('lloc');
 const esAbc=t=>{for(let i=1;i<t.length;i++)if(t[i]<t[i-1])return false;return t.length>=3};
 const SEGELLS={
   tinta:{nom:'Tinta fresca',txt:'+4 mult a totes les paraules',preu:4,paraula:()=>({m:4})},
@@ -176,10 +188,10 @@ const CENSORS_SUAUS=['menys','sense_desc','segrest','repetir','sense_a'];
 // ===== QUANTS PUNTS DEMANA CADA PAGINA =====
 // Cada capitol te tres pagines: la petita, la gran (×1,5) i la del censor
 // (×2). Al principi es pot amb paraules soles; mes enlla, nomes amb segells.
-const OBJ=[100,260,560,1100,2100,3900,7000,12500];
+const OBJ=[100,260,620,1300,2600,5000,9500,17500];
 function arrodoneix(n){const e=Math.pow(10,Math.max(0,Math.floor(Math.log10(n))-1));return Math.round(n/e)*e}
 function objectiuDe(cap,pag){
-  const b=cap<=OBJ.length?OBJ[cap-1]:OBJ[OBJ.length-1]*Math.pow(1.8,cap-OBJ.length);
+  const b=cap<=OBJ.length?OBJ[cap-1]:OBJ[OBJ.length-1]*Math.pow(1.9,cap-OBJ.length);
   return arrodoneix(b*[1,1.5,2][pag-1]);
 }
 
@@ -228,7 +240,7 @@ function nouTipus(l,e=null,comodi=false){return {id:idSeg++,l,e,comodi}}
 
 function novaPartida(mode,llavor,repte=null){
   P={mode,llavor,repte,capitol:1,pagina:1,objectiu:0,impres:0,impressions:0,descarts:0,
-     rals:4,segells:[],nivells:{2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0},caixa:[],pila:[],ma:[],comp:[],
+     rals:4,segells:[],millores:{},nivells:{2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0},caixa:[],pila:[],ma:[],comp:[],
      total:0,paraules:0,millor:null,anterior:'',llargades:[],fetes:[],censor:null,
      botiga:null,paquet:null,cobrament:null,fora:false};
   idSeg=1;
@@ -249,7 +261,7 @@ function novaPartida(mode,llavor,repte=null){
 
 const g=()=>(P.capitol-1)*3+P.pagina;           // numero de pagina de tota la partida
 const teSegell=id=>P.segells.some(s=>s.id===id);
-const quants=k=>P.segells.reduce((a,s)=>a+(SEGELLS[s.id][k]||0),0);
+const quants=k=>P.segells.reduce((a,s)=>a+(SEGELLS[s.id][k]||0),0)+(k==='impr'||k==='desc'||k==='ma'?mil(k):0);
 const censor=()=>P.censor?CENSORS[P.censor]:null;
 function midaMa(){return Math.max(4,8+quants('ma')+((censor()&&censor().ma)||0))}
 
@@ -427,6 +439,9 @@ function aLaBotiga(){
   P.botiga.items=[null,null,{tipus:'manual',n:triaDe(r,ns),preu:3},
     {tipus:'paquet',k:triaDe(r,['tipus','tipus','tinta','lima']),preu:0}];
   const pq=P.botiga.items[3];pq.preu=pq.k==='lima'?3:4;
+  const possibles=Object.keys(MILLORES_IMP).filter(k=>mil(k)<MILLORES_IMP[k].max);
+  P.botiga.items[4]=possibles.length?{tipus:'millora',k:triaDe(rng('botiga',g(),'millora'),possibles)}:null;
+  if(P.botiga.items[4])P.botiga.items[4].preu=MILLORES_IMP[P.botiga.items[4].k].preu;
   posaSegellsBotiga();
   state='botiga';
 }
@@ -448,10 +463,11 @@ function compra(i){
   const it=P.botiga.items[i];
   if(!it||it.venut)return;
   if(P.rals<it.preu){diu('no tens prou rals','#ff9b8a');sndNo();return}
-  if(it.tipus==='segell'&&P.segells.length>=MAX_SEGELLS){diu('ja tens cinc segells: ven-ne un abans','#ff9b8a');sndNo();return}
+  if(it.tipus==='segell'&&P.segells.length>=maxSegells()){diu('ja tens '+maxSegells()+' segells: ven-ne un abans','#ff9b8a');sndNo();return}
   P.rals-=it.preu;it.venut=true;P.botiga.tria=-1;sndRals();
   if(it.tipus==='segell'){P.segells.push({id:it.id,n:0});diu(SEGELLS[it.id].nom.toUpperCase()+' és teu','#7dff9b')}
   else if(it.tipus==='manual'){P.nivells[it.n]++;diu('les paraules de '+it.n+' lletres pugen de nivell','#7dff9b')}
+  else if(it.tipus==='millora'){P.millores=P.millores||{};P.millores[it.k]=mil(it.k)+1;diu(MILLORES_IMP[it.k].nom.toUpperCase()+': '+MILLORES_IMP[it.k].txt,'#7dff9b')}
   else obrePaquet(it.k);
 }
 function ven(i){
@@ -700,7 +716,7 @@ function shade(hex,amt){
 
 // posicions
 const Y_SEG=104,H_SEG=64,Y_FULL=176,Y_COMP=338,Y_MA=436;
-function posSegell(i){return [10+i*81+38,Y_SEG+H_SEG/2]}
+function posSegell(i){const sw=Math.floor((W-20)/maxSegells())-5;return [10+i*(sw+5)+sw/2,Y_SEG+H_SEG/2]}
 function midaTipus(n){const w=Math.min(46,Math.floor((W-24)/Math.max(n,1))-4);return [w,Math.round(w*1.18)]}
 function posComp(i){
   const n=P.comp.length,[w]=midaTipus(Math.max(8,n));
@@ -729,25 +745,26 @@ function dibuixaCap(){
 }
 
 function dibuixaSegells(potVendre){
-  for(let i=0;i<MAX_SEGELLS;i++){
-    const sx=10+i*81,sy=Y_SEG,s=P.segells[i];
-    if(!s){x.strokeStyle='#3a2e22';x.setLineDash([4,4]);rrect(sx,sy,76,H_SEG,9);x.stroke();x.setLineDash([]);continue}
+  const nS=maxSegells(),sw=Math.floor((W-20)/nS)-5;
+  for(let i=0;i<nS;i++){
+    const sx=10+i*(sw+5),sy=Y_SEG,s=P.segells[i];
+    if(!s){x.strokeStyle='#3a2e22';x.setLineDash([4,4]);rrect(sx,sy,sw,H_SEG,9);x.stroke();x.setLineDash([]);continue}
     const d=SEGELLS[s.id];
     const segrestat=P.censor==='segrest'&&i===0&&(state==='pagina'||state==='puntua');
     const brilla=anim&&anim.brilla&&anim.brilla.s===i&&anim.brilla.t>0;
     x.save();
-    if(brilla){x.translate(sx+38,sy+H_SEG/2);x.scale(1.08,1.08);x.translate(-(sx+38),-(sy+H_SEG/2))}
-    x.fillStyle=segrestat?'#2a2a2a':'#5a1f1f';rrect(sx,sy,76,H_SEG,9);x.fill();
-    x.strokeStyle=info&&info.s===i?'#ffcf4a':brilla?'#fff':'#c0392b';x.lineWidth=2;rrect(sx,sy,76,H_SEG,9);x.stroke();
+    if(brilla){x.translate(sx+sw/2,sy+H_SEG/2);x.scale(1.08,1.08);x.translate(-(sx+sw/2),-(sy+H_SEG/2))}
+    x.fillStyle=segrestat?'#2a2a2a':'#5a1f1f';rrect(sx,sy,sw,H_SEG,9);x.fill();
+    x.strokeStyle=info&&info.s===i?'#ffcf4a':brilla?'#fff':'#c0392b';x.lineWidth=2;rrect(sx,sy,sw,H_SEG,9);x.stroke();
     // un segell de cera: el cercle i la inicial
-    x.fillStyle=segrestat?'#555':'#b03a2e';x.beginPath();x.arc(sx+38,sy+24,15,0,7);x.fill();
-    x.strokeStyle='rgba(255,220,200,.5)';x.lineWidth=1.5;x.beginPath();x.arc(sx+38,sy+24,11,0,7);x.stroke();
-    text(d.nom[0].toUpperCase(),sx+38,sy+30,'#ffe9dc','bold 16px Georgia,serif','center');
-    const curt=d.nom.length>11?d.nom.slice(0,10)+'.':d.nom;
-    text(curt.toUpperCase(),sx+38,sy+56,segrestat?'#888':'#ffd9cf','9px monospace','center');
-    if(segrestat){x.strokeStyle='#ff5a5a';x.lineWidth=3;x.beginPath();x.moveTo(sx+8,sy+8);x.lineTo(sx+68,sy+H_SEG-8);x.stroke()}
+    x.fillStyle=segrestat?'#555':'#b03a2e';x.beginPath();x.arc(sx+sw/2,sy+24,15,0,7);x.fill();
+    x.strokeStyle='rgba(255,220,200,.5)';x.lineWidth=1.5;x.beginPath();x.arc(sx+sw/2,sy+24,11,0,7);x.stroke();
+    text(d.nom[0].toUpperCase(),sx+sw/2,sy+30,'#ffe9dc','bold 16px Georgia,serif','center');
+    const mx=nS>5?8:11,curt=d.nom.length>mx?d.nom.slice(0,mx-1)+'.':d.nom;
+    text(curt.toUpperCase(),sx+sw/2,sy+56,segrestat?'#888':'#ffd9cf','9px monospace','center');
+    if(segrestat){x.strokeStyle='#ff5a5a';x.lineWidth=3;x.beginPath();x.moveTo(sx+8,sy+8);x.lineTo(sx+sw-8,sy+H_SEG-8);x.stroke()}
     x.restore();
-    zona(sx,sy,76,H_SEG,()=>{
+    zona(sx,sy,sw,H_SEG,()=>{
       if(info&&info.s===i&&potVendre){ven(i);return}
       info={s:i,t:4};sndToc();
     });
@@ -882,38 +899,49 @@ function dibuixaBotiga(){
   const b=P.botiga;
   text('LA BOTIGA',W/2,Y_FULL+6,'#ffe08a','bold 16px monospace','center');
   b.items.forEach((it,i)=>{
-    const cl=i%2,row=Math.floor(i/2),bx=16+cl*198,by=Y_FULL+18+row*118,bw=190,bh=110;
+    const cl=i%2,row=Math.floor(i/2),bx=16+cl*198,by=Y_FULL+18+row*106,bw=i===4?388:190,bh=i===4?54:100;
     if(!it){x.strokeStyle='#3a2e22';rrect(bx,by,bw,bh,10);x.stroke();return}
     // Un toc i es compra. Abans el primer toc nomes el marcava i el segon el
     // comprava: en Carles tocava una vegada, li semblava que ja el tenia i
     // sortia de la botiga sense.
     x.fillStyle=it.venut?'#12200f':'#241a12';rrect(bx,by,bw,bh,10);x.fill();
     x.strokeStyle=it.venut?'#4f8a3c':'#6b5235';x.lineWidth=it.venut?2:1.5;rrect(bx,by,bw,bh,10);x.stroke();
-    if(it.venut){text('✓ COMPRAT',bx+bw/2,by+52,'#7dff9b','bold 16px monospace','center');
-      text('ja és teu',bx+bw/2,by+74,'#8fbf80','12px monospace','center');return}
+    if(it.venut){text('✓ COMPRAT',bx+bw/2,by+bh*0.5,'#7dff9b','bold 16px monospace','center');
+      text('ja és teu',bx+bw/2,by+bh*0.5+20,'#8fbf80','12px monospace','center');return}
     let nom,txt,col;
+    if(it.tipus==='millora'){
+      const m=MILLORES_IMP[it.k];
+      x.strokeStyle='#d4a017';x.lineWidth=2;rrect(bx,by,bw,bh,10);x.stroke();
+      text('★ '+m.nom.toUpperCase(),bx+10,by+20,'#ffd75e','bold 12px monospace');
+      text(m.txt,bx+10,by+38,'#ddd','11px monospace');
+      const pot=P.rals>=it.preu;
+      text(it.preu+' rals',bx+bw-10,by+20,pot?'#ffe08a':'#7a6a40','bold 13px monospace','right');
+      text(pot?'TOCA I ÉS TEU':'et falten '+(it.preu-P.rals),bx+bw-10,by+40,pot?'#ffcf4a':'#7a6a40','bold 10px monospace','right');
+      zona(bx,by,bw,bh,()=>{info=null;compra(i)});
+      return;
+    }
     if(it.tipus==='segell'){nom=SEGELLS[it.id].nom;txt=textSegell({id:it.id,n:0});col='#ffd9cf'}
     else if(it.tipus==='manual'){nom='Manual de '+it.n+' lletres';const u=PUJA[it.n];txt='les paraules de '+it.n+' lletres: +'+u[0]+' punts i +'+u[1]+' mult';col='#b9dcff'}
     else{nom={tipus:'Paquet de tipus',tinta:'Pot de tinta',lima:'Llima'}[it.k];
-      txt={tipus:'tria 1 de 3 tipus nous per a la caixa (n\'hi pot haver de millorats i comodins)',
+      txt={tipus:'tria 1 de 3 tipus nous per a la caixa (potser millorats o comodins)',
            tinta:'tria 1 de 3 tipus teus per millorar-lo',lima:'tria 1 de 4 tipus teus per llençar-lo'}[it.k];col='#d7f5c4'}
     text(nom.toUpperCase(),bx+10,by+22,col,'bold 12px monospace');
-    embolcalla(txt,bw-20,'11px monospace').slice(0,4).forEach((l,k)=>text(l,bx+10,by+42+k*15,'#ccc','11px monospace'));
+    embolcalla(txt,bw-20,'11px monospace').slice(0,3).forEach((l,k)=>text(l,bx+10,by+42+k*15,'#ccc','11px monospace'));
     const pot=P.rals>=it.preu;
     text(it.preu+' rals',bx+bw-10,by+bh-10,pot?'#ffe08a':'#7a6a40','bold 13px monospace','right');
     text(pot?'TOCA I ÉS TEU':'et falten '+(it.preu-P.rals),bx+10,by+bh-10,pot?'#ffcf4a':'#7a6a40','bold 10px monospace');
     zona(bx,by,bw,bh,()=>{info=null;compra(i)});
   });
-  const yb=Y_FULL+262;
+  const yb=Y_FULL+300;
   if(info){dibuixaInfo(yb-4);return}
   text('Toca un dels teus segells per vendre\'l.',W/2,yb+8,'#888','11px monospace','center');
-  text('Els rals que guardes donen interès: 1 per cada 5.',W/2,yb+26,'#888','11px monospace','center');
+  text('Els rals que guardes donen interès: 1 per cada 5 (fins a 5).',W/2,yb+24,'#888','11px monospace','center');
   // les teves paraules, per decidir quin manual val la pena
   const nv=Object.keys(P.nivells).filter(n=>P.nivells[n]).map(n=>n+':'+(P.nivells[n]+1));
-  if(nv.length)text('nivells: '+nv.join('  '),W/2,yb+44,'#b9dcff','11px monospace','center');
+  if(nv.length)text('nivells: '+nv.join('  '),W/2,yb+40,'#b9dcff','11px monospace','center');
   text('PROPERA: capítol '+(P.pagina===3?P.capitol+1:P.capitol)+', pàgina '+(P.pagina%3+1)+' · objectiu '+
-    xifra(objectiuDe(P.pagina===3?P.capitol+1:P.capitol,P.pagina%3+1)),W/2,yb+70,'#c9b28a','12px monospace','center');
-  if(P.pagina===2)text('(la del censor: '+CENSORS[censorDe(P.capitol)].nom+' — '+CENSORS[censorDe(P.capitol)].txt+')',W/2,yb+88,'#ff9b8a','11px monospace','center');
+    xifra(objectiuDe(P.pagina===3?P.capitol+1:P.capitol,P.pagina%3+1)),W/2,yb+58,'#c9b28a','12px monospace','center');
+  if(P.pagina===2)text('(la del censor: '+CENSORS[censorDe(P.capitol)].nom+' — '+CENSORS[censorDe(P.capitol)].txt+')',W/2,yb+74,'#ff9b8a','11px monospace','center');
 }
 
 function dibuixaPaquet(){
