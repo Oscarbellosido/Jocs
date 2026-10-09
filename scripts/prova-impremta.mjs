@@ -186,6 +186,19 @@ r = await p.evaluate(() => {
 diu(r.cobr >= 3 && r.teSeg, `en acabar una pàgina es cobren rals (${r.cobr}) i a la botiga es pot comprar un segell`);
 diu(r.pag === r.pg + 1 && r.state === 'pagina', `SEGÜENT PÀGINA porta a la pàgina següent`);
 
+// un sol toc a la botiga i el segell ja es teu (abans en calien dos, i amb un
+// semblava que ja el tenies)
+{
+  await p.evaluate(() => { novaPartida('lliure', 'BOTIGA2'); P.impres = P.objectiu; cobra(); aLaBotiga(); P.rals = 50; });
+  const id = await p.evaluate(() => P.botiga.items[0].id);
+  await p.waitForTimeout(100);
+  const bb = await p.locator('#game').boundingBox();           // el marcador pot haver mogut el canvas
+  await p.mouse.click(bb.x + (16 + 95) / 420 * bb.width, bb.y + (176 + 18 + 55) / 580 * bb.height);   // el mig de la primera casella
+  await p.waitForTimeout(150);
+  const s = await p.evaluate(() => ({ segells: P.segells.map(x => x.id), venut: !!P.botiga.items[0].venut, rals: P.rals }));
+  diu(s.segells.includes(id) && s.venut && s.rals < 50, `a la botiga, un sol toc compra el segell (${id})`);
+}
+
 // --- la partida del dia: una sola vegada a la taula del dia ---
 const dia = await p.evaluate(() => diaAvui());
 enviats.length = 0;

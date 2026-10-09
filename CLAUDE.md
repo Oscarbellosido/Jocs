@@ -507,7 +507,10 @@ de tipus de plom.
   demana uns punts amb 4 impressions i 3 descarts. Tres pàgines per capítol:
   la petita, la gran (×1,5) i la del **censor** (×2), que posa una
   prohibició (sense E, només paraules curtes, una impressió menys...).
-- **Els segells són els comodins** (`SEGELLS`): com a molt cinc. Els manuals
+- **Els segells són els comodins** (`SEGELLS`): com a molt cinc. **A la
+  botiga, un sol toc compra**, i la casella diu «✓ COMPRAT». Abans el primer
+  toc només el marcava i calia un segon toc: en Carles es pensava que ja el
+  tenia i sortia de la botiga sense. Els manuals
   pugen el nivell d'una llargada, i els paquets afegeixen tipus a la caixa
   (n'hi ha de millorats i comodins), en milloren o en llimen.
 - **El recompte es veu pas a pas**: cada lletra i cada segell que fa alguna

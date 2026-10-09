@@ -876,10 +876,13 @@ function dibuixaBotiga(){
   b.items.forEach((it,i)=>{
     const cl=i%2,row=Math.floor(i/2),bx=16+cl*198,by=Y_FULL+18+row*118,bw=190,bh=110;
     if(!it){x.strokeStyle='#3a2e22';rrect(bx,by,bw,bh,10);x.stroke();return}
-    const tria=b.tria===i;
-    x.fillStyle=it.venut?'#151110':'#241a12';rrect(bx,by,bw,bh,10);x.fill();
-    x.strokeStyle=tria?'#ffcf4a':it.venut?'#2a2018':'#6b5235';x.lineWidth=tria?3:1.5;rrect(bx,by,bw,bh,10);x.stroke();
-    if(it.venut){text('VENUT',bx+bw/2,by+60,'#555','bold 16px monospace','center');return}
+    // Un toc i es compra. Abans el primer toc nomes el marcava i el segon el
+    // comprava: en Carles tocava una vegada, li semblava que ja el tenia i
+    // sortia de la botiga sense.
+    x.fillStyle=it.venut?'#12200f':'#241a12';rrect(bx,by,bw,bh,10);x.fill();
+    x.strokeStyle=it.venut?'#4f8a3c':'#6b5235';x.lineWidth=it.venut?2:1.5;rrect(bx,by,bw,bh,10);x.stroke();
+    if(it.venut){text('✓ COMPRAT',bx+bw/2,by+52,'#7dff9b','bold 16px monospace','center');
+      text('ja és teu',bx+bw/2,by+74,'#8fbf80','12px monospace','center');return}
     let nom,txt,col;
     if(it.tipus==='segell'){nom=SEGELLS[it.id].nom;txt=textSegell({id:it.id,n:0});col='#ffd9cf'}
     else if(it.tipus==='manual'){nom='Manual de '+it.n+' lletres';const u=PUJA[it.n];txt='les paraules de '+it.n+' lletres: +'+u[0]+' punts i +'+u[1]+' mult';col='#b9dcff'}
@@ -888,9 +891,10 @@ function dibuixaBotiga(){
            tinta:'tria 1 de 3 tipus teus per millorar-lo',lima:'tria 1 de 4 tipus teus per llençar-lo'}[it.k];col='#d7f5c4'}
     text(nom.toUpperCase(),bx+10,by+22,col,'bold 12px monospace');
     embolcalla(txt,bw-20,'11px monospace').slice(0,4).forEach((l,k)=>text(l,bx+10,by+42+k*15,'#ccc','11px monospace'));
-    text(it.preu+' rals',bx+bw-10,by+bh-10,P.rals>=it.preu?'#ffe08a':'#7a6a40','bold 13px monospace','right');
-    if(tria)text('TOCA PER COMPRAR',bx+10,by+bh-10,'#ffcf4a','bold 10px monospace');
-    zona(bx,by,bw,bh,()=>{if(b.tria===i)compra(i);else{b.tria=i;info=null;sndToc()}});
+    const pot=P.rals>=it.preu;
+    text(it.preu+' rals',bx+bw-10,by+bh-10,pot?'#ffe08a':'#7a6a40','bold 13px monospace','right');
+    text(pot?'TOCA I ÉS TEU':'et falten '+(it.preu-P.rals),bx+10,by+bh-10,pot?'#ffcf4a':'#7a6a40','bold 10px monospace');
+    zona(bx,by,bw,bh,()=>{info=null;compra(i)});
   });
   const yb=Y_FULL+262;
   if(info){dibuixaInfo(yb-4);return}
