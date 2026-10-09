@@ -795,7 +795,7 @@ function dibuixaPuntuacio(){
     const ll=P.comp.reduce((a,t)=>a+(t.comodi?0:VALOR[t.l]||0),0);
     p=b+ll;m=mb;
     const niv=P.nivells[n]||0;
-    etiq=n+' LLETRES'+(niv?' (NIVELL '+(niv+1)+')':'')+': '+b+' de base + '+ll+' de les lletres';
+    etiq=b+' per ser de '+n+' lletres + '+ll+' de les lletres'+(niv?' · nivell '+(niv+1):'');
   }else etiq=P.comp.length?'una lletra més, com a mínim':'toca lletres de la mà';
   text(etiq,W/2,y0+12,'#c9b28a','12px monospace','center');
   x.fillStyle='#1d4f8a';rrect(70,y0+18,120,32,8);x.fill();
