@@ -199,6 +199,27 @@ diu(r.pag === r.pg + 1 && r.state === 'pagina', `SEGÜENT PÀGINA porta a la pà
   diu(s.segells.includes(id) && s.venut && s.rals < 50, `a la botiga, un sol toc compra el segell (${id})`);
 }
 
+// --- plegar: sense descarts, el boto de l'esquerra acaba la partida ---
+{
+  await p.evaluate(() => { novaPartida('lliure', 'PLEGA'); P.descarts = 0; P.total = 321; });
+  await p.waitForTimeout(150);
+  const text = await p.evaluate(() => document.getElementById('b1').textContent);
+  await p.locator('#b1').dispatchEvent('pointerdown');
+  await p.waitForTimeout(100);
+  await p.click('#plega-no');
+  const segueix = await p.evaluate(() => state);
+  await p.locator('#b1').dispatchEvent('pointerdown');
+  await p.waitForTimeout(100);
+  enviats.length = 0;
+  await p.click('#plega-si');
+  await p.waitForTimeout(1500);
+  if (await p.$('#rec-ok')) { await p.fill('#rec-nom', 'TST'); await p.click('#rec-ok'); }
+  await p.waitForTimeout(500);
+  const fi = await p.evaluate(() => ({ state, msg: document.getElementById('msg').textContent }));
+  diu(text === 'PLEGA' && segueix === 'pagina' && fi.state === 'over' && /TANCAT/.test(fi.msg) && enviats.some(u => /records\/impremta$/.test(u)),
+    `sense descarts, el botó diu PLEGA; «no» deixa seguir i «sí» acaba la partida i l'apunta (${text})`);
+}
+
 // --- la partida del dia: una sola vegada a la taula del dia ---
 const dia = await p.evaluate(() => diaAvui());
 enviats.length = 0;

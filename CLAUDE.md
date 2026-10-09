@@ -591,6 +591,12 @@ Botons: `DESCARTA` a l'esquerra, petit i d'un altre color (gasta un
 descart), `IMPRIMEIX` gros al mig i `BARREJA` (només remena la mà, per veure-hi
 paraules) a la dreta. La trampa 3.
 
+**Quan no queden descarts, `DESCARTA` es torna `PLEGA`**, i pregunta abans
+(«NO, SEGUEIXO» / «SÍ, PLEGO»). En Carles s'hi va quedar encallat: sense
+cap paraula a la mà i sense descarts, no hi havia manera d'acabar la
+partida. Plegar fa el mateix que quan la impremta tanca sola: els punts
+s'apunten a la taula.
+
 ## La Rotllana: el joc de paraules fàcil
 
 En Carles va demanar, després dels altres tres, un joc de paraules **fàcil,

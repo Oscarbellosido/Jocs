@@ -365,6 +365,7 @@ function calcula(tiles,ll,text){
 // ===== JUGAR =====
 function imprimeix(){
   if(state!=='pagina'||paused||anim)return;
+  hideMsg();                                    // per si hi havia la pregunta de plegar
   if(!P.comp.length)return;
   const r=resol(P.comp);
   if(!r.ok){if(r.motiu)diu(r.motiu,'#ff9b8a');else diu('calen com a mínim dues lletres','#ff9b8a');sndNo();tremola=.35;return}
@@ -1012,7 +1013,9 @@ const B1=document.getElementById('b1'),B2=document.getElementById('b2'),B3=docum
 let botonsAra='';
 function botons(){
   let cfg;
-  if(state==='pagina'||state==='puntua'||state==='caixa')cfg=['DESCARTA','IMPRIMEIX','BARREJA'];
+  // Sense descarts, el boto de l'esquerra passa a ser PLEGA: si no hi ha cap
+  // paraula a la ma, no quedava cap manera d'acabar la partida.
+  if(state==='pagina'||state==='puntua'||state==='caixa')cfg=[P.descarts>0?'DESCARTA':'PLEGA','IMPRIMEIX','BARREJA'];
   else if(state==='cobra')cfg=['','A LA BOTIGA',''];
   else if(state==='botiga')cfg=['CANVIA '+P.botiga.preuCanvi,'SEGÜENT PÀGINA',''];
   else if(state==='paquet')cfg=['','SALTA',''];
@@ -1021,7 +1024,20 @@ function botons(){
   [B1,B2,B3].forEach((b,i)=>{b.textContent=cfg[i];b.style.visibility=cfg[i]?'visible':'hidden'});
 }
 function boto(b,fn){b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused)return;fn()})}
-boto(B1,()=>{if(state==='pagina')descarta();else if(state==='botiga')canvia()});
+boto(B1,()=>{if(state==='pagina'){if(P.descarts>0)descarta();else demanaPlegar()}else if(state==='botiga')canvia()});
+// Plegar acaba la partida i s'apunten els punts que portes, com quan la
+// impremta tanca sola. Es pregunta abans, que el boto es al costat del de
+// sempre.
+function demanaPlegar(){
+  if(state!=='pagina'||anim)return;
+  const estil='display:inline-block;font:15px monospace;text-decoration:none;border-radius:8px;padding:10px 14px;margin:6px;white-space:nowrap';
+  msg('<div style="color:#ffb05a">VOLS PLEGAR?</div>'+
+    '<small>La partida s\'acaba ara amb '+xifra(P.total)+' punts, i s\'apunten a la taula.</small>'+
+    '<div style="margin-top:10px"><a href="#" id="plega-no" style="'+estil+';color:#fff;background:#1d3a24;border:1px solid #7dff9b">NO, SEGUEIXO</a>'+
+    '<a href="#" id="plega-si" style="'+estil+';color:#ffb05a;background:#111;border:1px solid #a05a2a">SÍ, PLEGO</a></div>');
+  document.getElementById('plega-no').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg()});
+  document.getElementById('plega-si').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg();if(state==='pagina'&&!anim)perd()});
+}
 boto(B2,()=>{
   if(state==='pagina')imprimeix();
   else if(state==='puntua'&&anim)anim.vel=5;
