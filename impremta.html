@@ -787,8 +787,15 @@ function dibuixaPuntuacio(){
   let p=null,m=null,etiq='';
   if(state==='puntua'&&anim){p=anim.p;m=anim.m;etiq=anim.r.text.toUpperCase()}
   else if(P.comp.length>=2){
-    const n=P.comp.length;[p,m]=baseDe(n);
-    const niv=P.nivells[n]||0;etiq=n+' LLETRES'+(niv?' · NIVELL '+(niv+1):'');
+    // La base de la llargada i, a sobre, el que valen les lletres. Abans
+    // nomes hi sortia la base: en Carles posava QU (6) i E (1) i hi deia 4,
+    // i no s'entenia d'on sortia. Els segells i els tipus millorats encara
+    // s'hi sumen despres, en el recompte.
+    const n=P.comp.length,[b,mb]=baseDe(n);
+    const ll=P.comp.reduce((a,t)=>a+(t.comodi?0:VALOR[t.l]||0),0);
+    p=b+ll;m=mb;
+    const niv=P.nivells[n]||0;
+    etiq=n+' LLETRES'+(niv?' (NIVELL '+(niv+1)+')':'')+': '+b+' de base + '+ll+' de les lletres';
   }else etiq=P.comp.length?'una lletra més, com a mínim':'toca lletres de la mà';
   text(etiq,W/2,y0+12,'#c9b28a','12px monospace','center');
   x.fillStyle='#1d4f8a';rrect(70,y0+18,120,32,8);x.fill();

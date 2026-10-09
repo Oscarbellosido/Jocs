@@ -513,6 +513,10 @@ de tipus de plom.
   tenia i sortia de la botiga sense. Els manuals
   pugen el nivell d'una llargada, i els paquets afegeixen tipus a la caixa
   (n'hi ha de millorats i comodins), en milloren o en llimen.
+- **Mentre compons, el número blau ja suma les lletres**: «2 LLETRES: 4 de
+  base + 7 de les lletres» i 11 × 1. Abans només hi sortia la base (4 × 1) i
+  en Carles no entenia per què, amb QU (6) i E (1). Els segells i els tipus
+  millorats s'hi afegeixen al recompte.
 - **El recompte es veu pas a pas**: cada lletra i cada segell que fa alguna
   cosa salta i suma davant teu, amb un so que puja. És la gràcia del joc;
   tocant la pantalla va més de pressa.
