@@ -222,6 +222,41 @@ await p.waitForTimeout(500);
 const despres = await p.evaluate(() => ({ N, monedes, obertes: [...obertes].sort().join(), roda: roda.join('') }));
 diu(JSON.stringify(abans) === JSON.stringify(despres), `tancant i tornant, el nivell és com el vas deixar (nivell ${despres.N}, ${despres.monedes} monedes)`);
 
+// --- jugar en un altre lloc: el nivell es recupera de la taula ---
+// El nivell es desa dins de cada navegador. En Carles anava molt endavant i,
+// obrint-la des d'un altre lloc, va tornar al 1.
+{
+  const c2 = await b.newContext({ viewport: { width: 390, height: 844 } });
+  await c2.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json',
+    headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify([{ n: 'CAR', p: 57, t: 1 }, { n: 'TST', p: 9, t: 2 }]) }));
+  // un navegador nou, sense inicials: les demana
+  const q = await c2.newPage();
+  const errQ = []; q.on('pageerror', e => errQ.push(String(e)));
+  await q.goto(URL_JOC);
+  await q.waitForTimeout(4500);
+  const demana = await q.evaluate(() => !!document.getElementById('rec-ini') && N === 1);
+  await q.fill('#rec-ini', 'xyz'); await q.click('#rec-si');
+  const avis = await q.evaluate(() => document.getElementById('rec-avis').textContent);
+  await q.fill('#rec-ini', 'car'); await q.click('#rec-si');
+  await q.waitForTimeout(200);
+  const r1 = await q.evaluate(() => ({ N, nom: Records.nom(), desat: JSON.parse(localStorage.getItem('rotllana')).n }));
+  diu(demana && /no és a la taula/.test(avis) && r1.N === 58 && r1.nom === 'CAR' && r1.desat === 58,
+    `en un navegador nou demana les inicials i continua pel nivell que diu la taula (CAR, 57 fets: nivell ${r1.N})`);
+  // un navegador amb les inicials ja posades, però més endarrere: ho ofereix
+  const q2 = await c2.newPage();
+  await q2.goto(URL_JOC);
+  await q2.evaluate(() => { localStorage.setItem('jugador', 'CAR'); localStorage.setItem('rotllana', JSON.stringify({ n: 4, monedes: 12, obertes: [], extres: [] })); });
+  await q2.reload();
+  await q2.waitForTimeout(4500);
+  const ofereix = await q2.evaluate(() => document.getElementById('rec-si') && document.getElementById('rec-si').textContent);
+  await q2.click('#rec-si');
+  const r2 = await q2.evaluate(() => ({ N, monedes }));
+  diu(/CONTINUA PEL 58/.test(ofereix || '') && r2.N === 58 && r2.monedes === 30,
+    `si aquí vas més endarrere que a la taula, ofereix continuar (${ofereix})`);
+  errors.push(...errQ);
+  await c2.close();
+}
+
 // a 320 px de pantalla la rotllana i els botons hi caben
 await p.setViewportSize({ width: 320, height: 640 });
 await p.waitForTimeout(300);

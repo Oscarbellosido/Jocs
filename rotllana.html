@@ -1227,7 +1227,57 @@ boto(document.getElementById('pista'),pista);
 }
 Records.pintaMillor(JOC,document.getElementById('best'),N-1);
 requestAnimationFrame(loop);
-Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;recupera()});
+
+// ===== RECUPERAR EL NIVELL D'UN ALTRE LLOC =====
+// El nivell es desa dins de cada navegador: l'ordinador, el mobil, l'app
+// instal·lada i Telegram per dins son llocs diferents. En Carles anava molt
+// endavant i, obrint-la des d'un altre lloc, va tornar a comencar pel 1. Pero
+// la taula de records ja sap fins on ha arribat cadascu: d'alla es recupera.
+const estilBoto='display:inline-block;font:15px monospace;text-decoration:none;border-radius:8px;padding:10px 14px;margin:6px;white-space:nowrap';
+async function recupera(){
+  let llista=null;try{llista=await Records.llista(JOC)}catch(e){}
+  if(!llista||!llista.length||state!=='play')return;
+  const de=n=>llista.find(e=>e.n===n);
+  const nom=Records.nom();
+  if(nom){const e=de(nom);if(e&&e.p>=N)ofereix(e.p,nom);return}
+  if(N<=3)demanaInicials(de);
+}
+function salta(p){
+  comenca(p+1);
+  if(monedes<30)monedes=30;
+  desaTot();updateHUD();Records.pintaMillor(JOC,document.getElementById('best'),N-1);
+  diu('continues pel nivell '+N,'#7dff9b',2);
+}
+function ofereix(p,nom){
+  msg('<div style="color:#8fd16a">JA HI HAVIES JUGAT</div>'+
+    '<small>A la taula, '+nom+' té '+p+' nivells fets, i aquí vas pel '+N+'.</small>'+
+    '<div style="margin-top:10px"><a href="#" id="rec-si" style="'+estilBoto+';color:#fff;background:#2d6a3e;border:1px solid #8fd16a">CONTINUA PEL '+(p+1)+'</a>'+
+    '<a href="#" id="rec-no" style="'+estilBoto+';color:#aaa;background:#111;border:1px solid #555">ARA NO</a></div>');
+  document.getElementById('rec-si').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg();salta(p)});
+  document.getElementById('rec-no').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg()});
+}
+function demanaInicials(de){
+  msg('<div style="color:#8fd16a">JA HI HAVIES JUGAT?</div>'+
+    '<small>Si hi jugaves en un altre mòbil o navegador, escriu les teves inicials i continues on ho vas deixar.</small>'+
+    '<div style="margin-top:10px"><input id="rec-ini" maxlength="3" autocomplete="off" style="width:90px;height:auto;font:bold 24px monospace;text-align:center;text-transform:uppercase;background:#111;color:#ff0;border:1px solid #666;border-radius:6px;padding:6px"></div>'+
+    '<div id="rec-avis" style="font-size:12px;color:#ffb0a0;min-height:16px;margin-top:6px"></div>'+
+    '<div><a href="#" id="rec-si" style="'+estilBoto+';color:#fff;background:#2d6a3e;border:1px solid #8fd16a">CONTINUA</a>'+
+    '<a href="#" id="rec-no" style="'+estilBoto+';color:#aaa;background:#111;border:1px solid #555">SÓC NOU</a></div>');
+  const camp=document.getElementById('rec-ini');
+  // les lletres que s'escriuen aqui no han d'anar a la rotllana
+  camp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')prova()});
+  camp.addEventListener('click',e=>e.stopPropagation());
+  const prova=()=>{
+    const n=(camp.value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
+    const e=n&&de(n);
+    if(!e){document.getElementById('rec-avis').textContent=n?n+' no és a la taula de la Rotllana':'escriu les teves inicials';return}
+    try{localStorage.setItem('jugador',n)}catch(er){}
+    hideMsg();salta(e.p);
+  };
+  document.getElementById('rec-si').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();prova()});
+  document.getElementById('rec-no').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg()});
+}
 </script>
 </body>
 </html>

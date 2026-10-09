@@ -656,6 +656,12 @@ Coses que no s'han de desfer sense entendre-les:
   que sigui a cops de pista o perquè les altres l'han anat creuant.
 - **La rotllana es pot girar (BARREJA), però mentre gira no es pot fer res
   de nou**: el gir mou les lletres i el dit les buscaria on ja no són.
+- **El nivell es recupera de la taula de rècords** (`recupera`). Es desa dins
+  de cada navegador, i l'ordinador, el mòbil, l'app instal·lada i Telegram
+  per dins són llocs diferents: en Carles anava molt endavant i, obrint-la
+  des d'un altre lloc, va tornar al nivell 1. Ara, en entrar, si la taula diu
+  que les teves inicials tenen més nivells fets, ofereix CONTINUA PEL N; i en
+  un navegador nou (sense inicials, als tres primers nivells) les demana.
 
 ## El Síndria: com funciona la física
 
