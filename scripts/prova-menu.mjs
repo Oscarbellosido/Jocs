@@ -53,6 +53,8 @@ for (const fitxer of jocs) {
       else if (typeof gameOver === 'function') gameOver();
       // La Rotllana no s'acaba mai: el quadre surt en acabar cada nivell
       else if (typeof finalNivell === 'function') finalNivell(3);
+      // El Temple comenca amb el menu del joc: s'hi entra i es perd
+      else if (typeof novaPartida === 'function' && typeof fiPartida === 'function') { novaPartida(); fiPartida(); }
       null;
     }).catch(() => {});
     await p.waitForTimeout(900);

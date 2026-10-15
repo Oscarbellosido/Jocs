@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i deu que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i onze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,11 +40,12 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I deu que no són de saló
+### I onze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
+| `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
 | `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
 | `sindria.html` | Síndria (de l'estil del *Suika Game*) | 2021 |
@@ -60,12 +61,13 @@ al final de la fila trencaria la línia del temps. Per això la portada va parti
 en dos apartats, cadascun amb el seu títol i la seva graella:
 
 - `#classics` — **CLÀSSICS DELS SALONS 1972 — 1984**, per ordre d'any.
-- `#moderns` — **FORA DELS SALONS, de la tele i del mòbil**, també per ordre d'any.
+- `#moderns` — **FORA DELS SALONS, de la tele, l'ordinador i el mòbil**, també per ordre d'any.
 
 El que separa els dos apartats **no és l'any, és si era una màquina de saló**.
 L'apartat de sota es deia «MODERNS del mòbil» mentre només hi havia jocs de
 mòbil; amb el Xifres, que és del 1972 i de la televisió, aquell nom ja era
-mentida. L'identificador de la graella segueix essent `moderns` perquè no es
+mentida. Amb el Temple, que és d'ordinador, s'hi va afegir «l'ordinador».
+L'identificador de la graella segueix essent `moderns` perquè no es
 trenqui res, però el que hi surt escrit és el que mana.
 
 El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
@@ -663,6 +665,68 @@ Coses que no s'han de desfer sense entendre-les:
   que les teves inicials tenen més nivells fets, ofereix CONTINUA PEL N; i en
   un navegador nou (sense inicials, als tres primers nivells) les demana.
 
+## El Temple: aventura per caselles
+
+En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
+Jones o el Prince of Persia. El Prince of Persia (1989, de l'Apple II) és el
+pare del gènere i el Temple n'és **inspirat**: sales que es veuen d'una en
+una, trampes, reixes que s'obren amb una placa, terra que cau, i un explorador
+amb barret i fuet que no és ningú en concret. De l'Indiana Jones només n'hi ha
+l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
+
+- **El temple és una sola graella** (`MAPA`, 50 × 12 caselles), i cada sala
+  en fa 10 × 3. Passar d'una sala a l'altra és anar a la casella del costat: no
+  hi ha cap costura entre sales que es pugui descosir. Les sales sense res
+  (tot `#`) no compten ni surten al mapa.
+- **Tot va per caselles, com al Prince of Persia**: un pas, un salt o una
+  enfilada fan sempre el mateix. Al mòbil no hi ha manera de fer un salt
+  «just» amb el dit; així el que has de pensar és cap on, no si t'ha sortit
+  bé. Les regles són les funcions `mou*` (entre `==REGLES==` i `==FI
+  REGLES==`), i les fa servir tant el joc com la prova.
+  - **SALTA** passa forats de fins a **dues** caselles i aterra a la primera
+    rajola bona (les punxes no ho són). Amb una casella de carrerilla arriba
+    una mica més lluny, però mai més de dues de forat.
+  - **▲** t'enfila a un replà si tens un forat a sobre i el replà al costat.
+  - **Caure un pis no fa res, dos pisos treu un cor, tres o més mata.**
+    **▼** a la vora et fa baixar penjat i compta un pis menys: és la manera de
+    baixar dos pisos sense fer-te mal.
+  - **Caminant seguit et pares a la vora d'un forat**; per baixar-hi has de
+    tornar a prémer. Al mòbil, sense això, et quedaves amb el dit a la fletxa
+    i queies a cada clot.
+  - **FUET**: primer fa fora la serp que tens davant (fins a dues caselles),
+    si no, trenca la paret esquerdada del costat, i si no, si hi ha una anella
+    al sostre a una o dues caselles, hi passes penjat. Les anelles són per als
+    forats de tres, que no es poden saltar.
+- **Les pedres amb lletres (`T`, textos a `TEXTOS`) són el tutorial**: diuen
+  què fa cada botó just abans del primer lloc on cal. Ningú no llegeix les
+  instruccions abans de jugar.
+- **En perdre un cor, uns segons sense que et puguin fer res** (`IMUNE`) i
+  parpelleges; la serp a més t'empeny una casella enrere. **En perdre una
+  vida** tornes a la primera casella segura de la sala on vas entrar
+  (`cp`), amb els cors plens i dos segons d'immunitat.
+- **El temple s'ensorra** quan agafes l'ídol: 150 segons (`ENSORRA`) per
+  tornar a la porta. El camí de tornada és nou: una torre per on s'enfila, i
+  una reixa a dalt de tot que **s'obre des de dins** i fa de drecera fins a
+  les primeres sales. El pilot automàtic hi tarda 16 segons; una persona que
+  no ha vist mai la torre, molt més, i per això n'hi ha tants. Si s'acaba el
+  temps, perds una vida i tornes on era l'ídol amb el temps sencer.
+- **La partida es desa** a cada sala nova (`temple-partida`), com a La
+  Impremta: tornant al menú a mig temple no es perd res.
+- **El mapa de sota només ensenya les sales que ja has vist**, amb els
+  tresors que hi queden. Les parets esquerdades hi surten com les altres: són
+  secrets.
+
+Punts: tresor 100, gemma 300, serp 50, sala nova 25, l'ídol 2.000, i en
+sortir 1.000 més 500 per vida i 10 per segon de marge. Qui ho agafa tot sense
+morir fa uns 8.300.
+
+**Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
+l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
+més important, **que des de cap lloc on puguis arribar no et quedis tancat per
+sempre** (amb el terra que cau ja caigut i tot obert). Les trampes que es
+desfan soles (el terra que cau) no poden ser mai l'únic camí de tornada. I
+dos pilots automàtics l'han d'acabar: un que va de dret i un que ho agafa tot.
+
 ## El Síndria: com funciona la física
 
 És l'únic joc amb física de debò, i té dues decisions que no s'han de desfer
@@ -1003,6 +1067,12 @@ comproven el comportament.
   poden fer amb la rotllana i sense bases repetides; que siguin iguals a tots
   els mòbils; i que es jugui lliscant el dit, amb extres, pista, barreja,
   nivell acabat apuntat a la taula i tot desat en tornar-hi.
+- `node scripts/prova-temple.mjs` — que el temple es pugui acabar i no tingui
+  racons on quedar-te tancat, que dos pilots automàtics surtin amb l'ídol, i
+  que les caigudes, les punxes, les serps, el terra que cau, les portes, les
+  reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
+  continuï, que els punts vagin a la taula i que els sis botons càpiguen a
+  320 px.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

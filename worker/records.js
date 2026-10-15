@@ -65,6 +65,7 @@ const JOCS = {
   impremta:      999999999,
   gofra:             99999,   // les estrelles acumulades de totes les gofres del dia
   rotllana:          99999,   // el nivell mes alt que has acabat
+  temple:            99999,
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
@@ -121,6 +122,7 @@ const FITXA = {
   impremta:        ['La Impremta',     'a la Impremta',      'impremta.html'],
   gofra:           ['La Gofra',        'a la Gofra',         'gofra.html'],
   rotllana:        ['La Rotllana',     'a la Rotllana',      'rotllana.html'],
+  temple:          ['El Temple',       'al Temple',          'temple.html'],
 };
 
 const cors = {
