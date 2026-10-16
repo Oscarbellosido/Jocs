@@ -763,6 +763,15 @@ que **et ve de cara**: per sobreviure has de pujar al replà i deixar-la passar
 per sota (el pilot automàtic ho fa buscant una casella fora del camí de la
 roca).
 
+**La fletxa de la sortida** (`calculaGuia`): mentre tot s'ensorra, una
+fletxa verda a dalt de la sala (i ◀ ▶ ▲ ▼ al costat del compte enrere) diu cap
+a quina sala has de tirar. En Carles va agafar la màscara i va tornar pel
+camí d'anada fins a una reixa que només s'obria de l'altra banda, i es
+pensava que s'havia quedat tancat. El camí es busca amb les regles del joc,
+fent veure que les reixes i les portes són obertes. I **les reixes amb temps
+tenen placa a totes dues bandes**: davant d'una reixa no t'has de quedar mai
+sense res a fer.
+
 **El punt de control** (`temple-control`): en arribar a un nivell que no és
 el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
 Si hi perds totes les vides, el quadre del final ofereix TORNA A LES

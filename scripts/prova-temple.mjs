@@ -78,8 +78,13 @@ window.pilot=function(opts={}){
   const serpPropera=()=>[...serps,...ratpenats,...esquelets].find(s=>s.viu&&s.y===J.y&&Math.abs(s.x-J.x)<3.2&&Math.floor(s.x/RC)===Math.floor(J.x/RC)&&Math.floor(s.y/RF)===Math.floor(J.y/RF));
   const segurPunxes=(x,y,dur)=>{if(cel(x,y)!=='^')return true;for(let t=0;t<=dur;t+=.05)if(punxes(x,rellotge+t)>0)return false;return true};
   const fes=(mv)=>{
+    // abans de posar els peus a terra que cau, que no hi hagi cap bestiola a prop
+    // (a sobre no s'hi pot esperar: cau)
+    if(cel(mv.x,mv.y)==='~'||cel(J.x+mv.dir,J.y)==='~')
+      for(let k=0;k<600;k++){const b=[...serps,...ratpenats,...esquelets].find(b=>b.viu&&b.y===J.y&&Math.abs(b.x-J.x)<6&&salaDe(Math.round(b.x),b.y)===salaDe(J.x,J.y));
+        if(!b)break;if(Math.abs(b.x-J.x)<2.3){accio('fuet',b.x>J.x?1:-1);espera();pas(22)}else pas(3)}
     // serps: fora
-    for(let k=0;k<400;k++){const s=serpPropera();if(!s)break;
+    for(let k=0;k<400&&cel(J.x,J.y)!=='~';k++){const s=serpPropera();if(!s)break;
       const dir=s.x>J.x?1:-1;
       if(Math.abs(s.x-J.x)<2.3){accio('fuet',dir);espera();pas(22);if(!s.viu)break;continue}
       pas(3);}
@@ -101,9 +106,13 @@ window.pilot=function(opts={}){
     espera();
   };
   let iter=0,morts=0;
-  const habilita=(x,y)=>cel(x,y)==='k'||((cel(x,y)==='o'||cel(x,y)==='q')&&hiHaReixa(x,y))||(cel(x,y)==='R'&&hiHaRoca(x,y));
+  // una placa de reixa amb temps, com a molt tres vegades: si no, s'hi
+  // queda donant voltes (l'obre, es torna a tancar, hi torna...)
+  const trepitjades={};
+  const habilita=(x,y)=>cel(x,y)==='k'||(cel(x,y)==='o'&&hiHaReixa(x,y))||(cel(x,y)==='q'&&hiHaReixa(x,y)&&(trepitjades[x+','+y]||0)<3)||(cel(x,y)==='R'&&hiHaRoca(x,y));
   while(estat==='joc'&&iter<3000){iter++;
     if(J.mort){espera();morts++;continue}
+    if(cel(J.x,J.y)==='q'){const k=J.x+','+J.y;if(trepitjades.ara!==k){trepitjades[k]=(trepitjades[k]||0)+1;trepitjades.ara=k}}else trepitjades.ara='';
     // si hi ha una roca rodolant, s'aparta del seu camí i s'espera que passi
     if(roques.length){
       const perill=new Set();for(const r of roques)for(let i=Math.max(0,r.i-1);i<r.p.length;i++)perill.add(r.p[i].join(','));
@@ -419,7 +428,7 @@ diu(!e.mort && e.x === 29, `corrent i saltant el clot, te n'escapes (a ${e.x},${
 // ---------- les coses noves del santuari ----------
 // fletxes: dempeus et fan mal; ajupit, et passen per sobre
 await posa(35, 2, -1, 2);
-await p.evaluate(() => { for (let i = 0; i < 60 * 3 && cors === maxCors; i++) actualitza(1 / 60); });
+await p.evaluate(() => { for (let i = 0; i < 60 * 6 && cors === maxCors; i++) actualitza(1 / 60); });
 e = await estat();
 diu(e.cors === 2, `una fletxa de la paret et treu un cor si et quedes dret (${e.cors} de 3)`);
 await posa(35, 2, -1, 2);
@@ -484,6 +493,16 @@ await p.evaluate(() => { manual = true; comencaNivell(NIVELLS.length - 1); idol 
 await confirma();
 diu(await p.evaluate(() => estat === 'fi' && !localStorage.getItem('temple-control')), 'acabant-ho tot, el punt de control s\'esborra');
 await p.evaluate(() => { manual = false; });
+
+// la fletxa de la sortida: en agafar el tresor, assenyala el camí de tornada
+// (a les catacumbes, cap a la torre de l'esquerra, i no pel camí d'anada)
+for (const [nv, esperat] of [[0, { dy: -1 }], [1, { dx: -1, dy: 0 }], [2, { dx: 1, dy: 0 }]]) {
+  const gd = await p.evaluate(nv => { manual = true; novaPartida(nv); J = nouJugador(IDOL.x, IDOL.y, 1); arriba(); for (let i = 0; i < 40; i++) actualitza(1 / 60); return { guia, nom: NV.nom }; }, nv);
+  diu(gd.guia && Object.entries(esperat).every(([k, v]) => gd.guia[k] === v), `${gd.nom}: amb el tresor a la mà, una fletxa diu cap on és la sortida ${JSON.stringify(gd.guia)}`);
+}
+// i des de la reixa on es va quedar en Carles, també
+const gC = await p.evaluate(() => { manual = true; novaPartida(1); J = nouJugador(40, 10, -1); idol = true; ensorra = 50; guiaT = 0; for (let i = 0; i < 40; i++) actualitza(1 / 60); return guia; });
+diu(gC && gC.dx === -1, `des de la reixa de les catacumbes, la fletxa diu que la sortida és enrere, cap a l'esquerra ${JSON.stringify(gC)}`);
 
 // ---------- 4. desar i continuar ----------
 await confirma();

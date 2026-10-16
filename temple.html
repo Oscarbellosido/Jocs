@@ -133,7 +133,7 @@ const NIVELLS=[
 }},
 {nom:'LES CATACUMBES',a:'A LES CATACUMBES',tresor:'LA MÀSCARA DE JADE',idol:3000,ensorra:120,mapa:[
 '##########│##########│#O #######│##########│##########',
-'##########│##    _$__│___R___  _│_T_ _S__|_│__~~___ $#',
+'##########│##    _$__│___R___  _│_T_ _S__|q│__~~___ $#',
 '#E@T___ __│_T__B_####│#######__#│###q######│##^^### ##',
 
 '## o_|__##│##########│##########│#k__B_ ###│###### _##',
@@ -145,7 +145,7 @@ const NIVELLS=[
 '##_____ ##│##########│#*%__#####│######+###│####### ##',
 
 '# ______##│##########│##########│##########│##### __##',
-'#_________│__S__I_^__│_TB_~~____│__^_  _^__│_|_B__q__#',
+'#_________│__S__I_^__│_TB_~~____│__^_  _^__│q|_B__q__#',
 '##########│##########│####  ####│####S_####│##########',
 ],textos:{
   '3,2':"Les catacumbes. Al fons hi ha la màscara de jade... i coses que encara no has vist.",
@@ -159,7 +159,7 @@ const NIVELLS=[
 '# #^^#####│##__######│######^###│>_______T_│__ __T@E##',
 
 '#_______ <│#k_ ######│##########│##########│##___|_o #',
-'########__│____K_____│__ __B_|__│_D__ a _ #│### _____<',
+'########__│____K_____│__ __B_|q_│_D__ a _ #│### _____<',
 '##########│##########│##q#######│####^^^# #│###__B__ #',
 
 '##########│#######_ #│##########│####### _#│### _____#',
@@ -543,7 +543,7 @@ function arriba(){
   else if(t==='H'){posa(x,y,'_');maxCors++;cors=maxCors;so.pocio();diu('POCIÓ GRAN: UN COR MÉS PER SEMPRE!',2.6)}
   else if(t==='I'){
     posa(x,y,'_');idol=true;ensorra=ENSORRA;suma(NV.idol);so.idol();sacseig=.6;
-    diu(NV.tresor+"! TOT S'ENSORRA: CORRE CAP A LA SORTIDA!",4);
+    diu(NV.tresor+"! TOT S'ENSORRA: CORRE CAP A LA SORTIDA! SEGUEIX LA FLETXA VERDA.",4.5);guiaT=0;
     cp={x,y,dir:J.dir};desaPartida();
   }
   else if(t==='o')obreReixes(x,y);
@@ -733,6 +733,9 @@ function actualitza(dt){
   }
   if(J.mort||estat!=='joc')return;
 
+  // la fletxa de la sortida, mentre tot s'ensorra
+  if(idol){guiaT-=dt;if(guiaT<=0&&!J.mov){guia=calculaGuia();guiaT=.5}}else guia=null;
+
   // a quina sala ets
   const sala=Math.floor(((J.fx+.5)*CW)/SW)+','+Math.floor((J.fy*CH+CH-LLOSA-1)/SH);
   if(sala!==salaAra){salaAra=sala;if(!J.mov)entraSala()}
@@ -817,6 +820,52 @@ function resultatRepte(){
   const guanyes=punts>REPTE.p,empat=punts===REPTE.p;
   return '<small style="color:'+(guanyes?'#7dff9b':empat?'#ffe08a':'#ff9b8a')+'">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts<br>'+
     (guanyes?'L\'HAS GUANYAT!':empat?'EMPAT!':'T\'HA GUANYAT')+'</small>';
+}
+
+// ===== LA FLETXA DE LA SORTIDA =====
+// Quan tot s'ensorra no saps cap on has d'anar: en Carles va agafar la
+// mascara i va tornar pel cami d'anada, fins a una reixa que nomes s'obre de
+// l'altra banda. Ara una fletxa diu cap a quina sala has de tirar. Es busca
+// el cami amb les mateixes regles del joc, fent veure que les reixes i les
+// portes son obertes (pel cami ja hi ha la placa o la clau).
+let guia=null,guiaT=0;
+function calculaGuia(){
+  if(!SORTIDA||!J)return null;
+  const vell=MON;MON=MON.map(t=>t==='|'?'/':t==='D'?'d':t);
+  const k0=J.x+','+J.y,ve={[k0]:''},cua=[[J.x,J.y]],fi=SORTIDA.x+','+SORTIDA.y;
+  let trobat=false;
+  for(let i=0;i<cua.length&&!trobat;i++){
+    const[x,y]=cua[i];
+    for(const d of[-1,1])for(const f of[mouCamina,mouEnfila,mouBaixa,mouSalta,mouPenja]){
+      const m=f(x,y,d);if(!m||m.cau>=3)continue;
+      const k=m.x+','+m.y;if(k in ve)continue;
+      ve[k]=x+','+y;cua.push([m.x,m.y]);if(k===fi){trobat=true;break}
+    }
+  }
+  MON=vell;
+  if(!trobat)return null;
+  const cami=[];for(let k=fi;k;k=ve[k])cami.unshift(k.split(',').map(Number));
+  const s0=salaDe(J.x,J.y);
+  for(const[x,y]of cami)if(salaDe(x,y)!==s0)
+    return{dx:Math.sign(Math.floor(x/RC)-Math.floor(J.x/RC)),dy:Math.sign(Math.floor(y/RF)-Math.floor(J.y/RF))};
+  return{porta:true};
+}
+function dibuixaGuia(sx,sy){
+  if(!idol||!guia||J.mort)return;
+  const a=.8+.2*Math.sin(rellotge*7),bat=Math.sin(rellotge*7)*4;
+  let x,y,ang;
+  // a dalt de la sala, que a mitja alçada la tapava el ninot
+  if(guia.porta){x=(SORTIDA.x-sx*RC+.5)*CW;y=(SORTIDA.y-sy*RF)*CH+8;ang=Math.PI/2}
+  else{x=SW/2+guia.dx*(SW/2-34)+guia.dx*bat;y=guia.dy?SH/2+guia.dy*(SH/2-34)+guia.dy*bat:76;ang=Math.atan2(guia.dy,guia.dx)}
+  g.save();g.globalAlpha=a;g.translate(x,y);
+  g.save();g.rotate(ang);g.scale(1.35,1.35);
+  g.fillStyle='#7dff9b';g.strokeStyle='#0a2a12';g.lineWidth=3;
+  g.beginPath();g.moveTo(20,0);g.lineTo(-4,-16);g.lineTo(-4,-7);g.lineTo(-18,-7);g.lineTo(-18,7);g.lineTo(-4,7);g.lineTo(-4,16);g.closePath();
+  g.stroke();g.fill();g.restore();
+  g.font='bold 11px monospace';g.textAlign='center';g.fillStyle='#7dff9b';
+  const ty=guia.porta?-16:guia.dy>0?-30:34;
+  g.strokeStyle='#000';g.lineWidth=3;g.strokeText('SORTIDA',0,ty);g.fillText('SORTIDA',0,ty);
+  g.restore();
 }
 
 // ===== FINAL =====
@@ -1160,6 +1209,7 @@ function dibuixa(){
   for(const r of runes){g.fillStyle=r.llosa?COL.llosa:COL.pedra;
     if(r.llosa){g.fillRect(r.x-ox,r.y-oy,CW-8,LLOSA-2)}else g.fillRect(r.x-ox,r.y-oy,4,4)}
   dibuixaJugador(ox,oy);
+  dibuixaGuia(sx,sy);
   for(const p of pols){g.fillStyle='rgba(180,150,110,.7)';g.fillRect(p.x,p.y,2,2)}
   // l'avis de dalt
   if(avisT>0&&avis){
@@ -1187,7 +1237,8 @@ function dibuixaBarra(){
   g.fillText('TRESORS '+tresors+'/'+TOTAL_TRESORS,x,y+18);
   g.textAlign='right';
   if(idol){g.fillStyle=ensorra<20&&Math.floor(rellotge*4)%2?'#fff':'#ff5a3a';g.font='bold 14px monospace';
-    g.fillText('SURT! '+Math.ceil(ensorra),W-10,y+19)}
+    const fl=!guia?'':guia.porta?' ▼':guia.dy<0?' ▲':guia.dy>0?' ▼':guia.dx<0?' ◀':' ▶';
+    g.fillText('SURT!'+fl+' '+Math.ceil(ensorra),W-10,y+19)}
   else{g.fillStyle='#888';g.fillText('SALES '+visitades.size+'/'+SALES_N,W-10,y+18)}
 }
 // el mapa: nomes les sales que ja has vist
