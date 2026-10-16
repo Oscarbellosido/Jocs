@@ -721,7 +721,7 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-**Tres nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
+**Quatre nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
 acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
@@ -763,14 +763,25 @@ que **et ve de cara**: per sobreviure has de pujar al replà i deixar-la passar
 per sota (el pilot automàtic ho fa buscant una casella fora del camí de la
 roca).
 
-**La fletxa de la sortida** (`calculaGuia`): mentre tot s'ensorra, una
-fletxa verda a dalt de la sala (i ◀ ▶ ▲ ▼ al costat del compte enrere) diu cap
-a quina sala has de tirar. En Carles va agafar la màscara i va tornar pel
-camí d'anada fins a una reixa que només s'obria de l'altra banda, i es
-pensava que s'havia quedat tancat. El camí es busca amb les regles del joc,
-fent veure que les reixes i les portes són obertes. I **les reixes amb temps
-tenen placa a totes dues bandes**: davant d'una reixa no t'has de quedar mai
-sense res a fer.
+**No hi ha cap fletxa que digui on és la sortida.** N'hi va haver una
+(en Carles va tornar pel camí d'anada fins a una reixa que només s'obria de
+l'altra banda i es pensava que s'havia quedat tancat), però després la va
+voler treure: trobar la sortida forma part del joc. El que sí que s'hi va
+quedar: **les reixes amb temps tenen placa a totes dues bandes**, que davant
+d'una reixa no et quedis mai sense res a fer.
+
+**Les Profunditats**, el quart (20 sales, l'ull de maragda, 130 segons per
+sortir), **a les fosques** (`fosc:true`): només s'hi veu al teu voltant, a les
+torxes, a la porta, al tresor i a les boques de les fletxes quan van a
+disparar (`dibuixaFoscor`). I una cosa nova:
+
+- **Aranyes** (`X`): baixen del sostre per un fil i tornen a pujar
+  (`CICLE_ARANYA`, 2,8 segons, 1,2 a dalt). Et piquen si ets a la seva casella
+  quan han baixat, saltis o no. El FUET només les fa fora quan baixen (75).
+
+El pilot automàtic hi necessita uns 46 segons per sortir amb el tresor (s'ha
+d'esperar a les aranyes, als ratpenats i a les fletxes de la torre), i per
+això el temps és més llarg que al tercer, no més curt.
 
 **Cada nivell es reconeix**: en començar-lo (o en continuar-lo) surt uns
 segons un rètol gran al mig, NIVELL 2 DE 3 · LES CATACUMBES, i el nom del
@@ -789,10 +800,10 @@ tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
 demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
 hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
-Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, sala nova
-25, l'ídol 2.000 (la màscara 3.000, la corona 4.000), i en sortir de cada nivell 1.000 més 500 per vida i
+Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, aranya 75,
+sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000), i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
-uns 26.000 amb els tres.
+uns 36.000 amb els quatre.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el

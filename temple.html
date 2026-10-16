@@ -100,6 +100,10 @@ const so={
 };
 
 const PERIODE_FLETXA=2.6;      // cada quant dispara una paret de fletxes
+const CICLE_ARANYA=2.8;        // l'aranya: 1,2 s a dalt, baixa, 0,8 s a baix, puja
+// com de baixa es l'aranya (0 al sostre, 1 a terra)
+function baixada(a,t){const f=((t+a.fase)%CICLE_ARANYA+CICLE_ARANYA)%CICLE_ARANYA;
+  return f<1.2?0:f<1.6?(f-1.2)/.4:f<2.4?1:1-(f-2.4)/.4}
 
 // ===== ELS NIVELLS =====
 // Cada nivell es un temple sencer, amb el seu tresor al fons. El segon fa
@@ -183,6 +187,30 @@ const NIVELLS=[
   '28,1':"Un esquelet guardià. Et busca, i calen dos cops de FUET per desfer-lo.",
   '19,7':"Si una roca et ve de cara, enfila't i deixa-la passar per sota.",
 }},
+{nom:'LES PROFUNDITATS',a:'A LES PROFUNDITATS',
+ // pedra fosca, morada, i foc verd; i a les fosques
+ colors:{fons:'#0e0b14',ratlla:'#1a1524',pedra:'#4a4058',pedra2:'#3b3347',junta:'#241d2e',llum:'#8a7ea0',llosa:'#8c82a2',llosa2:'#5a5070',
+   foc:'120,255,150',flama:'#30d060',flama2:'#d0ffd8'},
+ fosc:true,tresor:"L'ULL DE MARAGDA",idol:5000,ensorra:130,mapa:[
+'##########│##########│##########│#O #######│##########',
+'##########│##### _$##│##### ____│___R_X_  _│__K____ $#',
+'#E@T___ __│_T_X___X__│__^______<│#######__#│####### ##',
+
+'## o_|__##│##########│##########│#k__X_ ###│###### _##',
+'##__X__ ##│#$_ _D_K__│__ a _X___│_q|____q__│___b ____#',
+'## _____<#│### ######│##^^^#####│##########│###_*#####',
+
+'##_____ ##│##__ #####│# _#######│##########│##########',
+'## __X__##│>___ _X___│__R______O│__K_^__K__│__X_~~_ $#',
+'##_____ ##│##########│##########│##########│####^^# ##',
+
+'# __X___##│##########│##########│##########│##### __##',
+'#_________│__K_I___X_│_ ###### _│__~~_X__B_│q|____q__<',
+'##########│##########│>__K_^___<│##  ######│##########',
+],textos:{
+  '3,2':"Les profunditats. Aquí s'hi veu molt poc: la llum és la teva i la de les torxes. Al fons hi ha l'ull de maragda.",
+  '11,2':"Aranyes! Baixen del sostre i tornen a pujar. Passa quan siguin a dalt, o fes-les fora amb el FUET quan baixin.",
+}},
 ];
 
 // ===================================================================
@@ -205,6 +233,8 @@ const NIVELLS=[
 // i des del tercer:
 //   'K' esquelet guardia (dos cops de fuet)
 //   '<' '>' paret que dispara fletxes cap a on mira
+// i des del quart:
+//   'X' aranya que baixa del sostre i torna a pujar
 const RC=10,RF=3;
 let MAPA,SX,SY;
 let MW,MH,MON,BASE;
@@ -285,19 +315,20 @@ function camiRoca(x,y,dir){
 // ==FI REGLES==
 // ===================================================================
 
-let nivell=0,NV,INICI,SERPS0,RATS0,ESQ0,TIRADORS,SORTIDA,IDOL,COMENCA,TOTAL_TRESORS,SALES_N,TEXTOS,ENSORRA;
+let nivell=0,NV,INICI,SERPS0,RATS0,ESQ0,ARAN0,TIRADORS,SORTIDA,IDOL,COMENCA,TOTAL_TRESORS,SALES_N,TEXTOS,ENSORRA;
 function carregaNivell(n){
   nivell=n;NV=NIVELLS[n];MAPA=NV.mapa;TEXTOS=NV.textos;ENSORRA=NV.ensorra;
   carregaMapa();SX=MW/RC;SY=MH/RF;
   if(typeof COL!=='undefined')Object.assign(COL,NV.colors);
   INICI=BASE.slice();             // el mon de sortida, sense bestioles ni tu
-  SERPS0=[];RATS0=[];ESQ0=[];TIRADORS=[];SORTIDA=IDOL=COMENCA=null;TOTAL_TRESORS=0;
+  SERPS0=[];RATS0=[];ESQ0=[];ARAN0=[];TIRADORS=[];SORTIDA=IDOL=COMENCA=null;TOTAL_TRESORS=0;
   const sales=new Set();
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
     const i=y*MW+x,t=INICI[i];
     if(t==='S'){SERPS0.push({id:SERPS0.length,x,y});INICI[i]='_'}
     if(t==='B'||t==='b'){RATS0.push({id:RATS0.length,x,y});INICI[i]=t==='B'?'_':' '}
     if(t==='K'){ESQ0.push({id:ESQ0.length,x,y});INICI[i]='_'}
+    if(t==='X'){ARAN0.push({id:ARAN0.length,x,y,fase:(x*.71+y*.37)%CICLE_ARANYA});INICI[i]='_'}
     if(t==='<'||t==='>')TIRADORS.push({x,y,dir:t==='>'?1:-1,fase:(x*.53+y*.31)%PERIODE_FLETXA,ultim:-1});
     if(t==='@'){COMENCA={x,y};INICI[i]='_'}
     if(t==='E')SORTIDA={x,y};
@@ -310,7 +341,7 @@ function carregaNivell(n){
 carregaNivell(0);
 
 // ===== PUNTS =====
-const PUNTS={tresor:100,gemma:300,serp:50,ratpenat:75,esquelet:100,sala:25,surt:1000,vida:500,segon:10};
+const PUNTS={tresor:100,gemma:300,serp:50,ratpenat:75,esquelet:100,aranya:75,sala:25,surt:1000,vida:500,segon:10};
 const TEMPS_REIXA=4;           // segons que una placa 'q' deixa la reixa oberta
 const IMUNE=1.6;               // segons que no et poden tornar a fer mal
 
@@ -321,7 +352,7 @@ const JOC='temple';
 let estat='menu',paused=false,manual=false;
 let J=null;                    // tu
 let punts=0,vides=3,cors=3,maxCors=3,claus=0,idol=false,ensorra=0,tresors=0,temps=0;
-let visitades=new Set(),serps=[],ratpenats=[],esquelets=[],fletxes=[],roques=[],caients=[],runes=[],obertes={},reixesTemps={},cp=null,salaAra='';
+let visitades=new Set(),serps=[],ratpenats=[],esquelets=[],aranyes=[],fletxes=[],roques=[],caients=[],runes=[],obertes={},reixesTemps={},cp=null,salaAra='';
 let avis='',avisT=0,rellotge=0,sacseig=0,pols=[],fuetVis=null,mortT=0,teclaFresca={esq:false,dre:false};
 let ordre=null,ordreT=0,girT=0;
 const tecles={esq:false,dre:false};
@@ -367,8 +398,9 @@ function tornaAlControl(){
   punts=q.punts||0;vides=3;maxCors=q.maxCors||3;temps=0;
   comencaNivell(q.nivell);
 }
-function posaBestioles(mortes,ratsMorts,esqMorts=[]){
-  const sm=new Set(mortes),rm=new Set(ratsMorts),em=new Set(esqMorts);
+function posaBestioles(mortes,ratsMorts,esqMorts=[],aranMortes=[]){
+  const sm=new Set(mortes),rm=new Set(ratsMorts),em=new Set(esqMorts),am=new Set(aranMortes);
+  aranyes=ARAN0.map(a=>({id:a.id,x:a.x,y:a.y,fase:a.fase,viu:!am.has(a.id)}));
   esquelets=ESQ0.map(e=>({id:e.id,x:e.x,y:e.y,dir:-1,viu:!em.has(e.id),vida:2,atordit:0,t:Math.random()*3}));
   serps=SERPS0.map(s=>({id:s.id,x:s.x,y:s.y,dir:-1,viu:!sm.has(s.id),t:Math.random()*3}));
   ratpenats=RATS0.map(r=>({id:r.id,x:r.x,y:r.y,dir:1,viu:!rm.has(r.id),t:Math.random()*3}));
@@ -384,7 +416,7 @@ function desaPartida(){
   const mon=MON.map((t,i)=>reixesTemps[i]!==undefined?'|':t).join('');
   try{localStorage.setItem(CLAU_PARTIDA,JSON.stringify({v:1,nivell,mon,cp,punts,vides,cors,maxCors,claus,idol,
     ensorra,tresors,temps,visitades:[...visitades],mortes:serps.filter(s=>!s.viu).map(s=>s.id),
-    ratsMorts:ratpenats.filter(r=>!r.viu).map(r=>r.id),esqMorts:esquelets.filter(e=>!e.viu).map(e=>e.id)}))}catch(e){}
+    ratsMorts:ratpenats.filter(r=>!r.viu).map(r=>r.id),esqMorts:esquelets.filter(e=>!e.viu).map(e=>e.id),aranMortes:aranyes.filter(a=>!a.viu).map(a=>a.id)}))}catch(e){}
 }
 function partidaDesada(){
   try{const q=JSON.parse(localStorage.getItem(CLAU_PARTIDA)||'null');
@@ -400,7 +432,7 @@ function continuaPartida(){
   ({punts,vides,cors,maxCors,claus,idol,ensorra,tresors,temps}=q);
   visitades=new Set(q.visitades);caients=[];runes=[];obertes={};reixesTemps={};roques=[];pols=[];
   for(let i=0;i<MON.length;i++)if(MON[i]==='/')obertes[i]=1;
-  posaBestioles(q.mortes||[],q.ratsMorts||[],q.esqMorts||[]);fletxes=[];
+  posaBestioles(q.mortes||[],q.ratsMorts||[],q.esqMorts||[],q.aranMortes||[]);fletxes=[];
   cp=q.cp;J=nouJugador(cp.x,cp.y,cp.dir);J.imune=IMUNE;
   cors=Math.max(1,cors);
   salaAra='';estat='joc';hideMsg();actualitzaHUD();entraSala();presentaT=3.4;
@@ -502,6 +534,8 @@ function fuetada(dir){
     }
     return true;
   }
+  const ar=aranyes.find(a=>davant(a)&&baixada(a,rellotge)>.3);
+  if(ar){ar.viu=false;ar.mortT=.5;so.mata();suma(PUNTS.aranya);fuetVis={x:ar.x,y:ar.y,t:.3};return true}
   const r=ratpenats.find(davant);
   if(r){r.viu=false;r.mortT=.5;so.mata();suma(PUNTS.ratpenat);fuetVis={x:r.x,y:r.y,t:.3};return true}
   // despres una paret esquerdada
@@ -552,7 +586,7 @@ function arriba(){
   else if(t==='H'){posa(x,y,'_');maxCors++;cors=maxCors;so.pocio();diu('POCIÓ GRAN: UN COR MÉS PER SEMPRE!',2.6)}
   else if(t==='I'){
     posa(x,y,'_');idol=true;ensorra=ENSORRA;suma(NV.idol);so.idol();sacseig=.6;
-    diu(NV.tresor+"! TOT S'ENSORRA: CORRE CAP A LA SORTIDA! SEGUEIX LA FLETXA VERDA.",4.5);guiaT=0;
+    diu(NV.tresor+"! TOT S'ENSORRA: CORRE CAP A LA SORTIDA!",4);
     cp={x,y,dir:J.dir};desaPartida();
   }
   else if(t==='o')obreReixes(x,y);
@@ -658,7 +692,7 @@ function actualitza(dt){
     }
     if(!J.mort&&J.imune<=0&&Math.abs(r.x-J.fx)<.7&&Math.abs(r.y-J.fy)<.7)mor("LA ROCA T'HA AIXAFAT!");
     // i les bestioles que troba pel cami, tambe
-    for(const b of[...serps,...esquelets])if(b.viu&&b.y===Math.round(r.y)&&Math.abs(b.x-r.x)<.7){b.viu=false;b.mortT=.5}
+    for(const b of[...serps,...esquelets,...aranyes])if(b.viu&&b.y===Math.round(r.y)&&Math.abs(b.x-r.x)<.7){b.viu=false;b.mortT=.5}
   }
   roques=roques.filter(r=>!r.fet);
 
@@ -698,6 +732,7 @@ function actualitza(dt){
   }
   fletxes=fletxes.filter(d=>!d.fet);
 
+  for(const a of aranyes)if(!a.viu&&a.mortT>0)a.mortT-=dt;
   // els ratpenats volen per la seva filera, per sobre dels forats
   for(const r of ratpenats){
     if(!r.viu){if(r.mortT>0)r.mortT-=dt;continue}
@@ -743,9 +778,6 @@ function actualitza(dt){
   }
   if(J.mort||estat!=='joc')return;
 
-  // la fletxa de la sortida, mentre tot s'ensorra
-  if(idol){guiaT-=dt;if(guiaT<=0&&!J.mov){guia=calculaGuia();guiaT=.5}}else guia=null;
-
   // a quina sala ets
   const sala=Math.floor(((J.fx+.5)*CW)/SW)+','+Math.floor((J.fy*CH+CH-LLOSA-1)/SH);
   if(sala!==salaAra){salaAra=sala;if(!J.mov)entraSala()}
@@ -765,6 +797,8 @@ function actualitza(dt){
       if(J.imune<=0){so.serp();fesMal(1,s.x>J.fx?-1:1);s.dir=s.x>J.fx?1:-1}
     }
   }
+  // l'aranya et pica si ets a la seva casella quan ha baixat
+  for(const a of aranyes)if(a.viu&&a.y===Math.round(J.fy)&&Math.abs(a.x-J.fx)<.55&&baixada(a,rellotge)>.6&&J.imune<=0){so.serp();fesMal(1)}
   if(aTerra)for(const k of esquelets)if(k.viu&&k.y===J.y&&Math.abs(k.x-J.fx)<.6&&k.atordit<=0){
     if(J.imune<=0){so.os();fesMal(1,k.x>J.fx?-1:1);k.atordit=.7;k.dir=k.x>J.fx?1:-1}
   }
@@ -830,52 +864,6 @@ function resultatRepte(){
   const guanyes=punts>REPTE.p,empat=punts===REPTE.p;
   return '<small style="color:'+(guanyes?'#7dff9b':empat?'#ffe08a':'#ff9b8a')+'">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts<br>'+
     (guanyes?'L\'HAS GUANYAT!':empat?'EMPAT!':'T\'HA GUANYAT')+'</small>';
-}
-
-// ===== LA FLETXA DE LA SORTIDA =====
-// Quan tot s'ensorra no saps cap on has d'anar: en Carles va agafar la
-// mascara i va tornar pel cami d'anada, fins a una reixa que nomes s'obre de
-// l'altra banda. Ara una fletxa diu cap a quina sala has de tirar. Es busca
-// el cami amb les mateixes regles del joc, fent veure que les reixes i les
-// portes son obertes (pel cami ja hi ha la placa o la clau).
-let guia=null,guiaT=0;
-function calculaGuia(){
-  if(!SORTIDA||!J)return null;
-  const vell=MON;MON=MON.map(t=>t==='|'?'/':t==='D'?'d':t);
-  const k0=J.x+','+J.y,ve={[k0]:''},cua=[[J.x,J.y]],fi=SORTIDA.x+','+SORTIDA.y;
-  let trobat=false;
-  for(let i=0;i<cua.length&&!trobat;i++){
-    const[x,y]=cua[i];
-    for(const d of[-1,1])for(const f of[mouCamina,mouEnfila,mouBaixa,mouSalta,mouPenja]){
-      const m=f(x,y,d);if(!m||m.cau>=3)continue;
-      const k=m.x+','+m.y;if(k in ve)continue;
-      ve[k]=x+','+y;cua.push([m.x,m.y]);if(k===fi){trobat=true;break}
-    }
-  }
-  MON=vell;
-  if(!trobat)return null;
-  const cami=[];for(let k=fi;k;k=ve[k])cami.unshift(k.split(',').map(Number));
-  const s0=salaDe(J.x,J.y);
-  for(const[x,y]of cami)if(salaDe(x,y)!==s0)
-    return{dx:Math.sign(Math.floor(x/RC)-Math.floor(J.x/RC)),dy:Math.sign(Math.floor(y/RF)-Math.floor(J.y/RF))};
-  return{porta:true};
-}
-function dibuixaGuia(sx,sy){
-  if(!idol||!guia||J.mort)return;
-  const a=.8+.2*Math.sin(rellotge*7),bat=Math.sin(rellotge*7)*4;
-  let x,y,ang;
-  // a dalt de la sala, que a mitja alçada la tapava el ninot
-  if(guia.porta){x=(SORTIDA.x-sx*RC+.5)*CW;y=(SORTIDA.y-sy*RF)*CH+8;ang=Math.PI/2}
-  else{x=SW/2+guia.dx*(SW/2-34)+guia.dx*bat;y=guia.dy?SH/2+guia.dy*(SH/2-34)+guia.dy*bat:76;ang=Math.atan2(guia.dy,guia.dx)}
-  g.save();g.globalAlpha=a;g.translate(x,y);
-  g.save();g.rotate(ang);g.scale(1.35,1.35);
-  g.fillStyle='#7dff9b';g.strokeStyle='#0a2a12';g.lineWidth=3;
-  g.beginPath();g.moveTo(20,0);g.lineTo(-4,-16);g.lineTo(-4,-7);g.lineTo(-18,-7);g.lineTo(-18,7);g.lineTo(-4,7);g.lineTo(-4,16);g.closePath();
-  g.stroke();g.fill();g.restore();
-  g.font='bold 11px monospace';g.textAlign='center';g.fillStyle='#7dff9b';
-  const ty=guia.porta?-16:guia.dy>0?-30:34;
-  g.strokeStyle='#000';g.lineWidth=3;g.strokeText('SORTIDA',0,ty);g.fillText('SORTIDA',0,ty);
-  g.restore();
 }
 
 // ===== FINAL =====
@@ -1069,7 +1057,12 @@ function dibuixaCasella(x,y,px,py){
     g.fillStyle='#5a4a3a';g.fillRect(cx-12,by-14,24,14);g.fillStyle='#7a6a52';g.fillRect(cx-12,by-14,24,3);
     const gl=g.createRadialGradient(cx,by-34,2,cx,by-34,30);gl.addColorStop(0,'rgba(255,220,100,'+(.35+bri*.25)+')');gl.addColorStop(1,'rgba(255,220,100,0)');
     g.fillStyle=gl;g.fillRect(cx-30,by-64,60,60);
-    if(nivell===2){
+    if(nivell===3){
+      // l'ull de maragda
+      g.fillStyle='#2ad070';g.beginPath();g.moveTo(cx-13,by-32);g.quadraticCurveTo(cx,by-48,cx+13,by-32);g.quadraticCurveTo(cx,by-16,cx-13,by-32);g.fill();
+      g.fillStyle='#0a4a24';g.beginPath();g.arc(cx,by-32,5,0,7);g.fill();
+      g.fillStyle='#c8ffe0';g.fillRect(cx-3,by-36,2,2);
+    }else if(nivell===2){
       // la corona del sol
       g.fillStyle=COL.or;g.fillRect(cx-11,by-30,22,10);
       g.beginPath();g.moveTo(cx-11,by-30);g.lineTo(cx-11,by-42);g.lineTo(cx-5,by-34);g.lineTo(cx,by-46);g.lineTo(cx+5,by-34);g.lineTo(cx+11,by-42);g.lineTo(cx+11,by-30);g.fill();
@@ -1108,6 +1101,37 @@ function dibuixaEsquelet(k,ox,oy){
   g.fillStyle='#200';g.fillRect(px+d*2-2,py-49,3,3);g.fillRect(px+d*2+(d>0?-5:3),py-49,3,3);
   g.fillRect(px-3,py-43,6,1);
   if(k.vida<2){g.strokeStyle='#a00';g.lineWidth=1;g.beginPath();g.moveTo(px-4,py-52);g.lineTo(px+1,py-46);g.stroke()}
+}
+function dibuixaAranya(a,ox,oy){
+  const px=(a.x+.5)*CW-ox,top=a.y*CH-oy+2;
+  if(!a.viu){if(a.mortT>0){g.globalAlpha=a.mortT*2;g.fillStyle='#222';g.beginPath();g.arc(px,top+CH-LLOSA-8-(.5-a.mortT)*-20,6,0,7);g.fill();g.globalAlpha=1}return}
+  const b=baixada(a,rellotge),py=top+10+b*(CH-LLOSA-38);
+  g.strokeStyle='rgba(220,220,220,.6)';g.lineWidth=1;g.beginPath();g.moveTo(px,top);g.lineTo(px,py-6);g.stroke();
+  g.strokeStyle='#1a1a1a';g.lineWidth=2;
+  for(let i=0;i<4;i++){const ly=py-3+i*3,cama=Math.sin(rellotge*12+i)*2;
+    g.beginPath();g.moveTo(px-4,ly);g.lineTo(px-12,ly-4+cama);g.lineTo(px-15,ly+4);g.stroke();
+    g.beginPath();g.moveTo(px+4,ly);g.lineTo(px+12,ly-4-cama);g.lineTo(px+15,ly+4);g.stroke()}
+  g.fillStyle='#1c1c1c';g.beginPath();g.ellipse(px,py+2,7,8,0,0,7);g.fill();
+  g.beginPath();g.arc(px,py-6,4.5,0,7);g.fill();
+  g.fillStyle='#e02020';g.fillRect(px-2,py,4,5);
+  g.fillStyle='#ff4040';g.fillRect(px-3,py-7,2,2);g.fillRect(px+1,py-7,2,2);
+}
+// a les profunditats no s'hi veu: nomes al teu voltant, a les torxes i a la porta
+const fosc=document.createElement('canvas');fosc.width=SW;fosc.height=SH;const fg=fosc.getContext('2d');
+function dibuixaFoscor(sx,sy,ox,oy){
+  if(!NV.fosc)return;
+  fg.globalCompositeOperation='source-over';fg.clearRect(0,0,SW,SH);
+  fg.fillStyle='rgba(0,0,0,.94)';fg.fillRect(0,0,SW,SH);
+  fg.globalCompositeOperation='destination-out';
+  const llum=(x,y,r)=>{const gr=fg.createRadialGradient(x,y,r*.3,x,y,r);gr.addColorStop(0,'rgba(0,0,0,1)');gr.addColorStop(1,'rgba(0,0,0,0)');fg.fillStyle=gr;fg.fillRect(x-r,y-r,2*r,2*r)};
+  llum((J.fx+.5)*CW-ox,J.fy*CH+CH-LLOSA-36-oy,150+Math.sin(rellotge*9)*4);
+  for(let r=0;r<RF;r++)for(let c=0;c<RC;c++){
+    const x=sx*RC+c,y=sy*RF+r,t=cel(x,y),px=c*CW+CW/2,py=r*CH;
+    if((t===' '||t==='_')&&(x*7+y*13)%11===0&&!paret(x,y-1))llum(px,py+30,80);
+    if(t==='E'||t==='I')llum(px,py+CH/2,60);
+    if(t==='<'||t==='>'){const f=TIRADORS.find(f=>f.x===x&&f.y===y);if(f&&PERIODE_FLETXA-((rellotge+f.fase)%PERIODE_FLETXA)<.5)llum(px,py+CH-LLOSA-42,40)}
+  }
+  g.drawImage(fosc,0,0);
 }
 function dibuixaRatpenat(r,ox,oy){
   const px=(r.x+.5)*CW-ox,py=r.y*CH+34+Math.sin(r.t*5)*6-oy;
@@ -1212,6 +1236,7 @@ function dibuixa(){
   for(const s of serps)if(Math.floor(s.x/RC)===sx&&Math.floor(s.y/RF)===sy)dibuixaSerp(s,ox,oy);
   for(const r of ratpenats)if(Math.floor(r.x/RC)===sx&&Math.floor(r.y/RF)===sy)dibuixaRatpenat(r,ox,oy);
   for(const k of esquelets)if(Math.floor(k.x/RC)===sx&&Math.floor(k.y/RF)===sy)dibuixaEsquelet(k,ox,oy);
+  for(const a of aranyes)if(Math.floor(a.x/RC)===sx&&Math.floor(a.y/RF)===sy)dibuixaAranya(a,ox,oy);
   for(const d of fletxes){const fx=(d.x+.5)*CW-ox,fy=d.y*CH+CH-LLOSA-42-oy;
     g.strokeStyle='#d8c8a0';g.lineWidth=2;g.beginPath();g.moveTo(fx-d.dir*14,fy);g.lineTo(fx,fy);g.stroke();
     g.fillStyle='#ccc';g.beginPath();g.moveTo(fx+d.dir*6,fy);g.lineTo(fx,fy-3);g.lineTo(fx,fy+3);g.fill();
@@ -1220,7 +1245,7 @@ function dibuixa(){
   for(const r of runes){g.fillStyle=r.llosa?COL.llosa:COL.pedra;
     if(r.llosa){g.fillRect(r.x-ox,r.y-oy,CW-8,LLOSA-2)}else g.fillRect(r.x-ox,r.y-oy,4,4)}
   dibuixaJugador(ox,oy);
-  dibuixaGuia(sx,sy);
+  dibuixaFoscor(sx,sy,ox,oy);
   dibuixaPresentacio();
   for(const p of pols){g.fillStyle='rgba(180,150,110,.7)';g.fillRect(p.x,p.y,2,2)}
   // l'avis de dalt
@@ -1249,8 +1274,7 @@ function dibuixaBarra(){
   g.fillText('TRESORS '+tresors+'/'+TOTAL_TRESORS,x,y+18);
   g.textAlign='right';
   if(idol){g.fillStyle=ensorra<20&&Math.floor(rellotge*4)%2?'#fff':'#ff5a3a';g.font='bold 14px monospace';
-    const fl=!guia?'':guia.porta?' ▼':guia.dy<0?' ▲':guia.dy>0?' ▼':guia.dx<0?' ◀':' ▶';
-    g.fillText('SURT!'+fl+' '+Math.ceil(ensorra),W-10,y+19)}
+    g.fillText('SURT! '+Math.ceil(ensorra),W-10,y+19)}
   else{g.fillStyle='#888';g.fillText('SALES '+visitades.size+'/'+SALES_N,W-10,y+18)}
 }
 // el mapa: nomes les sales que ja has vist

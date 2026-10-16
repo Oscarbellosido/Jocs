@@ -94,6 +94,18 @@ window.pilot=function(opts={}){
     // i abans de ficar-se a una filera amb fletxes, que no n'hi hagi cap de camí
     for(let k=0;k<300;k++){const ve=fletxes.find(d=>d.y===mv.y&&Math.abs(d.x-mv.x)<4.5);if(!ve)break;
       if(!mouBaixa(J.x,J.y,J.dir)&&J.ajup<.15&&fletxaVe())accio('baixa');pas()}
+    // abans de canviar de filera (enfilar-se, saltar a una altra), que a la de
+    // destinació no hi hagi cap ratpenat a prop ni cap fletxa a punt de sortir
+    if(mv.y!==J.y||mv.a==='enfila')for(let k=0;k<900;k++){
+      const sala=salaDe(mv.x,mv.y),fila=mv.y;
+      const rat=ratpenats.some(r=>r.viu&&r.y===fila&&Math.abs(r.x-mv.x)<1.6&&salaDe(Math.round(r.x),r.y)===sala);
+      const tir=TIRADORS.some(f=>f.y===fila&&salaDe(f.x,f.y)===sala&&PERIODE_FLETXA-((rellotge+f.fase)%PERIODE_FLETXA)<1)||fletxes.some(d=>d.y===fila&&(mv.x-d.x)*d.dir>-.5);
+      if(!rat&&!tir)break;pas();
+    }
+    // aranyes: no passar per la seva casella mentre baixen
+    const xs=[];for(let x=Math.min(J.x,mv.x);x<=Math.max(J.x,mv.x);x++)xs.push(x);
+    const aranyaLliure=()=>aranyes.every(a=>!a.viu||!(a.y===J.y||a.y===mv.y)||!xs.includes(a.x)||(a.x===J.x&&a.y===J.y)||[0,.15,.3,.45,.6,.75].every(t=>baixada(a,rellotge+t)<.5));
+    for(let k=0;k<600&&!aranyaLliure();k++)pas();
     // punxes: on aniras i on ets
     const cells=[[mv.x,mv.y]];if(mv.a==='camina')cells.push([J.x+mv.dir,J.y]);
     for(let k=0;k<600;k++){if(cells.every(([x,y])=>segurPunxes(x,y,.75))&&segurPunxes(J.x,J.y,.3))break;pas()}
@@ -220,9 +232,9 @@ await p.evaluate(() => carregaNivell(0));
 
 // ---------- 2. el pilot ----------
 // Primer cada nivell per separat, i després la partida sencera de cap a cap.
-for (const [nv, tot] of [[0, false], [0, true], [1, false], [1, true], [2, false], [2, true]]) {
+for (const [nv, tot] of [[0, false], [0, true], [1, false], [1, true], [2, false], [2, true], [3, false], [3, true]]) {
   const r = await p.evaluate(([nv, tot]) => { manual = true; novaPartida(nv); return Object.assign(pilot({ tot }), { nom: NV.nom, ens: ENSORRA }); }, [nv, tot]);
-  const fi = nv < 2 ? 'entre' : 'fi';
+  const fi = nv < 3 ? 'entre' : 'fi';
   diu(r.estat === fi && r.morts === 0 && !r.log.length,
     `${r.nom}: el pilot ${tot ? 'que ho agafa tot' : 'que va de dret'} surt amb el tresor: ${r.punts} punts, ${r.temps} s de joc, ` +
     `${r.tresors} tresors, li sobren ${r.ensorra} s de ${r.ens}` + (r.log.length ? ' — ' + r.log : '') + (r.morts ? ` (${r.morts} morts)` : ''));
@@ -239,13 +251,15 @@ const sencera = await p.evaluate(() => {
   const r2 = pilot({ tot: true });
   document.getElementById('m-seg').click();
   const r3 = pilot({ tot: true });
-  return { r1, abans, enNivell2, r2, r3 };
+  document.getElementById('m-seg').click();
+  const r4 = pilot({ tot: true });
+  return { r1, abans, enNivell2, r2, r3, r4 };
 });
 diu(sencera.r1.estat === 'entre' && /BAIXA-HI/.test(sencera.abans.msg) && /LES CATACUMBES/.test(sencera.abans.msg),
   'en sortir del primer temple, et convida a baixar a les catacumbes');
 diu(sencera.enNivell2.nivell === 1 && sencera.enNivell2.punts === sencera.abans.punts && sencera.enNivell2.vides === sencera.abans.vides && sencera.enNivell2.estat === 'joc',
   `i hi baixes amb els punts (${sencera.abans.punts}) i les vides que portaves`);
-diu(sencera.r2.estat === 'entre' && sencera.r3.estat === 'fi' && sencera.r3.punts > 25000, `la partida sencera, els tres nivells agafant-ho tot: ${sencera.r3.punts} punts`);
+diu(sencera.r2.estat === 'entre' && sencera.r3.estat === 'entre' && sencera.r4.estat === 'fi' && sencera.r4.punts > 35000, `la partida sencera, els quatre nivells agafant-ho tot: ${sencera.r4.punts} punts ` + JSON.stringify([sencera.r2, sencera.r3, sencera.r4].map(r => [r.estat, r.punts, r.vides, r.morts, r.log])));
 await confirma();
 diu(enviats.length >= 1 && enviats.at(-1).punts > 0, `en sortir, els punts van a la taula (${enviats.map(e => e.punts).join(', ')})`);
 diu(await p.evaluate(() => !localStorage.getItem('temple-partida')), 'en acabar, la partida desada s\'esborra');
@@ -458,6 +472,38 @@ await p.evaluate(() => { const k = esquelets.find(k => k.y === 1 && k.x > 20 && 
 await corre(1);
 diu(await p.evaluate(() => esquelets.find(k => k.y === 1 && k.x > 20 && k.x < 30).x < 25), "si et veu a la seva filera, ve cap a tu");
 
+// ---------- les coses noves de les profunditats ----------
+// l'aranya: a dalt no fa res; quan baixa, et pica; i quan baixa, el FUET la fa fora
+await posa(13, 2, 1, 3);
+const ar = await p.evaluate(() => {
+  const a = aranyes.find(a => a.x === 13 && a.y === 2);
+  rellotge = (CICLE_ARANYA - a.fase + .3) % CICLE_ARANYA; J.imune = 0; cors = maxCors;   // a dalt de tot
+  actualitza(1 / 60); const dalt = cors;
+  rellotge = (CICLE_ARANYA - a.fase + 2.0) % CICLE_ARANYA;               // a baix
+  actualitza(1 / 60); const baix = cors;
+  return { dalt, baix };
+});
+diu(ar.dalt === 3 && ar.baix === 2, `l'aranya, a dalt no et toca i quan baixa et pica (${ar.dalt} → ${ar.baix} cors)`);
+await posa(11, 2, 1, 3);
+const ar2 = await p.evaluate(() => {
+  const a = aranyes.find(a => a.x === 13 && a.y === 2);
+  rellotge = (CICLE_ARANYA - a.fase + .3) % CICLE_ARANYA; accio('fuet', 1); for (let i = 0; i < 25; i++) actualitza(1 / 60);
+  const viuDalt = a.viu;
+  rellotge = (CICLE_ARANYA - a.fase + 2.0) % CICLE_ARANYA; const p0 = punts; accio('fuet', 1); for (let i = 0; i < 25; i++) actualitza(1 / 60);
+  return { viuDalt, viu: a.viu, guany: punts - p0 };
+});
+diu(ar2.viuDalt && !ar2.viu && ar2.guany === 75, "a dalt el FUET no hi arriba; quan baixa, la fa fora (+75)");
+// a les fosques: lluny teu no es veu res, i al teu voltant sí
+const llum = await p.evaluate(() => {
+  manual = true; novaPartida(3); J = nouJugador(11, 2, 1); salaAra = '1,0'; presentaT = 0; avisT = 0; dibuixa();
+  const px = (x, y) => { const d = g.getImageData(x, y, 1, 1).data; return d[0] + d[1] + d[2]; };
+  const lluny = px(380, 40), aprop = px(Math.round((J.fx - 10 + .5) * CW + 40), Math.round(J.fy % 3 * CH + CH - LLOSA + 2));   // el terra del costat
+  novaPartida(0); J = nouJugador(14, 2, 1); salaAra = '1,0'; presentaT = 0; dibuixa();
+  const llumPrimer = px(380, 40);
+  return { lluny, aprop, llumPrimer };
+});
+diu(llum.lluny < 30 && llum.aprop > 60 && llum.llumPrimer > llum.lluny, `a les profunditats, lluny teu tot és fosc i al teu voltant s'hi veu (${llum.lluny} / ${llum.aprop})`);
+
 // el pont sobre la fossa: si cau, no hi ha fons
 await posa(24, 10, 1, 1);                            // a sobre del pont que cau
 await p.evaluate(() => arriba());
@@ -493,16 +539,6 @@ await p.evaluate(() => { manual = true; comencaNivell(NIVELLS.length - 1); idol 
 await confirma();
 diu(await p.evaluate(() => estat === 'fi' && !localStorage.getItem('temple-control')), 'acabant-ho tot, el punt de control s\'esborra');
 await p.evaluate(() => { manual = false; });
-
-// la fletxa de la sortida: en agafar el tresor, assenyala el camí de tornada
-// (a les catacumbes, cap a la torre de l'esquerra, i no pel camí d'anada)
-for (const [nv, esperat] of [[0, { dy: -1 }], [1, { dx: -1, dy: 0 }], [2, { dx: 1, dy: 0 }]]) {
-  const gd = await p.evaluate(nv => { manual = true; novaPartida(nv); J = nouJugador(IDOL.x, IDOL.y, 1); arriba(); for (let i = 0; i < 40; i++) actualitza(1 / 60); return { guia, nom: NV.nom }; }, nv);
-  diu(gd.guia && Object.entries(esperat).every(([k, v]) => gd.guia[k] === v), `${gd.nom}: amb el tresor a la mà, una fletxa diu cap on és la sortida ${JSON.stringify(gd.guia)}`);
-}
-// i des de la reixa on es va quedar en Carles, també
-const gC = await p.evaluate(() => { manual = true; novaPartida(1); J = nouJugador(40, 10, -1); idol = true; ensorra = 50; guiaT = 0; for (let i = 0; i < 40; i++) actualitza(1 / 60); return guia; });
-diu(gC && gC.dx === -1, `des de la reixa de les catacumbes, la fletxa diu que la sortida és enrere, cap a l'esquerra ${JSON.stringify(gC)}`);
 
 // ---------- 4. desar i continuar ----------
 await confirma();
