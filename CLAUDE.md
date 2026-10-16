@@ -721,7 +721,7 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-**Dos nivells** (`NIVELLS`), i en sortir del primer es baixa al segon amb els
+**Tres nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
 acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
@@ -744,6 +744,25 @@ tot no té fons i mata (`aguanta` no compta la paret de fora del mapa). El pont
 de sobre és de terra que cau, de dues caselles: si cau, el forat encara es
 pot saltar, que si no reapareixeries a l'altra banda sense poder passar.
 
+**El Santuari**, el tercer (20 sales, la corona del sol, 100 segons per
+sortir, comences mirant a l'esquerra: `dir:-1`), en porta dues més, perquè en
+Carles el va voler «encara més difícil»:
+
+- **Parets de fletxes** (`<` i `>`, fan de paret i disparen cap a on miren):
+  cada 2,6 segons (`PERIODE_FLETXA`), cadascuna amb el seu ritme, i la boca
+  s'encén mig segon abans. La fletxa va a l'alçada del cap i **s'ajupint-te
+  (▼ quan no hi ha res per baixar) et passa per sobre**. Només disparen les
+  de la sala on ets, i la fletxa desapareix en sortir de la sala. Compte a on
+  es posen: a tocar d'una vora, ▼ et fa baixar penjat i no t'ajups.
+- **Esquelets guardians** (`K`): patrullen com les serps però, si et veuen a
+  la seva filera, venen cap a tu. **Dos cops de FUET**: el primer els fa
+  trontollar i recular mitja casella, el segon els desfà (100).
+
+I les roques maten les bestioles que troben pel camí. Al santuari n'hi ha una
+que **et ve de cara**: per sobreviure has de pujar al replà i deixar-la passar
+per sota (el pilot automàtic ho fa buscant una casella fora del camí de la
+roca).
+
 **El punt de control** (`temple-control`): en arribar a un nivell que no és
 el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
 Si hi perds totes les vides, el quadre del final ofereix TORNA A LES
@@ -753,10 +772,10 @@ tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
 demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
 hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
-Punts: tresor 100, gemma 300, serp 50, ratpenat 75, sala nova 25, l'ídol
-2.000 (la màscara 3.000), i en sortir de cada nivell 1.000 més 500 per vida i
+Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, sala nova
+25, l'ídol 2.000 (la màscara 3.000, la corona 4.000), i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
-16.700 amb tots dos.
+uns 26.000 amb els tres.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
