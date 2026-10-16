@@ -932,11 +932,27 @@ function menu(){
     // si no hi ha cap partida a mig fer però ja havies arribat a un nivell
     // de més avall, pots tornar-hi sense refer els d'abans
     (ctl?bt('m-ctl','TORNA '+NIVELLS[ctl.nivell].a,'#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">amb els '+xifra(ctl.punts)+' punts que hi portaves en entrar-hi</small>':'')+
-    bt('m-nova',q||ctl?'COMENÇA DE NOU':'ENTRA AL TEMPLE','#ffd75a','#a08a3a'));
-  const c=document.getElementById('m-cont'),n=document.getElementById('m-nova'),n2=document.getElementById('m-ctl');
+    // Si no tens res a mig fer, el boto gros es entrar. Si en tens, el de
+    // tornar a comencar queda petit a sota de tot, i pregunta abans: en
+    // Carles portava un parell de nivells i el podia tocar sense voler.
+    (q||ctl?'<a href="#" id="m-zero" style="display:block;margin-top:18px;font:12px monospace;color:#888;text-decoration:underline">començar des del primer nivell</a>'
+      :bt('m-nova','ENTRA AL TEMPLE','#ffd75a','#a08a3a')));
+  const c=document.getElementById('m-cont'),n=document.getElementById('m-nova'),n2=document.getElementById('m-ctl'),z=document.getElementById('m-zero');
   if(n2)n2.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();tornaAlControl()});
   if(c)c.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();continuaPartida()});
-  n.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();novaPartida()});
+  if(n)n.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();novaPartida()});
+  if(z)z.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();
+    // sense partida a mig fer no es perd res (el punt de control es queda)
+    if(q)preguntaZero(q);else novaPartida()});
+}
+function preguntaZero(q){
+  const estil='display:block;font:15px monospace;text-decoration:none;border-radius:8px;padding:11px 14px;margin:10px auto 0;max-width:260px';
+  msg('<div style="color:#ffb05a">SEGUR QUE VOLS TORNAR A COMENÇAR?</div>'+
+    '<small>Perdràs la partida que portes: '+NIVELLS[q.nivell||0].nom.toLowerCase()+', amb '+xifra(q.punts)+' punts.</small>'+
+    '<a href="#" id="z-no" style="'+estil+';color:#7dff9b;background:#111;border:1px solid #3a8a4a">NO, TORNA ENRERE</a>'+
+    '<a href="#" id="z-si" style="display:block;margin-top:22px;font:12px monospace;color:#ffb05a;text-decoration:underline">sí, des del primer nivell</a>');
+  document.getElementById('z-no').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();menu()});
+  document.getElementById('z-si').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();novaPartida()});
 }
 function msg(h){const m=document.getElementById('msg');m.innerHTML=h;m.style.display='block'}
 function hideMsg(){document.getElementById('msg').style.display='none'}

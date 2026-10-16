@@ -791,6 +791,15 @@ al temple, grisa i blavosa amb foc blau a les catacumbes, vermellosa de
 terracota al santuari. En Carles ho va demanar. El fons de cada sala es desa
 per nivell (`fonsCache`), que si no es veurien els colors de l'anterior.
 
+**Tornar a començar és petit i pregunta.** Si tens una partida a mig fer (o
+un punt de control), el menú no ensenya cap botó gros de COMENÇA DE NOU: el
+gros és CONTINUA (o TORNA A...), i a sota de tot hi ha un text petit,
+«començar des del primer nivell». Si hi ha partida a mig fer, abans pregunta
+(SEGUR?, amb el nivell i els punts que perdries, i NO, TORNA ENRERE com a
+botó gros). En Carles portava un parell de nivells i el podia tocar sense
+voler. Sense partida a mig fer no pregunta: no es perd res, el punt de
+control es queda.
+
 **El punt de control** (`temple-control`): en arribar a un nivell que no és
 el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
 Si hi perds totes les vides, el quadre del final ofereix TORNA A LES

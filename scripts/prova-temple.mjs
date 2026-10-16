@@ -556,6 +556,18 @@ if (hiHa) {
     'i continues on eres, amb els punts, la clau i el que ja havies agafat');
 }
 
+// començar de nou, amb una partida a mig fer: petit i preguntant
+await p.evaluate(() => { manual = true; novaPartida(2); punts = 21000; desaPartida(); manual = false; menu(); });
+diu(!await p.$('#m-nova') && !!await p.$('#m-zero') && !!await p.$('#m-cont'),
+  'amb una partida a mig fer, el botó gros és CONTINUA, i començar de nou és un text petit a sota');
+await p.click('#m-zero');
+diu(await p.evaluate(() => /SEGUR QUE VOLS TORNAR A COMENÇAR/.test(document.getElementById('msg').textContent) && /21\.000 punts/.test(document.getElementById('msg').textContent)),
+  'tocant-lo, pregunta abans i diu què perdries');
+await p.click('#z-no');
+diu(await p.evaluate(() => estat === 'menu' && partidaDesada() && partidaDesada().punts === 21000), 'dient que no, tornes al menú i la partida hi és');
+await p.click('#m-zero'); await p.click('#z-si');
+diu(await p.evaluate(() => estat === 'joc' && nivell === 0 && punts === 0), 'i dient que sí, comences des del primer nivell');
+
 // ---------- 5. perdre totes les vides ----------
 enviats.length = 0;
 await p.evaluate(() => { punts = 777; vides = 1; mor(); });
@@ -565,7 +577,7 @@ diu(await p.evaluate(() => estat === 'fi') && enviats.some(e => e.punts === 777)
 diu(!!await p.$('a[data-menu-jocs]'), 'i surt el botó de tornar al menú');
 
 // ---------- 6. els botons, tocant ----------
-await p.evaluate(() => { menu(); }); await p.click('#m-nova');
+await p.evaluate(() => { localStorage.removeItem('temple-control'); esborraPartida(); menu(); }); await p.click('#m-nova');
 await p.tap('#salta'); await p.waitForTimeout(700);
 e = await estat();
 diu(e.x === 4, `tocant SALTA, salta (de 2 a ${e.x})`);
