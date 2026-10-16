@@ -744,8 +744,14 @@ tot no té fons i mata (`aguanta` no compta la paret de fora del mapa). El pont
 de sobre és de terra que cau, de dues caselles: si cau, el forat encara es
 pot saltar, que si no reapareixeries a l'altra banda sense poder passar.
 
-Quan ja hi has arribat un cop, el menú deixa anar directe a les catacumbes
-(`temple-nivell`), començant de zero.
+**El punt de control** (`temple-control`): en arribar a un nivell que no és
+el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
+Si hi perds totes les vides, el quadre del final ofereix TORNA A LES
+CATACUMBES, i el menú també (si no hi ha cap partida a mig fer): tornes a
+començar aquell nivell amb tres vides i **els punts d'entrar-hi, no els que
+tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
+demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
+hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
 Punts: tresor 100, gemma 300, serp 50, ratpenat 75, sala nova 25, l'ídol
 2.000 (la màscara 3.000), i en sortir de cada nivell 1.000 més 500 per vida i

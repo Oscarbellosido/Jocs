@@ -409,8 +409,29 @@ diu(await p.evaluate(() => { const q = partidaDesada(); return q && q.nivell ===
 await p.evaluate(() => { carregaNivell(0); continuaPartida(); });
 const cont = await p.evaluate(() => ({ nivell, x: J.x, punts, nom: NV.nom }));
 diu(cont.nivell === 1 && cont.x === 31 && cont.punts >= 9000, 'i en continuar, tornes a les catacumbes ' + JSON.stringify(cont));
-await p.evaluate(() => { localStorage.setItem('temple-nivell', '1'); esborraPartida(); menu(); });
-diu(!!await p.$('#m-n2'), "quan ja hi has arribat un cop, el menú et deixa anar directe a les catacumbes");
+// el punt de control: si caus a les catacumbes, hi tornes sense refer el primer
+await p.evaluate(() => { localStorage.removeItem('temple-control'); manual = true; novaPartida(0); punts = 8290; maxCors = 4;
+  guanya(); document.getElementById('m-seg').click(); });
+diu(await p.evaluate(() => { const q = JSON.parse(localStorage.getItem('temple-control')); return q.nivell === 1 && q.punts === 8290 + 1000 + 1500 && q.maxCors === 4; }),
+  'en baixar a les catacumbes, es guarda el punt de control amb els punts que hi portes');
+await p.evaluate(() => { punts += 1234; vides = 1; mor(); for (let i = 0; i < 150; i++) actualitza(1 / 60); });
+await confirma();
+await p.waitForTimeout(300);
+diu(!!await p.$('#m-torna') && await p.evaluate(() => /TORNA A LES CATACUMBES/.test(document.getElementById('msg').textContent)),
+  'perdent l\'última vida a les catacumbes, el quadre del final ofereix tornar-hi');
+await p.click('#m-torna');
+let tc = await p.evaluate(() => ({ nivell, punts, vides, maxCors, estat }));
+diu(tc.nivell === 1 && tc.punts === 10790 && tc.vides === 3 && tc.maxCors === 4 && tc.estat === 'joc',
+  `i hi tornes amb els punts d'entrar-hi (no els d'abans de caure), tres vides i els cors que tenies: ${JSON.stringify(tc)}`);
+await p.evaluate(() => { esborraPartida(); menu(); });
+diu(!!await p.$('#m-ctl'), 'i també des del menú, si tornes al joc un altre dia');
+await p.click('#m-ctl');
+tc = await p.evaluate(() => ({ nivell, punts }));
+diu(tc.nivell === 1 && tc.punts === 10790, 'des del menú també tornes a les catacumbes');
+await p.evaluate(() => { manual = true; idol = true; ensorra = 50; J.x = SORTIDA.x + 1; J.fx = J.x; J.y = SORTIDA.y; J.fy = J.y; accio('camina', -1); for (let i = 0; i < 30; i++) actualitza(1 / 60); });
+await confirma();
+diu(await p.evaluate(() => estat === 'fi' && !localStorage.getItem('temple-control')), 'acabant-ho tot, el punt de control s\'esborra');
+await p.evaluate(() => { manual = false; });
 
 // ---------- 4. desar i continuar ----------
 await confirma();

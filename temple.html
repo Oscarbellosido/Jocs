@@ -303,8 +303,27 @@ function comencaNivell(n,mortes=[],ratsMorts=[]){
   salaAra='';avis='';avisT=0;mortT=0;ordre=null;
   estat='joc';hideMsg();actualitzaHUD();entraSala();
   diu(NV.nom,2.4);
-  try{if(n>(+localStorage.getItem('temple-nivell')||0))localStorage.setItem('temple-nivell',n)}catch(e){}
+  desaControl();
   desaPartida();
+}
+// ===== EL PUNT DE CONTROL =====
+// En arribar a un nivell nou, es guarda: si hi perds totes les vides, en
+// tornar-hi comences aquell nivell un altre cop, amb els punts que hi
+// portaves en entrar-hi i tres vides. No cal tornar a fer els d'abans.
+// Els punts no s'acumulen: cada intent torna a partir dels mateixos.
+const CLAU_CONTROL='temple-control';
+function desaControl(){
+  if(nivell>0)try{localStorage.setItem(CLAU_CONTROL,JSON.stringify({nivell,punts,maxCors}))}catch(e){}
+}
+function control(){
+  try{const q=JSON.parse(localStorage.getItem(CLAU_CONTROL)||'null');
+    if(q&&q.nivell>0&&NIVELLS[q.nivell])return q}catch(e){}
+  return null;
+}
+function tornaAlControl(){
+  const q=control();if(!q){novaPartida();return}
+  punts=q.punts||0;vides=3;maxCors=q.maxCors||3;temps=0;
+  comencaNivell(q.nivell);
 }
 function posaBestioles(mortes,ratsMorts){
   const sm=new Set(mortes),rm=new Set(ratsMorts);
@@ -735,11 +754,12 @@ function guanya(){
       '<a href="#" class="bt" id="m-seg" style="color:#7dff9b;background:#111;border:1px solid #3a8a4a">BAIXA-HI ▸</a>');
     // es desa ja al nivell nou, que si tanques aqui no perdis el que portes
     const n=nivell+1,pv={punts,vides,maxCors,temps};
-    const fesSeg=()=>{comencaNivell(n);({punts,vides,maxCors,temps}=pv);cors=maxCors;actualitzaHUD();desaPartida()};
+    const fesSeg=()=>{({punts,vides,maxCors,temps}=pv);comencaNivell(n)};
     document.getElementById('m-seg').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fesSeg()});
     return;
   }
   sortit=true;estat='fi';esborraPartida();
+  try{localStorage.removeItem(CLAU_CONTROL)}catch(e){}     // ja ho has acabat tot
   final(titol,compte);
 }
 function fiPartida(){
@@ -750,9 +770,14 @@ async function final(titol,cos){
   msg(titol+cos+'<div style="color:#888;font-size:12px;margin-top:8px">…</div>');
   const r=await Records.fiPartida(JOC,punts);
   if(estat!=='fi')return;
-  const rp=htmlRepte();
-  msg(titol+cos+resultatRepte()+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+  const rp=htmlRepte(),q=!sortit&&control();
+  // si has caigut en un nivell que no és el primer, pots tornar-hi de seguida
+  const torna=q?'<a href="#" class="bt" id="m-torna" style="color:#7dff9b;background:#111;border:1px solid #3a8a4a">TORNA A '+NIVELLS[q.nivell].nom+' ▸</a>'+
+    '<small style="color:#888;margin-top:2px">amb els '+xifra(q.punts)+' punts que hi portaves en entrar-hi</small>':'';
+  msg(titol+cos+torna+resultatRepte()+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
     '<div style="margin:10px 0">'+r.html+'</div>'+rp.html+Records.peuFinal('o toca per tornar a començar'));
+  const mt=document.getElementById('m-torna');
+  if(mt)mt.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();tornaAlControl()});
   // els enllacos no han de fer tornar a comencar (el quadre escolta el clic)
   document.querySelectorAll('#msg .reptes a').forEach(a=>a.addEventListener('click',e=>e.stopPropagation()));
   const cp=document.getElementById('copia');
@@ -767,21 +792,22 @@ async function final(titol,cos){
 // ===== EL MENU =====
 function menu(){
   estat='menu';
-  const q=partidaDesada();
+  const q=partidaDesada(),ctl=!q&&control();
   const bt=(id,t,c,b)=>'<a href="#" class="bt" id="'+id+'" style="color:'+c+';background:#111;border:1px solid '+b+'">'+t+'</a>';
   msg('<div style="color:#ffd75a;letter-spacing:.2em">EL TEMPLE</div>'+
     (REPTE?'<small style="color:#7dff9b">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts'+(REPTE.s?', i va sortir amb l\'ídol':'')+'. A veure si el superes!</small>':'')+
     '<small>Un temple oblidat, sala rere sala. Al fons hi ha un ídol d\'or: porta\'l fins a la porta per on has entrat.<br>'+
     'Les pedres amb lletres t\'ensenyen el que cal saber.</small>'+
     (q?bt('m-cont','CONTINUA LA PARTIDA','#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">'+NIVELLS[q.nivell||0].nom.toLowerCase()+' · '+xifra(q.punts)+' punts</small>':'')+
-    bt('m-nova',q?'COMENÇA DE NOU':'ENTRA AL TEMPLE','#ffd75a','#a08a3a')+
-    (maxNivell()>0?bt('m-n2','VES DIRECTE A '+NIVELLS[1].nom,'#9fd8ff','#3a6a8a')+'<small style="color:#888;margin-top:2px">comences de zero, amb 0 punts</small>':''));
-  const c=document.getElementById('m-cont'),n=document.getElementById('m-nova'),n2=document.getElementById('m-n2');
-  if(n2)n2.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();novaPartida(1)});
+    // si no hi ha cap partida a mig fer però ja havies arribat a un nivell
+    // de més avall, pots tornar-hi sense refer els d'abans
+    (ctl?bt('m-ctl','TORNA A '+NIVELLS[ctl.nivell].nom,'#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">amb els '+xifra(ctl.punts)+' punts que hi portaves en entrar-hi</small>':'')+
+    bt('m-nova',q||ctl?'COMENÇA DE NOU':'ENTRA AL TEMPLE','#ffd75a','#a08a3a'));
+  const c=document.getElementById('m-cont'),n=document.getElementById('m-nova'),n2=document.getElementById('m-ctl');
+  if(n2)n2.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();tornaAlControl()});
   if(c)c.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();continuaPartida()});
   n.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();novaPartida()});
 }
-function maxNivell(){try{return Math.min(NIVELLS.length-1,+localStorage.getItem('temple-nivell')||0)}catch(e){return 0}}
 function msg(h){const m=document.getElementById('msg');m.innerHTML=h;m.style.display='block'}
 function hideMsg(){document.getElementById('msg').style.display='none'}
 
