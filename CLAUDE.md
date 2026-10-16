@@ -772,6 +772,14 @@ fent veure que les reixes i les portes són obertes. I **les reixes amb temps
 tenen placa a totes dues bandes**: davant d'una reixa no t'has de quedar mai
 sense res a fer.
 
+**Cada nivell es reconeix**: en començar-lo (o en continuar-lo) surt uns
+segons un rètol gran al mig, NIVELL 2 DE 3 · LES CATACUMBES, i el nom del
+nivell queda sempre escrit a sota del mapa. I **cada nivell té els seus
+colors** (`colors` a `NIVELLS`, que es copien a `COL`): pedra de color sorra
+al temple, grisa i blavosa amb foc blau a les catacumbes, vermellosa de
+terracota al santuari. En Carles ho va demanar. El fons de cada sala es desa
+per nivell (`fonsCache`), que si no es veurien els colors de l'anterior.
+
 **El punt de control** (`temple-control`): en arribar a un nivell que no és
 el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
 Si hi perds totes les vides, el quadre del final ofereix TORNA A LES
