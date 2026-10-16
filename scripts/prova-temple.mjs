@@ -192,6 +192,27 @@ for (const tot of [false, true]) {
 diu(enviats.length >= 1 && enviats.at(-1).punts > 0, `en sortir, els punts van a la taula (${enviats.map(e => e.punts).join(', ')})`);
 diu(await p.evaluate(() => !localStorage.getItem('temple-partida')), 'en acabar, la partida desada s\'esborra');
 
+// el repte, com a La Impremta
+const repte = await p.evaluate(() => {
+  const as = [...document.querySelectorAll('#msg .reptes a')];
+  const tg = as.find(a => /t\.me/.test(a.href)), wa = as.find(a => /wa\.me/.test(a.href));
+  return { n: as.length, tg: tg && decodeURIComponent(tg.href), wa: !!wa, copia: !!document.getElementById('copia'), punts };
+});
+diu(repte.n === 3 && repte.wa && repte.copia && repte.tg.includes('#repte=1&n=TST&p=' + repte.punts + '&s=1') && repte.tg.includes("he sortit amb l'ídol"),
+  'al final hi ha REPTA PER TELEGRAM, PER WHATSAPP i COPIA L\'ENLLAÇ, amb els teus punts a l\'enllaç');
+const p2 = await ctx.newPage();
+p2.on('pageerror', e => errors.push(String(e)));
+await p2.goto(URL_JOC + '#repte=1&n=MAR&p=5000&s=1');
+await p2.waitForTimeout(500);
+diu(await p2.evaluate(() => /REPTE DE MAR: 5\.000 punts/.test(document.getElementById('msg').textContent)), 'qui obre l\'enllaç veu a qui ha de superar');
+await p2.evaluate(() => localStorage.setItem('jugador', 'TST'));
+await p2.evaluate(() => { manual = true; novaPartida(); punts = 4000; guanya(); });
+for (let i = 0; i < 30 && !await p2.$('#rec-ok'); i++) await p2.waitForTimeout(100);
+if (await p2.$('#rec-ok')) await p2.click('#rec-ok');
+await p2.waitForTimeout(500);
+diu(await p2.evaluate(() => /REPTE DE MAR: 5\.000 punts\s*L'HAS GUANYAT!/.test(document.getElementById('msg').textContent)), 'i en acabar, qui ha guanyat');
+await p2.close();
+
 // ---------- 3. les trampes ----------
 // prepara una partida amb tu en una casella concreta
 const posa = (x, y, dir = 1) => p.evaluate(([x, y, dir]) => {

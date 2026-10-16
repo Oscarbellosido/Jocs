@@ -712,6 +712,11 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   temps, perds una vida i tornes on era l'ídol amb el temps sencer.
 - **La partida es desa** a cada sala nova (`temple-partida`), com a La
   Impremta: tornant al menú a mig temple no es perd res.
+- **El repte, com a La Impremta**: al quadre del final hi ha REPTA PER
+  TELEGRAM / PER WHATSAPP / COPIA L'ENLLAÇ, amb
+  `#repte=1&n=INICIALS&p=PUNTS&s=1` (`s=1` si va sortir amb l'ídol). Com que
+  el temple és el mateix per a tothom, no cal llavor: qui l'obre veu al menú a
+  qui ha de superar i, en acabar, qui ha guanyat. En Carles el va demanar.
 - **El mapa de sota només ensenya les sales que ja has vist**, amb els
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.

@@ -18,6 +18,8 @@ button{font:17px monospace;background:#111;color:#fff;border:1px solid #777;bord
 #sep{flex:0 0 8px}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(0,0,0,.94);border:1px solid #555;border-radius:10px;padding:14px 18px;width:84%;max-width:380px;max-height:88%;overflow:auto;box-sizing:border-box}
 #msg small{display:block;margin-top:6px;font-size:13px;line-height:1.45}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 #msg .bt{display:block;font:15px monospace;text-decoration:none;border-radius:8px;padding:11px 14px;margin:10px auto 0;max-width:260px}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex:none;width:auto;height:auto;max-width:none}
@@ -546,8 +548,42 @@ function actualitza(dt){
   }
 }
 
+// ===== EL REPTE =====
+// Com a La Impremta: en acabar pots enviar un enllac amb els teus punts, i
+// qui l'obre veu a qui ha de superar. El temple es el mateix per a tothom,
+// aixi que no cal res mes: els punts de l'altre van dins de l'enllac.
+//   temple.html#repte=1&n=CRE&p=6625&s=1   (s=1: va sortir amb l'idol)
+function llegeixRepte(){
+  const h=location.hash.replace(/^#/,'');
+  if(!/repte=/.test(h))return null;
+  const q=new URLSearchParams(h);
+  return {n:(q.get('n')||'???').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3)||'???',
+    p:Math.max(0,parseInt(q.get('p')||'0',10)||0),s:q.get('s')==='1'};
+}
+const REPTE=llegeixRepte();
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+let sortit=false;
+function enllacRepte(){
+  return location.href.split('#')[0]+'#repte=1&n='+(Records.nom()||'???')+'&p='+punts+'&s='+(sortit?1:0);
+}
+function htmlRepte(){
+  const enl=enllacRepte();
+  const txt='T\'he reptat a El Temple: '+(sortit?'he sortit amb l\'ídol i ':'')+'he fet '+xifra(punts)+' punts. A veure si ho superes!';
+  return {txt,enl,html:'<div class="reptes">'+
+    '<a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(txt)+'">REPTA PER TELEGRAM</a>'+
+    '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt+' '+enl)+'">PER WHATSAPP</a>'+
+    '<a href="#" id="copia">COPIA L\'ENLLAÇ</a></div>'};
+}
+function resultatRepte(){
+  if(!REPTE)return'';
+  const guanyes=punts>REPTE.p,empat=punts===REPTE.p;
+  return '<small style="color:'+(guanyes?'#7dff9b':empat?'#ffe08a':'#ff9b8a')+'">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts<br>'+
+    (guanyes?'L\'HAS GUANYAT!':empat?'EMPAT!':'T\'HA GUANYAT')+'</small>';
+}
+
 // ===== FINAL =====
 function guanya(){
+  sortit=true;
   estat='fi';so.guanya();esborraPartida();
   const bVides=vides*PUNTS.vida,bTemps=Math.ceil(ensorra)*PUNTS.segon;
   const abans=punts;
@@ -557,15 +593,24 @@ function guanya(){
     '<br>'+Math.ceil(ensorra)+' segons de marge × '+PUNTS.segon+': '+bTemps+'</small>');
 }
 function fiPartida(){
-  estat='fi';esborraPartida();
+  sortit=false;estat='fi';esborraPartida();
   final('EL TEMPLE T\'HA VENÇUT','<small>'+tresors+' de '+TOTAL_TRESORS+' tresors · '+visitades.size+' de '+SALES_N+' sales</small>');
 }
 async function final(titol,cos){
   msg(titol+cos+'<div style="color:#888;font-size:12px;margin-top:8px">…</div>');
   const r=await Records.fiPartida(JOC,punts);
   if(estat!=='fi')return;
-  msg(titol+cos+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
-    '<div style="margin:10px 0">'+r.html+'</div>'+Records.peuFinal('o toca per tornar a començar'));
+  const rp=htmlRepte();
+  msg(titol+cos+resultatRepte()+(r.posicio?'<small style="color:#ff0">Ets el número '+r.posicio+'!</small>':'')+
+    '<div style="margin:10px 0">'+r.html+'</div>'+rp.html+Records.peuFinal('o toca per tornar a començar'));
+  // els enllacos no han de fer tornar a comencar (el quadre escolta el clic)
+  document.querySelectorAll('#msg .reptes a').forEach(a=>a.addEventListener('click',e=>e.stopPropagation()));
+  const cp=document.getElementById('copia');
+  if(cp)cp.addEventListener('click',async e=>{
+    e.preventDefault();e.stopPropagation();
+    try{await navigator.clipboard.writeText(rp.txt+' '+rp.enl);cp.textContent='COPIAT!'}
+    catch(err){prompt('Copia aquest enllaç:',rp.enl)}
+  });
   Records.pintaMillor(JOC,document.getElementById('best'),punts);
 }
 
@@ -575,6 +620,7 @@ function menu(){
   const q=partidaDesada();
   const bt=(id,t,c,b)=>'<a href="#" class="bt" id="'+id+'" style="color:'+c+';background:#111;border:1px solid '+b+'">'+t+'</a>';
   msg('<div style="color:#ffd75a;letter-spacing:.2em">EL TEMPLE</div>'+
+    (REPTE?'<small style="color:#7dff9b">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts'+(REPTE.s?', i va sortir amb l\'ídol':'')+'. A veure si el superes!</small>':'')+
     '<small>Un temple oblidat, sala rere sala. Al fons hi ha un ídol d\'or: porta\'l fins a la porta per on has entrat.<br>'+
     'Les pedres amb lletres t\'ensenyen el que cal saber.</small>'+
     (q?bt('m-cont','CONTINUA LA PARTIDA','#7dff9b','#3a8a4a'):'')+
