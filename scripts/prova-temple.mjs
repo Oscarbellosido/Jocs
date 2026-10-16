@@ -75,7 +75,7 @@ window.pilot=function(opts={}){
         if(dist[kk]===undefined||nd<dist[kk]){dist[kk]=nd;prev[kk]={de:k,mv};cua.push([nd,mv.x,mv.y])}}}
     return null;
   };
-  const serpPropera=()=>serps.find(s=>s.viu&&s.y===J.y&&Math.abs(s.x-J.x)<3.2&&Math.floor(s.x/RC)===Math.floor(J.x/RC));
+  const serpPropera=()=>[...serps,...ratpenats].find(s=>s.viu&&s.y===J.y&&Math.abs(s.x-J.x)<3.2&&Math.floor(s.x/RC)===Math.floor(J.x/RC)&&Math.floor(s.y/RF)===Math.floor(J.y/RF));
   const segurPunxes=(x,y,dur)=>{if(cel(x,y)!=='^')return true;for(let t=0;t<=dur;t+=.05)if(punxes(x,rellotge+t)>0)return false;return true};
   const fes=(mv)=>{
     // serps: fora
@@ -95,7 +95,7 @@ window.pilot=function(opts={}){
     espera();
   };
   let iter=0,morts=0;
-  const habilita=(x,y)=>cel(x,y)==='k'||(cel(x,y)==='o'&&hiHaReixa(x,y));
+  const habilita=(x,y)=>cel(x,y)==='k'||((cel(x,y)==='o'||cel(x,y)==='q')&&hiHaReixa(x,y));
   while(estat==='joc'&&iter<3000){iter++;
     if(J.mort){espera();morts++;continue}
     let c=null;
@@ -115,10 +115,14 @@ window.pilot=function(opts={}){
 };
 });
 
-// ---------- 1. el mapa ----------
-const mapa = await p.evaluate(() => {
+// ---------- 1. el mapa de cada nivell ----------
+for (let nv = 0; ; nv++) {
+const mapa = await p.evaluate(nv => {
+  if (nv >= NIVELLS.length) return null;
+  carregaNivell(nv);
   // Fa tot el que es pot fer sense temps: agafar claus, obrir portes,
-  // trepitjar plaques i trencar parets esquerdades.
+  // trepitjar plaques, trencar parets esquerdades i fer rodar les roques
+  // (que on s'encallen fan de paret).
   const abast = (x0, y0) => {
     const vist = new Set([x0 + ',' + y0]), cua = [[x0, y0]];
     while (cua.length) {
@@ -139,10 +143,14 @@ const mapa = await p.evaluate(() => {
       canvis = false;
       for (const k of abast(x0, y0)) {
         const [x, y] = k.split(',').map(Number), t = cel(x, y);
+        const sx = Math.floor(x / RC) * RC, sy = Math.floor(y / RF) * RF;
         if (t === 'k') { claus++; posa(x, y, '_'); canvis = true; }
-        if (t === 'o') { const sx = Math.floor(x / RC) * RC, sy = Math.floor(y / RF) * RF;
+        if (t === 'o' || t === 'q') {
           for (let yy = sy; yy < sy + RF; yy++) for (let xx = sx; xx < sx + RC; xx++)
             if (cel(xx, yy) === '|') { posa(xx, yy, '/'); canvis = true; } }
+        if (t === 'R') {
+          for (let yy = sy; yy < sy + RF; yy++) for (let xx = sx; xx < sx + RC; xx++)
+            if (cel(xx, yy) === 'O') { posa(xx, yy, '_'); const c = camiRoca(xx, yy, Math.sign(x - xx) || 1); if (c.fi) posa(c.fi[0], c.fi[1], '#'); canvis = true; } }
         for (const d of [-1, 1]) {
           if (cel(x + d, y) === '%') { posa(x + d, y, '_'); canvis = true; }
           if (cel(x + d, y) === 'D' && claus > 0) { claus--; posa(x + d, y, 'd'); canvis = true; }
@@ -162,33 +170,55 @@ const mapa = await p.evaluate(() => {
     objectes++; if (!tots.has(x + ',' + y)) perduts.push(x + ',' + y);
   }
   // Des de qualsevol lloc on hagis pogut arribar, i amb el terra que cau ja
-  // caigut, s'ha de poder tornar a la sortida.
-  const obert = MON.map(t => t === '~' ? ' ' : t);
+  // caigut, s'ha de poder tornar a la sortida: tant si les roques ja han
+  // rodolat com si no.
   const encallats = [];
-  for (const k of tots) {
-    const [x, y] = k.split(',').map(Number);
-    MON = obert.slice();
-    if (!resol(x, y, 1).A.has(SORTIDA.x + ',' + SORTIDA.y)) encallats.push(k);
-  }
+  for (const mon of [MON.map(t => t === '~' ? ' ' : t), INICI.map(t => t === '~' ? ' ' : t)])
+    for (const k of tots) {
+      const [x, y] = k.split(',').map(Number);
+      MON = mon.slice();
+      if (!resol(x, y, 2).A.has(SORTIDA.x + ',' + SORTIDA.y)) encallats.push(k);
+    }
   MON = INICI.slice();
-  return { idolOk, sortidaOk, objectes, perduts, encallats, sales: SALES_N, tresors: TOTAL_TRESORS };
-});
-diu(mapa.idolOk, "des de l'entrada s'arriba a l'ídol");
-diu(mapa.sortidaOk, "des de l'ídol es torna a la sortida");
+  return { nom: NV.nom, idolOk, sortidaOk, objectes, perduts, encallats, sales: SALES_N, tresors: TOTAL_TRESORS, rats: RATS0.length };
+}, nv);
+if (!mapa) break;
+console.log('— ' + mapa.nom);
+diu(mapa.idolOk, "des de l'entrada s'arriba al tresor del fons");
+diu(mapa.sortidaOk, "des del tresor es torna a la sortida");
 diu(!mapa.perduts.length, `tots els objectes (${mapa.objectes}) es poden agafar` + (mapa.perduts.length ? ': ' + mapa.perduts : ''));
-diu(!mapa.encallats.length, 'cap racó on quedar-se tancat per sempre' + (mapa.encallats.length ? ': ' + mapa.encallats.join(' ') : ''));
-diu(mapa.sales === 17 && mapa.tresors === 12, `${mapa.sales} sales i ${mapa.tresors} tresors`);
+diu(!mapa.encallats.length, 'cap racó on quedar-se tancat per sempre' + (mapa.encallats.length ? ': ' + [...new Set(mapa.encallats)].join(' ') : ''));
+console.log(`  ${mapa.sales} sales, ${mapa.tresors} tresors, ${mapa.rats} ratpenats`);
+}
+await p.evaluate(() => carregaNivell(0));
 
 // ---------- 2. el pilot ----------
-for (const tot of [false, true]) {
-  const r = await p.evaluate(tot => { manual = true; novaPartida(); return pilot({ tot }); }, tot);
-  diu(r.estat === 'fi' && r.morts === 0 && !r.log.length,
-    `el pilot ${tot ? 'que ho agafa tot' : 'que va de dret'} surt amb l'ídol: ${r.punts} punts, ${r.temps} s de joc, ` +
-    `${r.tresors} tresors, li sobren ${r.ensorra} s` + (r.log.length ? ' — ' + r.log : ''));
-  if (tot) diu(r.tresors === 12 && r.punts > 8000, 'agafant-ho tot, els 12 tresors i més de 8.000 punts');
-  await confirma();
-  diu(150 - r.ensorra < 60, `per sortir amb l'ídol li calen ${150 - r.ensorra} s de 150: n'hi ha de sobres per a una persona`);
+// Primer cada nivell per separat, i després la partida sencera de cap a cap.
+for (const [nv, tot] of [[0, false], [0, true], [1, false], [1, true]]) {
+  const r = await p.evaluate(([nv, tot]) => { manual = true; novaPartida(nv); return Object.assign(pilot({ tot }), { nom: NV.nom, ens: ENSORRA }); }, [nv, tot]);
+  const fi = nv === 0 ? 'entre' : 'fi';
+  diu(r.estat === fi && r.morts === 0 && !r.log.length,
+    `${r.nom}: el pilot ${tot ? 'que ho agafa tot' : 'que va de dret'} surt amb el tresor: ${r.punts} punts, ${r.temps} s de joc, ` +
+    `${r.tresors} tresors, li sobren ${r.ensorra} s de ${r.ens}` + (r.log.length ? ' — ' + r.log : '') + (r.morts ? ` (${r.morts} morts)` : ''));
+  if (fi === 'fi') await confirma();
+  diu(r.ens - r.ensorra < r.ens / 2.5, `  per sortir amb el tresor li calen ${r.ens - r.ensorra} s: n'hi ha de sobres per a una persona`);
 }
+// la partida sencera: del primer nivell es passa al segon amb els punts i les vides
+const sencera = await p.evaluate(() => {
+  manual = true; novaPartida(0);
+  const r1 = pilot({ tot: true });
+  const abans = { punts, vides, msg: document.getElementById('msg').textContent };
+  document.getElementById('m-seg').click();
+  const enNivell2 = { nivell, punts, vides, estat };
+  const r2 = pilot({ tot: true });
+  return { r1, abans, enNivell2, r2 };
+});
+diu(sencera.r1.estat === 'entre' && /BAIXA-HI/.test(sencera.abans.msg) && /LES CATACUMBES/.test(sencera.abans.msg),
+  'en sortir del primer temple, et convida a baixar a les catacumbes');
+diu(sencera.enNivell2.nivell === 1 && sencera.enNivell2.punts === sencera.abans.punts && sencera.enNivell2.vides === sencera.abans.vides && sencera.enNivell2.estat === 'joc',
+  `i hi baixes amb els punts (${sencera.abans.punts}) i les vides que portaves`);
+diu(sencera.r2.estat === 'fi' && sencera.r2.punts > 16000, `la partida sencera, agafant-ho tot: ${sencera.r2.punts} punts`);
+await confirma();
 diu(enviats.length >= 1 && enviats.at(-1).punts > 0, `en sortir, els punts van a la taula (${enviats.map(e => e.punts).join(', ')})`);
 diu(await p.evaluate(() => !localStorage.getItem('temple-partida')), 'en acabar, la partida desada s\'esborra');
 
@@ -206,7 +236,7 @@ await p2.goto(URL_JOC + '#repte=1&n=MAR&p=5000&s=1');
 await p2.waitForTimeout(500);
 diu(await p2.evaluate(() => /REPTE DE MAR: 5\.000 punts/.test(document.getElementById('msg').textContent)), 'qui obre l\'enllaç veu a qui ha de superar');
 await p2.evaluate(() => localStorage.setItem('jugador', 'TST'));
-await p2.evaluate(() => { manual = true; novaPartida(); punts = 4000; guanya(); });
+await p2.evaluate(() => { manual = true; novaPartida(1); punts = 4000; guanya(); });
 for (let i = 0; i < 30 && !await p2.$('#rec-ok'); i++) await p2.waitForTimeout(100);
 if (await p2.$('#rec-ok')) await p2.click('#rec-ok');
 await p2.waitForTimeout(500);
@@ -215,9 +245,9 @@ await p2.close();
 
 // ---------- 3. les trampes ----------
 // prepara una partida amb tu en una casella concreta
-const posa = (x, y, dir = 1) => p.evaluate(([x, y, dir]) => {
-  manual = true; novaPartida(); J = nouJugador(x, y, dir); cp = { x, y, dir }; cors = maxCors; actualitza(1 / 60);
-}, [x, y, dir]);
+const posa = (x, y, dir = 1, nv = 0) => p.evaluate(([x, y, dir, nv]) => {
+  manual = true; novaPartida(nv); J = nouJugador(x, y, dir); cp = { x, y, dir }; cors = maxCors; actualitza(1 / 60);
+}, [x, y, dir, nv]);
 const corre = s => p.evaluate(s => { for (let i = 0; i < s * 60; i++) actualitza(1 / 60); }, s);
 const estat = () => p.evaluate(() => ({ x: J.x, y: J.y, cors, vides, mort: J.mort, punts, claus, mov: !!J.mov }));
 
@@ -327,8 +357,60 @@ await corre(3);
 e = await estat();
 diu(e.vides === 2 && e.x === 45 && e.y === 10 && await p.evaluate(() => ensorra > 140),
   `si se t'acaba el temps perds una vida i tornes on era l'ídol amb el temps sencer`);
-diu(await p.evaluate(() => { const t = SORTIDA; J.x = t.x + 1; J.fx = J.x; J.y = t.y; J.fy = t.y; accio('camina', -1); for (let i = 0; i < 30; i++) actualitza(1 / 60); return estat; }) === 'fi',
-  "arribant a la porta amb l'ídol, has guanyat");
+diu(await p.evaluate(() => { const t = SORTIDA; J.x = t.x + 1; J.fx = J.x; J.y = t.y; J.fy = t.y; accio('camina', -1); for (let i = 0; i < 30; i++) actualitza(1 / 60); return estat; }) === 'entre',
+  "arribant a la porta amb l'ídol, has sortit del primer temple");
+
+// ---------- les coses noves de les catacumbes ----------
+// el ratpenat
+await posa(12, 2, 1, 1);
+await p.evaluate(() => { const r = ratpenats.find(r => r.y === 2 && r.x < 20); r.x = 12.8; r.dir = -1; });
+await corre(.4);
+e = await estat();
+diu(e.cors === 2, `el ratpenat que et toca treu un cor (${e.cors} de 3)`);
+await posa(12, 2, 1, 1);
+await p.evaluate(() => { const r = ratpenats.find(r => r.y === 2 && r.x < 20); r.x = 13.6; r.dir = 1; });
+let ab = (await estat()).punts;
+await p.evaluate(() => accio('fuet', 1)); await corre(.3);
+diu(await p.evaluate(() => !ratpenats.find(r => r.y === 2 && r.x < 20).viu) && (await estat()).punts === ab + 75, 'el FUET fa fora el ratpenat (+75)');
+// la reixa que s'obre una estona
+await posa(33, 2, 1, 1);                             // el clot amb la placa de la reixa
+await p.evaluate(() => arriba());
+diu(await p.evaluate(() => cel(38, 1) === '/'), 'la placa del rellotge de sorra obre la reixa');
+await corre(2);
+diu(await p.evaluate(() => cel(38, 1) === '/'), 'al cap de dos segons encara és oberta');
+await corre(2.5);
+diu(await p.evaluate(() => cel(38, 1) === '|'), 'i al cap de quatre es torna a tancar');
+// la roca
+await posa(23, 1, 1, 1);                             // a sobre de la placa, quiet
+await p.evaluate(() => arriba());
+diu(await p.evaluate(() => roques.length === 1 && cel(21, 0) === '_'), 'trepitjant la placa, la roca de dalt comença a rodolar');
+await corre(2);
+e = await estat();
+diu(e.mort, 'si et quedes quiet, la roca t\'aixafa');
+await corre(3);
+diu(await p.evaluate(() => cel(28, 2) === '#' && !roques.length), 'i on s\'encalla, al clot, s\'hi queda i fa de pont');
+await posa(23, 1, 1, 1);
+await p.evaluate(() => { arriba(); tecles.dre = true; teclaFresca.dre = true; });
+await corre(.75);
+await p.evaluate(() => { tecles.dre = false; accio('salta', 1); });
+await corre(3);
+e = await estat();
+diu(!e.mort && e.x === 29, `corrent i saltant el clot, te n'escapes (a ${e.x},${e.y})`);
+
+// el pont sobre la fossa: si cau, no hi ha fons
+await posa(24, 10, 1, 1);                            // a sobre del pont que cau
+await p.evaluate(() => arriba());
+await corre(1.5);
+e = await estat();
+diu(e.mort, 'si et quedes quiet al pont de les catacumbes, caus a la fossa i no hi ha fons');
+// desar a les catacumbes i continuar-hi
+await p.evaluate(() => { cp = { x: 31, y: 4, dir: -1 }; punts = 9000; estat = 'joc'; J.mort = false; desaPartida(); });
+diu(await p.evaluate(() => { const q = partidaDesada(); return q && q.nivell === 1; }), 'la partida es desa amb el nivell on ets');
+await p.evaluate(() => { carregaNivell(0); continuaPartida(); });
+const cont = await p.evaluate(() => ({ nivell, x: J.x, punts, nom: NV.nom }));
+diu(cont.nivell === 1 && cont.x === 31 && cont.punts >= 9000, 'i en continuar, tornes a les catacumbes ' + JSON.stringify(cont));
+await p.evaluate(() => { localStorage.setItem('temple-nivell', '1'); esborraPartida(); menu(); });
+diu(!!await p.$('#m-n2'), "quan ja hi has arribat un cop, el menú et deixa anar directe a les catacumbes");
 
 // ---------- 4. desar i continuar ----------
 await confirma();

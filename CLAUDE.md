@@ -721,16 +721,43 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-Punts: tresor 100, gemma 300, serp 50, sala nova 25, l'ídol 2.000, i en
-sortir 1.000 més 500 per vida i 10 per segon de marge. Qui ho agafa tot sense
-morir fa uns 8.300.
+**Dos nivells** (`NIVELLS`), i en sortir del primer es baixa al segon amb els
+punts, les vides i els cors que portes (la taula només rep els punts en
+acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
+vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
+120 segons per sortir) en porten tres de noves:
+
+- **Ratpenats** (`B` a sobre d'una rajola, `b` a l'aire): volen per la seva
+  filera sense parar, **també per sobre dels forats**, i et toquen encara que
+  saltis. El FUET també els fa fora (75).
+- **La roca que rodola** (`O`, i la placa `R` que la desperta): tremola mig
+  segon i rodola cap a la placa, és a dir, cap a tu. Si et toca, perds una
+  vida. Cau pels forats i, on s'encalla contra una paret, **s'hi queda i fa de
+  paret** (`camiRoca`): dins d'un clot, fa de pont. Quan parpelleges, no et fa
+  res, que si no reapareixeries a sota d'una roca que encara roda.
+- **La reixa que s'obre una estona** (placa `q`, amb un rellotge de sorra):
+  quatre segons (`TEMPS_REIXA`) i es torna a tancar, baixant a poc a poc. Si
+  ets a sota, espera que surtis. Es desa sempre tancada.
+
+I la fossa: **sota el temple no hi ha res**. Un forat a la filera de baix de
+tot no té fons i mata (`aguanta` no compta la paret de fora del mapa). El pont
+de sobre és de terra que cau, de dues caselles: si cau, el forat encara es
+pot saltar, que si no reapareixeries a l'altra banda sense poder passar.
+
+Quan ja hi has arribat un cop, el menú deixa anar directe a les catacumbes
+(`temple-nivell`), començant de zero.
+
+Punts: tresor 100, gemma 300, serp 50, ratpenat 75, sala nova 25, l'ídol
+2.000 (la màscara 3.000), i en sortir de cada nivell 1.000 més 500 per vida i
+10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
+16.700 amb tots dos.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
 més important, **que des de cap lloc on puguis arribar no et quedis tancat per
 sempre** (amb el terra que cau ja caigut i tot obert). Les trampes que es
 desfan soles (el terra que cau) no poden ser mai l'únic camí de tornada. I
-dos pilots automàtics l'han d'acabar: un que va de dret i un que ho agafa tot.
+dos pilots automàtics han d'acabar cada nivell: un que va de dret i un que ho agafa tot.
 
 ## El Síndria: com funciona la física
 
@@ -1072,8 +1099,11 @@ comproven el comportament.
   poden fer amb la rotllana i sense bases repetides; que siguin iguals a tots
   els mòbils; i que es jugui lliscant el dit, amb extres, pista, barreja,
   nivell acabat apuntat a la taula i tot desat en tornar-hi.
-- `node scripts/prova-temple.mjs` — que el temple es pugui acabar i no tingui
-  racons on quedar-te tancat, que dos pilots automàtics surtin amb l'ídol, i
+- `node scripts/prova-temple.mjs` — que cada nivell del temple es pugui acabar i
+  no tingui racons on quedar-te tancat, que dos pilots automàtics surtin amb
+  el tresor de cada nivell i que la partida sencera passi del primer al
+  segon; que els ratpenats, la roca, la reixa amb temps i la fossa vagin com
+  toca, i
   que les caigudes, les punxes, les serps, el terra que cau, les portes, les
   reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
   continuï, que els punts vagin a la taula i que els sis botons càpiguen a
