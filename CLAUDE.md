@@ -721,7 +721,7 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-**Quatre nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
+**Cinc nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
 acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
@@ -783,12 +783,34 @@ El pilot automàtic hi necessita uns 46 segons per sortir amb el tresor (s'ha
 d'esperar a les aranyes, als ratpenats i a les fletxes de la torre), i per
 això el temps és més llarg que al tercer, no més curt.
 
+**El Volcà**, el cinquè (20 sales, el cor de foc, 90 segons per sortir,
+comences mirant a l'esquerra). En Carles va demanar el cinquè nivell, i en
+porta tres coses noves:
+
+- **Lava** (`L`): no s'hi pot caminar (`mouCamina` s'hi para, i diu que la
+  saltis), i si hi caus —un salt que no hi arriba, terra que cau a sobre—,
+  et cremes i perds una vida. No és `segur`, així que no hi aterres mai si
+  hi ha una rajola bona a l'abast, i no hi pots reaparèixer. Les serps, els
+  esquelets i el guardià s'hi giren, i **la roca que hi cau s'hi fon**
+  (`camiRoca` torna `fi:null`): no fa de pont.
+- **Estalactites** (`V`): quan passes per sota, tremolen mig segon i cauen
+  (`TREMOLA`, `CAU_ESTAL`). Si encara hi ets, et treuen un cor; caminant
+  seguit, cauen darrere teu. Només cauen una vegada, i es desa quines.
+- **El guardià** (`G`): un esquelet més gros, amb casc i espasa, que guarda
+  el tresor. **Quatre cops de FUET**, cada un el fa recular una casella
+  sencera, i als punts vermells de sobre el cap es veu quants li queden
+  (500 punts). És als `esquelets` amb `gran:true`.
+
+El pilot automàtic, sota una estalactita que ja tremola, no espera res: hi
+passa de llarg. Hi necessita 14 segons per sortir amb el tresor.
+
 **Cada nivell es reconeix**: en començar-lo (o en continuar-lo) surt uns
-segons un rètol gran al mig, NIVELL 2 DE 3 · LES CATACUMBES, i el nom del
+segons un rètol gran al mig, NIVELL 2 DE 5 · LES CATACUMBES, i el nom del
 nivell queda sempre escrit a sota del mapa. I **cada nivell té els seus
 colors** (`colors` a `NIVELLS`, que es copien a `COL`): pedra de color sorra
 al temple, grisa i blavosa amb foc blau a les catacumbes, vermellosa de
-terracota al santuari. En Carles ho va demanar. El fons de cada sala es desa
+terracota al santuari, morada a les profunditats, i negra i cremada amb foc
+taronja al volcà. En Carles ho va demanar. El fons de cada sala es desa
 per nivell (`fonsCache`), que si no es veurien els colors de l'anterior.
 
 **Tornar a començar és petit i pregunta.** Si tens una partida a mig fer (o
@@ -809,10 +831,10 @@ tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
 demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
 hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
-Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, aranya 75,
-sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000), i en sortir de cada nivell 1.000 més 500 per vida i
+Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, guardià 500, aranya 75,
+sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000), i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
-uns 36.000 amb els quatre.
+uns 47.000 amb els cinc.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
@@ -1163,10 +1185,10 @@ comproven el comportament.
   nivell acabat apuntat a la taula i tot desat en tornar-hi.
 - `node scripts/prova-temple.mjs` — que cada nivell del temple es pugui acabar i
   no tingui racons on quedar-te tancat, que dos pilots automàtics surtin amb
-  el tresor de cada nivell i que la partida sencera passi del primer al
-  segon; que els ratpenats, la roca, la reixa amb temps i la fossa vagin com
-  toca, i
-  que les caigudes, les punxes, les serps, el terra que cau, les portes, les
+  el tresor de cada nivell i que la partida sencera passi pels cinc; que els
+  ratpenats, la roca, la reixa amb temps, la fossa, les fletxes, els
+  esquelets, les aranyes, la lava, les estalactites i el guardià vagin com
+  toca, i que les caigudes, les punxes, les serps, el terra que cau, les portes, les
   reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
   continuï, que els punts vagin a la taula i que els sis botons càpiguen a
   320 px.
