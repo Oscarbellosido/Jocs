@@ -831,6 +831,23 @@ tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
 demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
 hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
+En Carles es trobava, de tant en tant, que en tornar a entrar començava pel
+primer nivell. Passaven dues coses:
+
+- **Tancar en acabar un nivell ho perdia tot.** Al quadre de BAIXA-HI la
+  partida ja s'havia esborrat, i el punt de control del nivell de sota no es
+  guardava fins que no premies el botó. Ara es guarda en el moment d'acabar
+  el nivell (`desaControl(nivell+1)` a `guanya`).
+- **Un cop tornaves a començar pel primer, el nivell on havies arribat
+  desapareixia del menú**, perquè només sortia si no hi havia cap partida a
+  mig fer. Ara surt sempre que sigui més avall que la partida, i el punt de
+  control **no recula mai**: tornant a passar pel segon nivell no esborra el
+  quart.
+
+Una altra cosa que pot fer el mateix i que el joc no pot evitar: la partida
+es desa dins de cada navegador, i l'app instal·lada, el navegador i Telegram
+per dins són llocs diferents (com a La Rotllana).
+
 Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, guardià 500, aranya 75,
 sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000), i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i

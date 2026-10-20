@@ -581,6 +581,18 @@ diu(!!await p.$('#m-ctl'), 'i també des del menú, si tornes al joc un altre di
 await p.click('#m-ctl');
 tc = await p.evaluate(() => ({ nivell, punts }));
 diu(tc.nivell === 1 && tc.punts === 10790, 'des del menú també tornes a les catacumbes');
+// tancant just en acabar un nivell (al quadre de BAIXA-HI), no es perd
+await p.evaluate(() => { localStorage.removeItem('temple-control'); manual = true; novaPartida(1); punts = 17000; guanya(); });
+await p.reload(); await p.waitForTimeout(500);
+diu(await p.evaluate(() => estat === 'menu' && !!document.getElementById('m-ctl') && /TORNA AL SANTUARI/.test(document.getElementById('msg').textContent) && !document.getElementById('m-nova')),
+  'si tanques en acabar un nivell, en tornar-hi pots baixar al següent (no comences pel primer)');
+await p.click('#m-ctl');
+tc = await p.evaluate(() => ({ nivell, punts }));
+diu(tc.nivell === 2 && tc.punts > 17000, `i hi baixes amb els punts que portaves (${tc.punts})`);
+// tornant a començar pel primer, el nivell on havies arribat no es perd
+await p.evaluate(() => { manual = true; novaPartida(0); comencaNivell(1); desaPartida(); manual = false; menu(); });
+diu(await p.evaluate(() => JSON.parse(localStorage.getItem('temple-control')).nivell === 2 && !!document.getElementById('m-cont') && /TORNA AL SANTUARI/.test(document.getElementById('msg').textContent)),
+  'si tornes a començar pel primer, el menú encara ofereix el nivell més avall on havies arribat, a més de continuar la partida');
 await p.evaluate(() => { manual = true; comencaNivell(NIVELLS.length - 1); idol = true; ensorra = 50; const d = tancat(SORTIDA.x - 1, SORTIDA.y) ? 1 : -1; J.x = SORTIDA.x + d; J.fx = J.x; J.y = SORTIDA.y; J.fy = J.y; accio('camina', -d); for (let i = 0; i < 30; i++) actualitza(1 / 60); });
 await confirma();
 diu(await p.evaluate(() => estat === 'fi' && !localStorage.getItem('temple-control')), 'acabant-ho tot, el punt de control s\'esborra');

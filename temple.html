@@ -417,9 +417,12 @@ function comencaNivell(n,mortes=[],ratsMorts=[]){
 // tornar-hi comences aquell nivell un altre cop, amb els punts que hi
 // portaves en entrar-hi i tres vides. No cal tornar a fer els d'abans.
 // Els punts no s'acumulen: cada intent torna a partir dels mateixos.
+// I el nivell mes avall que hagis arribat no es perd mai: si tornes a
+// comencar des del primer, el punt de control no recula.
 const CLAU_CONTROL='temple-control';
-function desaControl(){
-  if(nivell>0)try{localStorage.setItem(CLAU_CONTROL,JSON.stringify({nivell,punts,maxCors}))}catch(e){}
+function desaControl(n=nivell){
+  const q=control();if(n<=0||(q&&q.nivell>n))return;
+  try{localStorage.setItem(CLAU_CONTROL,JSON.stringify({nivell:n,punts,maxCors}))}catch(e){}
 }
 function control(){
   try{const q=JSON.parse(localStorage.getItem(CLAU_CONTROL)||'null');
@@ -930,12 +933,13 @@ function guanya(){
   const titol='HAS SORTIT AMB '+NV.tresor+'!';
   // si encara queda un nivell, s'hi baixa amb els punts i les vides que portes
   if(nivell<NIVELLS.length-1){
-    estat='entre';esborraPartida();
+    // Ja es guarda el punt de control del nivell de sota: si tanques aqui
+    // (en Carles ho feia), en tornar-hi no comences des del primer.
+    estat='entre';esborraPartida();desaControl(nivell+1);
     const seg=NIVELLS[nivell+1];
     msg('<div style="color:#ffd75a">'+titol+'</div>'+compte+
       '<small style="color:#ccc">Però el camí no s\'acaba aquí. Més avall hi ha <b style="color:#7dff9b">'+seg.nom+'</b>, amb '+seg.tresor.toLowerCase()+'.</small>'+
       '<a href="#" class="bt" id="m-seg" style="color:#7dff9b;background:#111;border:1px solid #3a8a4a">BAIXA-HI ▸</a>');
-    // es desa ja al nivell nou, que si tanques aqui no perdis el que portes
     const n=nivell+1,pv={punts,vides,maxCors,temps};
     const fesSeg=()=>{({punts,vides,maxCors,temps}=pv);comencaNivell(n)};
     document.getElementById('m-seg').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fesSeg()});
@@ -975,15 +979,17 @@ async function final(titol,cos){
 // ===== EL MENU =====
 function menu(){
   estat='menu';
-  const q=partidaDesada(),ctl=!q&&control();
+  // el punt de control surt si es mes avall que la partida a mig fer (si has
+  // tornat a comencar sense voler, el nivell on havies arribat hi segueix)
+  const q=partidaDesada(),c0=control(),ctl=c0&&(!q||c0.nivell>(q.nivell||0))&&c0;
   const bt=(id,t,c,b)=>'<a href="#" class="bt" id="'+id+'" style="color:'+c+';background:#111;border:1px solid '+b+'">'+t+'</a>';
   msg('<div style="color:#ffd75a;letter-spacing:.2em">EL TEMPLE</div>'+
     (REPTE?'<small style="color:#7dff9b">REPTE DE '+REPTE.n+': '+xifra(REPTE.p)+' punts'+(REPTE.s?', i va sortir amb l\'ídol':'')+'. A veure si el superes!</small>':'')+
     '<small>Un temple oblidat, sala rere sala. Al fons hi ha un ídol d\'or: porta\'l fins a la porta per on has entrat.<br>'+
     'Les pedres amb lletres t\'ensenyen el que cal saber.</small>'+
     (q?bt('m-cont','CONTINUA LA PARTIDA','#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">'+NIVELLS[q.nivell||0].nom.toLowerCase()+' · '+xifra(q.punts)+' punts</small>':'')+
-    // si no hi ha cap partida a mig fer però ja havies arribat a un nivell
-    // de més avall, pots tornar-hi sense refer els d'abans
+    // si ja havies arribat a un nivell de més avall, pots tornar-hi sense
+    // refer els d'abans
     (ctl?bt('m-ctl','TORNA '+NIVELLS[ctl.nivell].a,'#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">amb els '+xifra(ctl.punts)+' punts que hi portaves en entrar-hi</small>':'')+
     // Si no tens res a mig fer, el boto gros es entrar. Si en tens, el de
     // tornar a comencar queda petit a sota de tot, i pregunta abans: en
