@@ -66,12 +66,13 @@ const JOCS = {
   gofra:             99999,   // les estrelles acumulades de totes les gofres del dia
   rotllana:          99999,   // el nivell mes alt que has acabat
   temple:            99999,
+  abecedari:         99999,   // els encerts acumulats de totes les rodes del dia
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -80,6 +81,7 @@ const UNA_PER_NOM = new Set(['gofra', 'rotllana']);
 const DIARIS = {
   impremta_dia:  999999999,
   gofra_dia:             5,   // les estrelles d'avui, de 0 a 5
+  abecedari_dia:      2740,   // 25 encerts × 100 i, com a molt, els 240 segons
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -123,6 +125,7 @@ const FITXA = {
   gofra:           ['La Gofra',        'a la Gofra',         'gofra.html'],
   rotllana:        ['La Rotllana',     'a la Rotllana',      'rotllana.html'],
   temple:          ['El Temple',       'al Temple',          'temple.html'],
+  abecedari:       ["L'Abecedari",     "a l'Abecedari",      'abecedari.html'],
 };
 
 const cors = {
@@ -181,7 +184,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
@@ -242,6 +245,8 @@ const estrelles = p => '★'.repeat(p) + '☆'.repeat(Math.max(0, 5 - p));
 const ANUNCIA_DIARI = {
   impremta_dia: ['La Impremta', 'impremta.html', p => xifra(p) + ' punts'],
   gofra_dia:    ['La Gofra',    'gofra.html',    p => estrelles(p) + ' (a igualtat d\'estrelles, mana qui la va acabar abans)'],
+  // A l'Abecedari, 100 punts per encert i els segons que sobren
+  abecedari_dia: ["L'Abecedari", 'abecedari.html', p => Math.floor(p / 100) + ' encerts (' + xifra(p) + ' punts)'],
 };
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
 function diaMadrid(enrere = 0) {
@@ -275,7 +280,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta i La Gofra)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra i L\'Abecedari)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

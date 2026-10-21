@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>L'Abecedari</title>
+<style>
+html,body{margin:0;height:100%;background:#0b0f1e;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
+/* la roda: les lletres en rotllana i, al mig, la que toca */
+#roda{position:relative;flex:none}
+.ll{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;
+  font-family:Georgia,serif;color:#fff;background:#2456c9;box-shadow:inset 0 -3px 0 rgba(0,0,0,.3);transition:background .25s,transform .2s;box-sizing:border-box}
+.ll.be{background:#2e9e4f}
+.ll.mal{background:#cf3a3a}
+.ll.ara{background:#f0b429;color:#1a1200;transform:scale(1.22);box-shadow:0 0 12px rgba(240,180,41,.7)}
+#centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;display:flex;flex-direction:column;align-items:center}
+#rellotge{font-weight:bold;color:#cfe0ff}
+#rellotge.poc{color:#ff8a7a}
+#mode{color:#9fb3e6;letter-spacing:.06em}
+#lletra{font-family:Georgia,serif;font-weight:bold;color:#f0b429;line-height:1}
+#escrit{font-weight:bold;letter-spacing:.08em;color:#fff;border-bottom:2px solid #4a64a8;min-width:60%;padding:0 4px}
+#compte{color:#9fb3e6}
+#lider{flex:none;font-size:11px;color:#c9b28a;padding:2px 0;white-space:nowrap;overflow:hidden;max-width:96%}
+#def{flex:none;width:94%;box-sizing:border-box;min-height:3.9em;background:#141c36;border:1px solid #2c3a66;border-radius:10px;
+  padding:7px 10px;font-size:15px;line-height:1.3;display:flex;align-items:center;justify-content:center;text-align:center;margin:2px 0 6px}
+#def.era{color:#ffb3a8}
+#def.era b{color:#fff}
+#teclat{flex:none;width:97%;display:flex;flex-direction:column;gap:5px}
+.fila{display:flex;gap:4px;justify-content:center}
+button{font:14px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+.k{flex:1 1 0;min-width:0;height:min(42px,6vh);font:bold 16px monospace;background:#263256;border-color:#3a4a80;color:#fff}
+.k.esb{flex:1.6 1 0;font-size:18px}
+.k:active{background:#3a4a80}
+#controls{flex:none;display:flex;gap:10px;margin-top:8px;align-items:center;justify-content:center;width:94%}
+#controls button{flex:1 1 0;height:46px;font-weight:bold}
+#passa{color:#9fd0ff;border-color:#3a6aa0;background:#0f1e33}
+#respon{color:#1a1200;background:#f0b429;border-color:#f0b429}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(5,8,20,.96);border:1px solid #3a4a80;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:260px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg .fallades{text-align:left;font-size:12px;color:#bbb;margin-top:10px;line-height:1.4}
+#msg .fallades div{margin-top:5px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>ENCERTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="screen"><div id="roda"><div id="centre"><div id="rellotge">4:00</div><div id="mode">COMENÇA PER</div><div id="lletra">A</div><div id="escrit">&nbsp;</div><div id="compte"></div></div></div></div>
+  <div id="lider"></div>
+  <div id="def"></div>
+  <div id="teclat"></div>
+  <div id="controls"><button id="passa">PASSA PARAULA</button><button id="respon">RESPON ✓</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Endevina una paraula per a cada lletra: comença per la lletra, o la conté.</b> escriu-la i RESPON, o PASSA PARAULA · una roda cada dia · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndTecla(){aInit();tone(700,.03,"triangle",.08)}
+function sndNo(){aInit();tone(170,.12,"square",.1,-40)}
+function sndBe(){aInit();[659,880].forEach((f,i)=>setTimeout(()=>tone(f,.14,"triangle",.22),i*80))}
+function sndMal(){aInit();tone(220,.35,"sawtooth",.16,-80)}
+function sndPassa(){aInit();tone(500,.12,"sine",.14,250)}
+function sndTic(){aInit();tone(1200,.03,"square",.06)}
+function sndFi(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.22,"triangle",.24),i*110))}
+
+// ===== LES DEFINICIONS =====
+// Escrites a ma, una per una: les del diccionari de l'Institut tenen drets.
+// Cada lletra te la seva llista; la roda de cada dia n'agafa una de cada.
+// Les respostes son paraules del diccionari, escrites com toca (al final
+// s'ensenyen aixi); si n'hi ha una altra de bona, va despres d'una barra
+// (zoo/zoologic). Les primeres lletres de la roda (de la A a la G) son
+// paraules facils, les del mig una mica menys, i les ultimes (de la Q a la Z),
+// les dificils: la roda va de menys a mes.
+const DEFINICIONS=`
+#A
+abella: Insecte que fa mel i que, si el molestes, et pot picar.
+avió: Aparell amb ales i motors que vola i porta passatgers d'un país a l'altre.
+arbre: Planta gran, amb un tronc de fusta, branques i fulles.
+aigua: Líquid transparent, sense gust ni olor, que bevem quan tenim set.
+ampolla: Recipient de vidre o de plàstic, amb el coll estret, on hi ha el vi o l'aigua.
+anell: Cèrcol, sovint d'or o de plata, que es porta al dit.
+avi: El pare del teu pare o de la teva mare.
+aranya: Animal de vuit potes que teixeix una tela per caçar mosques.
+armari: Moble amb portes on es desa la roba.
+alumne: Nen o noi que va a l'escola a aprendre.
+ambulància: Vehicle amb una sirena que porta els malalts i els ferits a l'hospital.
+ànec: Ocell d'aigua, amb el bec pla, que fa «quac».
+agost: Mes de l'any que va després de juliol, quan molta gent fa vacances.
+arròs: Gra blanc i petit amb què es fa la paella.
+ascensor: Cabina que puja i baixa la gent d'un pis a l'altre d'un edifici.
+abric: Peça de roba gruixuda que es porta a sobre de tot quan fa fred.
+amic: Persona a qui tens afecte i amb qui t'agrada estar i explicar-te les coses.
+ametlla: Fruit sec, de pell marró, amb què es fa el torró.
+alegria: Sentiment de qui està molt content.
+aniversari: Dia en què fa anys d'una cosa, com el dia que vas néixer.
+autobús: Vehicle gran que porta molts passatgers pels carrers de la ciutat.
+arc: Arma de fusta corbada, amb una corda, que dispara fletxes.
+ala: Part del cos dels ocells que els serveix per volar.
+all: Bulb de gust molt fort, fet de grans, que es fa servir per cuinar.
+allioli: Salsa feta picant all amb oli al morter.
+aeroport: Lloc on aterren i s'enlairen els avions.
+alcalde: Persona que mana a l'ajuntament d'un poble o d'una ciutat.
+amor: Sentiment molt fort d'afecte cap a una persona.
+any: Temps que tarda la Terra a fer la volta al Sol: dotze mesos.
+aire: Allò que respirem i que no veiem.
+aixeta: Peça que s'obre i es tanca perquè surti l'aigua a la pica.
+avorrit: Que no té res a fer i no s'ho passa gens bé.
+atleta: Esportista que corre, salta o llança en les curses i els concursos.
+astronauta: Persona que viatja a l'espai en una nau.
+àlbum: Llibre on s'enganxen fotos o cromos.
+aspiradora: Electrodomèstic que xucla la pols del terra.
+abraçada: Gest d'envoltar algú amb els braços per afecte.
+anglès: Llengua que es parla a Anglaterra i als Estats Units.
+#B
+barca: Embarcació petita, que es mou amb rems.
+bicicleta: Vehicle de dues rodes que es mou fent pedals.
+bomber: Persona que apaga els incendis.
+botiga: Lloc on es venen coses.
+bufanda: Peça de roba llarga que es posa al voltant del coll quan fa fred.
+ballar: Moure el cos seguint el ritme de la música.
+banyera: Recipient gran del bany on et pots ficar sencer per rentar-te.
+biberó: Ampolla amb una tetina amb què es dona la llet als nadons.
+bosc: Lloc ple d'arbres.
+barret: Peça que es posa al cap, amb una ala tot al voltant.
+bigoti: Pèl que creix entre el nas i el llavi de dalt.
+balena: L'animal més gros del mar, que treu aigua per un forat que té al cap.
+bolígraf: Estri per escriure amb tinta, amb una boleta a la punta.
+bandera: Tros de tela de colors que representa un país.
+barba: Pèl que creix a les galtes i a la barbeta dels homes.
+biblioteca: Lloc on es poden llegir llibres i endur-se'n en préstec.
+boca: Part de la cara per on mengem i parlem.
+butaca: Seient còmode, amb braços, per a una sola persona.
+bressol: Llitet per als nadons, que sovint es gronxa.
+bossa: Sac de plàstic o de tela per portar el que compres.
+bota: Calçat alt que cobreix el peu i també una part de la cama.
+bruixa: Dona dels contes que vola amb una escombra i fa encanteris.
+bàsquet: Esport en què s'ha de ficar la pilota dins d'una cistella.
+botifarra: Embotit català que es menja amb mongetes.
+blanc: Color de la neu i de la llet.
+blau: Color del cel quan no hi ha núvols.
+bufar: Treure aire per la boca amb força, per exemple per apagar les espelmes.
+besar: Tocar algú amb els llavis en senyal d'afecte.
+bombeta: Globus de vidre que fa llum quan hi passa el corrent.
+bústia: Caixa on el carter deixa les cartes.
+bitllet: Paper que fa de diners; també, el que et deixa pujar al tren.
+brúixola: Aparell amb una agulla que sempre assenyala el nord.
+balcó: Plataforma amb barana que surt de la façana, davant d'una porta o una finestra.
+bolet: Fong que surt al bosc després de ploure; n'hi ha que es mengen i n'hi ha de verinosos.
+benzina: Combustible que es posa al dipòsit de molts cotxes.
+bistec: Tall prim de carn que es fa a la planxa.
+bena: Tira de roba que s'enrotlla al voltant d'una ferida.
+bata: Peça de roba llarga que es porta per anar per casa o per treballar.
+#C
+cadira: Seient amb respatller i quatre potes, per a una sola persona.
+casa: Edifici on viu una família.
+cotxe: Vehicle de quatre rodes i motor, per anar per la carretera.
+cavall: Animal de quatre potes, amb crinera, que es pot muntar.
+cuina: Habitació de la casa on es prepara el menjar.
+cel: Allò que veiem a sobre nostre, on hi ha els núvols i les estrelles.
+camisa: Peça de roba amb coll i botons, que es porta a la part de dalt del cos.
+cullera: Estri de taula, rodó i una mica fondo, amb què es menja la sopa.
+coixí: Sac tou on recolzem el cap per dormir.
+cargol: Animal molt lent, que porta la closca a sobre i deixa un rastre de bava.
+castell: Edifici amb torres i muralles on vivien els senyors d'antigament.
+cirera: Fruita petita i vermella, amb un pinyol i un rabet llarg.
+ceba: Bulb que fa plorar quan el talles.
+conill: Animal d'orelles llargues que salta i viu en caus.
+cocodril: Rèptil gros, de boca molt llarga i plena de dents, que viu als rius.
+cistella: Recipient de vímet, amb nansa, per portar coses.
+calendari: Full o llibret amb tots els dies i els mesos de l'any.
+cervell: Òrgan de dins del cap amb què pensem.
+cor: Òrgan del pit que bombeja la sang.
+cuc: Animal petit, llarg i tou, sense potes, que viu sota terra.
+cinema: Sala on es projecten pel·lícules.
+clau: Peça de metall que obre un pany.
+cotó: Fibra blanca i suau, d'una planta, amb què es fan samarretes.
+carta: Paper escrit que s'envia dins d'un sobre.
+carrer: Via d'una ciutat o d'un poble, amb cases als dos costats.
+cap: Part del cos on hi ha els ulls, el nas i la boca.
+camell: Animal del desert amb dues gepes.
+carbassa: Fruit gros i taronja que es buida per fer-ne un fanalet a la Castanyada.
+castanya: Fruit marró que es menja torrat a la tardor.
+calor: El que sentim a l'estiu quan fa sol.
+corda: Fils trenats, llargs i gruixuts, que serveixen per lligar.
+cranc: Animal de mar que camina de costat i té pinces.
+cuiner: Persona que fa el menjar en un restaurant.
+cadena: Seguit d'anelles de metall enllaçades.
+cantar: Fer música amb la veu.
+córrer: Anar molt de pressa amb les cames.
+cremallera: Tancament de dues tires amb dents que s'encaixen, com el dels pantalons.
+caramel: Llaminadura dura i dolça feta de sucre.
+coet: Vehicle que s'enlaira cap a l'espai empès per un foc molt potent.
+cassola: Recipient de terrissa, ample i baix, per cuinar.
+#Ç
+plaça: Espai obert al mig d'un poble o d'una ciutat, on sovint hi ha l'ajuntament.
+cançó: Música amb lletra, per cantar.
+braç: Part del cos que va de l'espatlla a la mà.
+caçar: Perseguir animals per matar-los o atrapar-los.
+feliç: Molt content.
+dolç: Del gust del sucre.
+forçut: Que té molta força.
+març: Mes de l'any que va després de febrer.
+calçot: Ceba tendra que es menja a la brasa amb salsa romesco.
+calçat: Les sabates, les botes i les espardenyes, en general.
+pinça: Estri de dues potes per agafar o subjectar coses, com les d'estendre la roba.
+lliçó: Allò que el mestre explica a classe.
+força: El que tens quan pots aixecar coses molt pesades.
+començar: Fer la primera part d'una cosa.
+llançar: Tirar una cosa lluny amb força.
+avançar: Anar endavant; també, passar el cotxe del davant.
+calçar: Posar-se les sabates.
+esforç: El que fas quan una cosa et costa molt.
+comerç: La compra i la venda de coses; també, una botiga.
+llaç: Nus decoratiu fet amb una cinta, com el dels paquets de regal.
+glaç: Aigua gelada.
+glaçó: Tros petit de gel que es posa a les begudes.
+esperança: Confiança que passarà una cosa bona.
+balança: Aparell per pesar.
+llençol: Tela que es posa al llit, a sota de la manta.
+lluç: Peix blanc de mar, molt comú a les peixateries.
+puça: Insecte molt petit que salta i pica els gossos i els gats.
+escorça: La pell dura del tronc dels arbres.
+raça: Cadascun dels tipus d'una mateixa espècie, com el pastor alemany entre els gossos.
+peça: Cadascuna de les parts d'un trencaclosques.
+vençut: Que ha perdut una batalla o una lluita.
+eriçó: Animal petit cobert de punxes que es fa una bola quan té por.
+llenç: Tela on pinten els pintors.
+coça: Cop que dona un cavall o un ruc amb la pota del darrere.
+caça: El que fa el caçador quan va a buscar animals.
+#D
+dit: Cadascuna de les cinc parts en què acaba la mà.
+dent: Peça blanca i dura de la boca que serveix per mossegar.
+diumenge: Últim dia de la setmana, en què molta gent no treballa.
+dinar: Àpat del migdia.
+dofí: Animal de mar molt intel·ligent que salta per sobre les onades.
+drac: Animal de llegenda que treu foc per la boca, com el de Sant Jordi.
+dutxa: Raig d'aigua que cau de dalt per rentar-se dret.
+dormir: Tancar els ulls i descansar, sobretot a la nit.
+dibuix: Imatge feta amb llapis o retoladors.
+dona: Persona adulta de sexe femení.
+dinosaure: Animal gegant que vivia fa milions d'anys i que ja s'ha extingit.
+diners: Monedes i bitllets amb què es paguen les coses.
+desembre: L'últim mes de l'any.
+dau: Cub amb punts de l'u al sis a cada cara, per jugar.
+dolor: Sensació que tens quan et fas mal.
+dentista: Metge que et cuida les dents.
+davantal: Peça de roba, lligada a la cintura, que es posa per no embrutar-se quan es cuina.
+dimoni: Ésser dolent que, segons moltes religions, viu a l'infern.
+dur: Que no és tou, com la pedra.
+dreta: El costat contrari a l'esquerra.
+dormitori: Habitació on hi ha el llit.
+diari: Publicació que surt cada dia amb les notícies.
+dolent: Que no és bo.
+despertador: Rellotge que sona al matí perquè et llevis.
+diccionari: Llibre on hi ha les paraules per ordre alfabètic amb el que volen dir.
+duna: Munt de sorra que fa el vent al desert o a la platja.
+dard: Fletxa petita que es llança contra una diana.
+desert: Lloc molt sec on gairebé no plou i tot és sorra.
+doble: Dues vegades més.
+deu: Número que va després del nou.
+destral: Eina amb una fulla tallant i un mànec, per tallar llenya.
+diadema: Cèrcol que es posa al cap per aguantar els cabells.
+disfressa: Roba que et poses per Carnaval per semblar un altre.
+dàtil: Fruit petit, marró i molt dolç, de la palmera.
+dimecres: Dia de la setmana que va entre dimarts i dijous.
+#E
+elefant: Animal molt gros i gris, amb una trompa i dos ullals d'ivori.
+escola: Lloc on els nens van a aprendre.
+estrella: Punt de llum que veiem al cel de nit.
+escombra: Estri amb un pal llarg per netejar el terra.
+escala: Seguit de graons per pujar d'un pis a l'altre.
+esquirol: Animal petit, amb una cua grossa i peluda, que s'enfila als arbres i menja pinyons.
+espelma: Barra de cera amb un ble que s'encén per fer llum, com les dels pastissos d'aniversari.
+estiu: Estació de l'any en què fa més calor.
+enciam: Verdura de fulles verdes que es menja en amanida.
+ensaïmada: Pasta dolça de Mallorca, en forma d'espiral i amb sucre en pols per sobre.
+esquena: Part del darrere del cos, de les espatlles fins a la cintura.
+espatlla: Part del cos on el braç s'uneix amb el tronc.
+escriure: Posar paraules en un paper.
+espasa: Arma de fulla llarga i punxeguda.
+església: Edifici on els cristians van a missa.
+estómac: Òrgan on va a parar el menjar quan te l'empasses.
+entrepà: Pa partit pel mig amb alguna cosa a dins, com pernil o formatge.
+estoig: Capsa on es desen els llapis i les gomes.
+esquiar: Lliscar per la neu amb dues taules llargues als peus.
+estufa: Aparell que escalfa una habitació.
+eruga: Cuc que menja fulles i després es converteix en papallona.
+esternut: Aire que et surt de cop pel nas, sense voler, quan tens un refredat.
+escut: Arma que es porta al braç per protegir-se dels cops.
+estàtua: Figura de pedra o de bronze que representa una persona.
+esquerra: El costat contrari a la dreta.
+escacs: Joc de taula amb un rei, una reina, torres i cavalls.
+espinacs: Verdura de fulla verda que donava molta força a en Popeye.
+edifici: Construcció amb parets i sostre, com una casa o un bloc de pisos.
+estel: Joguina de paper o de tela, lligada a un fil, que es fa volar amb el vent.
+enginyer: Persona que dissenya ponts, màquines o carreteres.
+excursió: Sortida d'un dia per anar a caminar o a visitar un lloc.
+embut: Estri en forma de con per passar un líquid a una ampolla.
+escalfar: Fer que una cosa estigui més calenta.
+etiqueta: Paperet enganxat a un producte, amb el preu o la marca.
+esponja: Objecte tou que xucla l'aigua i serveix per rentar-se.
+esquelet: Tots els ossos del cos, junts.
+endoll: Forat de la paret on es connecten els aparells elèctrics.
+escarabat: Insecte de closca dura i brillant.
+euro: Moneda que fem servir a Espanya i a molts països d'Europa.
+#F
+formatge: Aliment fet amb llet quallada, com el manxego o el brie.
+foc: Flames i calor que fa una cosa quan crema.
+finestra: Obertura a la paret per on entren la llum i l'aire.
+flor: Part de la planta, de colors, que fa bona olor.
+fulla: Part verda de la planta, que cau dels arbres a la tardor.
+fred: El que sentim a l'hivern.
+forquilla: Estri de taula amb punxes per agafar el menjar.
+formiga: Insecte petit que viu en colònies sota terra.
+família: Pares, fills, avis, oncles i cosins.
+febrer: El segon mes de l'any.
+fusta: Material que surt del tronc dels arbres.
+fruita: Aliment com la poma, la pera o el préssec.
+futbol: Esport en què dos equips d'onze jugadors intenten ficar la pilota a la porteria.
+fill: Nen o noi, respecte del seu pare i de la seva mare.
+foca: Animal de mar dels llocs freds, amb aletes, que descansa a les roques.
+flauta: Instrument de vent, un tub amb forats.
+fantasma: Esperit d'un mort que, segons els contes, s'apareix tapat amb un llençol.
+faldilla: Peça de roba que va de la cintura cap avall, sense camals.
+farmàcia: Botiga on es venen medicaments.
+foto: Imatge feta amb una càmera o amb el mòbil.
+fil: Cosa molt prima i llarga amb què es cus.
+fum: Núvol gris que surt quan crema alguna cosa.
+fideu: Pasta llarga i prima que es posa a la sopa.
+far: Torre de la costa amb una llum que guia els vaixells de nit.
+festa: Celebració amb música, menjar i gent contenta.
+fang: Barreja de terra i aigua que es fa quan plou.
+fletxa: Pal prim i punxegut que es dispara amb un arc.
+flam: Postres tremoloses fetes amb ou i llet, amb caramel per sobre.
+fada: Ésser dels contes amb una vareta màgica.
+fàbrica: Lloc on es fan coses amb màquines.
+fetge: Òrgan gran que tenim a la dreta de la panxa.
+full: Tros de paper.
+forn: Aparell o lloc on es cou el pa o els pastissos.
+ferro: Metall dur i gris amb què es fan eines i bigues.
+fosc: Que no té llum.
+fàcil: Que costa poc de fer.
+fregona: Pal amb tires de cotó a la punta per fregar el terra.
+fanal: Llum del carrer, a dalt d'un pal.
+fruiteria: Botiga on es venen pomes, peres, plàtans i verdures.
+#G
+gat: Animal de companyia que miola i caça ratolins.
+gos: Animal de companyia que borda.
+gallina: Ocell de granja que pon ous.
+got: Recipient per beure.
+gelat: Postres molt fredes, de gust de xocolata, de maduixa o de vainilla.
+gener: El primer mes de l'any.
+germà: Fill dels mateixos pares que tu.
+guitarra: Instrument de sis cordes que es toca amb els dits.
+globus: Bossa de goma plena d'aire, de colors, per a les festes.
+galeta: Pasta dolça, petita i cruixent, que es menja per esmorzar o per berenar.
+granota: Animal verd que salta i viu a les basses.
+guant: Peça de roba per a la mà, amb un forat per a cada dit.
+gerro: Recipient on es posen les flors.
+goma: Estri per esborrar el que s'ha escrit amb llapis.
+girafa: Animal africà amb el coll molt llarg i taques.
+groc: Color del sol i dels plàtans madurs.
+gris: Color dels núvols de pluja i de les cendres.
+galta: Part de la cara que hi ha a cada costat del nas.
+genoll: Part de la cama que es doblega.
+gegant: Personatge enorme dels contes; també, la figura altíssima que balla a la festa major.
+gorra: Barret de roba amb visera.
+goril·la: El mico més gros, que viu a l'Àfrica.
+gimnàs: Lloc amb aparells on es fa exercici.
+gota: Partícula molt petita de líquid, com les de la pluja.
+guineu: Animal semblant a un gos, de pèl vermellós i cua grossa, que es menja les gallines.
+gra: Llavor petita, com les del blat; també, el que surt a la pell.
+guix: Barreta blanca per escriure a la pissarra.
+golafre: Que menja molt i amb moltes ganes.
+gàbia: Caixa feta de barrots on es tanca un ocell.
+grua: Màquina molt alta de les obres, que aixeca coses pesades.
+ganivet: Estri de taula per tallar, amb una fulla esmolada.
+gana: Ganes de menjar.
+gerd: Fruita del bosc, vermella i petita, semblant a la maduixa.
+gronxador: Seient del parc, penjat amb cordes, que va endavant i endarrere.
+gall: El mascle de la gallina, que canta al matí.
+gamba: Marisc petit i rosat, de potes llargues.
+garatge: Lloc on es guarda el cotxe.
+gust: El sentit amb què notem si una cosa és dolça o salada.
+gespa: Herba curta i verda d'un jardí o d'un camp de futbol.
+#H
+hivern: Estació de l'any que comença al desembre, quan neva a les muntanyes.
+hospital: Edifici on es curen i s'operen els malalts.
+helicòpter: Aparell que vola amb unes pales que giren a sobre seu.
+herba: Planta petita i verda que creix als prats.
+hora: Cadascuna de les vint-i-quatre parts del dia.
+home: Persona adulta de sexe masculí.
+hotel: Establiment on dorms quan vas de viatge, pagant per nit.
+hipopòtam: Animal africà enorme que es passa el dia dins dels rius.
+hamburguesa: Carn picada en forma de disc, que es menja dins d'un panet.
+hort: Tros de terra on es cultiven verdures.
+horari: Llista de les hores a què passen les coses, com les classes o els trens.
+història: Ciència que estudia el passat.
+heroi: Persona que fa una cosa molt valenta i admirable.
+humit: Una mica mullat.
+hàmster: Rosegador petit que es té a casa en una gàbia amb una roda.
+huracà: Tempesta de vents fortíssims que giren en remolí, sobretot al Carib.
+hivernacle: Construcció de vidre o de plàstic per fer créixer plantes protegides del fred.
+herència: Allò que et deixa un familiar quan mor.
+himne: Cançó solemne d'un país o d'un club.
+hostessa: Dona que atén els passatgers d'un avió.
+hereu: Fill que, segons la tradició catalana, heretava la casa i les terres.
+hamaca: Llit de tela o de xarxa penjat per les puntes, per estirar-s'hi.
+hibernar: Passar l'hivern dormint, com fan els óssos.
+horitzó: Línia llunyana on sembla que el cel toca la terra o el mar.
+hissar: Fer pujar una bandera a dalt del pal.
+habitació: Cadascuna de les parts d'una casa separades per parets.
+habitant: Persona que viu en un lloc.
+hípica: Esport de muntar a cavall i saltar obstacles.
+higiene: Neteja del cos per mantenir-se sa.
+hemorràgia: Sortida abundant de sang.
+hoquei: Esport en què es colpeja una bola o un disc amb un estic.
+hexàgon: Figura geomètrica de sis costats.
+hidrogen: L'element químic més lleuger, que juntament amb l'oxigen forma l'aigua.
+hipnotitzar: Adormir algú i fer que obeeixi, com fan alguns mags.
+humor: La gràcia de dir les coses de manera que facin riure.
+horòscop: Predicció del futur segons el signe del zodíac.
+hisenda: Organisme de l'Estat a qui es paguen els impostos.
+homenatge: Acte per honorar una persona.
+herbívor: Animal que només menja plantes.
+#I
+illa: Tros de terra envoltat d'aigua per totes bandes.
+iogurt: Aliment fet de llet fermentada que es menja amb cullereta.
+igual: Que no té cap diferència amb una altra cosa.
+infermer: Persona que cuida els malalts a l'hospital i els posa injeccions.
+insecte: Animaló de sis potes, com la mosca o la formiga.
+imant: Peça que atrau el ferro.
+índex: El dit que hi ha al costat del polze, amb què s'assenyala.
+impressora: Aparell que passa al paper el que hi ha a l'ordinador.
+iglú: Casa feta de blocs de gel, com les dels inuits.
+ivori: Material blanc i dur dels ullals de l'elefant.
+idioma: Llengua d'un poble, com el català o el francès.
+infern: Lloc on, segons el cristianisme, van les ànimes dels dolents.
+invent: Cosa nova que algú s'ha empescat, com la bombeta o el telèfon.
+incendi: Foc gran que crema boscos o edificis.
+impost: Diners que s'han de pagar a l'Estat.
+intel·ligent: Que entén i aprèn les coses amb facilitat.
+invisible: Que no es pot veure.
+ingredient: Cadascuna de les coses que es posen en una recepta.
+infància: Època de la vida en què som nens.
+idea: Pensament que se t'acut.
+iaia: Manera familiar de dir àvia.
+imatge: Figura que es veu en una foto, en un mirall o en una pantalla.
+imperi: Conjunt de països sota el poder d'un emperador.
+inauguració: Acte en què s'obre per primera vegada un edifici, una botiga o una exposició.
+intestí: Tub llarg del cos per on passa el menjar després de l'estómac.
+internet: Xarxa mundial d'ordinadors connectats.
+invitar: Demanar a algú que vingui a una festa, o pagar-li tu el que pren.
+interruptor: Peça de la paret amb què s'encén i s'apaga el llum.
+itinerari: Camí que es fa per anar d'un lloc a un altre.
+ignorant: Que no sap les coses.
+ídol: Persona molt admirada, com un cantant famós.
+infusió: Beguda calenta d'herbes, com la camamilla.
+iris: La part de color de l'ull.
+ioga: Exercici d'origen indi, amb postures i respiracions per relaxar-se.
+immens: Molt i molt gran.
+inútil: Que no serveix per a res.
+institut: Centre on es fa l'ESO i el batxillerat.
+#J
+jardí: Terreny amb plantes i flors al costat d'una casa.
+joguina: Objecte per jugar, com una nina o una pilota.
+juny: Mes de l'any en què comença l'estiu.
+jaqueta: Peça de roba amb mànigues que es porta a sobre de la camisa.
+jutge: Persona que decideix als judicis qui té raó.
+jersei: Peça de roba de punt, sovint de llana, per a la part de dalt del cos.
+jove: Que té pocs anys.
+joia: Objecte d'or, de plata o de pedres precioses que es porta per adornar-se.
+jugador: Persona que juga en un equip.
+jaguar: Felí gran d'Amèrica, amb taques negres a la pell.
+jungla: Bosc tropical molt espès i humit.
+julivert: Herba aromàtica de fulles verdes que es posa al menjar.
+joglar: A l'edat mitjana, artista que anava pels pobles recitant, cantant i fent jocs.
+jornal: Diners que cobra un treballador per un dia de feina.
+jubilat: Persona gran que ja no treballa i cobra una pensió.
+jeroglífic: Escriptura feta amb dibuixos dels antics egipcis.
+judo: Esport de lluita japonès en què es tomba el rival a terra.
+jueu: Persona del poble de Moisès i de la seva religió.
+joier: Persona que fa o ven joies.
+jutjat: Edifici on es fan els judicis.
+jeure: Estar estirat.
+jonc: Planta de tija prima i flexible que creix vora l'aigua.
+jerarquia: Ordre que va del més important al menys important dins d'una organització.
+joventut: Època de la vida entre la infància i l'edat adulta.
+jurar: Prometre una cosa de manera solemne.
+jurat: Grup de persones que decideix el guanyador d'un concurs.
+jaciment: Lloc on hi ha restes enterrades, com fòssils o minerals.
+jacint: Planta de bulb amb flors en raïm, molt perfumades, sovint blaves.
+jazz: Música nascuda als Estats Units, amb molta improvisació.
+jardiner: Persona que té cura de les plantes i de la gespa dels parcs.
+jornada: Dia de feina, o les hores que s'hi treballen.
+jota: Ball popular de les Terres de l'Ebre i d'Aragó.
+judici: Acte en què un jutge decideix si algú és culpable.
+joc: Activitat per divertir-se, amb unes regles.
+juliol: Mes de l'any que va després de juny.
+#L
+llapis: Barreta de fusta amb una mina a dins per escriure i dibuixar.
+llet: Líquid blanc que donen les vaques i que beuen els nadons.
+lleó: Felí gran amb crinera, a qui diuen el rei de la selva.
+lluna: Astre que gira al voltant de la Terra i que de nit brilla al cel.
+llibre: Fulls impresos i cosits per llegir.
+llit: Moble on dormim.
+llimona: Fruita groga i molt àcida.
+llop: Animal salvatge semblant a un gos, que udola de nit.
+llengua: Part de dins de la boca amb què notem el gust; també, un idioma.
+llamp: Llum que travessa el cel en una tempesta.
+llagosta: Marisc gros i car, de closca vermellosa; també, un insecte saltador.
+lladre: Persona que roba.
+llaminadura: Cosa dolça per picar, com un caramel.
+lavabo: Pica on ens rentem les mans i la cara.
+llibreria: Botiga on es poden comprar novel·les i contes.
+llebre: Animal semblant al conill, però més gros i de cames més llargues.
+llavi: Cadascuna de les dues vores de la boca.
+llàgrima: Gota que cau dels ulls quan plores.
+llaüt: Barca de pesca tradicional amb vela llatina.
+llevat: Massa que fa pujar el pa.
+llentia: Llegum petit, rodó i pla, que es menja guisat.
+llavor: El que es planta perquè en surti una planta.
+lloro: Ocell de colors que aprèn a parlar.
+llangardaix: Rèptil verd i més gros que una sargantana.
+llauna: Envàs de metall per a begudes o conserves.
+lleuger: Que pesa poc.
+llana: Pèl de les ovelles amb què es fan jerseis.
+lletra: Cadascun dels signes de l'abecedari.
+llegir: Entendre el que diu un text escrit.
+lleixiu: Líquid que desinfecta i emblanqueix la roba.
+lloguer: Diners que pagues cada mes per viure en un pis que no és teu.
+llamàntol: Marisc semblant a la llagosta, però amb dues pinces grosses.
+laberint: Lloc ple de camins on és fàcil perdre's.
+làmpada: Aparell que fa llum.
+llibreta: Quadern petit per apuntar coses.
+llevar: Treure; també, aixecar-se del llit al matí.
+llorer: Arbre de fulles aromàtiques que es posen al guisat.
+lluitar: Barallar-se, o esforçar-se molt per aconseguir una cosa.
+#M
+mare: La dona que t'ha tingut.
+mà: Part del cos al final del braç, amb cinc dits.
+mar: Aigua salada que cobreix la major part de la Terra.
+maduixa: Fruita vermella i petita amb les llavors per fora.
+mirall: Vidre on et veus reflectit.
+mestre: Persona que ensenya a l'escola.
+metge: Persona que cura els malalts.
+mosca: Insecte que vola i es para al menjar.
+maig: Mes de les flors, després de l'abril.
+moto: Vehicle de dues rodes amb motor.
+mussol: Ocell nocturn, petit, amb els ulls grossos i grocs.
+mel: Aliment dolç que fan les abelles.
+mitjó: Peça de roba que cobreix el peu dins de la sabata.
+motxilla: Bossa que es porta a l'esquena.
+mico: Animal que s'enfila als arbres i s'assembla a les persones.
+mapa: Dibuix d'un territori, amb els rius, les carreteres i les ciutats.
+martell: Eina per clavar claus.
+meló: Fruit gros, de pell verda o groga, dolç i ple de llavors.
+mandarina: Fruita semblant a la taronja, però més petita i fàcil de pelar.
+matí: Part del dia que va de quan surt el sol fins al migdia.
+mocador: Tros de tela o de paper per mocar-se.
+moneda: Peça rodona de metall que fa de diners.
+música: Art de combinar els sons.
+mòbil: Telèfon que es porta a la butxaca.
+medusa: Animal de mar transparent i gelatinós que pica.
+mantega: Greix groc fet de llet que s'unta al pa.
+maleta: Bossa gran, sovint amb rodes, on es posa la roba quan vas de viatge.
+mercat: Lloc amb parades on es venen fruita, carn i peix.
+molí: Construcció amb pales que mou el vent o l'aigua per fer farina.
+museu: Edifici on s'exposen quadres i objectes d'art o d'història.
+mosquit: Insecte que pica de nit i deixa una picor.
+mòmia: Cadàver embenat dels antics egipcis.
+melic: El clotet del mig de la panxa.
+mascota: Animal de companyia.
+màscara: Cosa que es posa a la cara per tapar-la.
+monja: Dona religiosa que viu en un convent.
+mosaic: Dibuix fet amb trossets de pedra o de vidre de colors.
+matalàs: La part tova del llit, on t'estires.
+marieta: Insecte petit, vermell amb punts negres.
+maquinista: Persona que condueix un tren.
+#N
+nas: Part de la cara per on respirem i notem les olors.
+neu: Aigua gelada que cau del cel en flocs blancs.
+nit: Part del dia en què és fosc.
+nadó: Criatura acabada de néixer.
+niu: Casa que fan els ocells per pondre els ous.
+núvol: Massa blanca o grisa que sura al cel i porta la pluja.
+nedar: Moure's dins l'aigua sense tocar a terra.
+nou: Fruit sec de closca dura que per dins sembla un cervell; també, un número.
+novembre: Mes de l'any que va després d'octubre.
+nevera: Electrodomèstic on es conserva el menjar fred.
+nansa: Part d'un objecte per on s'agafa, com la d'una tassa.
+nebot: El fill del teu germà o de la teva germana.
+nét: El fill del teu fill o de la teva filla.
+negre: Color del carbó.
+nus: Lligadura que es fa amb una corda o amb els cordons de les sabates.
+nàufrag: Persona que s'ha salvat d'un vaixell enfonsat i ha arribat a una illa deserta.
+nina: Joguina en forma de nena o de dona.
+nervi: Fil del cos que porta les ordres del cervell als músculs.
+nata: Crema blanca i dolça feta de llet, que es posa als pastissos.
+neula: Galeta prima, enrotllada en forma de tub, que es menja per Nadal amb el cava.
+nespra: Fruita petita i taronja amb uns pinyols grossos.
+nevada: Caiguda de neu.
+notícia: Informació d'una cosa que acaba de passar.
+nom: Paraula amb què es coneix una persona o una cosa.
+nord: Punt cardinal que assenyala sempre la brúixola.
+nuca: Part del darrere del coll.
+nòmada: Que no viu sempre al mateix lloc, sinó que va d'un lloc a un altre.
+natura: Les plantes, els animals i els paisatges que no ha fet l'home.
+navegar: Anar amb vaixell pel mar.
+necessari: Que fa falta.
+noguera: Arbre que fa nous.
+notari: Persona que dona fe dels contractes i dels testaments.
+novel·la: Llibre llarg que explica una història inventada.
+nuvi: L'home que es casa, el dia del casament.
+neurona: Cèl·lula del cervell.
+nan: Personatge molt baixet dels contes, com els set de la Blancaneu.
+nostàlgia: Tristesa de recordar temps passats.
+#O
+ou: El que ponen les gallines.
+ovella: Animal de granja que fa llana.
+ocell: Animal amb plomes, bec i ales.
+orella: Part del cap amb què sentim.
+os: Cadascuna de les peces dures de l'esquelet.
+ós: Animal gros i pelut que dorm tot l'hivern i a qui agrada la mel.
+oli: Líquid groc que surt de les olives.
+oliva: Fruit petit, verd o negre, de l'olivera.
+octubre: Mes de l'any que va després de setembre.
+ordinador: Màquina electrònica amb pantalla i teclat.
+or: Metall groc i preciós amb què es fan joies.
+onada: Moviment de l'aigua del mar que arriba a la platja.
+oncle: El germà del teu pare o de la teva mare.
+olla: Recipient alt per cuinar.
+ombra: Lloc fosc que deixa un cos quan tapa la llum del sol.
+orquestra: Grup gran de músics que toquen junts.
+oficina: Lloc on es treballa amb papers i ordinadors.
+olor: El que notem amb el nas.
+ostra: Marisc de closca rugosa que de vegades té una perla a dins.
+òliba: Ocell nocturn de cara blanca, en forma de cor.
+orenga: Herba aromàtica que es posa a la pizza.
+orxata: Beguda blanca, dolça i freda, típica de València.
+obrir: Fer que una cosa deixi d'estar tancada.
+oreneta: Ocell negre i blanc que arriba a la primavera i fa el niu sota les teulades.
+orgue: Instrument gran de les esglésies, amb tubs.
+orfe: Nen que s'ha quedat sense pares.
+ovni: Nau desconeguda que alguns diuen que ve d'un altre planeta.
+oest: Punt cardinal per on es pon el sol.
+olimpíada: Jocs esportius que es fan cada quatre anys amb atletes de tot el món.
+òpera: Obra de teatre tota cantada.
+orgull: Satisfacció per una cosa ben feta; també, creure's més que els altres.
+ofegar: Morir per no poder respirar, per exemple dins l'aigua.
+oblidar: Deixar de recordar.
+operació: El que fa un cirurgià quan obre el cos per curar-lo.
+oceà: Mar immens, com l'Atlàntic o el Pacífic.
+ofici: Feina que sap fer una persona, com fuster o paleta.
+ortiga: Planta que pica quan la toques.
+oxigen: Gas de l'aire que necessitem per viure.
+#P
+pa: Aliment fet de farina, aigua i llevat, cuit al forn.
+pare: L'home que t'ha tingut.
+peix: Animal que viu a l'aigua i respira amb brànquies.
+poma: Fruita rodona, vermella o verda, com la de la Blancaneu.
+pilota: Bola per jugar a futbol.
+platja: Vora del mar plena de sorra.
+porta: Obertura per entrar i sortir d'un lloc.
+pluja: Aigua que cau dels núvols.
+pastís: Postres dolces que es fan per celebrar un aniversari.
+papallona: Insecte amb ales de colors.
+porc: Animal de granja del qual es fan els pernils.
+peu: Part del cos al final de la cama.
+pinya: Fruit del pi, d'on surten els pinyons; també, una fruita tropical.
+pallasso: Personatge del circ, amb el nas vermell, que fa riure.
+paraigua: Objecte que obres quan plou.
+pebrot: Hortalissa vermella o verda, buida per dins.
+pernil: Cuixa de porc salada i assecada.
+pirata: Lladre del mar.
+pissarra: Tauler fosc de les aules on s'escriu amb guix.
+pollastre: Cria de la gallina, que es menja a l'ast.
+pont: Construcció per passar per sobre d'un riu.
+princesa: Filla d'un rei.
+préssec: Fruita de pell vellutada amb un pinyol gros.
+pastanaga: Hortalissa llarga i taronja que agrada molt als conills.
+patata: Tubercle que es menja fregit o bullit.
+pingüí: Ocell blanc i negre que no vola i viu al pol sud.
+pebre: Espècia picant en grans negres.
+policia: Agent que vigila que es compleixin les lleis.
+poble: Lloc on viu poca gent, més petit que una ciutat.
+palmera: Arbre de les platges, de tronc llarg i fulles grosses a dalt de tot.
+paella: Plat d'arròs típic de València.
+paper: Full on s'escriu.
+pijama: Roba per dormir.
+planeta: Astre que gira al voltant d'una estrella, com la Terra.
+poll: Insecte petit que viu als cabells.
+pastor: Persona que porta les ovelles a pasturar.
+piano: Instrument amb tecles blanques i negres.
+pop: Animal de mar amb vuit tentacles.
+pessebre: Representació del naixement de Jesús, amb figuretes, que es fa per Nadal.
+#Q
+quadre: Pintura emmarcada que es penja a la paret.
+queixal: Dent del fons de la boca, que serveix per triturar el menjar.
+quilòmetre: Mil metres.
+quadern: Llibreta de fulls en blanc per escriure.
+quadrat: Figura de quatre costats iguals i quatre angles rectes.
+quaresma: Els quaranta dies abans de Setmana Santa, en què tradicionalment no es menjava carn.
+querubí: Àngel, sovint pintat com un nen amb ales.
+quàdruple: Quatre vegades més.
+quiròfan: Sala de l'hospital on es fan les operacions.
+queixa: Expressió de disgust per una cosa que no t'agrada.
+quimera: Monstre mitològic amb cap de lleó, cos de cabra i cua de serp; també, una il·lusió impossible.
+química: Ciència que estudia de què estan fetes les substàncies i com es transformen.
+quilla: Peça llarga que va per sota del vaixell, de proa a popa.
+quiosc: Caseta del carrer on es venen diaris i revistes.
+quinzena: Període de dues setmanes.
+quòrum: Nombre mínim de membres que han de ser presents perquè una votació valgui.
+quarantena: Aïllament que es fa perquè una malaltia no s'encomani.
+quadrilla: Colla de persones que treballen o van juntes.
+quitrà: Substància negra i enganxosa que surt del petroli i també del fum del tabac.
+quotidià: De cada dia.
+queviures: Menjar i beure que es compra per a casa.
+quars: Mineral dur i transparent, que també es fa servir als rellotges.
+quec: Que parla entrebancant-se i repetint les síl·labes.
+quadrúpede: Animal que camina amb quatre potes.
+queixalada: Mossegada.
+quètxup: Salsa vermella i dolça de tomàquet que es posa a les patates fregides.
+quimono: Vestit tradicional japonès, llarg i amb mànigues amples.
+quirat: Unitat que indica la puresa de l'or; també, la del pes dels diamants.
+querella: Denúncia que es presenta davant d'un jutge.
+quiromància: L'art d'endevinar el futur llegint les ratlles de la mà.
+qualitat: Allò que fa que una cosa sigui millor o pitjor: la bona roba en té molta.
+quiet: Que no es mou.
+quilo: Mil grams.
+quart: Cadascuna de les quatre parts iguals d'una cosa; també, quinze minuts.
+quatre: Número que va després del tres.
+quixotesc: Que defensa causes perdudes amb un idealisme exagerat, com el cavaller de la Manxa.
+#R
+rellotge: Aparell que marca l'hora.
+ratolí: Animal petit que menja formatge i que el gat persegueix; també, un aparell de l'ordinador.
+riu: Corrent d'aigua que va a parar al mar.
+rei: Home que regna en un país.
+roda: Peça rodona que gira i fa moure els vehicles.
+rosa: Flor amb espines que es regala per Sant Jordi.
+raïm: Fruit en grans que creix en penjolls i del qual es fa el vi.
+rentadora: Electrodomèstic on es posa la roba bruta perquè quedi neta.
+robot: Màquina que fa feines tota sola, perquè està programada.
+ruc: Animal semblant al cavall, però més petit i d'orelles llargues; el català és famós.
+raqueta: Pala amb una xarxa per jugar a tennis.
+regal: Cosa que dones a algú per celebrar alguna cosa.
+rinoceront: Animal africà enorme amb una banya al nas.
+rajola: Peça plana de ceràmica que cobreix el terra o les parets.
+ratpenat: Mamífer volador que dorm cap per avall a les coves.
+rebost: Lloc de la casa on es guarden els aliments.
+rentaplats: Electrodomèstic on es posen els plats bruts perquè quedin nets.
+rovell: La part groga de l'ou; també, el que treu el ferro quan es mulla.
+rossinyol: Ocell petit que canta molt bé; també, una eina per obrir panys sense clau.
+relleu: Forma del terreny, amb muntanyes i valls; també, cursa en què els corredors es passen el testimoni.
+romaní: Arbust aromàtic de flors blaves que creix al bosc mediterrani.
+ruïna: Restes d'un edifici antic que ha caigut.
+rèptil: Animal de sang freda que s'arrossega, com la serp o el cocodril.
+rodamón: Persona que va d'un lloc a l'altre sense casa fixa.
+rusc: Casa de les abelles, on fan la mel.
+regadora: Recipient amb un broc ple de foradets per regar les plantes.
+remolatxa: Arrel de color vermell fosc que es menja en amanida i de la qual també es treu sucre.
+retaule: Conjunt de pintures o escultures que hi ha darrere de l'altar d'una església.
+rem: Pal pla de la punta que, movent-lo dins l'aigua, fa avançar una barca.
+rajada: Peix pla, en forma de rombe, amb una cua llarga.
+rèplica: Còpia exacta d'una obra d'art.
+ressaca: Malestar que tens l'endemà d'haver begut massa.
+retrovisor: Mirall del cotxe per veure què ve per darrere.
+rampoina: Coses velles, trencades i sense valor.
+rebombori: Soroll i desordre de molta gent.
+rascle: Eina de jardí amb pues per aplegar l'herba o les fulles.
+raval: Barri que va créixer fora de les muralles d'una ciutat.
+regidor: Membre de l'ajuntament que s'ocupa d'una àrea, com la cultura o els esports.
+#S
+sabata: Calçat que cobreix el peu.
+sol: Estrella que ens dona llum i calor.
+serp: Rèptil llarg, sense potes, que s'arrossega.
+setmana: Set dies seguits, de dilluns a diumenge.
+samarreta: Peça de roba de màniga curta, sense botons ni coll.
+sargantana: Rèptil petit que pren el sol a les parets.
+síndria: Fruita grossa, verda per fora i vermella per dins.
+sal: Condiment blanc que es treu de l'aigua del mar.
+sorra: Grans menuts de pedra, com els de la platja.
+sirena: Ésser dels contes, mig dona i mig peix.
+sabó: Producte per rentar-se, que fa escuma.
+sofà: Seient llarg i tou, per a diverses persones.
+sucre: Substància dolça i blanca que es posa al cafè.
+submarí: Vaixell que navega per sota de l'aigua.
+saltamartí: Insecte verd, de potes llargues, que fa salts.
+sardana: Dansa catalana que es balla en rotllana, agafats de les mans.
+senglar: Porc salvatge del bosc, amb ullals.
+sequera: Temps llarg sense ploure.
+somriure: Moviment dels llavis de qui està content, sense fer soroll.
+sostre: La part de dalt d'una habitació.
+safareig: Pica gran on es rentava la roba a mà; també, xafarderia.
+sípia: Mol·lusc semblant al calamar, que deixa anar tinta.
+sembrar: Posar llavors a la terra perquè germinin.
+sostenidor: Peça de roba interior femenina per al pit.
+sacerdot: Capellà, persona que diu missa.
+saliva: Líquid que tenim a la boca.
+sardina: Peix petit i blau que es menja a la brasa.
+segell: Paperet que s'enganxa a les cartes per enviar-les; també, una eina per estampar.
+sindicat: Associació de treballadors que defensa els seus drets.
+sotana: Vestit llarg i negre dels capellans.
+seda: Teixit fi i brillant que fan uns cucs.
+síl·laba: Cadascun dels cops de veu en què es divideix una paraula.
+sàtira: Escrit o dibuix que es burla dels defectes d'algú.
+sismògraf: Aparell que registra els terratrèmols.
+sobrassada: Embotit de Mallorca, tou i vermell, que s'unta al pa.
+sarbatana: Tub per llançar dards bufant.
+sextant: Instrument amb què els mariners mesuraven l'altura del sol per orientar-se.
+solstici: Dia més llarg o més curt de l'any.
+sinagoga: Edifici on resen els jueus.
+semàfor: Llum de colors que regula el trànsit.
+serenata: Música que es toca de nit sota la finestra d'una persona estimada.
+satèl·lit: Cos que gira al voltant d'un planeta, com la Lluna al voltant de la Terra.
+#T
+taula: Moble amb un tauler i potes, on es menja.
+tomàquet: Fruit vermell que es posa a l'amanida i que es frega al pa.
+tren: Vehicle que va per les vies.
+tisores: Estri amb dues fulles per tallar paper o roba.
+tortuga: Rèptil lent que porta una closca.
+taronja: Fruita rodona i ataronjada de la qual es fa suc.
+tigre: Felí gran, taronja amb ratlles negres.
+tardor: Estació de l'any en què cauen les fulles.
+telèfon: Aparell per parlar amb algú que és lluny.
+tambor: Instrument de percussió que es toca amb baquetes.
+teulada: La part de dalt d'una casa, feta de teules.
+tovallola: Tela per eixugar-se després de la dutxa.
+tramvia: Tren que circula pels carrers d'una ciutat.
+torró: Dolç de Nadal fet amb ametlles i mel.
+tresor: Or i joies amagats, com els dels pirates.
+trompeta: Instrument de vent, de metall.
+trencaclosques: Joc de peces que s'han d'encaixar per formar una imatge.
+trampolí: Plataforma elàstica per saltar a la piscina.
+turmell: Articulació entre la cama i el peu.
+teranyina: La tela que fa l'aranya.
+tauró: Peix gros i perillós amb moltes dents.
+tempesta: Temps amb pluja forta, llamps i trons.
+tro: El soroll fort que fa un llamp.
+truita: Plat d'ous batuts fets a la paella; també, un peix de riu.
+tobogan: Rampa del parc per on es baixa lliscant.
+tassa: Recipient amb nansa per beure el cafè o la llet.
+tapís: Teixit amb dibuixos que es penja a la paret.
+termòmetre: Aparell que mesura la temperatura.
+timó: Peça que serveix per dirigir el vaixell.
+tsunami: Onada gegant provocada per un terratrèmol al fons del mar.
+teclat: Conjunt de les tecles de l'ordinador.
+tirabuixó: Estri per treure el suro de les ampolles.
+tòfona: Fong molt car que creix sota terra i que es busca amb gossos.
+trineu: Vehicle amb patins per lliscar per la neu, que tiren els gossos o els rens.
+tàvec: Insecte gros que pica els cavalls i les vaques.
+tramuntana: Vent fred i fort del nord, típic de l'Empordà.
+tòtem: Pal esculpit dels pobles indígenes del nord d'Amèrica.
+talaia: Torre de vigilància de la costa.
+tornavís: Eina per cargolar i descargolar.
+terrabastall: Soroll molt fort de coses que cauen o que es trenquen.
+#U
+ungla: La part dura que tenim a la punta dels dits.
+univers: Tot el que existeix: les estrelles, les galàxies i els planetes.
+universitat: Lloc on es va a estudiar una carrera.
+uniforme: Roba igual que porten tots els d'un grup, com els soldats o els alumnes.
+ull: Òrgan amb què veiem.
+ullal: Dent llarga i punxeguda, com les de l'elefant o les del senglar.
+ulleres: Vidres amb muntura que es posen davant dels ulls per veure-hi bé.
+unicorn: Cavall de llegenda amb una banya al front.
+urna: Caixa on es posen els vots a les eleccions.
+urgència: Cas que s'ha d'atendre de seguida; també, el servei de l'hospital per als casos greus.
+útil: Que serveix per a alguna cosa.
+urbà: De la ciutat.
+ultramarins: Botiga antiga de queviures, on es venia una mica de tot.
+ungüent: Pomada que es posa a la pell per curar.
+urpa: Ungla corba i punxeguda dels animals, com la del gat o la de l'àliga.
+urani: Element radioactiu que es fa servir a les centrals nuclears.
+usurer: Persona que deixa diners cobrant uns interessos abusius.
+utopia: Lloc o projecte ideal que no es pot fer realitat.
+ultimàtum: Avís final abans de prendre una mesura dura.
+úter: Òrgan de la dona on es forma el nadó.
+unitat: El número u; també, cadascun dels elements d'un conjunt.
+urbanització: Barri de cases amb jardí, sovint als afores d'un poble.
+usuari: Persona que fa servir un servei, com el tren o una pàgina web.
+ufanós: Orgullós i content de si mateix.
+udol: Crit llarg i trist que fa el llop.
+ullada: Cop d'ull, mirada ràpida.
+unió: L'acció d'ajuntar dues o més coses.
+urticària: Erupció de la pell amb molta picor.
+usdefruit: Dret de fer servir una cosa que és d'un altre i quedar-se'n els fruits.
+utensili: Objecte que serveix per fer una feina, sobretot a la cuina.
+úlcera: Ferida oberta a la pell o a l'estómac que costa de curar.
+uníson: Al mateix temps i en el mateix to, com quan tot el cor canta a l'...
+ufana: Vigor i bellesa de les plantes quan creixen bé.
+#V
+vaca: Animal de granja que dona llet.
+vaixell: Embarcació gran per navegar pel mar.
+vermell: Color de la sang.
+verd: Color de l'herba.
+vi: Beguda alcohòlica feta de raïm.
+vent: Aire que es mou.
+vidre: Material transparent de les finestres.
+violí: Instrument de corda que es toca amb un arc.
+volcà: Muntanya que treu lava pel cràter.
+vampir: Personatge de terror que xucla la sang.
+vaixella: Conjunt de plats, fonts i tasses d'una casa.
+vacances: Dies que no es treballa ni es va a l'escola.
+veí: Persona que viu a la casa del costat.
+vela: Tela gran que, empesa pel vent, fa avançar una barca.
+verema: La collita del raïm.
+vinagre: Líquid àcid fet de vi, que es posa a l'amanida.
+vespa: Insecte groc i negre que pica, semblant a l'abella.
+vímet: Branca prima i flexible amb què es fan cistells.
+vedell: Cria de la vaca.
+vaga: Aturada de la feina que fan els treballadors per protestar.
+vellut: Teixit suau i pelut.
+verí: Substància que pot matar si te la prens.
+veterinari: Metge dels animals.
+vagó: Cadascun dels cotxes d'un tren.
+vianant: Persona que va a peu pel carrer.
+vitamina: Substància dels aliments, com la C de la taronja, necessària per a la salut.
+voleibol: Esport en què dos equips es passen una pilota per sobre d'una xarxa alta.
+vorera: Part del carrer per on caminen els que van a peu.
+vestit: Peça de roba d'una sola peça, o conjunt de jaqueta i pantalons.
+vertigen: Sensació de mareig que tens quan mires avall des d'un lloc alt.
+vidu: Home a qui se li ha mort la dona.
+vaticinar: Endevinar el que passarà.
+venedor: Persona que ven.
+ventall: Objecte que es mou amb la mà per fer aire quan fa calor.
+volant: Roda que fa girar el cotxe.
+vitrall: Finestral de vidres de colors de les esglésies.
+vergonya: Sentiment que tens quan fas el ridícul.
+vanitós: Que està massa orgullós de si mateix.
+#X
+xocolata: Dolç fet de cacau.
+xai: Cria de l'ovella.
+xarop: Medicament líquid i dolç per a la tos.
+xicot: Noi; també, la parella d'una noia.
+xiulet: Instrument petit que fa un so agut quan hi bufes, com el de l'àrbitre.
+xàfec: Pluja forta i curta.
+xampú: Sabó líquid per rentar els cabells.
+xemeneia: Conducte per on surt el fum d'una casa; diuen que per allà baixa el Pare Noel.
+xiprer: Arbre alt i prim, de forma punxeguda, que es veu als cementiris.
+xarxa: Teixit de cordes amb forats per pescar.
+xafarder: Que vol saber les coses dels altres i les va explicant.
+xiclet: Llaminadura que es mastega i no s'empassa.
+xiular: Fer un so agut amb els llavis.
+xoriço: Embotit vermell i picant, fet amb pebre roig.
+xarcuteria: Botiga on es venen embotits.
+xerrar: Parlar molt.
+xinxeta: Clau petit de cap pla per clavar papers en un suro.
+xurro: Pasta fregida, llarga i estriada, que es menja amb xocolata.
+xarampió: Malaltia infecciosa que fa sortir taques vermelles a la pell.
+xufla: Tubercle petit amb què es fa l'orxata.
+xinès: Llengua que es parla a la Xina.
+xoc: Cop fort entre dues coses.
+xumet: Tetina de goma que es dona als nadons perquè xuclin.
+xuclar: Treure un líquid estirant-lo amb els llavis.
+xerinola: Gresca, diversió sorollosa.
+xacra: Malaltia o defecte, sobretot de la gent gran.
+xanguet: Peix petit i transparent que es menja fregit.
+xamfrà: Cantonada tallada d'un edifici, com les de l'Eixample de Barcelona.
+xaruc: Vell que ha perdut una mica el cap.
+xicra: Tassa petita per prendre xocolata.
+xiroi: Alegre i eixerit.
+xancleta: Sandàlia de goma per anar a la platja o a la piscina.
+xarlatà: Venedor ambulant que parla molt per convèncer la gent.
+xop: Molt mullat; també, un arbre de ribera.
+xamós: Que té gràcia i encant.
+xiscle: Crit agut.
+xaloc: Vent càlid del sud-est.
+#Y
+canya: Tija llarga i buida d'algunes plantes; també, l'estri per pescar.
+muntanya: Elevació gran del terreny.
+senyor: Home, sobretot si és gran o important.
+senyal: Marca o gest que vol dir alguna cosa.
+pinyol: Os dur que tenen a dins fruites com la cirera o el préssec.
+pinyó: Llavor del pi que es menja.
+ronyó: Cadascun dels dos òrgans que filtren la sang i fan l'orina.
+ganyota: Cara estranya que fas per fer riure.
+enyorança: Tristesa de qui troba a faltar algú o algun lloc.
+vinya: Camp de ceps on es cull el raïm.
+banya: Cadascuna de les dues puntes dures que tenen al cap el bou o la cabra.
+bunyol: Dolç fregit, rodó i buit per dins, típic de Quaresma.
+punyal: Ganivet curt i punxegut.
+puny: La mà tancada.
+estany: Llac petit.
+ensenyar: Fer que algú aprengui una cosa.
+nyap: Cosa mal feta.
+nyanyo: Bony que surt al cap d'un cop.
+nyu: Antílop africà de banyes corbes, que viatja en ramats enormes.
+renyar: Dir a algú, enfadat, que ha fet una cosa malament.
+cunyat: El germà de la teva parella.
+lluny: A molta distància.
+manyà: Persona que arregla panys i obre portes.
+pany: Mecanisme de la porta on es fica la clau.
+canyella: Escorça d'arbre en pols, de gust dolç, que es posa a l'arròs amb llet.
+carmanyola: Recipient de plàstic, amb tapa, per portar el menjar.
+engany: Mentida o trampa per fer creure una cosa falsa.
+pinyata: Olla plena de llaminadures que es trenca amb un pal amb els ulls tapats.
+llenya: Branques i troncs tallats per fer foc.
+tenyir: Canviar el color d'una roba o dels cabells.
+banyista: Persona que es banya a la platja o a la piscina.
+menyspreu: Falta de consideració cap a algú.
+cigonya: Ocell gros, de potes llargues, que fa el niu dalt dels campanars.
+seny: Capacitat de jutjar bé i actuar amb prudència; diuen que els catalans en tenen.
+senyera: Bandera de quatre barres vermelles sobre fons groc.
+ronyós: Brut i deixat.
+manyac: Dòcil, que es deixa acaronar.
+#Z
+zebra: Animal africà semblant a un cavall, amb ratlles blanques i negres.
+zero: El número que no val res.
+zona: Part d'un territori.
+zoo/zoològic: Lloc on es poden veure animals salvatges en captivitat.
+zinc: Metall de color gris blavós.
+zodíac: Les dotze constel·lacions dels signes, com Àries o Lleó.
+ziga-zaga/zigzag: Línia que va fent angles d'un costat a l'altre.
+zenit: Punt del cel que tenim just a sobre del cap.
+zombi: Mort vivent de les pel·lícules de terror.
+zoòleg: Científic que estudia els animals.
+zàping: Canviar de canal de televisió sense parar.
+zepelí: Globus dirigible, llarg i en forma de cigar.
+zoom: Objectiu de la càmera que apropa la imatge.
+zeta: Nom de l'última lletra de l'abecedari.
+zelós: Que fa les coses amb molta cura i dedicació.
+onze: Número que va després del deu.
+setze: Número que va després del quinze.
+dotzena: Grup de deu més dos, com els ous d'una capsa.
+colze: Articulació del mig del braç.
+bronze: Metall de color daurat fosc de les medalles del tercer lloc.
+magatzem: Lloc on es guarden mercaderies.
+organitzar: Preparar una cosa perquè surti bé.
+trapezi: Barra penjada de dues cordes on fan acrobàcies al circ.
+esmorzar: Menjar del matí.
+botzina: Aparell del cotxe que fa soroll per avisar.
+pinzell: Estri amb pèls a la punta per pintar.
+senzill: Que no és complicat.
+amazona: Dona que munta a cavall.
+gatzara: Soroll alegre de gent que es diverteix.
+atzar: Allò que passa per casualitat, com el resultat d'un dau.
+ozó: Gas que fa una capa a l'atmosfera i ens protegeix dels raigs del sol.
+atzavara: Planta de fulles grosses, carnoses i punxegudes, que creix a la costa.
+brunzir: Fer un soroll continu, com les abelles o els mosquits.
+tretze: Número que va després del dotze.
+`;
+const ORDRE=['A','B','C','Ç','D','E','F','G','H','I','J','L','M','N','O','P','Q','R','S','T','U','V','X','Y','Z'];
+const POOLS={};
+{let cur=null;
+  for(const l of DEFINICIONS.split('\n')){
+    if(!l.trim())continue;
+    if(l[0]==='#'){cur=l.slice(1).trim();POOLS[cur]=[];continue}
+    const i=l.indexOf(': ');if(i<0||!cur)continue;
+    const [resp,...alts]=l.slice(0,i).split('/');
+    POOLS[cur].push({resp,alts,def:l.slice(i+2)});
+  }
+}
+// Per comparar el que escrius: sense accents ni majuscules, la ç com una c
+// i la l·l com dues l. Així «canco» val per «cançó».
+const pla=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
+const esBona=(escrit,p)=>[p.resp,...p.alts].some(r=>pla(r)===pla(escrit));
+// «Comença per la A» o, si no hi comença, «Conté la Ç»
+const comencaPer=(L,p)=>L!=='Ç'&&pla(p.resp)[0]===pla(L);
+
+// ===== ATZAR AMB LLAVOR =====
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== LA RODA DEL DIA =====
+// Cada lletra te la seva llista barrejada sempre igual, i cada dia n'agafa la
+// seguent: una paraula no torna a sortir fins que no han sortit totes les de
+// la seva lletra (de 33 a 42 dies). Com que cada llista fa un llarg diferent,
+// les combinacions no es repeteixen.
+const ORDRES={};
+for(const L of ORDRE)ORDRES[L]=barreja(mulberry(hashText('ABECEDARI-'+L)),POOLS[L].map((_,i)=>i));
+const indexDia=(L,n)=>ORDRES[L][((n-1)%POOLS[L].length+POOLS[L].length)%POOLS[L].length];
+function rodaDia(n){return ORDRE.map(L=>({L,...POOLS[L][indexDia(L,n)]}))}
+// La de practica, a l'atzar, pero sense les paraules d'avui
+function rodaPractica(n){return ORDRE.map(L=>{
+  const ps=POOLS[L],avui=indexDia(L,n);let i;
+  do i=Math.floor(Math.random()*ps.length);while(i===avui&&ps.length>1);
+  return {L,...ps[i]}})}
+
+const TEMPS=240;              // quatre minuts per a les vint-i-cinc
+const JOC='abecedari';
+let R=null,mode='dia',dia='',numero=0,state='inici',paused=false,revelaT=0,desatT=0;
+
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+// la primera roda va ser la del 21 d'octubre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-10-21T12:00:00Z'))/864e5)+1;
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix('abecedari-stats',{jugades:0,encerts:0,ratxa:0,millor:0,ultim:'',rodona:0});
+
+// ===== LA PARTIDA =====
+// estat de cada lletra: 0 per fer (blava), 1 encertada (verda), 2 fallada (vermella)
+function nova(lletres){return{lletres,estat:Array(25).fill(0),respostes:Array(25).fill(''),cur:0,temps:TEMPS,escrit:'',fi:false,comencada:false}}
+// La del dia es desa a cada resposta i cada segon: si tanques, la trobes
+// igual (amb el temps que et quedava) i no la pots tornar a començar.
+function desaDia(){
+  if(mode!=='dia'||!R)return;
+  desa('abecedari-'+dia,{v:1,estat:R.estat,respostes:R.respostes,cur:R.cur,temps:R.temps,fi:R.fi,comencada:R.comencada});
+}
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  R=nova(rodaDia(numero));
+  const d=llegeix('abecedari-'+dia,null);
+  if(d&&d.v===1&&d.estat&&d.estat.length===25)Object.assign(R,{estat:d.estat,respostes:d.respostes||R.respostes,cur:d.cur||0,temps:d.temps,fi:d.fi,comencada:d.comencada});
+  state='inici';pinta();
+  if(R.fi){state='fi';finalPartida();return}
+  benvinguda();
+}
+function obrePractica(){
+  mode='practica';dia=diaAvui();numero=numeroDe(dia);
+  R=nova(rodaPractica(numero));R.comencada=true;
+  state='joc';hideMsg();pinta();
+}
+function benvinguda(){
+  const fets=R.estat.filter(e=>e).length;
+  const t=R.comencada
+    ?'<div style="color:#f0b429">LA RODA D\'AVUI</div><small>la tenies a mig fer: '+fets+' de 25 lletres i '+mmss(R.temps)+' de rellotge</small>'+
+      '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:#f0b429">CONTINUA ▸</a>'
+    :'<div style="color:#f0b429;letter-spacing:.15em">L\'ABECEDARI</div>'+
+      '<small style="color:#9fb3e6">roda del dia #'+numero+' · '+nomDia(dia)+'</small>'+
+      '<small>Una paraula per a cada lletra. Escriu-la i prem <b>RESPON</b>. Si no la saps, <b>PASSA PARAULA</b>: hi tornaràs quan acabis la volta.</small>'+
+      '<small>Tens <b>'+(TEMPS/60)+' minuts</b>, i el rellotge només s\'atura quan s\'ensenya una resposta fallada. Les primeres lletres són fàcils; les últimes, difícils.</small>'+
+      '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:#f0b429">COMENÇA ▸</a>';
+  msg(t+'<a href="#" id="b-prac" style="display:block;margin-top:14px;font:12px monospace;color:#9fb3e6">o fes-ne una de pràctica, que no compta</a>');
+  enllac('b-comenca',()=>{R.comencada=true;state='joc';hideMsg();desaDia();pinta()});
+  enllac('b-prac',obrePractica);
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+
+const pendents=()=>R.estat.reduce((n,e)=>n+(e===0),0);
+function seguent(){
+  if(!pendents()){acaba();return}
+  let i=R.cur;
+  do i=(i+1)%25;while(R.estat[i]!==0);
+  R.cur=i;R.escrit='';pinta();
+}
+function respon(){
+  if(state!=='joc'||paused)return;
+  if(!pla(R.escrit)){sndNo();avisa('escriu la paraula, o PASSA PARAULA');return}
+  const p=R.lletres[R.cur];
+  if(esBona(R.escrit,p)){R.estat[R.cur]=1;sndBe();desaDia();seguent();return}
+  // fallada: es diu quina era, amb el rellotge aturat
+  R.estat[R.cur]=2;R.respostes[R.cur]=R.escrit;sndMal();desaDia();
+  state='revela';revelaT=2.2;pinta();
+}
+function passa(){
+  if(state!=='joc'||paused)return;
+  sndPassa();R.escrit='';seguent();desaDia();
+}
+function tecla(t){
+  if(state!=='joc'||paused)return;
+  if(t==='⌫'){R.escrit=R.escrit.slice(0,-1)}
+  else if(R.escrit.length<16)R.escrit+=t;
+  sndTecla();pintaEscrit();
+}
+function punts(){
+  const be=R.estat.filter(e=>e===1).length;
+  return be*100+(pendents()?0:Math.ceil(R.temps));
+}
+function acaba(){
+  if(R.fi&&state==='fi')return;
+  state='fi';R.fi=true;R.escrit='';sndFi();
+  if(mode==='dia'){
+    // les estadistiques nomes es compten una vegada per dia
+    if(stats.ultim!==dia){
+      const be=R.estat.filter(e=>e===1).length;
+      stats.jugades++;stats.encerts+=be;
+      const ahir=new Date(Date.parse(dia+'T12:00:00Z')-864e5).toISOString().slice(0,10);
+      stats.ratxa=stats.ultim===ahir?stats.ratxa+1:1;stats.millor=Math.max(stats.millor,stats.ratxa);
+      if(be===25)stats.rodona++;
+      stats.ultim=dia;desa('abecedari-stats',stats);
+      R.nova=true;
+    }
+    desaDia();updateHUD();
+  }
+  pinta();
+  setTimeout(finalPartida,700);
+}
+
+// ===== EL QUADRE DEL FINAL =====
+function textCompartir(){
+  const be=R.estat.filter(e=>e===1).length;
+  const files=[0,5,10,15,20].map(i=>R.estat.slice(i,i+5).map(e=>e===1?'🟢':e===2?'🔴':'🔵').join('')).join('\n');
+  return 'L\'Abecedari'+(mode==='dia'?' #'+numero:' (pràctica)')+' · '+be+'/25 · '+xifra(punts())+' punts\n'+files;
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!R||!R.fi){msg('<div style="color:#f0b429">L\'ABECEDARI</div><small>la roda encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));return}
+    const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length,res=25-be-mal,pt=punts();
+    let t='<div style="color:'+(be===25?'#7dff9b':'#f0b429')+'">'+(be===25?'RODA PERFECTA!':mode==='dia'?'LA RODA D\'AVUI':'RODA DE PRÀCTICA')+'</div>'+
+      '<div style="font-size:34px;font-weight:bold">'+be+'<span style="font-size:18px;color:#9fb3e6"> de 25</span></div>'+
+      '<small style="color:#ccc">'+be+' encerts × 100'+(res?'':' + '+Math.ceil(R.temps)+' segons que et sobren')+' = <b style="color:#fff">'+xifra(pt)+' punts</b></small>'+
+      '<small style="color:#9fb3e6">'+mal+(mal===1?' fallada':' fallades')+(res?' · '+res+' sense respondre':'')+'</small>';
+    if(mode==='practica')t+='<small style="color:#a08860">és de PRÀCTICA: no compta per a cap taula</small>';
+    else t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+' · '+stats.encerts+' encerts en '+stats.jugades+(stats.jugades===1?' dia':' dies')+'</small>';
+    // les que no has encertat, amb la definicio i la resposta: aixi s'apren
+    const fallades=R.lletres.map((p,i)=>({p,i})).filter(({i})=>R.estat[i]!==1);
+    if(fallades.length)t+='<div class="fallades">'+fallades.map(({p,i})=>
+      '<div><b style="color:'+(R.estat[i]===2?'#ff8a7a':'#9fd0ff')+'">'+p.L+'</b> '+p.def+' <b style="color:#fff">'+p.resp.toUpperCase()+'</b>'+
+      (R.estat[i]===2&&R.respostes[i]?' <span style="color:#777">(vas posar '+R.respostes[i].toUpperCase()+')</span>':'')+'</div>').join('')+'</div>';
+    const enl=location.href.split('#')[0],tx=textCompartir();
+    t+='<div class="reptes">'+
+      '<a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+      '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a>'+
+      '<a href="#" id="copia">COPIA</a></div>';
+    t+='<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    t+='<a href="#" class="bt" id="b-prac" style="color:#9fd0ff;background:#0f1e33;border:1px solid #3a6aa0">'+(mode==='dia'?'FES-NE UNA DE PRÀCTICA':'UNA ALTRA DE PRÀCTICA')+'</a>';
+    if(mode==='practica')t+='<a href="#" id="b-dia" style="display:block;margin-top:12px;font:12px monospace;color:#f0b429">torna a la roda d\'avui</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar'));
+    lligaCopia(tx+'\n'+enl);
+    enllac('b-prac',obrePractica);enllac('b-dia',obreDia);
+    // Les dues taules, cadascuna amb el seu titol: la d'avui (els punts de la
+    // roda del dia; nomes compta el primer cop que l'acabes) i la dels
+    // encerts de sempre, on cadascu surt una vegada.
+    let r={html:'',posicio:0};
+    if(mode==='dia'&&R.nova&&pt>0)r=await Records.fiPartida(JOC+'_dia/'+dia,pt);
+    else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
+    if(mode==='dia'&&R.nova&&stats.encerts>0&&Records.nom())await Records.envia(JOC,stats.encerts);
+    if(mode==='dia')R.nova=false;
+    const sempre=Records.taulaHTML(await Records.llista(JOC));
+    const titol=t2=>'<div style="color:#f0b429;font-size:13px;margin-top:8px">'+t2+'</div>';
+    const el=document.getElementById('taula');
+    if(el)el.innerHTML=titol('☀ LA RODA D\'AVUI')+r.html+
+      (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+       r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
+      titol('★ ENCERTS DE SEMPRE')+sempre;
+    Records.pintaMillor(JOC,document.getElementById('best'),stats.encerts);
+    refrescaLiders();
+  }finally{enFinal=false}
+}
+function lligaCopia(text){
+  const cp=document.getElementById('copia');
+  if(cp)cp.addEventListener('click',async e=>{
+    e.preventDefault();e.stopPropagation();
+    try{await navigator.clipboard.writeText(text);cp.textContent='COPIAT!'}
+    catch(err){prompt('Copia això:',text)}
+  });
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+function updateHUD(){
+  document.getElementById('score').textContent=stats.encerts;
+  Records.desaLocal(JOC,stats.encerts);
+  Records.marcador(JOC,document.getElementById('best'),stats.encerts);
+}
+
+// ===== DIBUIX =====
+const $=id=>document.getElementById(id);
+const RODA=$('roda'),CERCLES=ORDRE.map(L=>{const d=document.createElement('div');d.className='ll';d.textContent=L;RODA.appendChild(d);return d});
+let mida=300;
+// La roda fa el que hi capi: l'amplada o l'alçada que quedi lliure
+function mesura(){
+  const s=$('screen');
+  mida=Math.max(150,Math.floor(Math.min(s.clientWidth*.96,s.clientHeight-4)));
+  RODA.style.width=RODA.style.height=mida+'px';
+  const c=mida*.105,r=mida/2-c*.62-mida*.012;      // la lletra que toca es fa un 22% mes grossa: ha de cabre
+  CERCLES.forEach((d,i)=>{const a=-Math.PI/2+i*2*Math.PI/25;
+    d.style.width=d.style.height=c+'px';d.style.fontSize=(c*.55)+'px';
+    d.style.left=(mida/2+r*Math.cos(a)-c/2)+'px';d.style.top=(mida/2+r*Math.sin(a)-c/2)+'px'});
+  const ce=$('centre');ce.style.width=(mida*.62)+'px';
+  $('rellotge').style.fontSize=(mida*.07)+'px';$('mode').style.fontSize=(mida*.045)+'px';
+  $('lletra').style.fontSize=(mida*.2)+'px';$('escrit').style.fontSize=(mida*.075)+'px';$('compte').style.fontSize=(mida*.045)+'px';
+}
+addEventListener('resize',mesura);
+function pintaEscrit(){
+  const e=$('escrit');
+  e.textContent=state==='revela'?R.respostes[R.cur].toUpperCase():(R.escrit.toUpperCase()||' ');
+  e.style.color=state==='revela'?'#ff8a7a':'#fff';
+  e.style.textDecoration=state==='revela'?'line-through':'none';
+}
+function pinta(){
+  if(!R)return;
+  const p=R.lletres[R.cur];
+  CERCLES.forEach((d,i)=>{d.className='ll'+(R.estat[i]===1?' be':R.estat[i]===2?' mal':'')+(i===R.cur&&(state==='joc'||state==='revela')?' ara':'')});
+  $('lletra').textContent=p.L;
+  $('mode').textContent=comencaPer(p.L,p)?'COMENÇA PER':'CONTÉ LA';
+  pintaEscrit();
+  const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length;
+  $('compte').innerHTML='<span style="color:#7dd99a">✓ '+be+'</span> &nbsp; <span style="color:#ff8a7a">✗ '+mal+'</span>';
+  const df=$('def');
+  if(paused){df.className='';df.textContent='PAUSA';}
+  else if(state==='revela'){df.className='era';df.innerHTML='No! Era <b>'+p.resp.toUpperCase()+'</b>'}
+  else if(state==='inici'){df.className='';df.textContent=mode==='dia'?'Roda del dia #'+numero:'Pràctica'}
+  else if(state==='fi'){df.className='';df.textContent=R.estat.filter(e=>e===1).length+' de 25 · '+xifra(punts())+' punts'}
+  else{df.className='';df.textContent=p.def}
+  pintaRellotge();
+}
+function pintaRellotge(){const r=$('rellotge');r.textContent=mmss(R.temps);r.className=R.temps<30&&!R.fi?'poc':''}
+let avisT=0;
+function avisa(t){const l=$('lider');l.textContent=t;l.style.color='#ffb3a8';avisT=1.6}
+let liderDia=null,liderSempre=null;
+function pintaLider(){
+  if(avisT>0)return;
+  const l=$('lider');l.style.color='#c9b28a';
+  l.textContent='☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
+}
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}
+  pintaLider();
+}
+
+// ===== EL RELLOTGE =====
+let last=performance.now();
+function loop(t){
+  const dt=Math.min(.1,(t-last)/1000);last=t;
+  if(!paused&&R){
+    if(state==='joc'){
+      const abans=Math.ceil(R.temps);R.temps-=dt;
+      if(Math.ceil(R.temps)!==abans&&R.temps<10&&R.temps>0)sndTic();
+      if(Math.ceil(R.temps)!==abans)pintaRellotge();
+      desatT+=dt;if(desatT>1){desatT=0;desaDia()}
+      if(R.temps<=0){R.temps=0;acaba()}
+    }else if(state==='revela'){
+      revelaT-=dt;if(revelaT<=0){state='joc';seguent()}
+    }
+  }
+  if(avisT>0){avisT-=dt;if(avisT<=0)pintaLider()}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function posaPausa(v){
+  paused=v;if(paused)desaDia();pinta();
+}
+// si surts de l'app (una trucada, un missatge), el rellotge s'atura
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(state==='joc'||state==='revela')posaPausa(true);desaDia()}});
+addEventListener('pagehide',desaDia);
+
+// ===== EL TECLAT =====
+// Un teclat propi a la pantalla: el del mobil taparia mitja roda.
+const FILES=['QWERTYUIOP','ASDFGHJKLÇ','ZXCVBNM⌫'];
+for(const f of FILES){
+  const d=document.createElement('div');d.className='fila';
+  for(const t of f){const b=document.createElement('button');b.className='k'+(t==='⌫'?' esb':'');b.textContent=t;b.dataset.t=t;d.appendChild(b)}
+  $('teclat').appendChild(d);
+}
+function boto(el,fn){el.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}fn(ev)})}
+boto($('teclat'),ev=>{const b=ev.target.closest('.k');if(b)tecla(b.dataset.t)});
+boto($('passa'),passa);
+boto($('respon'),respon);
+boto($('roda'),()=>{if(state==='fi')finalPartida()});
+boto($('def'),()=>{if(state==='fi')finalPartida()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
+  // el boto de pausa del marcador envia una P de mentida; la P de debo s'escriu
+  if((e.code==='KeyP'&&!e.isTrusted)||e.key==='Escape'){posaPausa(!paused);return}
+  if(paused){if(e.key==='Enter'||e.key===' ')posaPausa(false);return}
+  if(e.key==='Enter'){e.preventDefault();if(pla(R?R.escrit:''))respon();else passa();return}
+  if(e.key==='Backspace'){e.preventDefault();tecla('⌫');return}
+  const k=(e.key||'').toUpperCase();
+  if(/^[A-ZÇ]$/.test(k)&&!e.ctrlKey&&!e.metaKey&&!e.altKey)tecla(k);
+});
+document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&state==='fi')hideMsg()});
+
+mesura();
+updateHUD();
+Records.pintaMillor(JOC,document.getElementById('best'),stats.encerts);
+refrescaLiders();
+obreDia();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
+  [['☀ LA RODA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ ENCERTS DE SEMPRE',JOC]]);
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i onze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i dotze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I onze que no són de saló
+### I dotze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -55,6 +55,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `gofra.html` | La Gofra (de l'estil del *Waffle*) | 2026 |
 | `impremta.html` | La Impremta (de l'estil del *Balatro*, amb paraules) | 2026 |
 | `rotllana.html` | La Rotllana (de l'estil del *Wordscapes*) | 2026 |
+| `abecedari.html` | L'Abecedari (de l'estil del *Rosco* del *Pasapalabra*) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -665,6 +666,61 @@ Coses que no s'han de desfer sense entendre-les:
   que les teves inicials tenen més nivells fets, ofereix CONTINUA PEL N; i en
   un navegador nou (sense inicials, als tres primers nivells) les demana.
 
+## L'Abecedari: una paraula per a cada lletra
+
+En Carles el va demanar «com El Rosco»: la prova final del concurs de la tele,
+una roda amb les lletres i una definició per a cadascuna. El format és d'una
+empresa viva (ve d'un concurs anglès), així que és **inspirat en**, amb nom
+nostre i sense dir mai el de l'original.
+
+- **25 lletres**, de la A a la Z amb la Ç i sense la K ni la W, que en català
+  gairebé no tenen paraules (com a la tele, que tampoc no les fa servir).
+  Diu «COMENÇA PER» o, si la paraula no hi comença, «CONTÉ LA»: la Ç i la Y
+  (paraules amb NY) sempre; a la Z, de vegades.
+- **Escrius la resposta amb un teclat propi** a la pantalla: el del mòbil
+  taparia mitja roda. No cal posar accents, ni la ç, ni la l·l: «canco» val
+  per «cançó» (`pla`).
+- **PASSA PARAULA** la deixa blava per a la volta següent. Fallar la posa
+  vermella i ensenya quina era, amb **el rellotge aturat** mentre es veu.
+- **Quatre minuts** (`TEMPS`), i no tres: a la tele parlen, aquí s'escriu.
+  **100 punts per encert** i, si l'acabes sencera, els segons que sobren.
+- **La roda del dia és igual per a tothom** (#1 = 21 d'octubre del 2026),
+  amb dues taules com a la Gofra: la d'avui (`abecedari_dia/<data>`, els
+  punts) i la dels **encerts de sempre** (`abecedari`, acumulats, cadascú una
+  vegada). Cada matí el bot diu qui va guanyar la d'ahir. La del dia es desa
+  a cada resposta i cada segon, amb el temps que queda: tancant no es pot
+  tornar a començar. Si surts de l'app, el rellotge s'atura.
+- **PRÀCTICA**: rodes a l'atzar, sense les paraules d'avui, que no compten.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Les definicions són nostres, escrites a mà** (941, de 33 a 42 per lletra,
+  a `DEFINICIONS`, dins del joc). Les del diccionari de l'Institut tenen drets
+  i no es poden copiar. Les respostes són paraules del diccionari, escrites com
+  toca, que és com s'ensenyen al final; si n'hi ha una altra de bona, va
+  darrere d'una barra (`zoo/zoològic`).
+- **De fàcil a difícil dins de la roda**, que és el que va demanar en Carles:
+  de la A a la G paraules de tota la vida (abella, cadira, gat), de la H a la
+  P una mica menys, i de la Q a la Z les difícils (quiròfan, sextant,
+  xamfrà). Si s'hi afegeixen paraules, han d'anar a la llista de la seva
+  lletra i del seu nivell.
+- **Cap paraula no es repeteix fins que no han sortit totes les de la seva
+  lletra**: cada lletra té la seva llista barrejada sempre igual i cada dia
+  n'agafa la següent (`indexDia`). Com que cada llista fa un llarg diferent,
+  les combinacions no es repeteixen mai.
+- **Una paraula, una sola lletra**: si la mateixa resposta fos a dues
+  llistes, podria sortir dues vegades el mateix dia. També s'han evitat les
+  definicions que es trepitgen (el ruc a la R i no a la A; la jungla a la J i
+  no la selva a la S).
+- **La P del teclat de l'ordinador s'escriu**: el botó de pausa del marcador
+  envia una P de mentida (`isTrusted`), i només aquesta fa pausa.
+
+El `scripts/prova-abecedari.mjs` mira totes les definicions (que cada
+resposta tingui la seva lletra, que no se'n repeteixi cap i que cap definició
+no porti la resposta a dins), que la roda del dia sigui igual per a tothom i
+no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
+rellotge, la pausa, desar i continuar, i les dues taules.
+
 ## El Temple: aventura per caselles
 
 En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
@@ -1209,6 +1265,10 @@ comproven el comportament.
   reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
   continuï, que els punts vagin a la taula i que els sis botons càpiguen a
   320 px.
+- `node scripts/prova-abecedari.mjs` — que les definicions de L'Abecedari
+  estiguin ben fetes, que la roda del dia sigui igual per a tothom i no
+  repeteixi paraules, i que es jugui tocant, amb el rellotge, la pausa, el
+  desar i les dues taules.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.
