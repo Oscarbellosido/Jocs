@@ -112,6 +112,20 @@ diu(cal.tu >= 16 && cal.tu <= 50 && cal.mediana >= 7 && cal.mediana <= 16,
 
 // ---------- 4. jugar tocant ----------
 await p.click('#m-dia');
+// la primera vegada, l'explicació surt sola, pàgina a pàgina
+let ajuda = await p.evaluate(() => ({ obert: ajudaObert, paused, txt: document.getElementById('msg').textContent }));
+diu(ajuda.obert && ajuda.paused && /QUÈ HAS DE FER/.test(ajuda.txt) && /tu ets el BLAU/.test(ajuda.txt), 'el primer cop que hi jugues, surt sola l\'explicació de com es juga');
+const titols = [];
+for (let i = 0; i < 10 && await p.$('#a-seg'); i++) { titols.push(await p.evaluate(() => document.querySelector('#msg div').textContent)); await p.click('#a-seg'); }
+titols.push(await p.evaluate(() => document.querySelector('#msg div').textContent));
+diu(titols.length === 6 && titols.some(t => /REFORÇA/.test(t)) && titols.some(t => /ATACA/.test(t)) && titols.some(t => /MOU/.test(t)) && titols.some(t => /VEGUERIES/.test(t)),
+  'explica l\'objectiu, els tres passos del torn i les vegueries (' + titols.join(' / ') + ')');
+await p.click('#a-tanca');
+diu(await p.evaluate(() => !ajudaObert && !paused && document.getElementById('msg').style.display === 'none'), 'i en acabar, a jugar');
+await p.click('#controls .ajuda');
+diu(await p.evaluate(() => ajudaObert && /REFORÇA/.test(document.querySelector('#msg div').textContent)), 'el botó ? torna a obrir l\'explicació, a la pàgina del pas on ets');
+await p.click('#a-salta');
+diu(await p.evaluate(() => !ajudaObert && !paused), 'i «ja ho sé» la tanca');
 const toca = c => p.evaluate(c => { const e = ETIQ[c].cer.getBoundingClientRect(); return [e.x + e.width / 2, e.y + e.height / 2]; }, c).then(([x, y]) => p.touchscreen.tap(x, y));
 let e = await p.evaluate(() => ({ fase: S.fase, posar: S.posar, torn: S.torn, n: numero }));
 diu(e.fase === 'reforc' && e.posar === 5 && e.torn === 0, `la batalla d'avui (#${e.n}) comença amb el teu torn: ${e.posar} soldats per reforçar`);
@@ -131,8 +145,8 @@ e = await p.evaluate(() => ({ daus: S.daus, info: document.getElementById('info'
 diu(e.daus > 0 && /contra/.test(e.info), 'tocant la teva i després la del costat, es tiren els daus i surten a sota');
 await p.evaluate(() => { while (!pendent && S.dueny[obj] !== 0 && S.soldats[sel] >= 2) ataca(false); });
 e = await p.evaluate(() => ({ pend: !!pendent, botons: [...document.querySelectorAll('#controls button')].map(b => b.textContent) }));
-diu(e.pend && e.botons.length >= 2 && e.botons.some(t => /TOTS/.test(t)), `conquerida: tries quants soldats hi passes (${e.botons.join(' / ')})`);
-await p.click('#controls button >> nth=0');
+diu(e.pend && e.botons.length >= 3 && e.botons.some(t => /TOTS/.test(t)), `conquerida: tries quants soldats hi passes (${e.botons.join(' / ')})`);
+await p.click('#controls button.tria >> nth=0');
 diu(await p.evaluate(([a, d]) => S.dueny[d] === 0 && S.soldats[d] >= 3 && !pendent && S.fase === 'atac', [at, df]), 'i la comarca és teva, amb els soldats que hi has passat');
 await p.click('#controls button:has-text("PROU ATACS")');
 diu(await p.evaluate(() => S.fase === 'mou'), 'PROU ATACS passa a moure soldats');
@@ -141,7 +155,7 @@ const [ma, mb] = await p.evaluate(a => { const b = [...connectades(S, a)][0]; re
 if (mb !== undefined) {
   await toca(ma); await toca(mb);
   diu(await p.evaluate(() => pendent && pendent.t === 'mou'), 'tocant dues comarques teves connectades, pregunta quants hi passes');
-  await p.click('#controls button >> nth=0');
+  await p.click('#controls button.tria >> nth=0');
 } else await p.click('#controls button:has-text("ACABA EL TORN")');
 diu(await p.evaluate(() => S.torn === 1 && !!ia), 'moure acaba el teu torn i comencen els VERMELLS');
 // els torns de la maquina, de pressa

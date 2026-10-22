@@ -767,6 +767,11 @@ Coses que no s'han de desfer sense entendre-les:
   Una persona que pensi una mica ha de guanyar més sovint.
 - **Els torns dels altres es veuen a poc a poc** i amb **▶▶ DE PRESSA** (o
   tocant el mapa) passen de cop fins que et torna a tocar.
+- **L'explicació de com es juga** (`PAGINES`, sis pàgines curtes amb
+  exemples de daus i de comarques) surt sola el primer cop que comences una
+  partida, i sempre amb el botó **?** de sota (a la pàgina del pas on ets) i
+  des del menú. En Carles no va entendre com es jugava: el joc no ho
+  explicava enlloc. Mentre és oberta, el joc queda aturat.
 
 ## El Temple: aventura per caselles
 

@@ -20,6 +20,12 @@ svg{max-width:98%;max-height:100%;width:auto;height:100%;touch-action:none;user-
 #controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:96%}
 button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
 #controls button{flex:1 1 0;min-width:0}
+#controls .ajuda{flex:0 0 46px;color:#9fe0ff;border-color:#3a7aa0;font-size:18px}
+#msg .pag{text-align:left;font-size:14px;line-height:1.45;color:#dde6ee}
+#msg .pag p{margin:8px 0}
+#msg .nav{display:flex;gap:8px;margin-top:12px;position:sticky;bottom:-14px;background:rgba(5,12,20,.98);padding:8px 0 12px}
+@media (max-height:700px){#msg .pag{font-size:13px;line-height:1.35}#msg .pag p{margin:6px 0}}
+#msg .nav a{flex:1;font:bold 14px monospace;text-decoration:none;border-radius:8px;padding:11px 6px;text-align:center}
 #controls button:disabled{opacity:.35}
 #controls .fi{color:#ffd27a;border-color:#a07a30;background:#241a0e}
 #controls .tria{color:#9fe0ff;border-color:#3a7aa0;background:#0f2433}
@@ -264,6 +270,60 @@ function desaPartida(){
 }
 const desada=()=>{const q=llegeix('conquesta-partida',null);return q&&q.v===1&&q.S&&q.S.dueny&&q.S.dueny.length===N?q:null};
 
+// ===== COM ES JUGA =====
+// En Carles no va entendre com es jugava: no ho explicava enlloc. Ara surt
+// sola el primer cop que comences una partida, i sempre amb el botó ? i des
+// del menú. Cada pàgina, una cosa, amb exemples.
+const cer=(col,n)=>'<span style="display:inline-block;min-width:22px;height:22px;line-height:22px;border-radius:11px;background:'+col+';color:#fff;font-weight:bold;text-align:center;border:2px solid #0d1b26">'+n+'</span>';
+const dau1=(n,col)=>'<span class="d" style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:4px;background:'+col+';color:#fff;font-weight:bold;text-align:center;margin:0 1px">'+n+'</span>';
+const B=JUGADORS[0].col,V=JUGADORS[1].col,G=JUGADORS[2].col;
+const PAGINES=[
+  ['QUÈ HAS DE FER',
+   '<p>Cada comarca és d\'un dels tres exèrcits: <b style="color:#8fb6f2">tu ets el BLAU</b>, i la màquina porta els <b style="color:#f0a097">VERMELLS</b> i els <b style="color:#f2d679">GROCS</b>.</p>'+
+   '<p>El número de cada comarca són els <b>soldats</b> que hi ha: '+cer(B,5)+' vol dir 5 soldats teus.</p>'+
+   '<p><b>Guanya qui arriba primer a tenir 30 comarques.</b> Les guanyes atacant les dels altres.</p>'+
+   '<p>Es juga per torns: primer tu, després els vermells i després els grocs. El teu torn té <b>tres passos</b>, i a dalt de la pantalla sempre diu en quin ets i què has de tocar.</p>'],
+  ['1 · REFORÇA',
+   '<p>A començament de torn et donen <b>soldats nous</b>: un per cada tres comarques que tens (com a mínim 3), i més si tens una vegueria sencera.</p>'+
+   '<p><b>Toca les teves comarques</b> per posar-los-hi: cada toc, un soldat. '+cer(B,3)+' → toc → '+cer(B,4)+'</p>'+
+   '<p>Posa\'ls a les que toquen comarques dels altres: és on faran falta, per atacar o per defensar-te. Si els vols tots a la mateixa, toca-la i prem <b>POSA\'LS TOTS AQUÍ</b>.</p>'],
+  ['2 · ATACA',
+   '<p>Toca una comarca <b>teva amb 2 soldats o més</b>, i després <b>una dels altres que la toqui</b>. Cada toc és una tirada de daus.</p>'+
+   '<p>Tu tires un dau per soldat (com a molt 3, i un sempre es queda a casa). Ell, un per soldat (com a molt 2). Es comparen <b>el més alt amb el més alt</b>, i el segon amb el segon: qui treu menys perd un soldat. <b>Si empaten, perd qui ataca.</b></p>'+
+   '<p>Per exemple: '+dau1(6,B)+dau1(4,B)+dau1(2,B)+' contra '+dau1(5,V)+dau1(4,V)+'<br>6 guanya a 5: ell perd un soldat. 4 i 4 empaten: en perds un tu.</p>'],
+  ['2 · ATACA (i conquereix)',
+   '<p>Quan la deixes <b>sense cap soldat, és teva</b>, i tries quants soldats hi passes.</p>'+
+   '<p><b>ATAC A FONS</b> tira els daus fins que la conquereixes o et quedes sense soldats per atacar.</p>'+
+   '<p>Pots atacar tantes vegades com vulguis, des de comarques diferents. Ataca quan en tinguis <b>molts més que ell</b>: '+cer(B,8)+' contra '+cer(V,2)+' gairebé sempre surt bé; '+cer(B,3)+' contra '+cer(V,3)+', gairebé mai.</p>'+
+   '<p>Quan en tinguis prou, prem <b>PROU ATACS</b>.</p>'],
+  ['3 · MOU (si vols)',
+   '<p>Per acabar, pots passar soldats <b>d\'una comarca teva a una altra de teva</b>, si s\'hi pot anar sense passar per comarques dels altres. Toca l\'una, després l\'altra, i tria quants.</p>'+
+   '<p>Serveix per treure soldats de les comarques de dins (que no toquen ningú) i portar-los a la frontera.</p>'+
+   '<p>Si no vols moure res, prem <b>ACABA EL TORN</b>. Llavors juguen els vermells i els grocs: ho veuràs a poc a poc, o de cop amb <b>▶▶ DE PRESSA</b>.</p>'],
+  ['LES VEGUERIES I ELS PUNTS',
+   '<p>Les zones amb la <b>ratlla negra gruixuda</b> són les vegueries. Si les tens senceres, cada torn et donen soldats de més:</p>'+
+   '<p style="font-size:12px;color:#b8c7d6">'+VEGS.map(v=>v.nom+' <b style="color:#ffd27a">+'+v.bonus+'</b>').join(' · ')+'</p>'+
+   '<p>Però compte: els altres et voldran trencar la vegueria, i tu la d\'ells.</p>'+
+   '<p><b>Punts</b>: si arribes a 30 comarques, 1.000 i 50 més per cada ronda que et sobri de les '+MAX_RONDES+'. Si no, 10 per comarca teva.</p>'],
+];
+let ajudaObert=false,pausaAbans=false;
+function ajuda(n=0){
+  if(!ajudaObert){pausaAbans=paused;paused=true;ajudaObert=true}
+  const [tit,cos]=PAGINES[n],ult=n===PAGINES.length-1;
+  msg('<div style="color:#ffd27a;font-size:16px">'+tit+'</div><small style="color:#888">'+(n+1)+' de '+PAGINES.length+'</small>'+
+    '<div class="pag">'+cos+'</div><div class="nav">'+
+    (n?'<a href="#" id="a-ant" style="color:#9fe0ff;background:#111;border:1px solid #3a7aa0">◂ ENRERE</a>':'')+
+    (ult?'<a href="#" id="a-tanca" style="color:#1a1200;background:#ffd27a;border:1px solid #ffd27a">'+(S?'A JUGAR!':'ENTESOS')+'</a>'
+        :'<a href="#" id="a-seg" style="color:#1a1200;background:#ffd27a;border:1px solid #ffd27a">SEGÜENT ▸</a>')+'</div>'+
+    (ult?'':'<a href="#" id="a-salta" style="display:block;margin-top:12px;font:12px monospace;color:#888">ja ho sé, deixa-ho</a>'));
+  enllac('a-ant',()=>ajuda(n-1));enllac('a-seg',()=>ajuda(n+1));enllac('a-tanca',tancaAjuda);enllac('a-salta',tancaAjuda);
+}
+function tancaAjuda(){
+  ajudaObert=false;paused=pausaAbans;desa('conquesta-ajuda',1);
+  if(S)hideMsg();else menu();
+  pinta();
+}
+
 // ===== EL MENU =====
 function menu(){
   S=null;ia=null;sel=null;pinta();
@@ -279,10 +339,12 @@ function menu(){
       :bt('m-dia','LA BATALLA D\'AVUI ▸','#ffd27a','#a07a30','#'+numero+' · '+nomDia(dia)+' · igual per a tothom'))+
     (contLliure?bt('m-cont','CONTINUA LA LLIURE','#9fe0ff','#3a7aa0','ronda '+q.S.ronda+' · '+comarquesDe(q.S,0)+' comarques'):'')+
     bt('m-lliure','PARTIDA LLIURE','#9fe0ff','#3a7aa0','un mapa a l\'atzar, per a la taula de sempre')+
+    '<a href="#" id="m-ajuda" style="display:block;margin-top:16px;font:bold 14px monospace;color:#9fe0ff">? COM ES JUGA</a>'+
     '<small style="color:#667;font-size:11px;margin-top:14px">Mapa de les comarques: Institut Cartogràfic i Geològic de Catalunya (CC BY 4.0)</small>');
   enllac('m-dia',()=>{if(contDia)continua(q);else if(jaDia){const f=llegeix('conquesta-fi-'+dia,null);if(f)finalPartida(f);}else comenca('dia')});
   enllac('m-cont',()=>continua(q));
   enllac('m-lliure',()=>comenca('lliure'));
+  enllac('m-ajuda',()=>ajuda(0));
 }
 function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
 function comenca(m){
@@ -291,6 +353,8 @@ function comenca(m){
   if(m==='dia')desa('conquesta-dia',dia);
   S=novaPartida(m==='dia'?'DIA-'+dia:'LLIURE-'+Date.now()+'-'+Math.random());
   hideMsg();sel=null;ultima=null;desaPartida();pinta();
+  // la primera vegada, l'explicació surt sola
+  if(!llegeix('conquesta-ajuda',0))ajuda(0);
 }
 function continua(q){mode=q.mode;dia=q.dia;numero=numeroDe(dia);S=q.S;hideMsg();sel=null;ultima=null;
   if(S.torn!==0)comencaIA();pinta()}
@@ -484,8 +548,9 @@ function pinta(){
 function pintaMarca(){
   const m=$('marca');
   if(!S){m.innerHTML='';return}
-  m.innerHTML=[0,1,2].map(p=>'<b style="background:'+JUGADORS[p].col+(S.vius[p]?'':';opacity:.3')+'">'+JUGADORS[p].nom+' '+comarquesDe(S,p)+'</b>').join('')+
+  m.innerHTML=[0,1,2].map(p=>'<b style="background:'+JUGADORS[p].col+(S.vius[p]?'':';opacity:.3')+'">'+(p?JUGADORS[p].nom:'TU (BLAU)')+' '+comarquesDe(S,p)+'</b>').join('')+
     '<span style="color:#9fb3c6">RONDA '+Math.min(S.ronda,MAX_RONDES)+'/'+MAX_RONDES+'</span>';
+  m.title='comarques de cadascú; guanya qui arriba a 30';
 }
 function pintaEstat(){
   const e0=$('estat');e0.innerHTML='<span></span>';const e=e0.firstChild;
@@ -496,11 +561,11 @@ function pintaEstat(){
   if(pendent){e.innerHTML=pendent.t==='ocupa'?'<b style="color:#7dff9b">CONQUERIDA!</b> Quants soldats hi passes?':'Quants soldats hi passes, de '+MAPA.comarques[pendent.a].nom+' a '+MAPA.comarques[pendent.b].nom+'?';return}
   if(S.fase==='reforc'){
     const vs=vegueriesDe(S,0),base=Math.max(3,Math.floor(comarquesDe(S,0)/3));
-    e.innerHTML='<b style="color:#ffd27a">1 · REFORÇA</b>: et queden <b>'+S.posar+'</b> soldats. Toca les teves comarques per posar-los-hi.'+
+    e.innerHTML='<b style="color:#ffd27a">1 · REFORÇA</b>: tens <b>'+S.posar+'</b> soldats nous. Toca les teves (blaves): un a cada toc.'+
       (vs.length?'<br><span style="color:#9fb3c6">'+base+' per les comarques + '+vs.map(v=>v.bonus+' per '+v.nom).join(' + ')+'</span>':'');
   }else if(S.fase==='atac'){
-    e.innerHTML='<b style="color:#ffd27a">2 · ATACA</b>: '+(sel===null?'toca una comarca teva amb 2 soldats o més.':'ara toca la del costat que vols atacar (cada toc, una tirada).');
-  }else e.innerHTML='<b style="color:#ffd27a">3 · MOU</b> (si vols): '+(sel===null?'toca una comarca teva i després una altra de teva on s\'hi pugui arribar.':'ara toca on els vols portar.');
+    e.innerHTML='<b style="color:#ffd27a">2 · ATACA</b>: '+(sel===null?'toca una teva (blava) amb 2 soldats o més.':'ara toca la marcada que vols atacar. Cada toc, una tirada.');
+  }else e.innerHTML='<b style="color:#ffd27a">3 · MOU</b> (si vols): '+(sel===null?'toca una teva i després una altra de teva.':'ara toca on els vols portar.');
 }
 function dauHTML(n,col){return '<span class="d" style="background:'+col+'">'+n+'</span>'}
 function pintaInfo(){
@@ -511,14 +576,15 @@ function pintaInfo(){
     i.innerHTML=MAPA.comarques[r.a].nom+' '+r.da.map(n=>dauHTML(n,ja.col)).join('')+' contra '+r.dd.map(n=>dauHTML(n,jd.col)).join('')+' '+MAPA.comarques[r.d].nom+
       '<br>'+(r.conquesta?'<b style="color:#fff">conquerida!</b>':'perd '+r.pa+' qui ataca i '+r.pd+' qui defensa');return}
   if(sel!==null){const c=MAPA.comarques[sel];i.innerHTML='<b>'+c.nom+'</b> · '+S.soldats[sel]+' soldats · vegueria: '+c.veg;return}
-  if(S.torn===0&&S.fase==='reforc')i.innerHTML='Vegueries senceres: '+VEGS.map(v=>v.nom+' +'+v.bonus).join(' · ');
+  if(S.torn===0&&S.fase==='reforc')i.innerHTML='Les vegueries senceres donen soldats de més: toca <b>?</b> per veure quants.';
   else i.innerHTML='';
 }
 function boto(text,cls,fn,on=true){const b=document.createElement('button');b.textContent=text;if(cls)b.className=cls;b.disabled=!on;
-  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused||b.disabled)return;fn()});$('controls').appendChild(b);return b}
+  b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if((paused&&cls!=='ajuda')||b.disabled)return;fn()});$('controls').appendChild(b);return b}
 function pintaBotons(){
   const c=$('controls');c.innerHTML='';
   if(!S||S.fi){boto('MENÚ DEL JOC','fi',menu);return}
+  boto('?','ajuda',()=>ajuda(S.fase==='reforc'?1:S.fase==='atac'?2:S.fase==='mou'?4:0));
   if(ia){boto('▶▶ DE PRESSA','tria',()=>{depressa=true;iaT=0});return}
   if(pendent){for(const n of quantitats())boto(n===S.soldats[pendent.a]-1?'TOTS ('+n+')':String(n),'tria',()=>triaQuants(n));return}
   if(S.fase==='reforc')boto('POSA\'LS TOTS AQUÍ','tria',posaTots,sel!==null&&S.dueny[sel]===0);
@@ -553,7 +619,7 @@ document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'){paused=!paus
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('pagehide',desaPartida);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)desaPartida()});
-$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&(!S||S.fi))hideMsg()});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&!ajudaObert&&S&&S.fi)hideMsg()});
 
 Records.pintaMillor(JOC,$('best'));
 menu();
