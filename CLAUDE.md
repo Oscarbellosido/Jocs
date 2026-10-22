@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i dotze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i tretze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I dotze que no són de saló
+### I tretze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -56,6 +56,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `impremta.html` | La Impremta (de l'estil del *Balatro*, amb paraules) | 2026 |
 | `rotllana.html` | La Rotllana (de l'estil del *Wordscapes*) | 2026 |
 | `abecedari.html` | L'Abecedari (de l'estil del *Rosco* del *Pasapalabra*) | 2026 |
+| `conquesta.html` | La Conquesta (de l'estil del *Risk*, amb les comarques) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -721,6 +722,52 @@ no porti la resposta a dins), que la roda del dia sigui igual per a tothom i
 no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
 rellotge, la pausa, desar i continuar, i les dues taules.
 
+## La Conquesta: el joc de conquesta de taula, amb les comarques
+
+En Carles va demanar un joc de guerra. El problema de jugar contra la màquina
+es resol amb **la batalla del dia**: tothom juga el mateix mapa contra la
+mateixa màquina, i la taula diu qui ho ha fet millor. És **inspirat en** el
+*Risk* (d'una empresa viva), amb nom nostre.
+
+- **Les 43 comarques** (amb el Moianès i el Lluçanès) i **tres exèrcits**:
+  tu (blau), els VERMELLS i els GROCS. Comences amb 15 comarques i 35
+  soldats; ells, amb 14 i 35 cadascun.
+- **Guanya qui arriba primer a 30 comarques** (`OBJECTIU`), i no qui les té
+  totes: conquerir-les totes duraria massa per a una partida del dia. Si no
+  hi arriba ningú en **25 rondes** (`MAX_RONDES`), s'acaba igual.
+- Cada torn: **REFORÇA** (un soldat per cada tres comarques, com a mínim 3,
+  i el premi de cada **vegueria** sencera, que fan de continents), **ATACA**
+  (fins a 3 daus contra 2, de gran a petit, i si empaten perd qui ataca) i
+  **MOU** soldats un cop per comarques teves. Són les regles de tota la vida.
+- **Punts**: guanyant, 1.000 i 50 més per cada ronda que sobra. Si no,
+  10 per comarca teva. La batalla del dia va a `conquesta_dia/<data>` i les
+  partides lliures, a `conquesta`.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **El mapa surt de la Base municipal de l'ICGC** (via `gmarull/cat-topojson`,
+  amb llicència CC BY 4.0 de l'Institut, que demana dir-ne la font: és al
+  menú del joc). Les comarques es fan **unint els municipis** i hi ha el
+  Lluçanès (2023), que el mapa d'origen no tenia: els seus 13 municipis es
+  van passar a la comarca 43 a mà. Les vores es simplifiquen arc per arc (així
+  dues veïnes comparteixen exactament la mateixa ratlla), i **les veïnes
+  surten de les vores compartides**, no escrites a mà. El script que el fa no
+  és al repositori: si s'ha de refer, la manera és aquesta.
+- **Els números de les comarques petites de la costa van al mar** amb una
+  ratlleta (`mar`): el Barcelonès, el Garraf, el Baix Penedès, el Tarragonès
+  i el Maresme són massa petits per al dit. I tocant el mar, compta el número
+  més proper.
+- **Cada dau surt de la llavor i del seu número d'ordre** (`dau`): la mateixa
+  batalla, jugada igual, treu els mateixos daus. Per això la del dia és justa
+  i, si tanques a mig torn dels altres, en tornar-hi el tornen a jugar igual.
+- **La màquina** (`iaTorn`) reforça la frontera on té més a guanyar, ataca
+  només quan té 2 soldats més (`AGRESSIU`), va a completar vegueries i, si
+  algú s'acosta a les 30, li va al darrere. Calibrat: si tu jugues com ella,
+  de 80 partides en guanyes unes 27 i les guanyades duren unes 12 rondes.
+  Una persona que pensi una mica ha de guanyar més sovint.
+- **Els torns dels altres es veuen a poc a poc** i amb **▶▶ DE PRESSA** (o
+  tocant el mapa) passen de cop fins que et torna a tocar.
+
 ## El Temple: aventura per caselles
 
 En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
@@ -1277,6 +1324,10 @@ comproven el comportament.
   estiguin ben fetes, que la roda del dia sigui igual per a tothom i no
   repeteixi paraules, i que es jugui tocant, amb el rellotge, la pausa, el
   desar i les dues taules.
+- `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
+  ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
+  els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,
+  que la màquina no sigui ni regalada ni impossible, i que es jugui tocant.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

@@ -67,6 +67,7 @@ const JOCS = {
   rotllana:          99999,   // el nivell mes alt que has acabat
   temple:            99999,
   abecedari:         99999,   // els encerts acumulats de totes les rodes del dia
+  conquesta:          2200,   // partides lliures: 1.000 + 50 per cada ronda que sobra
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
@@ -82,6 +83,7 @@ const DIARIS = {
   impremta_dia:  999999999,
   gofra_dia:             5,   // les estrelles d'avui, de 0 a 5
   abecedari_dia:      2740,   // 25 encerts × 100 i, com a molt, els 240 segons
+  conquesta_dia:      2200,
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -126,6 +128,7 @@ const FITXA = {
   rotllana:        ['La Rotllana',     'a la Rotllana',      'rotllana.html'],
   temple:          ['El Temple',       'al Temple',          'temple.html'],
   abecedari:       ["L'Abecedari",     "a l'Abecedari",      'abecedari.html'],
+  conquesta:       ['La Conquesta',    'a la Conquesta',     'conquesta.html'],
 };
 
 const cors = {
@@ -247,6 +250,7 @@ const ANUNCIA_DIARI = {
   gofra_dia:    ['La Gofra',    'gofra.html',    p => estrelles(p) + ' (a igualtat d\'estrelles, mana qui la va acabar abans)'],
   // A l'Abecedari, 100 punts per encert i els segons que sobren
   abecedari_dia: ["L'Abecedari", 'abecedari.html', p => Math.floor(p / 100) + ' encerts (' + xifra(p) + ' punts)'],
+  conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
 function diaMadrid(enrere = 0) {
@@ -280,7 +284,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra i L\'Abecedari)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari i La Conquesta)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {
