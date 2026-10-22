@@ -10,7 +10,8 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #wrap{width:min(100vw,620px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 #hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
 #marca{flex:none;width:96%;display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
-#marca b{padding:1px 6px;border-radius:5px;color:#fff}
+#marca b{padding:1px 6px;border-radius:5px;color:#fff;white-space:nowrap}
+#marca span{white-space:nowrap}
 #estat{flex:none;width:94%;font-size:13px;line-height:1.3;color:#e8eef5;text-align:center;min-height:2.6em;display:flex;align-items:center;justify-content:center}
 #estat>span{display:block}
 #screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
@@ -29,6 +30,11 @@ button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555
 #controls button:disabled{opacity:.35}
 #controls .fi{color:#ffd27a;border-color:#a07a30;background:#241a0e}
 #controls .tria{color:#9fe0ff;border-color:#3a7aa0;background:#0f2433}
+#daus{position:absolute;left:50%;top:4px;transform:translateX(-50%);background:rgba(5,12,20,.9);border:1px solid #3a5a7a;border-radius:10px;padding:6px 12px 8px;text-align:center;pointer-events:none;display:none;font-size:12px;color:#cfe0ee;z-index:2;white-space:nowrap}
+#daus .fila{display:flex;gap:7px;justify-content:center;margin:5px 0}
+#daus .dg{width:36px;height:36px;line-height:36px;border-radius:7px;font:bold 23px monospace;color:#fff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);transition:opacity .2s}
+#daus .dg.perd{opacity:.28}
+#daus .res{font-size:13px;color:#fff;margin-top:2px}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.5;display:none;background:rgba(5,12,20,.96);border:1px solid #3a5a7a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
 #msg small{display:block;margin-top:6px;font-size:13px}
 #msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:280px}
@@ -43,7 +49,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="marca"></div>
   <div id="estat"></div>
-  <div id="screen"><svg id="mapa" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div id="screen"><svg id="mapa" xmlns="http://www.w3.org/2000/svg"></svg><div id="daus"></div></div>
   <div id="info"></div>
   <div id="controls"></div>
   <div id="msg"></div>
@@ -290,7 +296,7 @@ const PAGINES=[
   ['2 · ATACA',
    '<p>Toca una comarca <b>teva amb 2 soldats o més</b>, i després <b>una dels altres que la toqui</b>. Cada toc és una tirada de daus.</p>'+
    '<p>Tu tires un dau per soldat (com a molt 3, i un sempre es queda a casa). Ell, un per soldat (com a molt 2). Es comparen <b>el més alt amb el més alt</b>, i el segon amb el segon: qui treu menys perd un soldat. <b>Si empaten, perd qui ataca.</b></p>'+
-   '<p>Per exemple: '+dau1(6,B)+dau1(4,B)+dau1(2,B)+' contra '+dau1(5,V)+dau1(4,V)+'<br>6 guanya a 5: ell perd un soldat. 4 i 4 empaten: en perds un tu.</p>'],
+   '<p>Els daus surten <b>grossos a dalt del mapa</b>. Per exemple: '+dau1(6,B)+dau1(4,B)+dau1(2,B)+' contra '+dau1(5,V)+dau1(4,V)+'<br>6 guanya a 5: ell perd un soldat. 4 i 4 empaten: en perds un tu. El dau que perd queda apagat.</p>'],
   ['2 · ATACA (i conquereix)',
    '<p>Quan la deixes <b>sense cap soldat, és teva</b>, i tries quants soldats hi passes.</p>'+
    '<p><b>ATAC A FONS</b> tira els daus fins que la conquereixes o et quedes sense soldats per atacar.</p>'+
@@ -326,7 +332,7 @@ function tancaAjuda(){
 
 // ===== EL MENU =====
 function menu(){
-  S=null;ia=null;sel=null;pinta();
+  S=null;ia=null;sel=null;$('daus').style.display='none';pinta();
   dia=diaAvui();numero=numeroDe(dia);
   const q=desada(),jaDia=llegeix('conquesta-dia','')===dia;
   const contDia=q&&q.mode==='dia'&&q.dia===dia&&!q.S.fi,contLliure=q&&q.mode==='lliure'&&!q.S.fi;
@@ -390,9 +396,10 @@ function toca(c){
 // una tirada, o totes fins que la conquereixes o et quedes sense
 function ataca(aFons){
   const a=sel,d=obj;if(a===null||d===null||!potAtacar(S,a,d)){so.no();return}
-  let r;
-  do{r=tirada(S,a,d)}while(aFons&&!r.conquesta&&S.soldats[a]>=2);
+  const ca=S.dueny[a],cd=S.dueny[d];let r,n=0,pa=0,pd=0;
+  do{r=tirada(S,a,d);n++;pa+=r.pa;pd+=r.pd}while(aFons&&!r.conquesta&&S.soldats[a]>=2);
   ultima=r;so.daus();setTimeout(r.pd>r.pa?so.guanya:so.perd,120);
+  ensenyaDaus(r,ca,cd,{n,pa,pd});
   if(r.conquesta){
     so.conquesta();
     const g=guanyador(S);
@@ -414,7 +421,7 @@ function quantitats(){
   const p=pendent,max=S.soldats[p.a]-1,min=p.t==='ocupa'?p.min:1;
   return [...new Set([min,Math.max(min,Math.ceil(max/2)),max])].filter(n=>n>=min&&n<=max);
 }
-function acabaAtacs(){if(!S||S.torn!==0||S.fase!=='atac'||pendent)return;S.fase='mou';sel=null;obj=null;so.toc();desaPartida();pinta()}
+function acabaAtacs(){if(!S||S.torn!==0||S.fase!=='atac'||pendent)return;$('daus').style.display='none';S.fase='mou';sel=null;obj=null;so.toc();desaPartida();pinta()}
 function acabaTorn(){
   if(!S||S.torn!==0)return;
   sel=null;obj=null;pendent=null;
@@ -445,6 +452,7 @@ function pasIA(){
     pinta();return;
   }
   const f=r.value;ultima=f.t==='atac'?f:null;
+  if(f.t==='atac')ensenyaDaus(f,S.dueny[f.a],f.conquesta?f.de:S.dueny[f.d],null,depressa);
   if(f.t==='atac'&&!depressa){so.daus();if(f.conquesta&&f.de===0)setTimeout(so.perd,100)}
   sel=f.t==='atac'?f.a:f.c;obj=f.t==='atac'?f.d:null;
   iaT=depressa?.02:f.t==='atac'?(f.conquesta?.4:.18):.45;
@@ -548,7 +556,7 @@ function pinta(){
 function pintaMarca(){
   const m=$('marca');
   if(!S){m.innerHTML='';return}
-  m.innerHTML=[0,1,2].map(p=>'<b style="background:'+JUGADORS[p].col+(S.vius[p]?'':';opacity:.3')+'">'+(p?JUGADORS[p].nom:'TU (BLAU)')+' '+comarquesDe(S,p)+'</b>').join('')+
+  m.innerHTML=[0,1,2].map(p=>'<b style="background:'+JUGADORS[p].col+(S.vius[p]?'':';opacity:.3')+'">'+(p?JUGADORS[p].nom:innerWidth<380?'TU':'TU (BLAU)')+' '+comarquesDe(S,p)+'</b>').join('')+
     '<span style="color:#9fb3c6">RONDA '+Math.min(S.ronda,MAX_RONDES)+'/'+MAX_RONDES+'</span>';
   m.title='comarques de cadascú; guanya qui arriba a 30';
 }
@@ -593,6 +601,33 @@ function pintaBotons(){
 }
 let avisT=null;
 function avisa(t){avis=t;pintaInfo();clearTimeout(avisT);avisT=setTimeout(()=>{avis='';pintaInfo()},2200)}
+
+// ===== ELS DAUS =====
+// Grossos, a dalt del mapa: els de qui ataca a dalt, els de qui defensa a
+// sota, cada dau davant del que li toca. El que perd la parella queda apagat.
+// En Carles no els veia: abans nomes sortien petits a la ratlla de sota.
+let dausT=null;
+function ensenyaDaus(r,ca,cd,tot,rapid){
+  const el=$('daus');clearTimeout(dausT);
+  if(rapid){el.style.display='none';return}
+  const parells=Math.min(r.da.length,r.dd.length),nomA=MAPA.comarques[r.a].nom,nomD=MAPA.comarques[r.d].nom;
+  const dg=(n,col,perd)=>'<span class="dg'+(perd?' perd':'')+'" style="background:'+col+'">'+n+'</span>';
+  const fila=(ds,col,altre,soc)=>'<div class="fila">'+ds.map((n,i)=>dg(n,col,i<parells&&(soc==='a'?n<=altre[i]:n<altre[i]))).join('')+'</div>';
+  const qui=c=>c===0?'tu':'els '+JUGADORS[c].nom.toLowerCase();
+  const pa=tot?tot.pa:r.pa,pd=tot?tot.pd:r.pd;
+  const res=r.conquesta?'<b style="color:#7dff9b">'+nomD+' és '+(ca===0?'teva':'dels '+JUGADORS[ca].nom)+'!</b>'
+    :(pd?nomD+' perd '+pd:'')+(pd&&pa?' · ':'')+(pa?nomA+' perd '+pa:'');
+  const final=()=>{el.innerHTML='<b style="color:'+JUGADORS[ca].clar+'">'+nomA+'</b> ataca <b style="color:'+JUGADORS[cd].clar+'">'+nomD+'</b>'+
+    fila(r.da,JUGADORS[ca].col,r.dd,'a')+fila(r.dd,JUGADORS[cd].col,r.da,'d')+
+    '<div class="res">'+res+(tot&&tot.n>1?' <span style="color:#9fb3c6">('+tot.n+' tirades)</span>':'')+'</div>'};
+  // rodolen una mica abans d'aturar-se (nomes de mentida: el resultat ja hi es)
+  el.style.display='block';let k=0;
+  const roda=()=>{if(k++<5){el.innerHTML='<b style="color:'+JUGADORS[ca].clar+'">'+nomA+'</b> ataca <b style="color:'+JUGADORS[cd].clar+'">'+nomD+'</b>'+
+      '<div class="fila">'+r.da.map(()=>dg(1+Math.floor(Math.random()*6),JUGADORS[ca].col)).join('')+'</div>'+
+      '<div class="fila">'+r.dd.map(()=>dg(1+Math.floor(Math.random()*6),JUGADORS[cd].col)).join('')+'</div><div class="res">&nbsp;</div>';dausT=setTimeout(roda,55)}
+    else{final();dausT=setTimeout(()=>{el.style.display='none'},ca===0?3200:1300)}};
+  roda();
+}
 
 // el dit: la comarca tocada, o la del numero mes proper (les petites)
 function comarcaA(ev){

@@ -772,6 +772,11 @@ Coses que no s'han de desfer sense entendre-les:
   partida, i sempre amb el botó **?** de sota (a la pàgina del pas on ets) i
   des del menú. En Carles no va entendre com es jugava: el joc no ho
   explicava enlloc. Mentre és oberta, el joc queda aturat.
+- **Els daus surten grossos a dalt del mapa** (`ensenyaDaus`): els de qui
+  ataca a dalt, els de qui defensa a sota, cada un davant del que li toca, i
+  el que perd la parella queda apagat. Rodolen una mica (de mentida: el
+  resultat ja hi és) i se'n van sols. En Carles preguntava on eren els daus:
+  abans només sortien petits a la ratlla de sota del mapa.
 
 ## El Temple: aventura per caselles
 

@@ -143,6 +143,19 @@ const [at, df] = await p.evaluate(c => { S.soldats[c] = 30; const d = VEI[c].fin
 await toca(at); await toca(df);
 e = await p.evaluate(() => ({ daus: S.daus, info: document.getElementById('info').textContent }));
 diu(e.daus > 0 && /contra/.test(e.info), 'tocant la teva i després la del costat, es tiren els daus i surten a sota');
+await p.waitForTimeout(500);
+const dd = await p.evaluate(() => {
+  const el = document.getElementById('daus'), r = ultima, c = el.getBoundingClientRect(), m = document.getElementById('mapa').getBoundingClientRect();
+  const files = [...el.querySelectorAll('.fila')].map(f => [...f.querySelectorAll('.dg')].map(d => ({ n: +d.textContent, apagat: d.classList.contains('perd') })));
+  const parells = Math.min(r.da.length, r.dd.length);
+  let be = files.length === 2 && files[0].length === r.da.length && files[1].length === r.dd.length;
+  for (let i = 0; i < parells && be; i++) {
+    const guanyaAtac = r.da[i] > r.dd[i];
+    be = files[0][i].n === r.da[i] && files[1][i].n === r.dd[i] && files[0][i].apagat === !guanyaAtac && files[1][i].apagat === guanyaAtac;
+  }
+  return { visible: el.style.display === 'block' && c.height > 60 && c.top >= m.top - 5, be, mida: Math.round(el.querySelector('.dg').getBoundingClientRect().width) };
+});
+diu(dd.visible && dd.be && dd.mida >= 30, `els daus surten grossos a dalt del mapa (${dd.mida} px), i el que perd cada parella queda apagat`);
 await p.evaluate(() => { while (!pendent && S.dueny[obj] !== 0 && S.soldats[sel] >= 2) ataca(false); });
 e = await p.evaluate(() => ({ pend: !!pendent, botons: [...document.querySelectorAll('#controls button')].map(b => b.textContent) }));
 diu(e.pend && e.botons.length >= 3 && e.botons.some(t => /TOTS/.test(t)), `conquerida: tries quants soldats hi passes (${e.botons.join(' / ')})`);
