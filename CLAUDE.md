@@ -1049,6 +1049,14 @@ Regles que no s'han de trencar:
 - **Un joc nou no funciona fins que el Worker no s'ha tornat a desplegar.** Si no
   és a la llista `JOCS`, el Worker respon 404 i el joc es queda sense taula i
   sense demanar les inicials. Ens va passar amb el Donkey Kong.
+- **A les partides del dia només compta la primera de cada inicials**, encara
+  que la tornis a fer des d'un altre mòbil o des de l'ordinador (al mateix
+  mòbil ja no es podia). En Carles va veure que si no, una mateixa persona la
+  podia fer dues vegades. El Worker apunta qui ja hi ha jugat a
+  `jugat:<joc>_dia:<data>` (a part de la taula, que només té els 10 millors)
+  i respon `repetida`; el `records.js` hi envia sempre la del dia, encara que
+  no entri als 10, i si és repetida diu que només compta la primera. Amb
+  unes altres inicials no es pot evitar: és una llista entre amics.
 - **Que el servidor digui que no, no és el mateix que no tenir connexió.** Abans
   el `records.js` ho posava tot al mateix sac i deia "sense connexió" a algú que
   hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del

@@ -281,6 +281,17 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 44 });
   r = await call('GET', '/records/abecedari');
   ok(r.data.length === 1 && r.data[0].p === 44, "l'Abecedari: als encerts de sempre cadascú hi surt una vegada");
+  // a les partides del dia, només la primera de cada inicials (des d'un altre mòbil també)
+  r = await call('POST', '/records/abecedari_dia/' + avui, { nom: 'CRE', punts: 2600 });
+  ok(r.status === 200 && r.data.repetida && r.data.posicio === 0 && r.data.top.find(e => e.n === 'CRE').p === 2134,
+     'partida del dia: si les mateixes inicials hi tornen a jugar, no compta i es queda la primera');
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'NOU', punts: 1 });
+  ok(r.status === 200 && !r.data.repetida, 'partida del dia: unes altres inicials sí que hi entren');
+  for (let i = 0; i < 11; i++) await call('POST', '/records/gofra_dia/' + avui, { nom: 'G' + String(i).padStart(2, '0'), punts: 5 });
+  r = await call('GET', '/records/gofra_dia/' + avui);
+  ok(!r.data.some(e => e.n === 'NOU'), 'partida del dia: qui ha quedat fora dels 10 millors...');
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'NOU', punts: 5 });
+  ok(r.data.repetida, '...tampoc no hi pot tornar a jugar per entrar-hi');
 }
 
 // el podi de la partida del dia d'ahir, al grup, una sola vegada

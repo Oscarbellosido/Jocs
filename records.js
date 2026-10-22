@@ -62,6 +62,9 @@ const Records = (() => {
     ? 'Aquest joc encara no és a la llista de rècords compartits.<br>El rècord s\'ha desat només en aquest mòbil.'
     : 'Sense connexió: rècord desat només aquí') + '</div>';
 
+  const avisRepetida = () => '<div style="color:#ffb05a;font-size:12px">Avui ja hi havies jugat amb aquestes inicials,' +
+    ' potser des d\'un altre mòbil. Només compta la primera partida del dia.</div>';
+
   const local = joc => parseInt(localStorage.getItem('best_' + joc) || '0', 10);
   // alguns jocs guardaven el record amb un altre nom; no el volem perdre
   const migra = (joc, clauAntiga) => {
@@ -482,8 +485,21 @@ const Records = (() => {
       const actual = await crida('/records/' + joc);
       if (actual === null) return { html: avisFall(), posicio: 0 };
 
+      // A les partides del dia nomes compta la primera de cada inicials, encara
+      // que la facis des d'un altre mobil: el Worker apunta qui ja hi ha jugat.
+      // Per aixo s'hi envia sempre, encara que no entris als 10 millors.
+      const delDia = joc.includes('_dia/');
       const hiEntra = actual.length < 10 || punts > actual[actual.length - 1].p;
-      if (!hiEntra) return { html: taulaHTML(actual), posicio: 0 };
+      if (!hiEntra) {
+        if (delDia && nom()) {
+          const r = await crida('/records/' + joc, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nom: nom(), punts }),
+          });
+          if (r && r.repetida) return { html: taulaHTML(actual) + avisRepetida(), posicio: 0 };
+        }
+        return { html: taulaHTML(actual), posicio: 0 };
+      }
 
       const n = await demanaNom();
       const res = await crida('/records/' + joc, {
@@ -492,6 +508,7 @@ const Records = (() => {
         body: JSON.stringify({ nom: n, punts }),
       });
       if (!res) return { html: taulaHTML(actual) + avisFall(), posicio: 0 };
+      if (res.repetida) return { html: taulaHTML(res.top) + avisRepetida(), posicio: 0 };
       if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
       return { html: taulaHTML(res.top, { n, p: punts }), posicio: res.posicio };
     },

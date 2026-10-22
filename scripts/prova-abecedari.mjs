@@ -171,6 +171,35 @@ for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
   diu(r.tecles && r.roda && r.ajuda && r.petita >= 24, `a ${w}×${h} hi cap tot: la roda de ${r.mida} px, el teclat (tecles de ${Math.round(r.petita)} px) i els botons` + (r.tecles && r.roda && r.ajuda ? '' : ' ' + JSON.stringify(r)));
 }
 
+// ---------- 7. tornar-la a fer des d'un altre mòbil ----------
+// El Worker recorda qui ja ha jugat la del dia i, si hi tornes amb les mateixes
+// inicials, respon que no compta. S'hi envia sempre, encara que no entris als 10.
+{
+  const c2 = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const posts = [];
+  let plena = true;
+  await c2.route('**/jocs-records*/**', r => {
+    const q = r.request();
+    if (q.method() === 'POST') { posts.push(JSON.parse(q.postData())); return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ top: [{ n: 'TST', p: 2000, t: 1 }], posicio: 0, repetida: true }) }); }
+    r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify(plena ? Array.from({ length: 10 }, (_, i) => ({ n: 'AAA', p: 2700 - i, t: i })) : []) });
+  });
+  const p2 = await c2.newPage();
+  p2.on('pageerror', e => errors.push(String(e)));
+  await p2.goto(URL_JOC);
+  await p2.evaluate(() => localStorage.setItem('jugador', 'TST'));
+  const fora = await p2.evaluate(() => Records.fiPartida('abecedari_dia/' + diaAvui(), 900));
+  diu(posts.length === 1 && posts[0].nom === 'TST' && /Només compta la primera/.test(fora.html),
+    'a la del dia s\'hi envia sempre, i si ja hi havies jugat des d\'un altre lloc, diu que només compta la primera');
+  plena = false;
+  const dins = p2.evaluate(() => Records.fiPartida('abecedari_dia/' + diaAvui(), 2500));
+  for (let i = 0; i < 30 && !await p2.$('#rec-ok'); i++) await p2.waitForTimeout(100);
+  await p2.click('#rec-ok');
+  const r2 = await dins;
+  diu(r2.posicio === 0 && /Només compta la primera/.test(r2.html), 'també quan la segona seria un rècord dels 10 millors');
+  await c2.close();
+}
+
 diu(!errors.length, 'cap error de JavaScript' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await b.close();
 console.log(malament ? `\n${malament} coses malament` : '\nTot bé');

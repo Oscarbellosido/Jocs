@@ -370,6 +370,17 @@ async function diari(request, env, joc, dia) {
   if (!Number.isFinite(punts) || punts <= 0 || punts > DIARIS[joc]) return json({ error: 'puntuacio fora de rang' }, 400);
   const entrada = { n: netejaNom(cos.nom), p: punts, t: Date.now() };
   const llista = await llegir(env, clau);
+  // Nomes compta la primera partida del dia de cada inicials. Al mateix mobil
+  // ja no es pot tornar a jugar, pero des d'un altre (o des de l'ordinador)
+  // si: en Carles va veure que algu la podia fer dues vegades. Es guarda qui
+  // ja hi ha jugat a part de la taula, perque la taula nomes te els 10 millors.
+  const clauJugat = 'jugat:' + clau;
+  let jugat = [];
+  try { jugat = JSON.parse(await env.RECORDS.get(clauJugat) || '[]'); } catch {}
+  if (jugat.includes(entrada.n) || llista.some(e => e.n === entrada.n))
+    return json({ top: llista, posicio: 0, repetida: true });
+  jugat.push(entrada.n);
+  await env.RECORDS.put(clauJugat, JSON.stringify(jugat), { expirationTtl: DIES_DIARI * 86400 });
   llista.push(entrada);
   llista.sort((a, b) => b.p - a.p || a.t - b.t);
   const retallada = llista.slice(0, TOP);
