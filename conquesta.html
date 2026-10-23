@@ -18,7 +18,7 @@ body{display:flex;align-items:flex-start;justify-content:center}
 svg{max-width:98%;max-height:100%;width:auto;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
 #info{flex:none;width:94%;font-size:12px;color:#b8c7d6;text-align:center;min-height:2.6em;line-height:1.3}
 #info .d{display:inline-block;width:17px;height:17px;line-height:17px;border-radius:4px;font-weight:bold;margin:0 1px;color:#fff}
-#controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:96%}
+#controls{flex:none;min-height:46px;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:96%}
 button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
 #controls button{flex:1 1 0;min-width:0}
 #controls .ajuda{flex:0 0 46px;color:#9fe0ff;border-color:#3a7aa0;font-size:18px}
@@ -591,7 +591,10 @@ function boto(text,cls,fn,on=true){const b=document.createElement('button');b.te
   b.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if((paused&&cls!=='ajuda')||b.disabled)return;fn()});$('controls').appendChild(b);return b}
 function pintaBotons(){
   const c=$('controls');c.innerHTML='';
-  if(!S||S.fi){boto('MENÚ DEL JOC','fi',menu);return}
+  // amb el menu del joc obert no hi ha cap boto: el menu ja hi es, i un
+  // MENÚ DEL JOC a sota l'hauria tornat a obrir igual, que semblava que no anés
+  if(!S)return;
+  if(S.fi){boto('MENÚ DEL JOC','fi',menu);return}
   boto('?','ajuda',()=>ajuda(S.fase==='reforc'?1:S.fase==='atac'?2:S.fase==='mou'?4:0));
   if(ia){boto('▶▶ DE PRESSA','tria',()=>{depressa=true;iaT=0});return}
   if(pendent){for(const n of quantitats())boto(n===S.soldats[pendent.a]-1?'TOTS ('+n+')':String(n),'tria',()=>triaQuants(n));return}

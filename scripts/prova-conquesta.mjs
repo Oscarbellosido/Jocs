@@ -227,6 +227,13 @@ await p.waitForTimeout(500);
 e = await p.evaluate(() => ({ txt: document.getElementById('msg').textContent, punts: punts(S), n: comarquesDe(S, 0) }));
 diu(/ELS VERMELLS HAN ARRIBAT A 30/.test(e.txt) && e.punts === e.n * 10, `si un altre hi arriba abans, 10 punts per comarca teva (${e.punts})`);
 diu(enviats.length === 1 && /records\/conquesta$/.test(enviats[0].url), 'les partides lliures van a la taula de sempre');
+// el boto de sota: en acabar obre el menu del joc, i amb el menu obert no hi es
+await p.evaluate(() => hideMsg());
+await p.click('#controls button:has-text("MENÚ DEL JOC")');
+await p.waitForTimeout(200);
+e = await p.evaluate(() => ({ menu: /PARTIDA LLIURE/.test(document.getElementById('msg').textContent) && document.getElementById('msg').style.display !== 'none',
+  botons: document.querySelectorAll('#controls button').length, alt: Math.round(document.getElementById('controls').getBoundingClientRect().height) }));
+diu(e.menu && e.botons === 0 && e.alt >= 46, `en acabar, MENÚ DEL JOC obre el menu, i amb el menu obert ja no hi ha cap botó a sota (${e.botons} botons, ${e.alt} px)`);
 
 // ---------- 7. que hi càpiga ----------
 for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
