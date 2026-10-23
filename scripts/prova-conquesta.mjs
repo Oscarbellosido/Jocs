@@ -177,6 +177,39 @@ for (let i = 0; i < 80 && await p.evaluate(() => !!ia || S.torn !== 0); i++) awa
 e = await p.evaluate(() => ({ torn: S.torn, ronda: S.ronda, fase: S.fase, posar: S.posar, daus: S.daus }));
 diu(e.torn === 0 && e.ronda === 2 && e.fase === 'reforc' && e.posar >= 3, `després dels VERMELLS i dels GROCS, torna a ser el teu torn (ronda ${e.ronda}, ${e.posar} soldats per reforçar)`);
 
+// ---------- 4b. els daus, que es puguin seguir ----------
+// ATAC A FONS ensenya les tirades una darrere l'altra, i als torns dels altres
+// cada atac es queda quiet una estona, amb els daus de debo (abans canviaven
+// abans d'haver parat de rodolar i nomes se'n veien els de mentida).
+await p.evaluate(() => { S.fase = 'atac'; S.posar = 0;
+  const a = S.dueny.findIndex((d, c) => d === 0 && VEI[c].some(v => S.dueny[v] !== 0)); const d = VEI[a].find(v => S.dueny[v] !== 0);
+  S.soldats[a] = 40; S.soldats[d] = 7; sel = a; obj = d; pinta(); ataca(true); });
+await p.waitForTimeout(250);
+const fons = await p.evaluate(() => ({ txt: document.getElementById('daus').textContent }));
+const nT = +(fons.txt.match(/tirada 1 de (\d+)/) || [])[1];
+diu(nT > 1, `ATAC A FONS ensenya les tirades una per una (tirada 1 de ${nT})`);
+let fiFons = '';
+for (let i = 0; i < 100 && !/\(\d+ tirades\)|En \d+ tirades/.test(fiFons); i++) { await p.waitForTimeout(150); fiFons = await p.evaluate(() => document.getElementById('daus').textContent); }
+diu(new RegExp('\\(' + nT + ' tirades\\)|En ' + nT + ' tirades').test(fiFons), `i al final, el total de les ${nT} tirades`);
+if (await p.evaluate(() => !!pendent)) await p.evaluate(() => triaQuants(pendent.min));
+await p.evaluate(() => { pendent = null; sel = null; obj = null; S.fase = 'mou'; acabaTorn(); document.getElementById('daus').style.display = 'none'; ultima = null; });
+// el primer atac dels altres: s'espera que s'aturi i es mira que sigui el de debo i que s'hi quedi
+let quiet = null;
+for (let i = 0; i < 120 && !quiet; i++) {
+  await p.waitForTimeout(50);
+  quiet = await p.evaluate(() => { const el = document.getElementById('daus');
+    if (el.style.display !== 'block' || el.querySelector('.roda') || !ultima || S.torn === 0) return null;
+    const files = [...el.querySelectorAll('.fila')].map(f => [...f.querySelectorAll('.dg')].map(d => +d.textContent));
+    return { de_debo: files[0].join() === ultima.da.join() && files[1].join() === ultima.dd.join(), html: el.innerHTML,
+      cap: el.getBoundingClientRect().right <= innerWidth + 1 && el.getBoundingClientRect().left >= -1 }; });
+}
+await p.waitForTimeout(900);
+const seguix = quiet && await p.evaluate(h => document.getElementById('daus').innerHTML === h, quiet.html);
+diu(quiet && quiet.de_debo && seguix, 'als torns dels altres, els daus s\'aturen amb els de debò i s\'hi queden prou estona per llegir-los');
+diu(quiet && quiet.cap, 'i el quadre dels daus hi cap');
+await p.click('#controls button:has-text("DE PRESSA")');
+for (let i = 0; i < 80 && await p.evaluate(() => !!ia || S.torn !== 0); i++) await p.waitForTimeout(150);
+
 // ---------- 5. desar i continuar ----------
 const desat = await p.evaluate(() => JSON.stringify(S));
 await p.reload(); await p.waitForTimeout(600); await netejaEntrada();
@@ -205,8 +238,9 @@ await p.waitForTimeout(1200);
 for (let i = 0; i < 30 && !await p.$('#rec-ok'); i++) await p.waitForTimeout(100);
 if (await p.$('#rec-ok')) await p.click('#rec-ok');
 await p.waitForTimeout(600);
-e = await p.evaluate(() => ({ fi: S.fi, txt: document.getElementById('msg').textContent, punts: punts(S) }));
-diu(e.fi && e.fi.guanya === 0 && /HAS CONQUERIT CATALUNYA/.test(e.txt) && e.punts === 1000 + 50 * 23, `arribant a 30 comarques a la ronda 2, guanyes: ${e.punts} punts (1.000 + 50 per ronda que sobra)`);
+e = await p.evaluate(() => ({ fi: S.fi, txt: document.getElementById('msg').textContent, punts: punts(S), MAX: MAX_RONDES }));
+const MAX = e.MAX;
+diu(e.fi && e.fi.guanya === 0 && /HAS CONQUERIT CATALUNYA/.test(e.txt) && e.punts === 1000 + 50 * (MAX - e.fi.ronda), `arribant a 30 comarques a la ronda ${e.fi.ronda}, guanyes: ${e.punts} punts (1.000 + 50 per ronda que sobra)`);
 const dia = await p.evaluate(() => dia);
 diu(enviats.length === 1 && enviats[0].url.includes('conquesta_dia/' + dia) && enviats[0].punts === e.punts, 'els punts van a la taula d\'avui (' + enviats.map(x => x.url.split('/records/')[1]).join(', ') + ')');
 diu(/LA BATALLA D'AVUI/.test(e.txt) && /DE SEMPRE/.test(e.txt) && /ENVIA A TELEGRAM/.test(e.txt), 'el quadre del final ensenya les dues taules i es pot enviar al grup');

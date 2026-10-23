@@ -806,6 +806,21 @@ Coses que no s'han de desfer sense entendre-les:
   el que perd la parella queda apagat. Rodolen una mica (de mentida: el
   resultat ja hi és) i se'n van sols. En Carles preguntava on eren els daus:
   abans només sortien petits a la ratlla de sota del mapa.
+- **Els daus s'han de poder seguir.** Després en Carles no els entenia:
+  surten massa daus diferents i van massa de pressa. Era veritat. Als torns
+  dels altres, cada tirada durava 0,18 s i els daus en trigaven 0,28 a
+  rodolar, o sigui que **mai no s'arribaven a veure els de debò**, només els
+  de mentida de quan rodolen. Ara:
+  - cada tirada **s'atura i es queda** (1 s; 0,6 s si n'hi ha més de 4);
+  - **ATAC A FONS ensenya totes les tirades**, una darrere l'altra
+    («tirada 2 de 5»), i al final el total;
+  - als torns dels altres, **les tirades seguides contra la mateixa comarca
+    es junten** (`iaSeguent`, que mira el pas següent abans d'hora): se'n
+    veu l'última, quieta 1,2 s, amb el total. Una per una, cada torn duraria
+    mig minut;
+  - el dau que perd porta un **−1**, el que no té parella surt **ratllat**
+    (no compta), cada filera diu de qui és (TU, VERMELLS...) i a sota hi ha
+    la regla: el més alt contra el més alt, i si empaten guanya qui defensa.
 
 ## El Temple: aventura per caselles
 
