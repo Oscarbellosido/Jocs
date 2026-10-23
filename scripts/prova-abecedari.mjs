@@ -276,6 +276,13 @@ for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
   await c2.close();
 }
 
+// la partida que acabes de fer surt en groc, i nomes ella: amb dues partides
+// iguals (CRE 101 i CRE 101, al Boles) sortien totes dues en groc
+diu(await p.evaluate(() => {
+  const llista = [{ n: 'OBE', p: 112 }, { n: 'CRE', p: 101 }, { n: 'CRE', p: 101 }, { n: 'OBE', p: 88 }];
+  const files = Records.taulaHTML(llista, { n: 'CRE', p: 101, posicio: 3 }).split('<tr').slice(1);
+  return files.filter(f => f.includes('#ff0')).length === 1 && files[2].includes('#ff0');
+}), 'a la taula, només surt en groc la fila de la partida que acabes de fer');
 diu(!errors.length, 'cap error de JavaScript' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await b.close();
 console.log(malament ? `\n${malament} coses malament` : '\nTot bé');

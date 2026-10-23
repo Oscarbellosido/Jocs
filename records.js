@@ -421,10 +421,16 @@ const Records = (() => {
   }
 
   // ---- taula dels 10 millors ----
+  // destacat: la partida que acabes de fer, que surt en groc. Nomes una fila:
+  // la de la posicio que diu el Worker. Buscant-la per inicials i punts, si ja
+  // hi tenies una partida igual (CRE 101 i CRE 101 al Boles), sortien totes
+  // dues en groc i semblava que s'hagues apuntat dues vegades.
   function taulaHTML(llista, destacat) {
     if (!llista || !llista.length) return '<div style="color:#888;font-size:12px">Encara no hi ha cap rècord</div>';
+    const quina = !destacat ? -1 : destacat.posicio > 0 ? destacat.posicio - 1
+      : llista.findIndex(r => r.n === destacat.n && r.p === destacat.p);
     const files = llista.map((r, i) => {
-      const meu = destacat && r.n === destacat.n && r.p === destacat.p;
+      const meu = i === quina;
       return '<tr style="color:' + (meu ? '#ff0' : '#ddd') + '">' +
         '<td style="text-align:right;padding:1px 6px;color:#888">' + (i + 1) + '</td>' +
         '<td style="padding:1px 6px">' + r.n + '</td>' +
@@ -520,7 +526,7 @@ const Records = (() => {
       if (!res) return { html: taulaHTML(actual) + avisFall(), posicio: 0 };
       if (res.repetida) return { html: taulaHTML(res.top) + avisRepetida(), posicio: 0 };
       if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
-      return { html: taulaHTML(res.top, { n, p: punts }), posicio: res.posicio };
+      return { html: taulaHTML(res.top, { n, p: punts, posicio: res.posicio }), posicio: res.posicio };
     },
 
     taulaHTML,
