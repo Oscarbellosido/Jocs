@@ -225,6 +225,15 @@ for (let i = 0; i < 80 && await p.evaluate(() => !!ia || S.torn !== 0); i++) awa
     return { txt: el.querySelector('.quants') ? el.querySelector('.quants').textContent : '', abaix: c.bottom > s.top + s.height * .6, dins: c.left >= -1 && c.right <= innerWidth + 1 && c.bottom <= s.bottom + 1 }; });
   diu(/Tu tires 3 daus, el màxim/.test(q.txt) && /Els grocs tiren 1 dau: només hi tenen 1 soldat/.test(q.txt), `el quadre diu per què cadascú tira els daus que tira («${q.txt}»)`);
   diu(q.abaix && q.dins, 'atacant al nord, el quadre dels daus va a baix i no tapa les comarques que toques');
+  // el resultat es queda fins que toques, i tocant-lo marxa sense fer res mes al mapa
+  await p.waitForTimeout(5000);
+  const abans = await p.evaluate(() => ({ vis: document.getElementById('daus').style.display === 'block', sel, obj, pend: !!pendent }));
+  const cq = await p.evaluate(() => { const c = document.getElementById('daus').getBoundingClientRect(); return [c.x + c.width / 2, c.y + c.height / 2]; });
+  await p.touchscreen.tap(cq[0], cq[1]);
+  await p.waitForTimeout(200);
+  const despres = await p.evaluate(() => ({ vis: document.getElementById('daus').style.display === 'block', sel, obj, pend: !!pendent }));
+  diu(abans.vis && !despres.vis && despres.sel === abans.sel && despres.obj === abans.obj && despres.pend === abans.pend,
+    'el resultat dels daus es queda fins que el toques, i tocant-lo marxa sense fer res al mapa');
   if (await p.evaluate(() => !!pendent)) await p.evaluate(() => triaQuants(pendent.min));
 }
 

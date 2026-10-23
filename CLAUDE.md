@@ -811,12 +811,15 @@ Coses que no s'han de desfer sense entendre-les:
   dels altres, cada tirada durava 0,18 s i els daus en trigaven 0,28 a
   rodolar, o sigui que **mai no s'arribaven a veure els de debò**, només els
   de mentida de quan rodolen. Ara:
-  - cada tirada **s'atura i es queda** (1 s; 0,6 s si n'hi ha més de 4);
+  - cada tirada **s'atura i es queda** (1,5 s; 0,9 s si n'hi ha més de 4),
+    i **el resultat dels teus atacs es queda fins que toques la pantalla**
+    (o 12 s). Tocant on sigui marxa; tocant el quadre mateix, aquell toc no
+    fa res més al mapa. En Carles no tenia temps de llegir-lo;
   - **ATAC A FONS ensenya totes les tirades**, una darrere l'altra
     («tirada 2 de 5»), i al final el total;
   - als torns dels altres, **les tirades seguides contra la mateixa comarca
     es junten** (`iaSeguent`, que mira el pas següent abans d'hora): se'n
-    veu l'última, quieta 1,2 s, amb el total. Una per una, cada torn duraria
+    veu l'última, quieta 2,2 s, amb el total. Una per una, cada torn duraria
     mig minut;
   - el dau que perd porta un **−1**, el que no té parella surt **ratllat**
     (no compta), cada filera diu de qui és (TU, VERMELLS...) i a sota hi ha

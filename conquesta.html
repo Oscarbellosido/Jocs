@@ -30,7 +30,7 @@ button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555
 #controls button:disabled{opacity:.35}
 #controls .fi{color:#ffd27a;border-color:#a07a30;background:#241a0e}
 #controls .tria{color:#9fe0ff;border-color:#3a7aa0;background:#0f2433}
-#daus{position:absolute;left:50%;top:4px;transform:translateX(-50%);background:rgba(5,12,20,.9);border:1px solid #3a5a7a;border-radius:10px;padding:6px 12px 8px;text-align:center;pointer-events:none;display:none;font-size:12px;color:#cfe0ee;z-index:2;white-space:nowrap;max-width:calc(100% - 12px);box-sizing:border-box}
+#daus{position:absolute;left:50%;top:4px;transform:translateX(-50%);background:rgba(5,12,20,.9);border:1px solid #3a5a7a;border-radius:10px;padding:6px 12px 8px;text-align:center;display:none;font-size:12px;color:#cfe0ee;z-index:2;cursor:pointer;white-space:nowrap;max-width:calc(100% - 12px);box-sizing:border-box}
 #daus .fila{display:flex;gap:7px;justify-content:center;align-items:center;margin:5px 0}
 #daus .et{width:58px;text-align:right;font-size:10px;font-weight:bold;letter-spacing:.04em;margin-right:2px}
 #daus .cel{position:relative}
@@ -43,6 +43,7 @@ button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555
 #daus .tir{font-size:11px;color:#9fb3c6}
 #daus .res{font-size:13px;color:#fff;margin-top:2px;white-space:normal}
 #daus .regla{font-size:10px;color:#7f93a6;margin-top:3px;white-space:normal}
+#daus .tanca{font-size:10px;color:#5f7386;margin-top:4px}
 #daus .quants{font-size:11px;color:#b8c7d6;margin-top:4px;white-space:normal;line-height:1.35}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.5;display:none;background:rgba(5,12,20,.96);border:1px solid #3a5a7a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
 #msg small{display:block;margin-top:6px;font-size:13px}
@@ -341,7 +342,7 @@ function tancaAjuda(){
 
 // ===== EL MENU =====
 function menu(){
-  S=null;ia=null;sel=null;$('daus').style.display='none';pinta();
+  S=null;ia=null;sel=null;amagaDaus();pinta();
   dia=diaAvui();numero=numeroDe(dia);
   const q=desada(),jaDia=llegeix('conquesta-dia','')===dia;
   const contDia=q&&q.mode==='dia'&&q.dia===dia&&!q.S.fi,contLliure=q&&q.mode==='lliure'&&!q.S.fi;
@@ -432,7 +433,7 @@ function quantitats(){
   const p=pendent,max=S.soldats[p.a]-1,min=p.t==='ocupa'?p.min:1;
   return [...new Set([min,Math.max(min,Math.ceil(max/2)),max])].filter(n=>n>=min&&n<=max);
 }
-function acabaAtacs(){if(!S||S.torn!==0||S.fase!=='atac'||pendent)return;$('daus').style.display='none';S.fase='mou';sel=null;obj=null;so.toc();desaPartida();pinta()}
+function acabaAtacs(){if(!S||S.torn!==0||S.fase!=='atac'||pendent)return;amagaDaus();S.fase='mou';sel=null;obj=null;so.toc();desaPartida();pinta()}
 function acabaTorn(){
   if(!S||S.torn!==0)return;
   sel=null;obj=null;pendent=null;
@@ -476,9 +477,9 @@ function pasIA(){
       iaSeguent=q;break;
     }
     ultima=f;
-    const dura=ensenyaDaus([f],ca,f.conquesta?f.de:cd,{tot,rapid:depressa,queda:1600});
+    const dura=ensenyaDaus([f],ca,f.conquesta?f.de:cd,{tot,rapid:depressa,queda:2800});
     if(!depressa){so.daus();if(f.conquesta&&f.de===0)setTimeout(so.perd,100)}
-    iaT=depressa?.02:(dura+(f.conquesta?1500:1200))/1000;
+    iaT=depressa?.02:(dura+(f.conquesta?2500:2200))/1000;
   }else iaT=depressa?.02:.45;
   sel=f.t==='atac'?f.a:f.c;obj=f.t==='atac'?f.d:null;
   pinta();
@@ -640,8 +641,13 @@ function avisa(t){avis=t;pintaInfo();clearTimeout(avisT);avisT=setTimeout(()=>{a
 // el que trigaven els daus a rodolar, i nomes se'n veien els numeros de
 // mentida de quan rodolen. Ara cada tirada s'atura i es queda una estona.
 const DAUS_RODA=6,DAUS_PAS=70;                 // rodolen 6 vegades, 70 mil·lèsimes cada una
-const DAUS_QUIET=1000;                         // cada tirada, quieta, abans de la seguent (600 si n'hi ha mes de 4)
+// En Carles no tenia temps de llegir-ho: ara cada tirada es queda mes, el
+// resultat dels teus atacs es queda fins que toques la pantalla (o 12 s), i
+// tocant on sigui el quadre marxa.
+const DAUS_QUIET=1500;                         // cada tirada, quieta, abans de la seguent (900 si n'hi ha mes de 4)
+const DAUS_QUEDA=12000;                        // el resultat d'un atac teu, si no toques res
 let dausT=null;
+function amagaDaus(){clearTimeout(dausT);$('daus').style.display='none'}
 // rs: les tirades, en ordre; o.tot: el que es va perdre en total (si n'hi ha
 // mes de les que s'ensenyen); o.queda: quanta estona es queda l'ultima.
 // Torna quant dura, perque els torns dels altres hi puguin esperar.
@@ -691,14 +697,15 @@ function ensenyaDaus(rs,ca,cd,o={}){
     el.innerHTML=cap+quina(k)+fila(r.da,ca,false)+fila(r.dd,cd,true)+'<div class="res">&nbsp;</div>'+quants(r)+'<div class="regla">&nbsp;</div>';
   };
   el.style.display='block';
-  const quiet=rs.length>4?600:DAUS_QUIET;
+  const quiet=rs.length>4?900:DAUS_QUIET;
   let k=0,f=0;
   const pas=()=>{
     const r=rs[k];
     if(f<DAUS_RODA){f++;rodola(r,k);dausT=setTimeout(pas,DAUS_PAS);return}
     const ultima=k===rs.length-1;quieta(r,k,ultima);
     if(!ultima){k++;f=0;dausT=setTimeout(pas,quiet);return}
-    dausT=setTimeout(()=>{el.style.display='none'},o.queda||3200);
+    el.insertAdjacentHTML('beforeend','<div class="tanca">toca per tancar</div>');
+    dausT=setTimeout(amagaDaus,o.queda||DAUS_QUEDA);
   };
   pas();
   return rs.length*DAUS_RODA*DAUS_PAS+(rs.length-1)*quiet;
@@ -713,6 +720,10 @@ function comarcaA(ev){
   let m=-1,md=55;ETIQ.forEach((e,i)=>{const d=Math.hypot(e.x-q.x,e.y-q.y);if(d<md){md=d;m=i}});
   return m<0?null:m;
 }
+// Tocant el quadre dels daus, marxa (i aquell toc no fa res mes). Tocant
+// qualsevol altre lloc, tambe marxa, i el toc fa el que toqui.
+$('daus').addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();amagaDaus()});
+document.addEventListener('pointerdown',ev=>{if(!ev.target.closest('#daus')&&$('daus').style.display==='block')amagaDaus()},true);
 SVG.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();const c=comarcaA(ev);
   if(ia&&!paused){depressa=true;iaT=0;return}
   if(c!==null){avis='';if(!(S&&S.fase==='atac'&&S.dueny[c]!==0))ultima=null;toca(c)}});
