@@ -394,7 +394,17 @@ const Records = (() => {
     };
     // la tecla que la tanca no ha de disparar ni saltar dins del joc
     const perTecla = e => { e.stopPropagation(); tanca(); };
-    fons.addEventListener('pointerdown', tanca);
+    // I el dit tampoc: el quadre es tanca en posar el dit, i en aixecar-lo el
+    // mobil fa un «clic» a sobre del que ha quedat a sota. A L'Abecedari
+    // queia just sobre COMENÇA i la roda d'avui començava sola, sense deixar
+    // triar la dificil. Aquell clic es llença.
+    const perDit = () => {
+      const llenca = e => { e.preventDefault(); e.stopPropagation(); };
+      document.addEventListener('click', llenca, true);
+      setTimeout(() => document.removeEventListener('click', llenca, true), 700);
+      tanca();
+    };
+    fons.addEventListener('pointerdown', perDit);
     document.addEventListener('keydown', perTecla, true);
     const sostre = setTimeout(tanca, 7000);      // per si la xarxa va lenta
 

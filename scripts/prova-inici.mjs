@@ -1,6 +1,8 @@
 // Comprova que, en entrar a qualsevol joc, la taula de records surti uns
 // segons, que el joc estigui aturat mentre es veu, que es tanqui sola i al
-// primer toc, i que si no hi ha records no faci esperar ningu.
+// primer toc, i que si no hi ha records no faci esperar ningu. I que el
+// toc que la tanca no premi res del que queda a sota (a L'Abecedari, amb el
+// dit, premia COMENÇA i la roda d'avui començava sola).
 //
 //   node scripts/prova-inici.mjs
 
@@ -20,8 +22,8 @@ const TAULA = [['CRE',18400],['ABC',15200],['XYZ',12100],['CRE',9600],['JPM',830
 const b = await chromium.launch();
 let malament = 0;
 
-const obre = async (fitxer, cos) => {
-  const ctx = await b.newContext({ viewport:{width:390,height:844} });
+const obre = async (fitxer, cos, dit = false) => {
+  const ctx = await b.newContext({ viewport:{width:390,height:844}, hasTouch: dit, isMobile: dit });
   await ctx.route('**/jocs-records*/**', r => r.fulfill({
     status:200, contentType:'application/json',
     headers:{'access-control-allow-origin':'*'}, body: JSON.stringify(cos) }));
@@ -55,12 +57,14 @@ for (const fitxer of jocs) {
   if (errors.length) problemes.push(errors[0]);
   await ctx.close();
 
-  // 2. es tanca al primer toc
-  ({ ctx, p, errors } = await obre(fitxer, TAULA));
+  // 2. es tanca al primer toc, i aquell toc no arriba al que hi ha a sota
+  ({ ctx, p, errors } = await obre(fitxer, TAULA, true));
   await p.waitForTimeout(600);
-  await p.mouse.click(195, 300);
-  await p.waitForTimeout(200);
+  await p.evaluate(() => { window.__clics = 0; document.addEventListener('click', () => window.__clics++); });
+  await p.touchscreen.tap(195, 422);
+  await p.waitForTimeout(300);
   if (await quadre(p)) problemes.push('no es tanca quan la toques');
+  if (await p.evaluate(() => window.__clics)) problemes.push('el toc que la tanca també prem el que hi ha a sota');
   await ctx.close();
 
   // 3. sense records, no fa esperar

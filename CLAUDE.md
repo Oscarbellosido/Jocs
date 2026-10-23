@@ -1133,6 +1133,12 @@ les inicials de qui mana (`CRE 640`), o `TU 250` mentre l'estàs superant.
   **El joc queda en pausa mentre es veu** (cada joc li passa el seu `paused`), es
   tanca sola als 3,5 s o al primer toc, i si no hi ha rècords no surt: no fem
   esperar per res.
+  **El toc que la tanca no ha de prémer res del que queda a sota.** El quadre
+  es tanca en posar el dit, i en aixecar-lo el mòbil fa un clic a sobre del
+  que hi ha al darrere: a L'Abecedari queia just sobre COMENÇA i la roda
+  d'avui començava sola, sense poder triar la difícil. Ara aquell clic es
+  llença (`perDit`). Amb el ratolí no passa, i per això la prova
+  (`prova-inici.mjs`) toca amb el dit.
 - El quadre del final de partida l'acaba `Records.peuFinal()`, que hi posa el
   botó **← MENÚ**. És un enllaç i no un `<button>` a posta: si fos un botó, la
   regla `button{width:NNpx}` del joc el faria petit.
