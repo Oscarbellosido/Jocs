@@ -210,6 +210,24 @@ diu(quiet && quiet.cap, 'i el quadre dels daus hi cap');
 await p.click('#controls button:has-text("DE PRESSA")');
 for (let i = 0; i < 80 && await p.evaluate(() => !!ia || S.torn !== 0); i++) await p.waitForTimeout(150);
 
+// 3 daus teus contra 1 dels altres: el quadre diu per què, i si ataques al
+// nord se'n va a baix per no tapar les comarques que toques
+{
+  const r = await p.evaluate(() => {
+    S.fase = 'atac'; S.posar = 0; S.torn = 0;
+    let a = -1, d = -1;
+    for (let c = 0; c < N && a < 0; c++) for (const v of VEI[c]) if ((MAPA.comarques[c].y + MAPA.comarques[v].y) / 2 < MAPA.alt * .4) { a = c; d = v; break; }
+    S.dueny[a] = 0; S.dueny[d] = 2; S.soldats[a] = 4; S.soldats[d] = 1; sel = a; obj = d; pinta(); ataca(false);
+    return true;
+  });
+  await p.waitForTimeout(700);
+  const q = await p.evaluate(() => { const el = document.getElementById('daus'), c = el.getBoundingClientRect(), s = document.getElementById('screen').getBoundingClientRect();
+    return { txt: el.querySelector('.quants') ? el.querySelector('.quants').textContent : '', abaix: c.bottom > s.top + s.height * .6, dins: c.left >= -1 && c.right <= innerWidth + 1 && c.bottom <= s.bottom + 1 }; });
+  diu(/Tu tires 3 daus, el màxim/.test(q.txt) && /Els grocs tiren 1 dau: només hi tenen 1 soldat/.test(q.txt), `el quadre diu per què cadascú tira els daus que tira («${q.txt}»)`);
+  diu(q.abaix && q.dins, 'atacant al nord, el quadre dels daus va a baix i no tapa les comarques que toques');
+  if (await p.evaluate(() => !!pendent)) await p.evaluate(() => triaQuants(pendent.min));
+}
+
 // ---------- 5. desar i continuar ----------
 const desat = await p.evaluate(() => JSON.stringify(S));
 await p.reload(); await p.waitForTimeout(600); await netejaEntrada();

@@ -821,6 +821,11 @@ Coses que no s'han de desfer sense entendre-les:
   - el dau que perd porta un **−1**, el que no té parella surt **ratllat**
     (no compta), cada filera diu de qui és (TU, VERMELLS...) i a sota hi ha
     la regla: el més alt contra el més alt, i si empaten guanya qui defensa.
+  - **diu per què cadascú tira els daus que tira** («Tu tires 3 daus, el
+    màxim. Els grocs tiren 1 dau: només hi tenen 1 soldat.»). En Carles va
+    veure 3 daus seus contra 1 i no entenia com comptava;
+  - **si l'atac és al nord del mapa, el quadre va a baix** (`abaix`), que a
+    dalt tapava justament les comarques que estaves tocant.
 
 ## El Temple: aventura per caselles
 

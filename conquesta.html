@@ -43,6 +43,7 @@ button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555
 #daus .tir{font-size:11px;color:#9fb3c6}
 #daus .res{font-size:13px;color:#fff;margin-top:2px;white-space:normal}
 #daus .regla{font-size:10px;color:#7f93a6;margin-top:3px;white-space:normal}
+#daus .quants{font-size:11px;color:#b8c7d6;margin-top:4px;white-space:normal;line-height:1.35}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.5;display:none;background:rgba(5,12,20,.96);border:1px solid #3a5a7a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
 #msg small{display:block;margin-top:6px;font-size:13px}
 #msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:280px}
@@ -304,7 +305,7 @@ const PAGINES=[
   ['2 · ATACA',
    '<p>Toca una comarca <b>teva amb 2 soldats o més</b>, i després <b>una dels altres que la toqui</b>. Cada toc és una tirada de daus.</p>'+
    '<p>Tu tires un dau per soldat (com a molt 3, i un sempre es queda a casa). Ell, un per soldat (com a molt 2). Es comparen <b>el més alt amb el més alt</b>, i el segon amb el segon: qui treu menys perd un soldat. <b>Si empaten, perd qui ataca.</b></p>'+
-   '<p>Els daus surten <b>grossos a dalt del mapa</b>. Per exemple: '+dau1(6,B)+dau1(4,B)+dau1(2,B)+' contra '+dau1(5,V)+dau1(4,V)+'<br>6 guanya a 5: ell perd un soldat. 4 i 4 empaten: en perds un tu. El dau que perd queda apagat, amb un <b style="color:#ff8a7a">−1</b>. El teu 2 no té parella: no compta, i surt ratllat.</p>'],
+   '<p>Els daus surten <b>grossos sobre el mapa</b>, i et diuen quants en tira cadascú i per què. Per exemple: '+dau1(6,B)+dau1(4,B)+dau1(2,B)+' contra '+dau1(5,V)+dau1(4,V)+'<br>6 guanya a 5: ell perd un soldat. 4 i 4 empaten: en perds un tu. El dau que perd queda apagat, amb un <b style="color:#ff8a7a">−1</b>. El teu 2 no té parella: no compta, i surt ratllat.</p>'],
   ['2 · ATACA (i conquereix)',
    '<p>Quan la deixes <b>sense cap soldat, és teva</b>, i tries quants soldats hi passes.</p>'+
    '<p><b>ATAC A FONS</b> tira els daus fins que la conquereixes o et quedes sense soldats per atacar.</p>'+
@@ -652,6 +653,19 @@ function ensenyaDaus(rs,ca,cd,o={}){
   const pa=o.tot?o.tot.pa:rs.reduce((x,r)=>x+r.pa,0),pd=o.tot?o.tot.pd:rs.reduce((x,r)=>x+r.pd,0);
   const nomCurt=c=>c===0?'TU':JUGADORS[c].nom;
   const cap='<b style="color:'+JUGADORS[ca].clar+'">'+nomA+'</b> ataca <b style="color:'+JUGADORS[cd].clar+'">'+nomD+'</b>';
+  // Per que cadascu tira els daus que tira. En Carles va veure 3 daus seus
+  // contra 1 dels grocs i no entenia com comptava.
+  const subj=c=>c===0?'Tu':'Els '+JUGADORS[c].nom.toLowerCase(),tenir=c=>c===0?'tens':'tenen',tirar=c=>c===0?'tires':'tiren';
+  const daus=k=>k+(k===1?' dau':' daus');
+  const quants=r=>{
+    const ka=r.da.length,kd=r.dd.length;
+    return '<div class="quants">'+subj(ca)+' '+tirar(ca)+' '+daus(ka)+(ka===3?', el màxim':': '+tenir(ca)+' '+(ka+1)+' soldats i un es queda a casa')+'.<br>'+
+      subj(cd)+' '+tirar(cd)+' '+daus(kd)+(kd===2?', el màxim per defensar':': només hi '+tenir(cd)+' 1 soldat')+'.</div>';
+  };
+  // Si l'atac es al nord del mapa, el quadre va a baix, que si no tapa
+  // justament les comarques que estas tocant.
+  const yAtac=(MAPA.comarques[r0.a].y+MAPA.comarques[r0.d].y)/2,abaix=yAtac<MAPA.alt*.45;
+  el.style.top=abaix?'auto':'';el.style.bottom=abaix?'4px':'';
   const dg=(v,col,cls,menys)=>'<span class="cel"><span class="dg'+(cls?' '+cls:'')+'" style="background:'+col+'">'+v+'</span>'+(menys?'<span class="menys">−1</span>':'')+'</span>';
   const et=c=>'<span class="et" style="color:'+JUGADORS[c].clar+'">'+nomCurt(c)+'</span>';
   // una tirada, quieta
@@ -667,14 +681,14 @@ function ensenyaDaus(rs,ca,cd,o={}){
     else if(ultima&&n>1)res='En '+n+' tirades: '+perden(pa,pd);
     else res=perden(r.pa,r.pd);
     el.innerHTML=cap+quina(k)+
-      fila(r.da,ca,r.dd,'a')+fila(r.dd,cd,r.da,'d')+'<div class="res">'+res+'</div>'+
+      fila(r.da,ca,r.dd,'a')+fila(r.dd,cd,r.da,'d')+'<div class="res">'+res+'</div>'+quants(r)+
       '<div class="regla">el més alt contra el més alt · si empaten, guanya qui defensa</div>';
   };
   // rodolant (de mentida: el resultat ja hi es)
   const quina=k=>rs.length>1?' <span class="tir">· tirada '+(k+1)+' de '+n+'</span>':'';
   const rodola=(r,k)=>{
     const fila=(ds,c,b)=>'<div class="fila">'+et(c)+ds.map(()=>dg(1+Math.floor(Math.random()*6),JUGADORS[c].col,'roda'+(b?' b':''))).join('')+'<span class="et"></span></div>';
-    el.innerHTML=cap+quina(k)+fila(r.da,ca,false)+fila(r.dd,cd,true)+'<div class="res">&nbsp;</div><div class="regla">&nbsp;</div>';
+    el.innerHTML=cap+quina(k)+fila(r.da,ca,false)+fila(r.dd,cd,true)+'<div class="res">&nbsp;</div>'+quants(r)+'<div class="regla">&nbsp;</div>';
   };
   el.style.display='block';
   const quiet=rs.length>4?600:DAUS_QUIET;
