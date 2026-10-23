@@ -3,6 +3,8 @@
 // definicio no du la resposta a dins), que la roda del dia sigui la mateixa
 // per a tothom i no repeteixi paraules, i que es jugui tocant: encertar,
 // fallar, passar paraula, el rellotge, desar i continuar, i les dues taules.
+// I la dificil d'avui: les seves definicions, que diu quantes lletres te, que
+// es fa a estones i que va a la seva taula.
 //
 //   node scripts/prova-abecedari.mjs
 
@@ -155,6 +157,70 @@ diu(await p.evaluate(() => state === 'fi' && /PRÀCTICA/.test(document.getElemen
   'quan s\'acaba el temps, s\'acaba la roda; i la de pràctica no toca les estadístiques');
 diu(!enviats.some(x => x.url.includes('abecedari')), 'ni s\'apunta a cap taula');
 
+// ---------- 5b. la difícil d'avui ----------
+const dd = await p.evaluate(() => {
+  const mal = [], vist = {}, normals = new Set(ORDRE.flatMap(L => POOLS[L].map(q => pla(q.resp))));
+  for (const L of ORDRE) for (const q of POOLS_D[L]) {
+    const n = pla(q.resp);
+    if (L === 'Ç' ? !q.resp.includes('ç') : !n.includes(pla(L))) mal.push('sense la lletra: ' + L + ' ' + q.resp);
+    if (vist[n]) mal.push('repetida: ' + q.resp);
+    vist[n] = L;
+    if (normals.has(n) && n !== 'arc') mal.push('ja és a la normal: ' + q.resp);
+    if (q.alts.length) mal.push('amb una altra resposta: ' + q.resp);
+    const mots = q.def.toLowerCase().split(/[^a-zà-úçïü·]+/).map(pla);
+    if (mots.some(m => m === n || (n.length >= 5 && m.startsWith(n.slice(0, 5))))) mal.push('la definició la conté: ' + q.resp);
+    if (q.def.length < 8 || q.def.length > 140) mal.push('definició mal feta: ' + q.resp);
+  }
+  let repeteix = 0;
+  for (const L of ORDRE) { const vistes = new Set(); for (let n = 1; n <= POOLS_D[L].length; n++) { const r = POOLS_D[L][indexDif(L, n)].resp; if (vistes.has(r)) repeteix++; vistes.add(r); } }
+  const a = rodaDificil(4).map(q => q.resp).join();
+  return { mal, mides: ORDRE.map(L => POOLS_D[L].length), total: ORDRE.reduce((n, L) => n + POOLS_D[L].length, 0), repeteix,
+    igual: a === rodaDificil(4).map(q => q.resp).join() && a !== rodaDificil(5).map(q => q.resp).join(), numero: numeroDif(diaAvui()),
+    lletres: lletresDe({ resp: 'fal·lera' }) === 7 && lletresDe({ resp: 'jaç' }) === 3 };
+});
+diu(Math.min(...dd.mides) >= 13 && !dd.mal.length, `la difícil té les seves definicions (${dd.total}, de ${Math.min(...dd.mides)} a ${Math.max(...dd.mides)} per lletra), cap de la roda normal, cap repetida i cap amb la resposta a dins` + (dd.mal.length ? ': ' + dd.mal.slice(0, 5).join(' | ') : ''));
+diu(dd.igual && dd.repeteix === 0 && dd.numero >= 1, `la difícil del dia és igual per a tothom, l'endemà és una altra i no repeteix paraules (avui la #${dd.numero})`);
+diu(dd.lletres, 'les lletres es compten com toca: FAL·LERA en té 7 i JAÇ, 3');
+await p.click('#b-dif');
+await p.waitForTimeout(200);
+e = await p.evaluate(() => ({ mode, state, temps: R.temps, txt: document.getElementById('msg').textContent }));
+diu(e.mode === 'dificil' && e.state === 'inici' && e.temps === 600 && /10 minuts/.test(e.txt) && /a estones/.test(e.txt), 'des del final de la roda, ◆ LA DIFÍCIL D\'AVUI explica com va: 10 minuts a estones');
+await p.tap('#b-comenca');
+e = await p.evaluate(() => ({ def: document.getElementById('def').textContent, n: lletresDe(R.lletres[0]), compte: document.getElementById('compte').textContent }));
+diu(e.def.endsWith('· ' + e.n + ' lletres') && e.compte.includes('0/' + e.n), `a cada definició diu quantes lletres té (${e.def})`);
+await escriu('AB');
+diu(await p.evaluate(() => document.getElementById('compte').textContent.includes('2/' + lletresDe(R.lletres[0]))), 'i mentre escrius, quantes en portes');
+await p.tap('.k[data-t="⌫"]'); await p.tap('.k[data-t="⌫"]');
+await escriu(await p.evaluate(() => pla(R.lletres[0].resp).toUpperCase()));
+await p.tap('#respon');
+await p.waitForTimeout(100);
+diu(await p.evaluate(() => R.estat[0] === 1 && R.cur === 1), 'encertant, la A es posa verda');
+await p.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyP', key: 'p', bubbles: true })));
+diu(await p.evaluate(() => paused && /tornar-hi/.test(document.getElementById('def').textContent)), 'a la pausa diu que es desa sola i que hi pots tornar més tard');
+await p.evaluate(() => { R.temps = 321; desaDia(); });
+await p.reload(); await p.waitForTimeout(600); await netejaEntrada();
+e = await p.evaluate(() => ({ mode, state, temps: Math.round(R.temps), estat: R.estat[0], txt: document.getElementById('msg').textContent }));
+diu(e.mode === 'dificil' && e.state === 'inici' && e.temps === 321 && e.estat === 1 && /5:21/.test(e.txt) && /CONTINUA/.test(e.txt),
+  'tancant i tornant a entrar, s\'obre directament la difícil a mig fer, amb el rellotge on era');
+await p.tap('#b-comenca');
+enviats.length = 0;
+await p.evaluate(() => { for (let i = 1; i < 25; i++) R.estat[i] = 1; R.estat[24] = 0; R.cur = 24; R.escrit = R.lletres[24].resp; });
+await p.tap('#respon');
+await p.waitForTimeout(900);
+for (let i = 0; i < 30 && !await p.$('#rec-ok'); i++) await p.waitForTimeout(100);
+if (await p.$('#rec-ok')) await p.click('#rec-ok');
+await p.waitForTimeout(600);
+e = await p.evaluate(() => ({ punts: punts(), segons: Math.ceil(R.temps), txt: document.getElementById('msg').textContent, stats, statsD, tx: textCompartir() }));
+diu(e.punts === 2500 + e.segons && /DIFÍCIL PERFECTA/.test(e.txt) && /LA DIFÍCIL D'AVUI/.test(e.txt) && /difícil #/.test(e.tx), `acabant-la: 25 encerts × 100 + ${e.segons} segons = ${e.punts} punts`);
+diu(enviats.length === 1 && enviats[0].url.includes('abecedari_dificil_dia/' + dia) && enviats[0].punts === e.punts,
+  'va a la seva taula del dia, i no a la de la roda ni als encerts de sempre (' + enviats.map(x => x.url.split('/records/')[1]).join(', ') + ')');
+diu(e.statsD.jugades === 1 && e.statsD.encerts === 25 && e.stats.jugades === 1 && e.stats.encerts === 24, 'les estadístiques de la difícil van a part');
+await p.reload(); await p.waitForTimeout(1200); await netejaEntrada();
+e = await p.evaluate(() => ({ mode, state, dif: !!document.getElementById('b-dif') && /com et va anar/.test(document.getElementById('b-dif').textContent) }));
+diu(e.mode === 'dia' && e.state === 'fi' && e.dif, 'feta la difícil, en tornar a entrar s\'obre la roda normal, i la difícil es pot tornar a mirar');
+await p.click('#b-dif'); await p.waitForTimeout(400);
+diu(await p.evaluate(() => mode === 'dificil' && state === 'fi' && R.fi), 'però no es pot tornar a fer');
+
 // ---------- 6. que hi càpiga tot ----------
 for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
   await p.setViewportSize({ width: w, height: h });
@@ -169,6 +235,16 @@ for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
       ajuda: dins(document.querySelector('small')) };
   });
   diu(r.tecles && r.roda && r.ajuda && r.petita >= 24, `a ${w}×${h} hi cap tot: la roda de ${r.mida} px, el teclat (tecles de ${Math.round(r.petita)} px) i els botons` + (r.tecles && r.roda && r.ajuda ? '' : ' ' + JSON.stringify(r)));
+  // a la difícil, amb la definició més llarga i el compte de lletres
+  const d = await p.evaluate(() => {
+    mode = 'dificil'; R = nova(rodaDificil(1), TEMPS_DIF); R.comencada = true; state = 'joc';
+    let llarga = 0; ORDRE.forEach((L, i) => { if (R.lletres[i].def.length > R.lletres[llarga].def.length) llarga = i; });
+    const q = ORDRE.flatMap(L => POOLS_D[L].map(x => ({ L, ...x }))).reduce((a, x) => x.def.length > a.def.length ? x : a);
+    R.lletres[0] = q; R.cur = 0; pinta();
+    const df = document.getElementById('def'), c = df.getBoundingClientRect(), t = document.getElementById('teclat').getBoundingClientRect();
+    return { cap: df.scrollHeight <= df.clientHeight + 1 && c.bottom <= t.top + 1, def: q.resp };
+  });
+  diu(d.cap, `a ${w}×${h}, a la difícil la definició més llarga (${d.def}) i les lletres hi caben`);
 }
 
 // ---------- 7. tornar-la a fer des d'un altre mòbil ----------

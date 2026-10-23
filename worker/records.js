@@ -83,6 +83,7 @@ const DIARIS = {
   impremta_dia:  999999999,
   gofra_dia:             5,   // les estrelles d'avui, de 0 a 5
   abecedari_dia:      2740,   // 25 encerts × 100 i, com a molt, els 240 segons
+  abecedari_dificil_dia: 3100, // la dificil: 25 × 100 i, com a molt, els 600 segons
   conquesta_dia:      2200,
 };
 const DIES_DIARI = 60;
@@ -244,12 +245,15 @@ async function quiMana(env) {
 // d'enviar, perque dues peticions alhora no l'avisin dues vegades.
 // [nom, fitxer, com s'escriu la puntuacio]. A la Gofra son estrelles (de 0 a
 // 5) i hi haura molts empats: mana qui la va acabar abans, i aixi es diu.
+const encerts = p => Math.min(25, Math.floor(p / 100));
 const estrelles = p => '★'.repeat(p) + '☆'.repeat(Math.max(0, 5 - p));
 const ANUNCIA_DIARI = {
   impremta_dia: ['La Impremta', 'impremta.html', p => xifra(p) + ' punts'],
   gofra_dia:    ['La Gofra',    'gofra.html',    p => estrelles(p) + ' (a igualtat d\'estrelles, mana qui la va acabar abans)'],
-  // A l'Abecedari, 100 punts per encert i els segons que sobren
-  abecedari_dia: ["L'Abecedari", 'abecedari.html', p => Math.floor(p / 100) + ' encerts (' + xifra(p) + ' punts)'],
+  // A l'Abecedari, 100 punts per encert i els segons que sobren. Els segons
+  // nomes hi son si l'acabes sencera, o sigui que passat de 2.500 son 25.
+  abecedari_dia: ["L'Abecedari", 'abecedari.html', p => encerts(p) + ' encerts (' + xifra(p) + ' punts)'],
+  abecedari_dificil_dia: ["L'Abecedari difícil", 'abecedari.html', p => encerts(p) + ' encerts (' + xifra(p) + ' punts)'],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
@@ -284,7 +288,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari i La Conquesta)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil i La Conquesta)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

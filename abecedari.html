@@ -28,6 +28,7 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #def{flex:none;width:94%;box-sizing:border-box;min-height:3.9em;background:#141c36;border:1px solid #2c3a66;border-radius:10px;
   padding:7px 10px;font-size:15px;line-height:1.3;display:flex;align-items:center;justify-content:center;text-align:center;margin:2px 0 6px}
 #def.era{color:#ffb3a8}
+#def .nl{color:#9fd0ff;white-space:nowrap;font-weight:bold}
 #def.era b{color:#fff}
 #teclat{flex:none;width:97%;display:flex;flex-direction:column;gap:5px}
 .fila{display:flex;gap:4px;justify-content:center}
@@ -59,7 +60,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="teclat"></div>
   <div id="controls"><button id="passa">PASSA PARAULA</button><button id="respon">RESPON ✓</button></div>
   <div id="msg"></div>
-  <small><b style="color:#ddd">Endevina una paraula per a cada lletra: comença per la lletra, o la conté.</b> escriu-la i RESPON, o PASSA PARAULA · una roda cada dia · pausa: P</small>
+  <small><b style="color:#ddd">Endevina una paraula per a cada lletra: comença per la lletra, o la conté.</b> escriu-la i RESPON, o PASSA PARAULA · cada dia una roda i una de difícil · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -1064,20 +1065,437 @@ atzavara: Planta de fulles grosses, carnoses i punxegudes, que creix a la costa.
 brunzir: Fer un soroll continu, com les abelles o els mosquits.
 tretze: Número que va després del dotze.
 `;
+// ===== LES DIFICILS =====
+// Les de la roda dificil del dia, que es pot fer a estones: paraules que se
+// saben pero costen, de la A a la Z, i cap no es a la roda normal. Aqui no
+// hi ha cap altra resposta bona (res de barres): es diu quantes lletres te,
+// i amb dues respostes de llarg diferent seria mentida. Les que van en
+// plural ho diuen a la definicio.
+const DIFICILS=`
+#A
+atzucac: Carreró que no té sortida; també, una situació de la qual no saps com sortir-ne.
+albada: La primera claror del dia, abans que surti el sol.
+aiguat: Pluja molt forta i abundant que cau de cop i fa baixar les rieres plenes.
+argila: Terra fina que, mullada, es pot modelar i serveix per fer terrissa.
+alfàbrega: Planta aromàtica de fulles verdes que es fa servir per fer el pesto.
+atabalar: Aclaparar algú amb massa coses o massa soroll, fins que no sap on té el cap.
+amanyagar: Fer carícies a algú amb tendresa.
+alambí: Aparell per destil·lar, amb què es fa l'aiguardent.
+almoina: Diners o menjar que es dona a qui demana pel carrer.
+arrambar: Acostar una cosa ben bé a la paret o a un costat.
+abocador: Lloc on es porten i s'amunteguen les escombraries d'una ciutat.
+atuell: Recipient o estri de cuina per posar-hi coses.
+aixopluc: Lloc on et pots protegir de la pluja o del mal temps.
+arna: Insecte petit que es menja la roba de llana guardada als armaris.
+astorat: Tan sorprès que t'has quedat sense saber què dir.
+acotxar: Tapar bé algú al llit perquè no passi fred.
+aplec: Trobada de gent en un lloc, sovint al costat d'una capella de muntanya, per fer festa.
+aldarull: Desordre amb crits, empentes i baralles.
+avantpassat: Persona de la família que va viure molt abans que nosaltres.
+#B
+baluerna: Cosa molt grossa i pesant, que ocupa massa lloc.
+bram: Crit de l'ase.
+brogit: Soroll confús de moltes veus o de moltes coses alhora.
+bonança: Temps tranquil al mar, sense vent ni onades.
+bromera: Escuma que fa un líquid quan bull o quan s'agita.
+bugada: Rentada de tota la roba de la casa, que antigament es feia al safareig.
+bitxo: Pebrot petit i vermell que pica molt.
+bocí: Tros petit d'alguna cosa, sobretot de menjar.
+batibull: Barreja de coses de tota classe, sense cap ordre.
+barrina: Eina de ferro en espiral per fer forats a la fusta.
+baldufa: Joguina de fusta amb una punta de ferro, que es fa ballar estirant un cordill.
+bri: Fil molt prim, o un tros molt petit d'alguna cosa: «un ... d'herba».
+bruc: Mata de flors petites, blanques o rosades, que creix als boscos.
+bàscula: Balança gran per pesar coses pesants o persones.
+bescanviar: Canviar una cosa per una altra.
+bassal: Aigua de pluja que s'ha quedat en un clot del terra.
+#C
+cabdell: Bola de fil o de llana enrotllada.
+clatell: Part del darrere del cap, just a sobre del coll.
+cingle: Paret de roca molt dreta, en una muntanya.
+cantimplora: Ampolla per portar aigua quan vas d'excursió.
+cofoi: Satisfet i orgullós d'una cosa que ha fet.
+carquinyoli: Galeta dura i allargada, amb ametlles senceres a dins.
+cabòria: Preocupació que no et pots treure del cap.
+càntir: Recipient de terrissa amb un broc, per beure a galet.
+corriol: Camí estret, fet de tant passar-hi gent o animals.
+clivella: Esquerda prima en una paret o en una roca.
+carcanada: Esquelet d'una au o d'un peix, quan se n'ha menjat la carn.
+calitja: Boirina seca que a l'estiu enterboleix l'aire.
+calaixera: Moble amb compartiments que s'estiren, per guardar-hi la roba.
+cendrer: Plat petit on es deixen les puntes de les cigarretes.
+cuir: Pell d'animal adobada, amb què es fan sabates i cinturons.
+#Ç
+capçal: Coixí llarg que va d'una banda a l'altra del llit.
+esbalç: Lloc des d'on hi ha una caiguda molt alta; un precipici.
+arç: Arbust espinós de flors blanques, que fa uns fruits vermells petits.
+calçotada: Dinar on es mengen cebes tendres fetes a la brasa, amb salsa.
+dolçaina: Instrument de vent de fusta, típic de les festes valencianes.
+terç: Cadascuna de les tres parts iguals en què es divideix una cosa.
+mordaç: Que fa crítiques punyents, que fan mal.
+tenaç: Que no es rendeix i insisteix fins que se'n surt.
+audaç: Atrevit, que no té por d'arriscar-se.
+precoç: Que fa una cosa abans de l'edat en què es fa normalment.
+atroç: D'una crueltat terrible.
+feroç: Salvatge i violent, com una fera.
+esquinçar: Estripar una roba o un paper estirant-lo.
+endreçar: Posar cada cosa al seu lloc.
+adreça: El carrer, el número i la població on viu algú.
+veloç: Que va molt ràpid.
+#D
+desgavell: Situació de gran desordre, en què res no funciona com caldria.
+desficiós: Inquiet, que no troba la manera d'estar tranquil.
+daltabaix: Desgràcia inesperada que ho capgira tot.
+deixalla: Resta d'alguna cosa que ja no serveix i es llença.
+dalla: Eina de fulla llarga i corbada, amb un mànec llarg, per segar l'herba.
+degotall: Aigua que cau gota a gota d'un sostre o d'una teulada.
+dida: Dona que alletava els fills d'altres famílies.
+dringar: Fer un so clar i vibrant, com les copes quan es toquen.
+dolmen: Monument prehistòric fet amb grans pedres planes.
+desnonament: Quan es fa fora algú de casa seva per ordre del jutge.
+dòcil: Que obeeix fàcilment i es deixa portar.
+dàrsena: Part tancada d'un port on els vaixells estan arrecerats.
+dissortat: Que té mala sort.
+disbarat: Cosa dita o feta que no té cap sentit.
+dic: Mur fet al mar o a un riu per aturar l'aigua.
+#E
+esbatussada: Baralla a cops entre diverses persones.
+encisador: Que t'agrada tant que et té encantat.
+esgarrifança: Tremolor del cos, de fred o de por.
+esquer: Menjar que es posa a l'ham per pescar.
+esbarzer: Mata de punxes que fa móres.
+escaire: Eina en forma de triangle per dibuixar angles rectes.
+eixorc: Terra que no dona fruit.
+embolic: Situació complicada i difícil de desfer.
+escarola: Enciam de fulles arrissades i una mica amargues.
+esllavissada: Terra i pedres que cauen de cop per un pendent.
+ermita: Capella petita, sovint dalt d'una muntanya i lluny del poble.
+esparver: Ocell de presa petit que caça altres ocells.
+esclafit: Soroll sec i fort, com el d'un petard.
+estrafolari: Rar i extravagant en la manera de vestir o de fer.
+escudella: Plat de caldo amb carn, verdures i pasta, típic de Nadal.
+estalvi: Diners que no es gasten i es guarden per més endavant.
+#F
+fal·lera: Ganes boges de fer alguna cosa; dèria.
+feixuc: Pesat, que costa de portar.
+farcell: Paquet de roba o de coses lligat amb un mocador.
+fressa: Soroll lleuger i continuat.
+fesol: Llegum blanc, que també es diu mongeta.
+fornícula: Forat a la paret per posar-hi una estàtua o un sant.
+feréstec: Salvatge, que fuig de la gent.
+fona: Corda per llançar pedres fent-la girar.
+fesomia: Les faccions de la cara d'una persona.
+fiblada: Picada d'abella o de vespa.
+fortor: Olor molt forta i desagradable.
+fusell: Arma de foc llarga dels soldats.
+flassada: Manta gruixuda de llit.
+fanga: Eina de dues o tres pues, per remoure la terra.
+fetillera: Bruixa que fa encanteris.
+#G
+gresol: Recipient per fondre metalls a molta temperatura.
+garlanda: Tira de flors i fulles per guarnir.
+gavardina: Abric lleuger per quan plou.
+grapat: Tantes coses com caben a la mà.
+gemec: So de queixa de qui té dolor.
+guspira: Partícula encesa que salta del foc.
+gorga: Lloc d'un riu on l'aigua és fonda i quieta.
+garjola: La presó, en llenguatge col·loquial.
+garrofa: Beina dolça i fosca d'un arbre mediterrani, que es dona als cavalls.
+gruta: Cova gran, sovint amb estalactites.
+gasiu: Que no vol gastar res, avar.
+gaiato: Bastó amb el mànec corbat, com el dels pastors.
+gregal: Vent que bufa del nord-est.
+gratacel: Edifici altíssim, de molts pisos.
+gàrgola: Desguàs d'una teulada en forma de monstre, a les catedrals.
+#H
+heura: Planta enfiladissa que s'aferra a les parets i als arbres.
+hostal: Allotjament senzill on es pot menjar i dormir.
+harmònica: Instrument petit que es toca bufant i xuclant.
+hiena: Animal d'Àfrica que menja animals morts i sembla que rigui.
+heretge: Persona que no creu el que ensenya l'Església.
+hemicicle: Sala en forma de mig cercle, com la d'un parlament.
+hecatombe: Desastre amb moltes víctimes.
+horabaixa: La tarda, a les Balears.
+hortolà: Persona que cultiva un hort.
+hipòcrita: Que fa veure uns sentiments que no té.
+híbrid: Que barreja dues coses de naturalesa diferent.
+hegemonia: Domini d'un país o d'un grup sobre els altres.
+herald: Missatger que anunciava les notícies del rei.
+heràldica: L'art dels escuts de les famílies nobles.
+hostil: Que es porta com un enemic.
+#I
+inefable: Que no es pot explicar amb paraules.
+ingenu: Que es creu tot, sense malícia.
+iracund: Que s'enfada amb molta facilitat.
+intempèrie: L'aire lliure, sense cap protecció: «dormir a la ...».
+indret: Lloc, paratge.
+ingrat: Que no agraeix el que fan per ell.
+inhòspit: Lloc on no es pot viure a gust.
+iceberg: Gran bloc de gel que sura al mar.
+impertèrrit: Que no s'immuta davant del perill.
+insomni: Quan no et pots adormir a la nit.
+ínfules: Aires de grandesa (en plural): «té moltes ...».
+isard: Cabra salvatge dels Pirineus.
+indòmit: Que no es deixa domar.
+incaut: Que no veu el perill i es refia massa.
+imperdible: Agulla que es tanca per subjectar la roba.
+#J
+jaç: Llit de palla, o el lloc on s'ajeu un animal.
+jonquilla: Flor groga de primavera, semblant al narcís.
+juganer: Que li agrada molt jugar i fer bromes.
+jovenalla: La gent jove, tota junta.
+jaqué: Peça de roba d'home per a les cerimònies, amb faldons llargs al darrere.
+jovial: Alegre i de bon humor.
+jaspi: Pedra dura de colors, que es fa servir per decorar.
+juntura: Lloc on s'uneixen dues peces.
+jurament: Promesa solemne, posant la teva honra per testimoni.
+jornaler: Persona que treballa al camp i cobra per dia.
+jurisdicció: Territori on mana una autoritat.
+jubileu: Celebració dels cinquanta anys d'una cosa.
+jònec: Bou jove.
+jugular: Vena gruixuda del coll.
+#L
+lleganya: Cosa que s'asseca a les parpelles mentre dorms.
+llepafils: Que és molt delicat amb el menjar.
+llenegar: Relliscar.
+llòbrec: Fosc i trist.
+lleure: Temps lliure, quan no treballes.
+llindar: Pedra de sota la porta; també, el límit d'una cosa.
+lluerna: Finestra al sostre per on entra la llum.
+llúdriga: Animal de riu que neda molt bé i menja peixos.
+llobarro: Peix de mar molt apreciat, que també es diu llobina.
+llossa: Cullera grossa i fonda per servir la sopa.
+lleixa: Prestatge clavat a la paret.
+llevant: Vent que bufa de l'est.
+llimac: Cargol sense closca.
+lleial: Que és fidel i no et traeix.
+lligabosc: Planta enfiladissa de flors blanques i grogues, molt olorosa.
+#M
+marrameu: Miol del gat en zel.
+mantellina: Mocador de punta que les dones es posaven al cap per anar a missa.
+malenconia: Tristesa suau i que dura.
+moixaina: Carícia tendra, amb la mà o amb la galta.
+matoll: Mata baixa i espessa.
+mató: Formatge fresc i tendre, que es menja amb mel.
+mitena: Guant que deixa els dits a l'aire.
+maregassa: Mar molt mogut, amb onades grosses.
+morrió: Reixeta per tapar el morro dels gossos.
+mostela: Animal petit i esvelt que caça ratolins.
+matusser: Que fa les coses malament i de pressa.
+mena: Classe, tipus: «de tota ...».
+magrana: Fruit amb molts grans vermells a dins.
+martinet: Ocell blanc de potes llargues, que viu als aiguamolls.
+mandonguilla: Boleta de carn picada, que es menja amb salsa.
+#N
+nafra: Ferida, sobretot la que costa de curar.
+nimi: Tan petit que no té importància.
+nítid: Clar i ben definit.
+nosa: Destorb: «fer ...».
+neguit: Inquietud de qui espera alguna cosa.
+nissaga: Llinatge d'una família, de pares a fills.
+nenúfar: Planta d'aigua de fulles rodones que suren.
+niada: Tots els ocells nascuts alhora en un mateix niu.
+nebulosa: Núvol de gas i de pols a l'espai.
+nòmina: Paper on surt el que cobra un treballador cada mes.
+nòria: Atracció de fira, una roda gran amb cabines que gira.
+nupcial: De les noces: «el banquet ...».
+nàusea: Ganes de vomitar.
+nimfa: Divinitat dels boscos i les fonts, a la mitologia.
+navalla: Ganivet que es plega.
+#O
+orat: Boig, que ha perdut el seny.
+orfebre: Persona que fa objectes d'or i plata.
+oasi: Lloc amb aigua i palmeres al mig del desert.
+obaga: Vessant de la muntanya on no hi toca el sol.
+ofrena: Regal que es fa a un déu o a un sant.
+ombrel·la: Para-sol petit i lleuger.
+ordi: Cereal amb què es fa la cervesa.
+oripell: Cosa que sembla valuosa però és de poc valor.
+osca: Tall petit a la vora d'una cosa.
+oblic: Ni vertical ni horitzontal: inclinat.
+oïda: El sentit amb què sentim els sons.
+ocàs: La posta del sol.
+ofec: Sensació de no poder respirar.
+onejar: Moure's una bandera amb el vent.
+ostatge: Persona retinguda per obligar algú a fer el que li demanen.
+#P
+poncella: Flor que encara no s'ha obert.
+pispar: Robar d'amagat, sense que se n'adonin.
+pollancre: Arbre alt i prim que creix a la vora dels rius.
+pòsit: El que queda al fons d'un líquid quan reposa.
+palplantat: Dret i quiet, sense moure's.
+penombra: Llum molt escassa.
+poruc: Que té por de tot.
+pàtina: Capa que el temps deixa sobre els objectes vells.
+perol: Olla grossa de metall, per cuinar.
+pessigolles: Sensació que fa riure quan et toquen la planta dels peus (en plural).
+picarol: Campaneta que porten les vaques al coll.
+plançó: Arbre petit per trasplantar.
+pruïja: Picor forta a la pell.
+pellingot: Tros de roba vella i esparracada.
+picapedrer: Persona que treballa la pedra.
+#Q
+quall: Llet que s'ha espessit i s'ha fet tendra, abans de ser formatge.
+quisca: Brutícia enganxada.
+quinqué: Llum d'oli amb un tub de vidre.
+qüestionari: Llista de preguntes per respondre.
+quissó: Gos petit, gosset.
+quintà: Persona que va néixer el mateix any que tu.
+quadra: Lloc on es guarden els cavalls.
+qualificació: La nota d'un examen.
+quartet: Grup de quatre músics.
+quarter: Edifici on viuen els soldats.
+quitxalla: Colla de nens; la mainada.
+quintaessència: El més pur i essencial d'una cosa.
+quirúrgic: De les operacions que fan els cirurgians.
+#R
+rebeca: Jaqueta de punt, oberta per davant.
+rampell: Impuls de cop i volta de fer una cosa.
+rondalla: Conte popular que expliquen els avis.
+ruixat: Pluja forta que dura poc.
+regalèssia: Arrel dolça que es mastega.
+ranci: Que té gust de vell i passat.
+renec: Paraulota contra Déu o els sants.
+rodet: Peça on s'enrotlla el fil.
+remenar: Moure una cosa en rodó, com la sopa amb la cullera.
+rosegar: Menjar a mossegadetes, com fan els ratolins.
+rèmora: Cosa que endarrereix o entrebanca.
+rierol: Riu petit.
+rabassa: Part del tronc de l'arbre que queda arran de terra.
+ràfega: Cop de vent fort i curt.
+ronsejar: Fer les coses a contracor i a poc a poc.
+reguitzell: Sèrie llarga de coses, l'una darrere l'altra.
+#S
+sargir: Cosir un forat de la roba.
+sanglot: Respiració entretallada de qui plora.
+sorneguer: Que diu les coses amb una ironia dissimulada.
+sorrut: Que parla poc i és esquerp.
+safrà: Espècia vermella que dona color groc a la paella.
+sofre: Element groc que fa olor d'ou podrit.
+solc: Ratlla que fa l'arada a la terra.
+seguici: Gent que acompanya algú important.
+saba: Líquid que corre per dins de les plantes.
+somiatruites: Persona que té il·lusions impossibles.
+sedàs: Garbell per passar la farina.
+serraller: Persona que fa claus i panys.
+saurí: Persona que diu que troba aigua sota terra amb una vareta.
+sobtat: Que passa de cop, sense avisar.
+sàlvia: Planta aromàtica de fulles grises.
+#T
+trencadís: Mosaic fet amb trossos de rajola, com els de Gaudí.
+tossut: Que no canvia d'idea per res del món.
+trapella: Entremaliat, que fa malifetes.
+trasbals: Desordre que obliga a canviar els plans.
+teia: Tros de fusta de pi amb resina que crema bé.
+tonyina: Peix gros de carn vermella.
+terbolí: Remolí de vent.
+tossal: Turó, muntanya petita.
+tramoia: Maquinària d'un teatre per canviar els decorats.
+trinxera: Rasa on s'amaguen els soldats.
+talús: Pendent d'un marge de terra.
+tenalles: Eina per arrencar claus (en plural).
+tòtil: Babau, ximplet.
+tustar: Picar a la porta.
+torrent: Curs d'aigua que només baixa quan plou.
+#U
+untuós: Greixós i enganxós.
+ullastre: Olivera salvatge.
+ultratge: Ofensa molt greu.
+umbracle: Lloc cobert que fa ombra a les plantes.
+unànime: Quan tothom hi està d'acord.
+ubèrrim: Molt fèrtil i abundant.
+ullprendre: Captivar algú només amb la mirada.
+uixer: Porter d'un palau o d'un tribunal.
+ubicar: Situar en un lloc.
+úvula: Campaneta del fons del paladar.
+usança: Costum, manera de fer de sempre.
+unicel·lular: Que té una sola cèl·lula.
+ungulat: Animal que té peülles, com el cavall o la vaca.
+usurpar: Prendre per la força una cosa que és d'un altre.
+urgir: Ser urgent, no poder esperar.
+#V
+vailet: Nen, noi petit.
+volva: Floc petit de neu.
+vaivé: Moviment d'anar i tornar.
+vianda: Menjar, sobretot carn o peix.
+vetlla: Nit que es passa despert, acompanyant un difunt.
+verro: Porc mascle.
+vesc: Substància enganxosa per caçar ocells.
+verdet: Capa verda que es fa al coure.
+vilatà: Persona que viu en una vila.
+virolat: De molts colors vius.
+veta: Cinta estreta de roba.
+vehement: Apassionat, que parla amb molta força.
+vernís: Líquid que, en assecar-se, deixa una capa brillant.
+vici: Mal costum difícil de deixar.
+vitalici: Que dura tota la vida.
+#X
+xafogor: Calor humida que no deixa respirar.
+xurriaques: Corretja per pegar els animals (en plural).
+xalar: Divertir-se molt.
+xauxa: Gresca, disbauxa.
+xirivia: Arrel blanca, semblant a la pastanaga.
+xenofòbia: Odi als estrangers.
+xerrac: Serra de mà.
+xollar: Tallar la llana a les ovelles.
+xarol: Pell molt brillant, com la de les sabates de festa.
+xinxa: Insecte que pica de nit i viu als matalassos.
+xafar: Aixafar trepitjant.
+xató: Amanida típica del Garraf, amb bacallà i salsa de romesco.
+xiuxiuejar: Parlar molt baix, a cau d'orella.
+xipollejar: Esquitxar jugant amb l'aigua, amb les mans o els peus.
+xec: Paper per pagar, que el banc canvia per diners.
+#Y
+desmanyotat: Maldestre, que no té traça.
+penyora: Objecte que es deixa com a garantia.
+parany: Trampa per caçar animals.
+codony: Fruit groc i dur amb què es fa una confitura per menjar amb formatge.
+castanyoles: Instrument de fusta que es fa petar amb els dits (en plural).
+canyís: Planta de tija alta que creix a la vora de l'aigua.
+dany: Mal, perjudici.
+carronya: Cadàver d'un animal que es podreix.
+manyoc: Feix de fils, de cabells o d'herbes, que s'agafa amb la mà.
+plànyer: Sentir pena per algú.
+estranyesa: Sorpresa davant d'una cosa que no és normal.
+senyorívol: Elegant i distingit.
+companyonia: Bona harmonia entre persones que treballen o viuen juntes.
+menyscabar: Fer perdre valor o prestigi a una cosa.
+brunyir: Polir un metall fins que brilli.
+#Z
+zebú: Bou amb un gep a l'espatlla.
+zitzània: Discòrdia: «sembrar ...».
+donzella: Noia jove i soltera, en els contes antics.
+calze: Copa de la missa.
+alzina: Arbre de fulla dura que no cau a l'hivern i que fa glans.
+atzur: El blau del cel.
+metzina: Substància que mata o fa molt de mal si se'n pren.
+bonze: Monjo budista.
+topazi: Pedra preciosa de color groc.
+batzegada: Sacsejada forta i de cop.
+salze: Arbre de ribera de branques primes i flexibles.
+zèfir: Vent suau i agradable.
+atzabeja: Pedra negra i molt brillant.
+puzle: Joc de peces que s'han d'encaixar.
+llatzeret: Hospital aïllat per als malalts contagiosos.
+`;
 const ORDRE=['A','B','C','Ç','D','E','F','G','H','I','J','L','M','N','O','P','Q','R','S','T','U','V','X','Y','Z'];
-const POOLS={};
-{let cur=null;
-  for(const l of DEFINICIONS.split('\n')){
+function llegeixPools(text){
+  const P={};let cur=null;
+  for(const l of text.split('\n')){
     if(!l.trim())continue;
-    if(l[0]==='#'){cur=l.slice(1).trim();POOLS[cur]=[];continue}
+    if(l[0]==='#'){cur=l.slice(1).trim();P[cur]=[];continue}
     const i=l.indexOf(': ');if(i<0||!cur)continue;
     const [resp,...alts]=l.slice(0,i).split('/');
-    POOLS[cur].push({resp,alts,def:l.slice(i+2)});
+    P[cur].push({resp,alts,def:l.slice(i+2)});
   }
+  return P;
 }
+const POOLS=llegeixPools(DEFINICIONS),POOLS_D=llegeixPools(DIFICILS);
 // Per comparar el que escrius: sense accents ni majuscules, la ç com una c
 // i la l·l com dues l. Així «canco» val per «cançó».
 const pla=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
+// a la dificil es diu quantes lletres te: la l·l en son dues i la ç, una
+const lletresDe=p=>pla(p.resp).length;
 const esBona=(escrit,p)=>[p.resp,...p.alts].some(r=>pla(r)===pla(escrit));
 // «Comença per la A» o, si no hi comença, «Conté la Ç»
 const comencaPer=(L,p)=>L!=='Ç'&&pla(p.resp)[0]===pla(L);
@@ -1098,10 +1516,16 @@ function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.flo
 // seguent: una paraula no torna a sortir fins que no han sortit totes les de
 // la seva lletra (de 33 a 42 dies). Com que cada llista fa un llarg diferent,
 // les combinacions no es repeteixen.
-const ORDRES={};
-for(const L of ORDRE)ORDRES[L]=barreja(mulberry(hashText('ABECEDARI-'+L)),POOLS[L].map((_,i)=>i));
-const indexDia=(L,n)=>ORDRES[L][((n-1)%POOLS[L].length+POOLS[L].length)%POOLS[L].length];
+// La dificil fa el mateix amb les seves llistes i la seva llavor.
+const ORDRES={},ORDRES_D={};
+for(const L of ORDRE){
+  ORDRES[L]=barreja(mulberry(hashText('ABECEDARI-'+L)),POOLS[L].map((_,i)=>i));
+  ORDRES_D[L]=barreja(mulberry(hashText('ABECEDARI-DIFICIL-'+L)),POOLS_D[L].map((_,i)=>i));
+}
+const indexDe=(O,P)=>(L,n)=>O[L][((n-1)%P[L].length+P[L].length)%P[L].length];
+const indexDia=indexDe(ORDRES,POOLS),indexDif=indexDe(ORDRES_D,POOLS_D);
 function rodaDia(n){return ORDRE.map(L=>({L,...POOLS[L][indexDia(L,n)]}))}
+function rodaDificil(n){return ORDRE.map(L=>({L,...POOLS_D[L][indexDif(L,n)]}))}
 // La de practica, a l'atzar, pero sense les paraules d'avui
 function rodaPractica(n){return ORDRE.map(L=>{
   const ps=POOLS[L],avui=indexDia(L,n);let i;
@@ -1109,6 +1533,10 @@ function rodaPractica(n){return ORDRE.map(L=>{
   return {L,...ps[i]}})}
 
 const TEMPS=240;              // quatre minuts per a les vint-i-cinc
+// La dificil: deu minuts, pero el rellotge nomes corre mentre la tens oberta,
+// i la pots fer a estones durant tot el dia. Amb tot el dia i sense rellotge,
+// qualsevol les trobaria totes al diccionari.
+const TEMPS_DIF=600;
 const JOC='abecedari';
 let R=null,mode='dia',dia='',numero=0,state='inici',paused=false,revelaT=0,desatT=0;
 
@@ -1118,50 +1546,79 @@ function diaAvui(){
 }
 const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
 // la primera roda va ser la del 21 d'octubre del 2026
-const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-10-21T12:00:00Z'))/864e5)+1;
+const numeroDe=(d,d0='2026-10-21')=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse(d0+'T12:00:00Z'))/864e5)+1;
+// i la primera dificil, la del 23
+const numeroDif=d=>numeroDe(d,'2026-10-23');
 const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 
 const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
 const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let stats=llegeix('abecedari-stats',{jugades:0,encerts:0,ratxa:0,millor:0,ultim:'',rodona:0});
+const STATS0={jugades:0,encerts:0,ratxa:0,millor:0,ultim:'',rodona:0};
+let stats=llegeix('abecedari-stats',{...STATS0}),statsD=llegeix('abecedari-stats-dificil',{...STATS0});
+const statsMode=()=>mode==='dificil'?statsD:stats;
 
 // ===== LA PARTIDA =====
 // estat de cada lletra: 0 per fer (blava), 1 encertada (verda), 2 fallada (vermella)
-function nova(lletres){return{lletres,estat:Array(25).fill(0),respostes:Array(25).fill(''),cur:0,temps:TEMPS,escrit:'',fi:false,comencada:false}}
-// La del dia es desa a cada resposta i cada segon: si tanques, la trobes
+function nova(lletres,temps=TEMPS){return{lletres,estat:Array(25).fill(0),respostes:Array(25).fill(''),cur:0,temps,escrit:'',fi:false,comencada:false}}
+// Les del dia es desen a cada resposta i cada segon: si tanques, la trobes
 // igual (amb el temps que et quedava) i no la pots tornar a començar.
+const delDia=()=>mode==='dia'||mode==='dificil';
+const clauDe=(m,d)=>(m==='dificil'?'abecedari-dificil-':'abecedari-')+d;
 function desaDia(){
-  if(mode!=='dia'||!R)return;
-  desa('abecedari-'+dia,{v:1,estat:R.estat,respostes:R.respostes,cur:R.cur,temps:R.temps,fi:R.fi,comencada:R.comencada});
+  if(!delDia()||!R)return;
+  desa(clauDe(mode,dia),{v:1,estat:R.estat,respostes:R.respostes,cur:R.cur,temps:R.temps,fi:R.fi,comencada:R.comencada});
 }
-function obreDia(){
-  mode='dia';dia=diaAvui();numero=numeroDe(dia);
-  R=nova(rodaDia(numero));
-  const d=llegeix('abecedari-'+dia,null);
+function obre(m){
+  mode=m;dia=diaAvui();numero=m==='dificil'?numeroDif(dia):numeroDe(dia);
+  R=m==='dificil'?nova(rodaDificil(numero),TEMPS_DIF):nova(rodaDia(numero));
+  const d=llegeix(clauDe(m,dia),null);
   if(d&&d.v===1&&d.estat&&d.estat.length===25)Object.assign(R,{estat:d.estat,respostes:d.respostes||R.respostes,cur:d.cur||0,temps:d.temps,fi:d.fi,comencada:d.comencada});
-  state='inici';pinta();
+  // en tornar a entrar al joc, s'obre la que feies
+  desa('abecedari-ultim',m);
+  state='inici';pinta();pintaLider();
   if(R.fi){state='fi';finalPartida();return}
   benvinguda();
+}
+const obreDia=()=>obre('dia'),obreDificil=()=>obre('dificil');
+// Com va la dificil d'avui, per al boto que hi porta
+function comVaDif(){
+  const d=llegeix(clauDe('dificil',diaAvui()),null);
+  return !d?'nova':d.fi?'feta':d.comencada?'mig':'nova';
 }
 function obrePractica(){
   mode='practica';dia=diaAvui();numero=numeroDe(dia);
   R=nova(rodaPractica(numero));R.comencada=true;
-  state='joc';hideMsg();pinta();
+  state='joc';hideMsg();pinta();pintaLider();
+}
+// El boto gros que porta a la dificil, amb com la tens
+function botoDif(){
+  const v=comVaDif();
+  return v==='feta'?'<a href="#" id="b-dif" style="display:block;margin-top:14px;font:13px monospace;color:#c9a0ff">◆ la difícil d\'avui: ja la tens feta</a>'
+    :'<a href="#" class="bt" id="b-dif" style="color:#e2ccff;background:#1e1233;border:1px solid #7a50b0">'+(v==='mig'?'◆ CONTINUA LA DIFÍCIL':'◆ LA DIFÍCIL D\'AVUI')+'</a>'+
+     '<small style="color:#a890c8;margin-top:3px">'+(v==='mig'?'la tens a mig fer':'paraules difícils, 10 minuts a estones durant tot el dia')+'</small>';
 }
 function benvinguda(){
-  const fets=R.estat.filter(e=>e).length;
+  const fets=R.estat.filter(e=>e).length,dif=mode==='dificil';
+  const nom=dif?'LA DIFÍCIL D\'AVUI':'LA RODA D\'AVUI',col=dif?'#c9a0ff':'#f0b429';
   const t=R.comencada
-    ?'<div style="color:#f0b429">LA RODA D\'AVUI</div><small>la tenies a mig fer: '+fets+' de 25 lletres i '+mmss(R.temps)+' de rellotge</small>'+
-      '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:#f0b429">CONTINUA ▸</a>'
+    ?'<div style="color:'+col+'">'+nom+'</div><small>la tenies a mig fer: '+fets+' de 25 lletres i '+mmss(R.temps)+' de rellotge</small>'+
+      '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:'+col+'">CONTINUA ▸</a>'
+    :dif
+    ?'<div style="color:'+col+';letter-spacing:.1em">◆ LA DIFÍCIL D\'AVUI</div>'+
+      '<small style="color:#a890c8">#'+numero+' · '+nomDia(dia)+' · igual per a tothom</small>'+
+      '<small>Vint-i-cinc paraules difícils, de la A a la Z. A cada una et diem <b>quantes lletres té</b>.</small>'+
+      '<small>Tens <b>'+(TEMPS_DIF/60)+' minuts</b>, però el rellotge només corre mentre la tens oberta: la pots fer <b>a estones</b> durant tot el dia. Si tanques o surts, es desa sola.</small>'+
+      '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:'+col+'">COMENÇA ▸</a>'
     :'<div style="color:#f0b429;letter-spacing:.15em">L\'ABECEDARI</div>'+
       '<small style="color:#9fb3e6">roda del dia #'+numero+' · '+nomDia(dia)+'</small>'+
       '<small>Una paraula per a cada lletra. Escriu-la i prem <b>RESPON</b>. Si no la saps, <b>PASSA PARAULA</b>: hi tornaràs quan acabis la volta.</small>'+
       '<small>Tens <b>'+(TEMPS/60)+' minuts</b>, i el rellotge només s\'atura quan s\'ensenya una resposta fallada. Les primeres lletres són fàcils; les últimes, difícils.</small>'+
       '<a href="#" class="bt" id="b-comenca" style="color:#1a1200;background:#f0b429">COMENÇA ▸</a>';
-  msg(t+'<a href="#" id="b-prac" style="display:block;margin-top:14px;font:12px monospace;color:#9fb3e6">o fes-ne una de pràctica, que no compta</a>');
+  msg(t+(dif?'<a href="#" id="b-dia" style="display:block;margin-top:14px;font:12px monospace;color:#f0b429">o la roda normal d\'avui</a>':botoDif())+
+    '<a href="#" id="b-prac" style="display:block;margin-top:14px;font:12px monospace;color:#9fb3e6">o fes-ne una de pràctica, que no compta</a>');
   enllac('b-comenca',()=>{R.comencada=true;state='joc';hideMsg();desaDia();pinta()});
-  enllac('b-prac',obrePractica);
+  enllac('b-prac',obrePractica);enllac('b-dia',obreDia);enllac('b-dif',obreDificil);
 }
 function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
 
@@ -1198,15 +1655,16 @@ function punts(){
 function acaba(){
   if(R.fi&&state==='fi')return;
   state='fi';R.fi=true;R.escrit='';sndFi();
-  if(mode==='dia'){
-    // les estadistiques nomes es compten una vegada per dia
-    if(stats.ultim!==dia){
+  if(delDia()){
+    // les estadistiques nomes es compten una vegada per dia (cada roda les seves)
+    const st=statsMode();
+    if(st.ultim!==dia){
       const be=R.estat.filter(e=>e===1).length;
-      stats.jugades++;stats.encerts+=be;
+      st.jugades++;st.encerts+=be;
       const ahir=new Date(Date.parse(dia+'T12:00:00Z')-864e5).toISOString().slice(0,10);
-      stats.ratxa=stats.ultim===ahir?stats.ratxa+1:1;stats.millor=Math.max(stats.millor,stats.ratxa);
-      if(be===25)stats.rodona++;
-      stats.ultim=dia;desa('abecedari-stats',stats);
+      st.ratxa=st.ultim===ahir?st.ratxa+1:1;st.millor=Math.max(st.millor,st.ratxa);
+      if(be===25)st.rodona++;
+      st.ultim=dia;desa(mode==='dificil'?'abecedari-stats-dificil':'abecedari-stats',st);
       R.nova=true;
     }
     desaDia();updateHUD();
@@ -1219,7 +1677,7 @@ function acaba(){
 function textCompartir(){
   const be=R.estat.filter(e=>e===1).length;
   const files=[0,5,10,15,20].map(i=>R.estat.slice(i,i+5).map(e=>e===1?'🟢':e===2?'🔴':'🔵').join('')).join('\n');
-  return 'L\'Abecedari'+(mode==='dia'?' #'+numero:' (pràctica)')+' · '+be+'/25 · '+xifra(punts())+' punts\n'+files;
+  return 'L\'Abecedari'+(mode==='dia'?' #'+numero:mode==='dificil'?' difícil #'+numero:' (pràctica)')+' · '+be+'/25 · '+xifra(punts())+' punts\n'+files;
 }
 let enFinal=false;
 async function finalPartida(){
@@ -1227,12 +1685,13 @@ async function finalPartida(){
   try{
     if(!R||!R.fi){msg('<div style="color:#f0b429">L\'ABECEDARI</div><small>la roda encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));return}
     const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length,res=25-be-mal,pt=punts();
-    let t='<div style="color:'+(be===25?'#7dff9b':'#f0b429')+'">'+(be===25?'RODA PERFECTA!':mode==='dia'?'LA RODA D\'AVUI':'RODA DE PRÀCTICA')+'</div>'+
+    const dif=mode==='dificil',st=statsMode();
+    let t='<div style="color:'+(be===25?'#7dff9b':dif?'#c9a0ff':'#f0b429')+'">'+(be===25?(dif?'DIFÍCIL PERFECTA!':'RODA PERFECTA!'):mode==='dia'?'LA RODA D\'AVUI':dif?'◆ LA DIFÍCIL D\'AVUI':'RODA DE PRÀCTICA')+'</div>'+
       '<div style="font-size:34px;font-weight:bold">'+be+'<span style="font-size:18px;color:#9fb3e6"> de 25</span></div>'+
       '<small style="color:#ccc">'+be+' encerts × 100'+(res?'':' + '+Math.ceil(R.temps)+' segons que et sobren')+' = <b style="color:#fff">'+xifra(pt)+' punts</b></small>'+
       '<small style="color:#9fb3e6">'+mal+(mal===1?' fallada':' fallades')+(res?' · '+res+' sense respondre':'')+'</small>';
     if(mode==='practica')t+='<small style="color:#a08860">és de PRÀCTICA: no compta per a cap taula</small>';
-    else t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+' · '+stats.encerts+' encerts en '+stats.jugades+(stats.jugades===1?' dia':' dies')+'</small>';
+    else t+='<small style="color:#aaa">ratxa: '+st.ratxa+' · la millor: '+st.millor+' · '+st.encerts+' encerts en '+st.jugades+(st.jugades===1?' dia':' dies')+(dif?' de difícils':'')+'</small>';
     // les que no has encertat, amb la definicio i la resposta: aixi s'apren
     const fallades=R.lletres.map((p,i)=>({p,i})).filter(({i})=>R.estat[i]!==1);
     if(fallades.length)t+='<div class="fallades">'+fallades.map(({p,i})=>
@@ -1244,23 +1703,31 @@ async function finalPartida(){
       '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a>'+
       '<a href="#" id="copia">COPIA</a></div>';
     t+='<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
-    t+='<a href="#" class="bt" id="b-prac" style="color:#9fd0ff;background:#0f1e33;border:1px solid #3a6aa0">'+(mode==='dia'?'FES-NE UNA DE PRÀCTICA':'UNA ALTRA DE PRÀCTICA')+'</a>';
-    if(mode==='practica')t+='<a href="#" id="b-dia" style="display:block;margin-top:12px;font:12px monospace;color:#f0b429">torna a la roda d\'avui</a>';
-    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar'));
+    if(mode!=='dificil'&&comVaDif()!=='feta')t+=botoDif();
+    t+='<a href="#" class="bt" id="b-prac" style="color:#9fd0ff;background:#0f1e33;border:1px solid #3a6aa0">'+(mode==='practica'?'UNA ALTRA DE PRÀCTICA':'FES-NE UNA DE PRÀCTICA')+'</a>';
+    if(mode!=='dia')t+='<a href="#" id="b-dia" style="display:block;margin-top:12px;font:12px monospace;color:#f0b429">'+(dif?'la roda normal d\'avui':'torna a la roda d\'avui')+'</a>';
+    if(mode!=='dificil'&&comVaDif()==='feta')t+='<a href="#" id="b-dif" style="display:block;margin-top:12px;font:12px monospace;color:#c9a0ff">◆ com et va anar la difícil d\'avui</a>';
+    msg(t+Records.peuFinal(delDia()?'demà n\'hi haurà una altra':'o toca per tancar'));
     lligaCopia(tx+'\n'+enl);
-    enllac('b-prac',obrePractica);enllac('b-dia',obreDia);
+    enllac('b-prac',obrePractica);enllac('b-dia',obreDia);enllac('b-dif',obreDificil);
     // Les dues taules, cadascuna amb el seu titol: la d'avui (els punts de la
     // roda del dia; nomes compta el primer cop que l'acabes) i la dels
     // encerts de sempre, on cadascu surt una vegada.
+    // La dificil va a la seva taula del dia, i prou: els encerts de sempre
+    // son els de la roda normal.
     let r={html:'',posicio:0};
-    if(mode==='dia'&&R.nova&&pt>0)r=await Records.fiPartida(JOC+'_dia/'+dia,pt);
-    else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
+    const taulaDia=(dif?JOC+'_dificil_dia/':JOC+'_dia/')+(delDia()?dia:diaAvui());
+    if(delDia()&&R.nova&&pt>0)r=await Records.fiPartida(taulaDia,pt);
+    else r.html=Records.taulaHTML(await Records.llista(taulaDia));
     if(mode==='dia'&&R.nova&&stats.encerts>0&&Records.nom())await Records.envia(JOC,stats.encerts);
-    if(mode==='dia')R.nova=false;
+    if(delDia())R.nova=false;
     const sempre=Records.taulaHTML(await Records.llista(JOC));
     const titol=t2=>'<div style="color:#f0b429;font-size:13px;margin-top:8px">'+t2+'</div>';
     const el=document.getElementById('taula');
-    if(el)el.innerHTML=titol('☀ LA RODA D\'AVUI')+r.html+
+    if(el&&dif)el.innerHTML=titol('◆ LA DIFÍCIL D\'AVUI')+r.html+
+      (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA DIFÍCIL D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+       r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' de la difícil d\'avui!</div>':'');
+    else if(el)el.innerHTML=titol('☀ LA RODA D\'AVUI')+r.html+
       (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
        r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
       titol('★ ENCERTS DE SEMPRE')+sempre;
@@ -1303,6 +1770,7 @@ function mesura(){
 }
 addEventListener('resize',mesura);
 function pintaEscrit(){
+  pintaCompte();
   const e=$('escrit');
   e.textContent=state==='revela'?R.respostes[R.cur].toUpperCase():(R.escrit.toUpperCase()||' ');
   e.style.color=state==='revela'?'#ff8a7a':'#fff';
@@ -1315,27 +1783,39 @@ function pinta(){
   $('lletra').textContent=p.L;
   $('mode').textContent=comencaPer(p.L,p)?'COMENÇA PER':'CONTÉ LA';
   pintaEscrit();
-  const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length;
-  $('compte').innerHTML='<span style="color:#7dd99a">✓ '+be+'</span> &nbsp; <span style="color:#ff8a7a">✗ '+mal+'</span>';
   const df=$('def');
-  if(paused){df.className='';df.textContent='PAUSA';}
+  if(paused){df.className='';df.textContent=mode==='dificil'?'PAUSA · es desa sola: pots tancar i tornar-hi més tard':'PAUSA';}
   else if(state==='revela'){df.className='era';df.innerHTML='No! Era <b>'+p.resp.toUpperCase()+'</b>'}
-  else if(state==='inici'){df.className='';df.textContent=mode==='dia'?'Roda del dia #'+numero:'Pràctica'}
+  else if(state==='inici'){df.className='';df.textContent=mode==='dia'?'Roda del dia #'+numero:mode==='dificil'?'La difícil d\'avui #'+numero:'Pràctica'}
   else if(state==='fi'){df.className='';df.textContent=R.estat.filter(e=>e===1).length+' de 25 · '+xifra(punts())+' punts'}
-  else{df.className='';df.textContent=p.def}
+  else{
+    // tot dins d'un sol span: el quadre es flex i, si no, el text i el
+    // compte de lletres sortirien com dues columnes
+    df.className='';const sp=document.createElement('span');sp.textContent=p.def;
+    if(mode==='dificil'){const n=document.createElement('span');n.className='nl';n.textContent=' · '+lletresDe(p)+' lletres';sp.appendChild(n)}
+    df.replaceChildren(sp);
+  }
   pintaRellotge();
+}
+// A sota del que escrius: els encerts i les fallades, i a la dificil, les
+// lletres que portes de les que té
+function pintaCompte(){
+  const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length;
+  const n=mode==='dificil'&&state==='joc'?' &nbsp; <span style="color:#c9a0ff">'+pla(R.escrit).length+'/'+lletresDe(R.lletres[R.cur])+'</span>':'';
+  $('compte').innerHTML='<span style="color:#7dd99a">✓ '+be+'</span> &nbsp; <span style="color:#ff8a7a">✗ '+mal+'</span>'+n;
 }
 function pintaRellotge(){const r=$('rellotge');r.textContent=mmss(R.temps);r.className=R.temps<30&&!R.fi?'poc':''}
 let avisT=0;
 function avisa(t){const l=$('lider');l.textContent=t;l.style.color='#ffb3a8';avisT=1.6}
-let liderDia=null,liderSempre=null;
+let liderDia=null,liderSempre=null,liderDif=null;
 function pintaLider(){
   if(avisT>0)return;
-  const l=$('lider');l.style.color='#c9b28a';
-  l.textContent='☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
+  const l=$('lider');l.style.color=mode==='dificil'?'#c9a0ff':'#c9b28a';
+  l.textContent=mode==='dificil'?'◆ LA DIFÍCIL D\'AVUI: '+(liderDif?liderDif.n+' '+xifra(liderDif.p):'ningú')
+    :'☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
 }
 async function refrescaLiders(){
-  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}
+  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC);liderDif=await Records.lider(JOC+'_dificil_dia/'+diaAvui())}catch(e){}
   pintaLider();
 }
 
@@ -1397,11 +1877,13 @@ mesura();
 updateHUD();
 Records.pintaMillor(JOC,document.getElementById('best'),stats.encerts);
 refrescaLiders();
-obreDia();
+// En entrar, s'obre la que feies: si l'ultima vegada eres a la dificil i la
+// tens a mig fer, la dificil; si no, la roda normal.
+if(llegeix('abecedari-ultim','')==='dificil'&&comVaDif()==='mig')obreDificil();else obreDia();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
 Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
-  [['☀ LA RODA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ ENCERTS DE SEMPRE',JOC]]);
+  [['☀ LA RODA D\'AVUI',JOC+'_dia/'+diaAvui()],['◆ LA DIFÍCIL D\'AVUI',JOC+'_dificil_dia/'+diaAvui()],['★ ENCERTS DE SEMPRE',JOC]]);
 </script>
 </body>
 </html>

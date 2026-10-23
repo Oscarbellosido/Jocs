@@ -693,6 +693,33 @@ nostre i sense dir mai el de l'original.
   tornar a començar. Si surts de l'app, el rellotge s'atura.
 - **PRÀCTICA**: rodes a l'atzar, sense les paraules d'avui, que no compten.
 
+**La difícil d'avui** (◆, en lila) és una segona roda del dia, amb paraules
+difícils de la A a la Z. En Carles la va demanar per fer-la **a estones
+durant tot el dia**:
+
+- **Deu minuts** (`TEMPS_DIF`), però el rellotge **només corre mentre la tens
+  oberta**: si surts de l'app es posa en pausa i es desa. Sense cap rellotge
+  i amb tot el dia per davant, qualsevol les trobaria totes al diccionari, i
+  en Carles va triar això abans que no pas fer-la sense temps.
+- **A cada definició diu quantes lletres té** (`lletresDe`: la l·l en són
+  dues i la ç, una), i a sota del que escrius, quantes en portes (3/7). Per
+  això aquí **cap paraula no té una altra resposta bona**: amb dues
+  respostes de llarg diferent, el número seria mentida. Les que van en plural
+  ho diuen a la definició.
+- **Les definicions són a part** (`DIFICILS`, 380, de 13 a 19 per lletra),
+  escrites a mà com les altres, i **cap no és a la roda normal**. Paraules que
+  se saben però costen (*atzucac*, *fal·lera*, *saurí*, *xafogor*), no de les
+  que no ha sentit ningú. La llista és barrejada amb la seva llavor
+  (`ABECEDARI-DIFICIL-`) i la #1 és la del 23 d'octubre del 2026.
+- **Va a la seva taula del dia** (`abecedari_dificil_dia/<data>`, fins a
+  3.100: 25 × 100 i els 600 segons), i el bot també diu cada matí qui la va
+  guanyar. **No suma als encerts de sempre**, que són els de la roda normal;
+  les seves estadístiques (ratxa...) van a part (`abecedari-stats-dificil`).
+- **En entrar al joc, s'obre la que feies**: si l'última vegada eres a la
+  difícil i la tens a mig fer, surt directament CONTINUA de la difícil
+  (`abecedari-ultim`). Si no, la roda normal, amb el botó de la difícil a
+  sota de COMENÇA i al quadre del final.
+
 Coses que no s'han de desfer sense entendre-les:
 
 - **Les definicions són nostres, escrites a mà** (941, de 33 a 42 per lletra,
@@ -720,7 +747,9 @@ El `scripts/prova-abecedari.mjs` mira totes les definicions (que cada
 resposta tingui la seva lletra, que no se'n repeteixi cap i que cap definició
 no porti la resposta a dins), que la roda del dia sigui igual per a tothom i
 no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
-rellotge, la pausa, desar i continuar, i les dues taules.
+rellotge, la pausa, desar i continuar, i les dues taules. I el mateix amb la
+difícil: les seves definicions, el compte de lletres, que es reprengui on
+era i que vagi a la seva taula.
 
 ## La Conquesta: el joc de conquesta de taula, amb les comarques
 
@@ -1333,7 +1362,8 @@ comproven el comportament.
 - `node scripts/prova-abecedari.mjs` — que les definicions de L'Abecedari
   estiguin ben fetes, que la roda del dia sigui igual per a tothom i no
   repeteixi paraules, i que es jugui tocant, amb el rellotge, la pausa, el
-  desar i les dues taules.
+  desar i les dues taules; i la difícil d'avui, amb el compte de lletres, a
+  estones i a la seva taula.
 - `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
   els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,

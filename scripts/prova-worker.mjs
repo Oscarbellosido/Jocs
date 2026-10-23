@@ -277,6 +277,10 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(r.status === 200 && r.data.posicio === 1, "l'Abecedari: la roda del dia té la seva taula");
   r = await call('POST', '/records/abecedari_dia/' + avui, { nom: 'CRE', punts: 2741 });
   ok(r.status === 400, "l'Abecedari: més de 25 encerts i 240 segons no pot ser");
+  r = await call('POST', '/records/abecedari_dificil_dia/' + avui, { nom: 'CRE', punts: 3100 });
+  ok(r.status === 200 && r.data.posicio === 1, "l'Abecedari: la difícil del dia té la seva taula, fins a 25 encerts i 600 segons");
+  r = await call('POST', '/records/abecedari_dificil_dia/' + avui, { nom: 'MAR', punts: 3101 });
+  ok(r.status === 400, "l'Abecedari: a la difícil, més de 3.100 no pot ser");
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 21 });
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 44 });
   r = await call('GET', '/records/abecedari');
@@ -301,6 +305,8 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.delete('telegram:anunciat:impremta_dia');
   store.delete('telegram:anunciat:gofra_dia');
   store.delete('telegram:anunciat:abecedari_dia');
+  store.delete('telegram:anunciat:abecedari_dificil_dia');
+  store.set('joc:abecedari_dificil_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 2850, t: 1 }]));
   store.set('joc:impremta_dia:' + madrid(1), JSON.stringify([{ n: 'CRE', p: 5400, t: 1 }, { n: 'MAR', p: 3100, t: 2 }]));
   store.set('joc:gofra_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 5, t: 1 }, { n: 'CRE', p: 5, t: 2 }, { n: 'MAR', p: 3, t: 3 }]));
   store.set('joc:abecedari_dia:' + madrid(1), JSON.stringify([{ n: 'MAR', p: 2134, t: 1 }, { n: 'CRE', p: 1900, t: 2 }]));
@@ -308,10 +314,12 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await crida(envTg, 'GET', '/records/tetris');
   const m = missatges();
   const imp = m.find(x => /Impremta/.test(x.cos.text)), gof = m.find(x => /Gofra/.test(x.cos.text));
-  const abc = m.find(x => /Abecedari/.test(x.cos.text));
+  const abc = m.find(x => /Abecedari/.test(x.cos.text) && !/difícil/.test(x.cos.text)), dif = m.find(x => /Abecedari difícil/.test(x.cos.text));
   ok(abc && /guanyar <b>MAR<\/b>/.test(abc.cos.text) && /21 encerts \(2\.134 punts\)/.test(abc.cos.text) && /abecedari\.html/.test(JSON.stringify(abc.cos.reply_markup)),
      "i la de L'Abecedari, amb els encerts i els punts");
-  ok(m.length === 3 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
+  ok(dif && /guanyar <b>TRA<\/b>/.test(dif.cos.text) && /25 encerts \(2\.850 punts\)/.test(dif.cos.text),
+     "i la difícil de L'Abecedari: amb els segons que sobren, segueixen essent 25 encerts");
+  ok(m.length === 4 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
      'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir de La Impremta');
   ok(gof && /guanyar <b>TRA<\/b>/.test(gof.cos.text) && /★★★★★/.test(gof.cos.text) && /gofra\.html/.test(JSON.stringify(gof.cos.reply_markup)),
      'i la de La Gofra, amb les estrelles i qui la va acabar abans en cas d\'empat');
