@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Les Quatre Colles</title>
+<style>
+html,body{margin:0;height:100%;background:#14110d;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#c9b28a;padding:2px 0;white-space:nowrap;overflow:hidden;max-width:96%}
+#estat{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#e8dcc4;padding:4px 0 6px;gap:8px;min-height:2.7em;box-sizing:border-box}
+#errors{white-space:nowrap;color:#b9a888}
+#errors i{display:inline-block;width:11px;height:11px;border-radius:50%;background:transparent;border:2px solid #6a5a3a;box-sizing:border-box;margin-left:4px;vertical-align:-1px}
+#errors i.gastat{background:#e0503c;border-color:#e0503c}
+#screen{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
+/* el tauler: quatre fileres; les colles trobades a dalt, de punta a punta */
+#tauler{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:6px;position:relative}
+.p{display:flex;align-items:center;justify-content:center;text-align:center;border-radius:8px;background:#efe4cc;color:#2a2116;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-weight:800;letter-spacing:.01em;cursor:pointer;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;transition:background .12s,transform .12s;overflow:hidden;white-space:nowrap;padding:0 3px}
+.p span{display:inline-block;transform-origin:center}
+.p.sel{background:#5b4a86;color:#fff}
+.p.salta{transform:translateY(-6px)}
+.p.trem{animation:trem .35s}
+@keyframes trem{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.barra{grid-column:1/-1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#1d1710;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:2px 8px;animation:entra .3s}
+.barra b{font-size:13px;letter-spacing:.02em;line-height:1.2}
+.barra span{font-size:13px;line-height:1.25;margin-top:2px}
+.barra.revelada{opacity:.82}
+@keyframes entra{from{transform:scale(.92);opacity:.4}to{transform:none;opacity:1}}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(20,17,13,.94);font-size:22px;letter-spacing:.2em;color:#e8dcc4;border-radius:8px}
+#controls{flex:none;display:flex;gap:8px;margin-top:8px;align-items:center;justify-content:center;width:94%}
+button{font:bold 14px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:46px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#barreja{flex:0 0 auto;width:26%;font-size:12px;color:#c9b28a;border-color:#6a5a3a;background:#1d1810}
+#comprova{flex:1 1 auto;color:#1a1200;background:#f0b429;border-color:#f0b429;font-size:16px}
+#comprova:disabled{background:#3a3226;border-color:#3a3226;color:#8a7a5a}
+#desmarca{flex:0 0 auto;width:26%;font-size:12px;color:#c9b28a;border-color:#6a5a3a;background:#1d1810}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(14,11,8,.97);border:1px solid #6a5a3a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:260px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg .graella{font-size:20px;line-height:1.15;letter-spacing:.05em;margin:8px 0 4px}
+#msg .solucio{text-align:left;font-size:12px;line-height:1.35;margin-top:10px}
+#msg .solucio div{border-radius:6px;padding:4px 8px;margin-top:4px;color:#1d1710;font-family:system-ui,Arial,sans-serif}
+#msg .arxiu{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+#msg .arxiu a{font:13px monospace;color:#e8dcc4;text-decoration:none;background:#1d1810;border:1px solid #6a5a3a;border-radius:6px;padding:7px 9px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>COLLES <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="estat"><span id="que">Troba 4 colles de 4</span><span id="errors"></span></div>
+  <div id="screen"><div id="tauler"></div></div>
+  <div id="controls"><button id="barreja">BARREJA</button><button id="comprova">COMPROVA</button><button id="desmarca">DESMARCA</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Agrupa les 16 paraules en 4 colles de 4 que tenen alguna cosa en comú. Compte amb els paranys!</b> toca'n 4 i COMPROVA · pots fallar 4 vegades · una partida nova cada dia · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndToc(){aInit();tone(620,.04,"triangle",.1)}
+function sndNo(){aInit();tone(170,.12,"square",.1,-40)}
+function sndBarreja(){aInit();[300,380,460].forEach((f,i)=>setTimeout(()=>tone(f,.05,"triangle",.08),i*45))}
+function sndBe(){aInit();[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.16,"triangle",.22),i*90))}
+function sndMal(){aInit();tone(220,.35,"sawtooth",.15,-80)}
+function sndFi(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.22,"triangle",.24),i*110))}
+
+// ===== LES COLLES =====
+// Escrites a ma, una partida per dia. Cada partida son quatre colles de
+// quatre paraules, de la mes facil (la groga) a la mes dificil (la lila), i
+// hi ha paraules que semblen d'una colla i son d'una altra: els paranys son
+// la gracia del joc. Pero nomes hi pot haver UNA manera de fer-les: si una
+// paranya cap a dues colles, l'altra colla ja ha de tenir les seves quatre.
+// El titol es el que surt en trobar-la; entre parentesis, la pista de les
+// colles de jocs de paraules (AMAGUEN UN NUMERO (TRES, SET...)).
+const COLLES=`
+#
+EMBOTITS: fuet, bull, llonganissa, sobrassada
+PARTS D'UN CASTELL: pinya, folre, tronc, enxaneta
+FRUITES: préssec, cirera, pruna, maduixa
+AL REVÉS SÓN UNA ALTRA PARAULA (COR, AMOR, CAS, SER): roc, roma, sac, res
+#
+PEIXOS: lluç, sardina, anxova, orada
+BALLS: sardana, jota, vals, tango
+PALS DE LA BARALLA: oros, copes, espases, bastos
+ES LLEGEIXEN IGUAL AL REVÉS: sis, tot, radar, cec
+#
+ARBRES: roure, alzina, faig, avet
+PLANETES: mart, venus, saturn, júpiter
+METALLS: ferro, plom, coure, mercuri
+COMENCEN PER UN ANIMAL (ÀNEC, VACA, GAT, PORC): anècdota, vacances, gatzara, porcellana
+#
+PARTS DEL COS: colze, genoll, canell, turmell
+EINES: martell, serra, tornavís, alicates
+TENEN DENTS: pinta, forquilla, cremallera, engranatge
+TENEN ULLS: agulla, patata, huracà, pont
+#
+INSTRUMENTS DE LA COBLA: tenora, tible, flabiol, fiscorn
+OCELLS: merla, pardal, oreneta, gavina
+___ DE MAR: estrella, llop, eriçó, braç
+COMENCEN PER UNA NOTA (MI, SOL, DO, RE): mirall, soldat, dominó, remolatxa
+#
+COLORS: taronja, grana, ocre, beix
+FLORS: rosa, clavell, gessamí, rosella
+NOMS DE DONA QUE TAMBÉ SÓN PARAULES: llum, consol, neus, mercè
+TENEN AGULLES: rellotge, pi, brúixola, modista
+#
+RIUS: ter, segre, fluvià, cardener
+MUNTANYES: canigó, montseny, pedraforca, puigmal
+COMARQUES QUE TAMBÉ SÓN PARAULES: selva, noguera, priorat, garrigues
+AMAGUEN UN NÚMERO (TRES, SET, DEU, NOU): tresor, setrill, deute, noucentisme
+#
+DOLÇOS: torró, neula, bunyol, carquinyoli
+PA DE ___: pessic, pagès, motlle, figa
+CAP DE ___: setmana, família, colla, turc
+TENEN ALES: nas, barret, edifici, avió
+#
+PECES D'ESCACS: rei, alfil, cavall, peó
+TIPUS DE CASA: masia, xalet, pis, torre
+ANIMALS DE CORRAL: gallina, ànec, conill, oca
+FETES DE DUES PARAULES (PARA+AIGUA...): paraigua, gratacel, rodamón, capgirar
+#
+LLEGUMS: llentia, cigró, mongeta, fava
+VERDURES: enciam, pastanaga, carbassó, albergínia
+DINERS, EN COL·LOQUIAL: calerons, pela, quartos, pasta
+AMAGUEN UNA PART DEL COS (CAP, COLL, BRAÇ, PIT): capella, collar, braçalet, pitjar
+#
+ESPORTS: futbol, handbol, hoquei, tennis
+INSECTES: formiga, abella, mosca, marieta
+VEHICLES: cotxe, bicicleta, tramvia, vespa
+ES LLEGEIXEN IGUAL AL REVÉS: nen, ala, nan, pop
+#
+PLATS CATALANS: escudella, fideuà, escalivada, samfaina
+SALSES: romesco, allioli, maionesa, beixamel
+JOCS DE CARTES: botifarra, manilla, brisca, solitari
+TENEN COLL: ampolla, camisa, muntanya, girafa
+#
+VENTS: tramuntana, mestral, garbí, llevant
+PLUJA: xàfec, ruixat, aiguat, plugim
+CALÇAT: espardenya, sabatilla, xancleta, sandàlia
+PER BEURE-HI: porró, càntir, got, bota
+#
+SURTEN A LA CERCAVILA: gegant, capgròs, drac, àliga
+OCELLS: garsa, colom, mussol, cigonya
+NADAL: tió, pessebre, caganer, neules
+TENEN PEU: copa, pàgina, foto, làmpada
+#
+MONEDES: euro, dòlar, ien, ral
+LLETRES GREGUES: alfa, beta, gamma, omega
+TENEN TECLES: piano, ordinador, acordió, mòbil
+TENEN CAP: clau, all, llumí, carrer
+#
+LLOCS DE LA CASA: cuina, menjador, golfes, rebost
+MOBLES: cadira, armari, sofà, calaixera
+TENEN BOCA: riu, metro, canó, forn
+AL REVÉS SÓN UNA ALTRA PARAULA (ROC, ROMA, SAC, RES): cor, amor, cas, ser
+#
+VERDURES: bròquil, coliflor, porro, carxofa
+FRUITS SECS: ametlla, avellana, nou, pinyó
+NÚMEROS: deu, set, tres, onze
+COMENCEN PER UN ANIMAL (GALL, MOSCA, OCA, RATA): galleda, moscatell, ocarina, ratafia
+#
+CEREALS: blat, ordi, arròs, sègol
+ARBRES: olivera, castanyer, pollancre, til·ler
+TIPUS DE PA: barra, llonguet, panet, coca
+TENEN CUA: cometa, piano, guineu, vestit
+#
+ESPORTS: bàsquet, esquí, pàdel, rem
+PEIXOS: tonyina, rap, bacallà, llobarro
+EINES DEL CAMP: pala, aixada, rascle, llima
+LA MATEIXA SÍL·LABA DUES VEGADES: coco, papa, bebè, mamà
+#
+UNITATS DE TEMPS: minut, hora, dia, setmana
+PARTS D'UN CASTELL: acotxador, manilles, crossa, segons
+INSTRUMENTS: guitarra, violí, timbal, flauta
+TENEN FULLES: llibre, ganivet, porta, arbre
+#
+ANIMALS DEL BOSC: senglar, guineu, teixó, cabirol
+RAPINYAIRES: àliga, falcó, voltor, mussol
+NOMS D'HOME QUE TAMBÉ SÓN PARAULES: pau, roc, salvador, modest
+AMAGUEN UN NÚMERO (SET, DOS, DEU, NOU): setmana, dossier, deure, nouvingut
+#
+DE LA LLET: iogurt, mató, nata, mantega
+FESTES: carnestoltes, castanyada, revetlla, diada
+PER DORMIR: llit, coixí, llençol, flassada
+A LA ___ (PER CUINAR): brasa, planxa, cassola, llauna
+#
+COMARQUES: osona, bages, anoia, maresme
+CAPITALS DE COMARCA: vic, manresa, igualada, mataró
+MUNTANYES: montserrat, montsant, matagalls, tibidabo
+SANT ___ (DIES DE FESTA): jordi, joan, esteve, josep
+#
+EMBARCACIONS: barca, iot, llaüt, veler
+MARISC: musclo, calamar, sípia, gamba
+PARTS D'UN VAIXELL: pal, vela, timó, àncora
+PARTS DE L'ULL: iris, nineta, pupil·la, retina
+#
+FRUITES: poma, pera, raïm, meló
+FAMÍLIA: avi, oncle, cosí, nebot
+SONS D'ANIMALS: bramar, lladrar, piular, udolar
+COMENCEN PER UNA NOTA (LA, SI, FA, DO): lavabo, signe, façana, domèstic
+#
+ROBA: jersei, samarreta, mitges, banyador
+COMPLEMENTS: barret, bufanda, guants, cinturó
+TEIXITS: llana, seda, cotó, vellut
+TENEN BOTONS: ascensor, comandament, camisa, timbre
+#
+ANIMALS DE GRANJA: porc, vaca, ovella, cabra
+PER BERENAR: entrepà, magdalena, croissant, galeta
+PARTS DEL DIA: matinada, migdia, capvespre, vespre
+TENEN LLETRES: sopa, teclat, carta, rètol
+#
+ESPORTS: natació, ciclisme, atletisme, golf
+INSTRUMENTS: guitarra, violí, trompeta, bateria
+PARTS D'UNA BICICLETA: pedal, cadena, manillar, timbre
+MANERES DE NEDAR: braça, crol, papallona, esquena
+#
+MESURES: metre, litre, gram, pam
+FIGURES: cercle, quadrat, triangle, rombe
+A L'ESCOLA: pissarra, guix, motxilla, estoig
+ES TRENQUEN (I NO SÓN DE VIDRE): silenci, promesa, rècord, gel
+#
+ELECTRODOMÈSTICS: rentadora, nevera, microones, rentaplats
+AL BANY: dutxa, banyera, lavabo, mirall
+ESTRIS DE CUINA: morter, escumadora, ratllador, colador
+AMB UNA S AL DAVANT (SOCA, SALA, SOBRE, SOR): oca, ala, obre, or
+`;
+const PARTIDES=COLLES.split(/^#\s*$/m).map(b=>b.trim()).filter(Boolean).map(b=>b.split('\n').map(l=>{
+  const i=l.lastIndexOf(': ');return {t:l.slice(0,i),w:l.slice(i+2).split(',').map(s=>s.trim())}}));
+const COLOR=['#f2c94c','#8fcf7d','#7fb0ea','#c39ae6'],EMOJI=['🟨','🟩','🟦','🟪'];
+const JOC='colles';
+
+// ===== ATZAR AMB LLAVOR =====
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== LA PARTIDA DEL DIA =====
+// Cada dia, la seguent de la llista, en l'ordre en que estan escrites (aixi
+// es tria quina va primer: les fluixes, mai al principi). Quan s'acaben,
+// torna a començar. Les paraules surten barrejades igual per a tothom.
+const partidaDe=n=>PARTIDES[((n-1)%PARTIDES.length+PARTIDES.length)%PARTIDES.length];
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// la primera, la #1, va ser la del 24 d'octubre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-10-24T12:00:00Z'))/864e5)+1;
+const diaDe=n=>new Date(Date.parse('2026-10-24T12:00:00Z')+(n-1)*864e5).toISOString().slice(0,10);
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix('colles-stats',{jugades:0,colles:0,ratxa:0,millor:0,ultim:'',perfectes:0});
+
+const ERRORS=4;
+// P: la partida; W: les 16 paraules amb la colla de cadascuna
+let P=null,W=[],R=null,mode='dia',dia='',numero=0,sel=new Set(),paused=false,ocupat=false;
+const paraulesDe=n=>partidaDe(n).flatMap((g,k)=>g.w.map(w=>({w,g:k})));
+function nova(n){return {n,ordre:barreja(mulberry(hashText('COLLES-'+n)),paraulesDe(n).map((_,i)=>i)),fets:[],revelades:[],errors:0,intents:[],provats:[],fi:false}}
+const clauDe=n=>'colles-'+diaDe(n);
+// La del dia es desa a cada intent: tancant no es pot tornar a començar.
+function desaDia(){if(mode==='dia'&&R)desa(clauDe(R.n),{v:1,...R})}
+function obre(m,n){
+  mode=m;dia=diaAvui();numero=numeroDe(dia);sel.clear();ocupat=false;
+  P=partidaDe(n);W=paraulesDe(n);R=nova(n);
+  if(m==='dia'){const d=llegeix(clauDe(n),null);if(d&&d.v===1&&d.n===n)Object.assign(R,d)}
+  hideMsg();pinta();pintaLider();
+  if(R.fi){finalPartida();return}
+  // la primera vegada, com es juga
+  if(!llegeix('colles-vist',0))benvinguda();
+}
+const obreDia=()=>obre('dia',numeroDe(diaAvui()));
+function benvinguda(){
+  msg('<div style="color:#f0b429;letter-spacing:.12em">LES QUATRE COLLES</div>'+
+    '<small style="color:#c9b28a">#'+numero+' · '+nomDia(dia)+' · igual per a tothom</small>'+
+    '<small>Hi ha <b>16 paraules</b>. Agrupa-les en <b>4 colles de 4</b> que tenen alguna cosa en comú: toca\'n quatre i prem <b>COMPROVA</b>.</small>'+
+    '<small>Compte amb els <b>paranys</b>: hi ha paraules que semblen d\'una colla i són d\'una altra. Pots fallar <b>4 vegades</b>.</small>'+
+    '<small>Les colles van de la <b style="color:'+COLOR[0]+'">groga</b>, la més fàcil, a la <b style="color:'+COLOR[3]+'">lila</b>, que sol ser un joc de paraules.</small>'+
+    '<a href="#" class="bt" id="b-jugar" style="color:#1a1200;background:#f0b429">A JUGAR ▸</a>');
+  enllac('b-jugar',()=>{desa('colles-vist',1);hideMsg()});
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+
+// ===== JUGAR =====
+const enJoc=()=>R&&!R.fi&&!paused&&!ocupat&&$('msg').style.display!=='block';
+function toca(i){
+  if(!enJoc())return;
+  if(sel.has(i))sel.delete(i);
+  else{if(sel.size>=4){sndNo();avisa('Ja en tens 4: COMPROVA o desmarca\'n alguna');return}sel.add(i)}
+  sndToc();pinta();
+}
+function comprova(){
+  if(!enJoc())return;
+  if(sel.size!==4){sndNo();avisa('Toca quatre paraules');return}
+  const ids=[...sel],gs=ids.map(i=>W[i].g),clau=ids.slice().sort((a,b)=>a-b).join();
+  if(R.provats.includes(clau)){sndNo();avisa('Aquestes quatre ja les has provat');return}
+  R.provats.push(clau);R.intents.push(gs);
+  if(gs.every(g=>g===gs[0])){
+    // encertada: salten i es fan una colla
+    ocupat=true;ids.forEach(i=>{const e=tile(i);if(e)e.classList.add('salta')});sndBe();
+    setTimeout(()=>{ocupat=false;R.fets.push(gs[0]);sel.clear();desaDia();pinta();
+      if(R.fets.length===4)acaba(true)},380);
+  }else{
+    R.errors++;sndMal();
+    const quantes=Math.max(...[0,1,2,3].map(g=>gs.filter(x=>x===g).length));
+    avisa(quantes===3?'Gairebé! N\'hi ha 3 de la mateixa colla':'No són de la mateixa colla');
+    ids.forEach(i=>{const e=tile(i);if(e){e.classList.remove('trem');void e.offsetWidth;e.classList.add('trem')}});
+    desaDia();pinta();
+    if(R.errors>=ERRORS)acaba(false);
+  }
+}
+function barrejaTauler(){
+  sndBarreja();if(!enJoc())return;
+  const resta=R.ordre.filter(i=>!R.fets.includes(W[i].g));
+  const nous=barreja(Math.random,resta);let k=0;
+  R.ordre=R.ordre.map(i=>R.fets.includes(W[i].g)?i:nous[k++]);desaDia();pinta();
+}
+function desmarca(){sndToc();if(!enJoc())return;sel.clear();pinta()}
+// Punts: 100 per colla trobada i, si les trobes totes, 50 per cada error que
+// et sobra. Sense cap error, 600.
+function punts(){const t=R.trobades??R.fets.length;return t*100+(t===4?(ERRORS-R.errors)*50:0)}
+function acaba(guanya){
+  ocupat=true;R.fi=true;R.trobades=R.fets.length;sel.clear();
+  // si no te n'has sortit, surten les que faltaven
+  if(!guanya)for(let g=0;g<4;g++)if(!R.fets.includes(g)){R.fets.push(g);R.revelades.push(g)}
+  if(mode==='dia'&&stats.ultim!==diaDe(R.n)){
+    const ahir=diaDe(R.n-1);
+    stats.jugades++;stats.colles+=R.trobades;
+    stats.ratxa=stats.ultim===ahir?stats.ratxa+1:1;stats.millor=Math.max(stats.millor,stats.ratxa);
+    if(guanya&&!R.errors)stats.perfectes++;
+    stats.ultim=diaDe(R.n);desa('colles-stats',stats);R.nova=true;
+  }
+  desaDia();pinta();updateHUD();
+  if(guanya)sndFi();
+  setTimeout(()=>{ocupat=false;finalPartida()},guanya?900:1600);
+}
+
+// ===== EL FINAL =====
+function graella(){return R.intents.map(gs=>gs.map(g=>EMOJI[g]).join('')).join('\n')}
+function textCompartir(){
+  return 'Les Quatre Colles'+(mode==='dia'?' #'+R.n:' (de l\'arxiu, #'+R.n+')')+' · '+R.trobades+'/4'+
+    (R.trobades===4?(R.errors?' · '+R.errors+(R.errors===1?' error':' errors'):' · sense cap error'):'')+'\n'+graella();
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!R||!R.fi){msg('<div style="color:#f0b429">LES QUATRE COLLES</div><small>la partida encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));return}
+    const pt=punts(),guanya=R.trobades===4;
+    let t='<div style="color:'+(guanya?(R.errors?'#f0b429':'#7dff9b'):'#ffb3a8')+'">'+
+      (guanya?(R.errors?'LES HAS TROBADES TOTES!':'PERFECTE!'):'S\'HAN ACABAT ELS ERRORS')+'</div>'+
+      '<div style="font-size:30px;font-weight:bold">'+R.trobades+'<span style="font-size:16px;color:#c9b28a"> de 4 colles</span></div>'+
+      '<small style="color:#ccc">'+R.trobades+' × 100'+(guanya?' + '+(ERRORS-R.errors)+' errors que et sobren × 50':'')+' = <b style="color:#fff">'+xifra(pt)+' punts</b></small>'+
+      '<div class="graella">'+graella().replace(/\n/g,'<br>')+'</div>';
+    if(mode==='dia')t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+' · '+stats.colles+' colles en '+stats.jugades+(stats.jugades===1?' dia':' dies')+'</small>';
+    else t+='<small style="color:#a08860">és de l\'ARXIU: no compta per a cap taula</small>';
+    // la solucio sencera, per veure on era el parany
+    t+='<div class="solucio">'+P.map((g,k)=>'<div style="background:'+COLOR[k]+'"><b>'+g.t+'</b><br>'+g.w.map(w=>w.toUpperCase()).join(', ')+'</div>').join('')+'</div>';
+    const enl=location.href.split('#')[0],tx=textCompartir();
+    t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+      '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a><a href="#" id="copia">COPIA</a></div>';
+    t+='<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    if(numeroDe(diaAvui())>1)t+='<a href="#" class="bt" id="b-arxiu" style="color:#e8dcc4;background:#1d1810;border:1px solid #6a5a3a">LES DELS ALTRES DIES</a>';
+    if(mode!=='dia')t+='<a href="#" id="b-dia" style="display:block;margin-top:12px;font:12px monospace;color:#f0b429">torna a la d\'avui</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar'));
+    lligaCopia(tx+'\n'+enl);
+    enllac('b-arxiu',arxiu);enllac('b-dia',obreDia);
+    // Les dues taules: la d'avui (els punts; nomes la primera partida de
+    // cada inicials) i les colles de sempre (acumulades, cadascu un cop).
+    let r={html:'',posicio:0};
+    if(mode==='dia'&&R.nova&&pt>0)r=await Records.fiPartida(JOC+'_dia/'+diaDe(R.n),pt);
+    else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
+    if(mode==='dia'&&R.nova&&stats.colles>0&&Records.nom())await Records.envia(JOC,stats.colles);
+    if(mode==='dia'){R.nova=false;desaDia()}
+    const sempre=Records.taulaHTML(await Records.llista(JOC));
+    const titol=t2=>'<div style="color:#f0b429;font-size:13px;margin-top:8px">'+t2+'</div>';
+    const el=document.getElementById('taula');
+    if(el)el.innerHTML=titol('☀ LA D\'AVUI')+r.html+
+      (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+       r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
+      titol('★ COLLES DE SEMPRE')+sempre;
+    Records.pintaMillor(JOC,document.getElementById('best'),stats.colles);
+    refrescaLiders();
+  }finally{enFinal=false}
+}
+// L'arxiu: les dels dies passats, per a qui en vol mes. No compten.
+function arxiu(){
+  const avui=numeroDe(diaAvui());let t='<div style="color:#f0b429">LES DELS ALTRES DIES</div><small>no compten per a cap taula</small><div class="arxiu">';
+  for(let n=avui-1;n>=Math.max(1,avui-30);n--)t+='<a href="#" data-n="'+n+'">#'+n+' · '+nomDia(diaDe(n)).replace(/\/\d+$/,'')+'</a>';
+  msg(t+'</div><a href="#" id="b-dia" style="display:block;margin-top:14px;font:12px monospace;color:#f0b429">torna a la d\'avui</a>');
+  document.querySelectorAll('#msg .arxiu a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();obre('arxiu',+a.dataset.n)}));
+  enllac('b-dia',obreDia);
+}
+function lligaCopia(text){
+  const cp=document.getElementById('copia');
+  if(cp)cp.addEventListener('click',async e=>{
+    e.preventDefault();e.stopPropagation();
+    try{await navigator.clipboard.writeText(text);cp.textContent='COPIAT!'}
+    catch(err){prompt('Copia això:',text)}
+  });
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+function updateHUD(){
+  document.getElementById('score').textContent=stats.colles;
+  Records.desaLocal(JOC,stats.colles);
+  Records.marcador(JOC,document.getElementById('best'),stats.colles);
+}
+
+// ===== DIBUIX =====
+const $=id=>document.getElementById(id);
+const tile=i=>document.querySelector('.p[data-i="'+i+'"]');
+let avisT=null,avisant=false;
+function avisa(t){$('que').textContent=t;$('que').style.color='#ffb3a8';avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaQue()},2200)}
+function pintaQue(){
+  if(avisant)return;
+  const q=$('que');q.style.color='';
+  q.textContent=!R?'':R.fi?(R.trobades===4?'Les has trobades totes!':'Aquesta era la solució'):
+    paused?'PAUSA':sel.size?'Tries '+sel.size+' de 4':'Troba '+(4-R.fets.length)+(4-R.fets.length===1?' colla':' colles')+' de 4';
+}
+function mesura(){
+  const s=$('screen'),w=Math.min(s.clientWidth*.96,520),h=Math.min(s.clientHeight-4,w*.86);
+  const t=$('tauler');t.style.width=w+'px';t.style.height=Math.max(160,h)+'px';
+  ajustaLletra();
+}
+addEventListener('resize',mesura);
+// Cada paraula, tan grossa com hi capiga (n'hi ha de llargues: CARNESTOLTES).
+// Es mesura de debo: calculant-ho per lletres, les amples (M, W) sortien. La
+// lletra no baixa de 10 px, que mes petita no es llegeix: si encara no hi
+// cap, la paraula s'estreny una mica, sense fer-se mes baixa.
+function ajustaLletra(){
+  const t=$('tauler'),ch=(t.clientHeight-18)/4;
+  document.querySelectorAll('.p').forEach(e=>{
+    const s=e.firstChild,lloc=e.clientWidth-6;let f=Math.min(ch*.3,17);
+    s.style.transform='';e.style.fontSize=f+'px';
+    while(f>10&&s.offsetWidth>lloc){f-=.5;e.style.fontSize=f+'px'}
+    if(s.offsetWidth>lloc)s.style.transform='scaleX('+Math.max(.7,lloc/s.offsetWidth).toFixed(3)+')';
+  });
+}
+function pinta(){
+  if(!R)return;
+  const t=$('tauler');t.innerHTML='';
+  for(const g of R.fets){
+    const d=document.createElement('div');d.className='barra'+(R.revelades.includes(g)?' revelada':'');d.style.background=COLOR[g];
+    d.innerHTML='<b></b><span></span>';d.firstChild.textContent=P[g].t;d.lastChild.textContent=P[g].w.map(w=>w.toUpperCase()).join(', ');
+    t.appendChild(d);
+  }
+  for(const i of R.ordre){
+    if(R.fets.includes(W[i].g))continue;
+    const d=document.createElement('div');d.className='p'+(sel.has(i)?' sel':'');d.dataset.i=i;
+    d.appendChild(document.createElement('span')).textContent=W[i].w.toUpperCase();
+    t.appendChild(d);
+  }
+  const p=document.createElement('div');p.id='pausa';p.textContent='PAUSA';p.style.display=paused?'flex':'none';t.appendChild(p);
+  $('errors').innerHTML='errors'+Array.from({length:ERRORS},(_,k)=>'<i class="'+(k<R.errors?'gastat':'')+'"></i>').join('');
+  $('comprova').disabled=sel.size!==4||R.fi;
+  ajustaLletra();pintaQue();
+}
+let liderDia=null,liderSempre=null;
+function pintaLider(){
+  $('lider').textContent=mode==='arxiu'?'ARXIU · la #'+(R?R.n:'')+' del '+nomDia(diaDe(R?R.n:1))+' · no compta':
+    '☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
+}
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}
+  pintaLider();
+}
+
+// ===== CONTROLS =====
+function posaPausa(v){paused=v;pinta()}
+$('tauler').addEventListener('pointerdown',ev=>{
+  const p=ev.target.closest('.p');aInit();
+  if(paused){posaPausa(false);return}
+  if(p){ev.preventDefault();toca(+p.dataset.i)}
+});
+function boto(el,fn){el.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}fn()})}
+boto($('comprova'),comprova);
+boto($('barreja'),barrejaTauler);
+boto($('desmarca'),desmarca);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}
+  if(paused)return;
+  if(e.key==='Enter'){e.preventDefault();comprova()}
+});
+document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&R&&R.fi)hideMsg()});
+addEventListener('pagehide',desaDia);
+
+mesura();
+updateHUD();
+Records.pintaMillor(JOC,document.getElementById('best'),stats.colles);
+refrescaLiders();
+obreDia();
+mesura();
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
+  [['☀ LA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ COLLES DE SEMPRE',JOC]]);
+</script>
+</body>
+</html>

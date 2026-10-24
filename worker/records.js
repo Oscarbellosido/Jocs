@@ -68,12 +68,13 @@ const JOCS = {
   temple:            99999,
   abecedari:         99999,   // els encerts acumulats de totes les rodes del dia
   conquesta:          2200,   // partides lliures: 1.000 + 50 per cada ronda que sobra
+  colles:            99999,   // les colles trobades, acumulades de totes les partides del dia
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -85,6 +86,7 @@ const DIARIS = {
   abecedari_dia:      2740,   // 25 encerts × 100 i, com a molt, els 240 segons
   abecedari_dificil_dia: 3100, // la dificil: 25 × 100 i, com a molt, els 600 segons
   conquesta_dia:      2200,
+  colles_dia:          600,   // 100 per colla i, si les trobes totes, 50 per error que sobra
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -130,6 +132,7 @@ const FITXA = {
   temple:          ['El Temple',       'al Temple',          'temple.html'],
   abecedari:       ["L'Abecedari",     "a l'Abecedari",      'abecedari.html'],
   conquesta:       ['La Conquesta',    'a la Conquesta',     'conquesta.html'],
+  colles:          ['Les Quatre Colles', 'a les Quatre Colles', 'colles.html'],
 };
 
 const cors = {
@@ -188,7 +191,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
@@ -254,6 +257,11 @@ const ANUNCIA_DIARI = {
   // nomes hi son si l'acabes sencera, o sigui que passat de 2.500 son 25.
   abecedari_dia: ["L'Abecedari", 'abecedari.html', p => encerts(p) + ' encerts (' + xifra(p) + ' punts)'],
   abecedari_dificil_dia: ["L'Abecedari difícil", 'abecedari.html', p => encerts(p) + ' encerts (' + xifra(p) + ' punts)'],
+  // A Les Quatre Colles, 100 per colla; passat de 400 les has trobades totes
+  // i la resta son els errors que et van sobrar (50 cadascun)
+  colles_dia: ['Les Quatre Colles', 'colles.html', p => p >= 400
+    ? 'les 4 colles ' + (p === 600 ? 'sense cap error' : 'i ' + (4 - (p - 400) / 50) + ((p - 400) / 50 === 3 ? ' error' : ' errors')) + ' (' + p + ' punts)'
+    : Math.floor(p / 100) + (p < 200 ? ' colla' : ' colles') + ' de 4'],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
@@ -288,7 +296,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil i La Conquesta)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta i Les Quatre Colles)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

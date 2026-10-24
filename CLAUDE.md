@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i tretze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i catorze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I tretze que no són de saló
+### I catorze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -57,6 +57,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `rotllana.html` | La Rotllana (de l'estil del *Wordscapes*) | 2026 |
 | `abecedari.html` | L'Abecedari (de l'estil del *Rosco* del *Pasapalabra*) | 2026 |
 | `conquesta.html` | La Conquesta (de l'estil del *Risk*, amb les comarques) | 2026 |
+| `colles.html` | Les Quatre Colles (de l'estil del *Connections*) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -830,6 +831,52 @@ Coses que no s'han de desfer sense entendre-les:
   - **si l'atac és al nord del mapa, el quadre va a baix** (`abaix`), que a
     dalt tapava justament les comarques que estaves tocant.
 
+## Les Quatre Colles: setze paraules, quatre colles
+
+En Carles va demanar un joc «diferent i intel·ligent». És **inspirat en** el
+*Connections* del New York Times (el segon joc de paraules més jugat del món
+després del Wordle), amb nom nostre: en català no n'hi havia cap.
+
+- **16 paraules** en una graella de 4 × 4; s'han d'agrupar en **4 colles de
+  4** que tenen alguna cosa en comú. Toques quatre paraules i COMPROVA. Si
+  és bona, es fa una barra de color amb el títol de la colla.
+- **4 errors** i s'acaba. Si n'hi havia 3 de la mateixa colla, diu
+  «Gairebé!». El mateix intent dues vegades no torna a comptar.
+- **Colors per dificultat**: groga (la més fàcil), verda, blava i lila, que
+  sol ser un joc de paraules (al revés, amaguen un número, comencen per una
+  nota...).
+- **Punts**: 100 per colla i, si les trobes totes, 50 per cada error que et
+  sobra (600 sense cap error). Taula del dia (`colles_dia/<data>`) i **colles
+  de sempre** (`colles`, acumulades, cadascú una vegada). El bot anuncia cada
+  matí qui va guanyar la d'ahir.
+- **El que s'envia al grup són els colors de cada intent** (🟨🟩🟦🟪), mai
+  les paraules.
+- **L'arxiu**: les dels dies passats (fins a 30 enrere), que no compten.
+- Botons: `BARREJA` i `DESMARCA` petits als costats, `COMPROVA` gros al mig
+  (la trampa 3).
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Les partides són escrites a mà** (`COLLES`, dins del joc), 30 de moment.
+  Cada dia surt la següent **en l'ordre en què estan escrites** (no
+  barrejades: així es tria quina va primer, i les fluixes no surten mai al
+  principi). La #1 és la del 24 d'octubre del 2026. Quan s'acaben, tornen a
+  començar: **cal anar-ne afegint al final**.
+- **Els paranys són la gràcia, però només hi pot haver una solució.** Una
+  paraula pot semblar de dues colles (la PINYA, fruita i part del castell),
+  però aleshores l'altra colla ja ha de tenir les seves quatre: si dues
+  paraules es poguessin intercanviar, hi hauria dues solucions bones i el
+  joc en donaria una per dolenta.
+- **La lletra de cada casella es mesura de debò** (`ajustaLletra`) i no baixa
+  de 10 px; si CARNESTOLTES no hi cap ni així, s'estreny una mica. Calculant
+  per lletres, les amples (M, W) se sortien.
+
+El `scripts/prova-colles.mjs` mira que totes les partides tinguin 4 colles
+de 4 i 16 paraules diferents, que la del dia sigui igual per a tothom, i
+que es jugui tocant: encertar, el «gairebé», no pagar dues vegades el mateix
+intent, desar i continuar, guanyar, perdre, l'arxiu, les dues taules i que
+la paraula més llarga hi càpiga a 320 px.
+
 ## El Temple: aventura per caselles
 
 En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
@@ -1393,6 +1440,9 @@ comproven el comportament.
   repeteixi paraules, i que es jugui tocant, amb el rellotge, la pausa, el
   desar i les dues taules; i la difícil d'avui, amb el compte de lletres, a
   estones i a la seva taula.
+- `node scripts/prova-colles.mjs` — que les partides de Les Quatre Colles
+  estiguin ben fetes, que la del dia sigui igual per a tothom, i que es
+  jugui tocant, amb errors, desar, guanyar, perdre, l'arxiu i les taules.
 - `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
   els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,
