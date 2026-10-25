@@ -45,15 +45,17 @@
   }
   .games {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    /* minmax(0, ...): sense aixo, un nom llarg (EL TRENCACLOSQUES) eixamplava
+       la columna i a 320 px la portada es movia de costat */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.6rem;
     width: 100%;
     max-width: 430px;
     padding: 0 0.8rem;
   }
   /* com més ample, més columnes */
-  @media (min-width: 560px) { .games { grid-template-columns: repeat(3, 1fr); max-width: 760px; } }
-  @media (min-width: 900px) { .games { grid-template-columns: repeat(4, 1fr); max-width: 1020px; } }
+  @media (min-width: 560px) { .games { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 760px; } }
+  @media (min-width: 900px) { .games { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1020px; } }
   a.btn {
     display: block;
     text-decoration: none;
@@ -89,6 +91,9 @@
     display: block;
     margin-top: 0.32rem;
     font: bold 0.78rem monospace;
+    /* a les pantalles estretes, una mica mes petita: LES QUATRE COLLES i EL
+       TRENCACLOSQUES, si no, sortien tallats */
+    font-size: clamp(0.66rem, 3.5vw, 0.78rem);
     letter-spacing: 0.04em;
     white-space: nowrap;
     overflow: hidden;
