@@ -1,7 +1,7 @@
 {
   "name": "Jocs Clàssics",
   "short_name": "Jocs",
-  "description": "Vint-i-tres clàssics dels salons recreatius: Pong, Breakout, Space Invaders, Lunar Lander, Asteroid Belt, Galaxian, Comecocos, Missile Command, Battlezone, Crazy Climber, Centipede, Frogger, Tetris, Donkey Kong, Galaga, Dig Dug, Moon Patrol, Nibbler, Pole Position, Defender, Q*bert, Tempest i Track & Field. I catorze de fora dels salons: el Xifres, El Temple, l'Amunt, les Boles, el Síndria, la Balança, el Ram, el Garbuix, La Gofra, La Impremta, La Rotllana, L'Abecedari, La Conquesta i Les Quatre Colles",
+  "description": "Vint-i-tres clàssics dels salons recreatius: Pong, Breakout, Space Invaders, Lunar Lander, Asteroid Belt, Galaxian, Comecocos, Missile Command, Battlezone, Crazy Climber, Centipede, Frogger, Tetris, Donkey Kong, Galaga, Dig Dug, Moon Patrol, Nibbler, Pole Position, Defender, Q*bert, Tempest i Track & Field. I quinze de fora dels salons: el Xifres, El Temple, l'Amunt, les Boles, el Síndria, la Balança, el Ram, el Garbuix, La Gofra, La Impremta, La Rotllana, L'Abecedari, La Conquesta, Les Quatre Colles i El Trencaclosques",
   "start_url": "/Jocs/",
   "display": "standalone",
   "background_color": "#0b0e1a",

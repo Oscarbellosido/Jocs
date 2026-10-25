@@ -289,6 +289,10 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await call('POST', '/records/colles', { nom: 'MAR', punts: 7 });
   r = await call('GET', '/records/colles');
   ok(r.data.length === 1 && r.data[0].p === 7, 'Les Quatre Colles: a les colles de sempre cadascú hi surt una vegada');
+  r = await call('POST', '/records/trencaclosques_dia/' + avui, { nom: 'CRE', punts: 3600 - 192 });
+  ok(r.status === 200 && r.data.posicio === 1, 'El Trencaclosques: el del dia té la seva taula');
+  r = await call('POST', '/records/trencaclosques_dia/' + avui, { nom: 'MAR', punts: 3600 });
+  ok(r.status === 400, 'El Trencaclosques: fer-lo en zero segons no pot ser');
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 21 });
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 44 });
   r = await call('GET', '/records/abecedari');
@@ -315,6 +319,8 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.delete('telegram:anunciat:abecedari_dia');
   store.delete('telegram:anunciat:abecedari_dificil_dia');
   store.delete('telegram:anunciat:colles_dia');
+  store.delete('telegram:anunciat:trencaclosques_dia');
+  store.set('joc:trencaclosques_dia:' + madrid(1), JSON.stringify([{ n: 'MAR', p: 3600 - 192, t: 1 }]));
   store.set('joc:colles_dia:' + madrid(1), JSON.stringify([{ n: 'OBE', p: 550, t: 1 }, { n: 'CRE', p: 200, t: 2 }]));
   store.set('joc:abecedari_dificil_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 2850, t: 1 }]));
   store.set('joc:impremta_dia:' + madrid(1), JSON.stringify([{ n: 'CRE', p: 5400, t: 1 }, { n: 'MAR', p: 3100, t: 2 }]));
@@ -332,7 +338,9 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   const col = m.find(x => /Quatre Colles/.test(x.cos.text));
   ok(col && /guanyar <b>OBE<\/b>/.test(col.cos.text) && /les 4 colles i 1 error \(550 punts\)/.test(col.cos.text) && /colles\.html/.test(JSON.stringify(col.cos.reply_markup)),
      'i la de Les Quatre Colles, amb les colles i els errors');
-  ok(m.length === 5 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
+  const tre = m.find(x => /Trencaclosques/.test(x.cos.text));
+  ok(tre && /guanyar <b>MAR<\/b>/.test(tre.cos.text) && /un temps de 3:12/.test(tre.cos.text), 'i la del Trencaclosques, amb el temps i no amb punts');
+  ok(m.length === 6 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
      'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir de La Impremta');
   ok(gof && /guanyar <b>TRA<\/b>/.test(gof.cos.text) && /★★★★★/.test(gof.cos.text) && /gofra\.html/.test(JSON.stringify(gof.cos.reply_markup)),
      'i la de La Gofra, amb les estrelles i qui la va acabar abans en cas d\'empat');

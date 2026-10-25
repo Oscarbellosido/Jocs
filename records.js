@@ -414,7 +414,7 @@ const Records = (() => {
     if (!llistes.some(l => l && l.length)) { clearTimeout(sostre); tanca(); return; }
     fons.querySelector('.rec-taula').innerHTML = taules.map(([titol], i) =>
       (titol ? '<div style="color:#ffe08a;font-size:13px;margin:10px 0 4px">' + titol + '</div>' : '') +
-      taulaHTML(llistes[i])).join('');
+      taulaHTML(llistes[i], null, taules[i][1])).join('');
     fons.querySelector('.rec-peu').textContent = 'toca per començar';
     clearTimeout(sostre);
     setTimeout(tanca, 3500);
@@ -425,7 +425,14 @@ const Records = (() => {
   // la de la posicio que diu el Worker. Buscant-la per inicials i punts, si ja
   // hi tenies una partida igual (CRE 101 i CRE 101 al Boles), sortien totes
   // dues en groc i semblava que s'hagues apuntat dues vegades.
-  function taulaHTML(llista, destacat) {
+  // Com s'escriu la puntuacio d'una taula. Gairebe sempre, el numero; pero al
+  // Trencaclosques el que compta es el temps, i la puntuacio (3.600 menys els
+  // segons) no deia res a ningu: alla surt «3:12». Cada joc hi apunta el seu.
+  const formats = {};
+  const formatDe = joc => { for (const k in formats) if (joc && String(joc).startsWith(k)) return formats[k]; return null; };
+  const escriu = (joc, p) => { const f = formatDe(joc); return f ? f(p) : p; };
+
+  function taulaHTML(llista, destacat, joc) {
     if (!llista || !llista.length) return '<div style="color:#888;font-size:12px">Encara no hi ha cap rècord</div>';
     const quina = !destacat ? -1 : destacat.posicio > 0 ? destacat.posicio - 1
       : llista.findIndex(r => r.n === destacat.n && r.p === destacat.p);
@@ -434,7 +441,7 @@ const Records = (() => {
       return '<tr style="color:' + (meu ? '#ff0' : '#ddd') + '">' +
         '<td style="text-align:right;padding:1px 6px;color:#888">' + (i + 1) + '</td>' +
         '<td style="padding:1px 6px">' + r.n + '</td>' +
-        '<td style="text-align:right;padding:1px 6px">' + r.p + '</td></tr>';
+        '<td style="text-align:right;padding:1px 6px">' + escriu(joc, r.p) + '</td></tr>';
     }).join('');
     return '<table style="margin:0 auto;font:13px monospace;border-collapse:collapse">' + files + '</table>';
   }
@@ -448,9 +455,9 @@ const Records = (() => {
     if (!element) return;
     const l = lideres[joc];
     const meu = Math.max(punts, local(joc));
-    if (l && punts > l.p) element.textContent = 'TU ' + punts;
-    else if (l) element.textContent = l.n + ' ' + l.p;
-    else element.textContent = meu ? 'TU ' + meu : '—';
+    if (l && punts > l.p) element.textContent = 'TU ' + escriu(joc, punts);
+    else if (l) element.textContent = l.n + ' ' + escriu(joc, l.p);
+    else element.textContent = meu ? 'TU ' + escriu(joc, meu) : '—';
   }
 
   // plafo per als jocs que no en tenen cap on ensenyar la taula
@@ -496,7 +503,7 @@ const Records = (() => {
     // entre els 10 millors, demana les inicials. Torna el HTML de la taula.
     async fiPartida(joc, punts) {
       desaLocal(joc, punts);
-      if (!punts) return { html: taulaHTML(await crida('/records/' + joc)), posicio: 0 };
+      if (!punts) return { html: taulaHTML(await crida('/records/' + joc), null, joc), posicio: 0 };
 
       const actual = await crida('/records/' + joc);
       if (actual === null) return { html: avisFall(), posicio: 0 };
@@ -512,9 +519,9 @@ const Records = (() => {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nom: nom(), punts }),
           });
-          if (r && r.repetida) return { html: taulaHTML(actual) + avisRepetida(), posicio: 0 };
+          if (r && r.repetida) return { html: taulaHTML(actual, null, joc) + avisRepetida(), posicio: 0 };
         }
-        return { html: taulaHTML(actual), posicio: 0 };
+        return { html: taulaHTML(actual, null, joc), posicio: 0 };
       }
 
       const n = await demanaNom();
@@ -523,13 +530,14 @@ const Records = (() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom: n, punts }),
       });
-      if (!res) return { html: taulaHTML(actual) + avisFall(), posicio: 0 };
-      if (res.repetida) return { html: taulaHTML(res.top) + avisRepetida(), posicio: 0 };
+      if (!res) return { html: taulaHTML(actual, null, joc) + avisFall(), posicio: 0 };
+      if (res.repetida) return { html: taulaHTML(res.top, null, joc) + avisRepetida(), posicio: 0 };
       if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
-      return { html: taulaHTML(res.top, { n, p: punts, posicio: res.posicio }), posicio: res.posicio };
+      return { html: taulaHTML(res.top, { n, p: punts, posicio: res.posicio }, joc), posicio: res.posicio };
     },
 
     taulaHTML,
+    formata: (joc, f) => { formats[joc] = f; },
 
     // La llista sencera d'una taula, o null si no s'hi pot connectar.
     async llista(joc) {

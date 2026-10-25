@@ -87,6 +87,7 @@ const DIARIS = {
   abecedari_dificil_dia: 3100, // la dificil: 25 × 100 i, com a molt, els 600 segons
   conquesta_dia:      2200,
   colles_dia:          600,   // 100 per colla i, si les trobes totes, 50 per error que sobra
+  trencaclosques_dia: 3599,   // 3.600 menys els segons que hi has tardat
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -262,9 +263,12 @@ const ANUNCIA_DIARI = {
   colles_dia: ['Les Quatre Colles', 'colles.html', p => p >= 400
     ? 'les 4 colles ' + (p === 600 ? 'sense cap error' : 'i ' + (4 - (p - 400) / 50) + ((p - 400) / 50 === 3 ? ' error' : ' errors')) + ' (' + p + ' punts)'
     : Math.floor(p / 100) + (p < 200 ? ' colla' : ' colles') + ' de 4'],
+  // Al Trencaclosques la puntuacio es 3.600 menys els segons: es diu el temps
+  trencaclosques_dia: ['El Trencaclosques', 'trencaclosques.html', p => 'un temps de ' + temps(p)],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
-const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : xifra(p);
+const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : joc === 'trencaclosques_dia' ? temps(p) : xifra(p);
 function diaMadrid(enrere = 0) {
   const d = new Date(Date.now() - enrere * 86400e3);
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d); }
@@ -296,7 +300,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta i Les Quatre Colles)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles i El Trencaclosques)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

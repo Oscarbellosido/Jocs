@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>El Trencaclosques</title>
+<style>
+html,body{margin:0;height:100%;background:#1c140e;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,620px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#c9b28a;padding:2px 0;white-space:nowrap;overflow:hidden;max-width:96%}
+#estat{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#e8dcc4;padding:2px 0 4px;gap:8px;min-height:1.5em}
+#peces{white-space:nowrap;color:#b9a888}
+#screen{flex:1 1 auto;min-height:0;width:100%;position:relative}
+#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:94%}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#model{flex:1 1 0;color:#1a1200;background:#e8c27a;border-color:#e8c27a}
+#model.on{background:#fff0c8;border-color:#fff0c8}
+#vores{flex:1 1 0;color:#e8dcc4;border-color:#6a5a3a;background:#2a2016}
+#menu{flex:0 0 auto;width:22%;font-size:12px;color:#b9a888;border-color:#4a3e2a;background:#1d1810}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(18,13,9,.97);border:1px solid #6a5a3a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:270px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg .quantes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+#msg .quantes a{font:bold 15px monospace;color:#1a1200;background:#e8c27a;text-decoration:none;border-radius:8px;padding:10px 4px}
+#msg .quantes a small{font-weight:normal;color:#5a4a2a;margin-top:2px;font-size:11px}
+#msg img{max-width:100%;max-height:34vh;border-radius:6px;margin-top:8px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TEMPS <b id="score">0:00</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="estat"><span id="que"></span><span id="peces"></span></div>
+  <div id="screen"><canvas id="c"></canvas></div>
+  <div id="controls"><button id="model">👁 MODEL</button><button id="vores">VORES PRIMER</button><button id="menu">MENÚ</button></div>
+  <div id="msg"></div>
+  <input type="file" id="fitxer" accept="image/*" style="display:none">
+  <small><b style="color:#ddd">Torna a muntar la imatge: arrossega les peces de la safata al seu lloc, que hi encaixen soles.</b> cada dia un trencaclosques per a tothom, i amb les teves fotos · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndAgafa(){aInit();tone(520,.04,"triangle",.08)}
+function sndDeixa(){aInit();tone(300,.05,"triangle",.07)}
+function sndEncaixa(){aInit();tone(880,.06,"square",.07);setTimeout(()=>tone(1320,.08,"triangle",.12),50)}
+function sndFi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.24,"triangle",.22),i*110))}
+
+// ===== ATZAR AMB LLAVOR =====
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== EL DIA =====
+const JOC='trencaclosques',taulaDia=d=>JOC+'_dia/'+d;
+const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+// A la taula, la puntuacio es 3.600 menys els segons (com mes de pressa, mes
+// punts), pero el que s'ensenya es el temps.
+const MAX_SEGONS=3600;
+const puntsDe=s=>Math.max(1,MAX_SEGONS-Math.round(s));
+Records.formata(JOC+'_dia',p=>mmss(MAX_SEGONS-p));
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// el primer, el #1, va ser el del 25 d'octubre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-10-25T12:00:00Z'))/864e5)+1;
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const COLS_DIA=5,FILES_DIA=7;          // 35 peces, quadrades: la imatge fa 5 × 7
+
+// ===== EL PAISATGE DEL DIA =====
+// Es pinta sol, a partir del numero del dia: el mateix per a tothom. Ha de
+// tenir prou coses diferents (globus, poble, arbres, camps) perque cada peça
+// es pugui reconeixer: un cel llis seria una loteria.
+function paisatge(n){
+  const W=900,H=1260,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const r=mulberry(hashText('TRENCACLOSQUES-'+n)),ent=(a,b)=>a+(b-a)*r(),tria=a=>a[Math.floor(r()*a.length)];
+  const HORES=[
+    {cel:['#1f5aa0','#8cc6ee'],sol:'#fff6b8',m:['#9db6d2','#6c8cb0','#45664f'],camp:['#7fb34a','#a9c94f','#d8c25a','#6d9b3a','#93b850'],aigua:'#4f8fd0',nit:false},
+    {cel:['#3b1f5c','#f3955a'],sol:'#ffd27a',m:['#b4808f','#80506e','#45303e'],camp:['#a67c3d','#c9a04a','#7a8a3a','#b5643a','#8f7a40'],aigua:'#c47a6a',nit:false},
+    {cel:['#f5a98a','#fde9cc'],sol:'#fffbe8',m:['#cbb0be','#9d849e','#56664f'],camp:['#9cc46a','#d9d27a','#c7a35a','#86b05a','#b9c96a'],aigua:'#86b6d6',nit:false},
+    {cel:['#071330','#2d4478'],sol:'#f4f1d8',m:['#33456a','#24324f','#172033'],camp:['#334a3f','#3f5745','#38503f','#2c4136','#455e48'],aigua:'#22385e',nit:true},
+  ];
+  const P=HORES[n%4],nit=P.nit;
+  // el cel
+  let g=x.createLinearGradient(0,0,0,H*.62);g.addColorStop(0,P.cel[0]);g.addColorStop(1,P.cel[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  if(nit)for(let i=0;i<160;i++){x.fillStyle='rgba(255,255,240,'+ent(.3,1)+')';x.beginPath();x.arc(ent(0,W),ent(0,H*.5),ent(.6,2.2),0,7);x.fill()}
+  // el sol (o la lluna) amb el seu halo
+  const sx=ent(.15,.85)*W,sy=ent(.08,.26)*H,sr=ent(50,78);
+  g=x.createRadialGradient(sx,sy,sr*.5,sx,sy,sr*3.2);g.addColorStop(0,P.sol+'cc');g.addColorStop(1,P.sol+'00');x.fillStyle=g;x.fillRect(0,0,W,H*.6);
+  x.fillStyle=P.sol;x.beginPath();x.arc(sx,sy,sr,0,7);x.fill();
+  // la lluna plena, amb les seves taques
+  if(nit){x.fillStyle='rgba(150,150,130,.35)';for(const [a,b,c] of [[-.3,-.2,.22],[.25,.1,.18],[-.05,.35,.14]]){x.beginPath();x.arc(sx+a*sr,sy+b*sr,c*sr,0,7);x.fill()}}
+  // els nuvols
+  for(let k=0,nn=Math.floor(ent(3,7));k<nn;k++){
+    const cx=ent(-50,W+50),cy=ent(.05,.38)*H,w=ent(110,230);
+    x.fillStyle=nit?'rgba(170,185,220,.18)':'rgba(255,255,255,.78)';
+    for(let j=0;j<6;j++){x.beginPath();x.ellipse(cx+ent(-w*.5,w*.5),cy+ent(-14,14),ent(w*.18,w*.36),ent(16,30),0,0,7);x.fill()}
+  }
+  // globus i ocells: el cel ha de tenir coses
+  for(let k=0,nn=1+Math.floor(r()*3);k<nn;k++){
+    const bx=ent(.1,.9)*W,by=ent(.12,.4)*H,br=ent(34,56),cols=[tria(['#e04b3c','#2f80d0','#f2c230','#3aa65a','#8e44ad']),tria(['#fff','#f39c12','#1abc9c','#e84393'])];
+    for(let s=0;s<6;s++){x.fillStyle=cols[s%2];x.beginPath();x.ellipse(bx,by,br*(1-s/6),br*1.15,0,0,7);x.fill()}
+    x.strokeStyle='rgba(60,40,20,.8)';x.lineWidth=2;x.beginPath();x.moveTo(bx-br*.5,by+br);x.lineTo(bx-10,by+br*1.75);x.moveTo(bx+br*.5,by+br);x.lineTo(bx+10,by+br*1.75);x.stroke();
+    x.fillStyle='#7a4a24';x.fillRect(bx-12,by+br*1.75,24,18);
+  }
+  x.strokeStyle=nit?'rgba(200,210,240,.5)':'rgba(40,40,50,.75)';x.lineWidth=3;
+  for(let k=0,nn=Math.floor(ent(3,9));k<nn;k++){const ox=ent(.05,.95)*W,oy=ent(.06,.42)*H,s=ent(9,16);x.beginPath();x.moveTo(ox-s,oy-s*.4);x.quadraticCurveTo(ox-s*.4,oy-s*.6,ox,oy);x.quadraticCurveTo(ox+s*.4,oy-s*.6,ox+s,oy-s*.4);x.stroke()}
+  // les muntanyes: tres capes, de la mes llunyana a la mes propera
+  const carena=(base,amp,llis)=>{const f=[ent(0,9),ent(0,9),ent(0,9)],k=[ent(1,2.5),ent(3,6),ent(8,14)];const pts=[];
+    for(let px=-20;px<=W+20;px+=12){const u=px/W;pts.push([px,base-amp*(.55*Math.sin(u*k[0]*3.1+f[0])+.3*Math.sin(u*k[1]*3.1+f[1])+.15*llis*Math.sin(u*k[2]*3.1+f[2])+1)/2])}return pts};
+  const pinta=(pts,col,fins)=>{x.fillStyle=col;x.beginPath();x.moveTo(pts[0][0],fins);for(const [a,b] of pts)x.lineTo(a,b);x.lineTo(pts[pts.length-1][0],fins);x.closePath();x.fill()};
+  pinta(carena(H*.46,ent(170,260),1),P.m[0],H);
+  // una serra de roques arrodonides, com Montserrat, de tant en tant
+  if(r()<.6){const cx=ent(.2,.8)*W,amp=ent(260,380),base=H*.52;x.fillStyle=P.m[1];
+    for(let j=0;j<14;j++){const px=cx+(j-7)*ent(18,30),h=amp*(1-Math.abs(j-7)/8)*ent(.7,1.05),rw=ent(16,26);x.beginPath();x.moveTo(px-rw,base);x.lineTo(px-rw,base-h+rw);x.arc(px,base-h+rw,rw,Math.PI,0);x.lineTo(px+rw,base);x.fill()}}
+  pinta(carena(H*.53,ent(110,190),1.2),P.m[1],H);
+  // el llac, a vegades
+  const llac=r()<.5;
+  if(llac){const ly=H*.585;g=x.createLinearGradient(0,ly,0,ly+70);g.addColorStop(0,P.aigua);g.addColorStop(1,P.m[1]);x.fillStyle=g;x.beginPath();x.ellipse(ent(.3,.7)*W,ly+30,ent(260,380),48,0,0,7);x.fill();
+    x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=2;for(let j=0;j<12;j++){const lx=ent(.15,.85)*W,lyy=ly+ent(5,60);x.beginPath();x.moveTo(lx,lyy);x.lineTo(lx+ent(20,60),lyy);x.stroke()}}
+  pinta(carena(H*.62,ent(70,120),1.5),P.m[2],H);
+  // els camps: franges de colors, cadascuna amb els seus solcs
+  const y0=H*.64;
+  for(let j=0;j<9;j++){const ya=y0+j*H*.022,yb=ya+H*.026+ent(0,H*.01),xa=ent(-200,W*.4),xb=xa+ent(W*.5,W*1.2);
+    x.fillStyle=tria(P.camp);x.beginPath();x.moveTo(xa,ya);x.lineTo(xb,ya-ent(10,40));x.lineTo(xb+40,yb);x.lineTo(xa-40,yb+ent(0,30));x.closePath();x.fill();
+    x.strokeStyle='rgba(0,0,0,.08)';x.lineWidth=2;for(let k=0;k<6;k++){const sy2=ya+(yb-ya)*k/6;x.beginPath();x.moveTo(xa,sy2);x.lineTo(xb,sy2-ent(5,30));x.stroke()}}
+  // el poble, dalt d'un turo: cases, teulades i el campanar
+  const px0=ent(.18,.62)*W,py0=H*.66,amplePoble=ent(220,330);
+  x.fillStyle=P.m[2];x.beginPath();x.ellipse(px0+amplePoble/2,py0+20,amplePoble*.75,70,0,Math.PI,0);x.fill();
+  const cases=[];for(let k=0;k<Math.floor(ent(8,13));k++)cases.push([px0+ent(0,amplePoble-40),py0-ent(0,50),ent(34,58),ent(30,52)]);
+  cases.sort((a,b)=>a[1]-b[1]);
+  const camp=[px0+amplePoble*ent(.3,.7),py0-60];
+  x.fillStyle=nit?'#8c8577':'#e9dcc0';x.fillRect(camp[0],camp[1]-110,30,150);x.fillStyle='#a8452c';x.beginPath();x.moveTo(camp[0]-6,camp[1]-110);x.lineTo(camp[0]+15,camp[1]-150);x.lineTo(camp[0]+36,camp[1]-110);x.fill();
+  x.fillStyle='#3a2a1a';x.fillRect(camp[0]+9,camp[1]-96,12,18);
+  for(const [cx2,cy2,w,h] of cases){
+    x.fillStyle=tria(nit?['#8c8577','#7b7468','#958b7a']:['#f1e6cc','#e8d3a8','#f6efe0','#e2c79a','#dcb98a']);x.fillRect(cx2,cy2,w,h);
+    x.fillStyle=tria(['#b5532e','#a8452c','#c46a3a','#9a3d26']);x.beginPath();x.moveTo(cx2-5,cy2);x.lineTo(cx2+w/2,cy2-h*.45);x.lineTo(cx2+w+5,cy2);x.fill();
+    x.fillStyle=nit?'#ffd86b':'#3a2a1a';for(let k=0;k<2;k++)x.fillRect(cx2+6+k*(w-20),cy2+h*.35,8,10);
+  }
+  // els arbres: xiprers i pins, de lluny a prop
+  const arbres=[];for(let k=0;k<Math.floor(ent(10,20));k++)arbres.push([ent(0,W),ent(H*.66,H*.86)]);
+  arbres.sort((a,b)=>a[1]-b[1]);
+  for(const [ax,ay] of arbres){const s=.6+(ay-H*.66)/(H*.2)*.9;
+    if(r()<.5){x.fillStyle=nit?'#1d2e24':'#2f5a32';x.beginPath();x.ellipse(ax,ay-40*s,12*s,44*s,0,0,7);x.fill()}
+    else{x.fillStyle='#5a3d22';x.fillRect(ax-3*s,ay-30*s,6*s,30*s);x.fillStyle=nit?'#22382a':tria(['#3f7a3a','#4f8a3a','#2f6a32']);x.beginPath();x.arc(ax,ay-38*s,22*s,0,7);x.fill();x.beginPath();x.arc(ax-14*s,ay-30*s,15*s,0,7);x.arc(ax+14*s,ay-30*s,15*s,0,7);x.fill()}}
+  // a primer terme, l'herba i les flors
+  g=x.createLinearGradient(0,H*.84,0,H);g.addColorStop(0,nit?'#24382c':'#5f9a3a');g.addColorStop(1,nit?'#14221a':'#3d6e2a');x.fillStyle=g;
+  x.beginPath();x.moveTo(0,H);x.lineTo(0,H*.86);for(let px=0;px<=W;px+=30)x.lineTo(px,H*.85+Math.sin(px/90+n)*14);x.lineTo(W,H);x.fill();
+  // un cami que puja cap al poble
+  x.strokeStyle=nit?'#5a5446':'#d8c49a';x.lineWidth=26;x.lineCap='round';x.beginPath();x.moveTo(ent(.3,.7)*W,H+20);x.bezierCurveTo(ent(0,W),H*.88,ent(0,W),H*.78,px0+amplePoble/2,py0+30);x.stroke();
+  for(let k=0;k<140;k++){x.fillStyle=tria(nit?['#c9c9e8','#8888aa']:['#f4e04d','#ffffff','#e84a5f','#f39c12','#c56cf0']);x.beginPath();x.arc(ent(0,W),ent(H*.87,H),ent(3,7),0,7);x.fill()}
+  return cv;
+}
+
+// ===== LES PECES =====
+// Les vores de dins tenen una pestanya que surt o que entra; les dues peces
+// que comparteixen vora la tenen al reves, i encaixen. Cada vora porta
+// tambe un petit desplaçament, perque no totes semblin iguals.
+function fesVores(cols,files,llavor){
+  const r=mulberry(hashText(llavor)),h=[],v=[];
+  for(let f=1;f<files;f++){h[f]=[];for(let c=0;c<cols;c++)h[f][c]={s:r()<.5?1:-1,d:(r()-.5)*.08}}
+  for(let f=0;f<files;f++){v[f]=[];for(let c=1;c<cols;c++)v[f][c]={s:r()<.5?1:-1,d:(r()-.5)*.08}}
+  return {h,v};
+}
+// de cada peça: [dalt, dreta, baix, esquerra], cada una {s,d} (s=0, vora plana)
+function voresDe(c,f,V,cols,files){
+  const pla={s:0,d:0},inv=e=>({s:-e.s,d:-e.d});
+  return [f>0?inv(V.h[f][c]):pla, c<cols-1?V.v[f][c+1]:pla, f<files-1?V.h[f+1][c]:pla, c>0?inv(V.v[f][c]):pla];
+}
+// La pestanya, en unitats de la vora: u va d'un cap a l'altre, w cap a fora
+const TAB=[[.38,0],[.42,0,.44,.04,.41,.09],[.36,.17,.44,.24,.50,.24],[.56,.24,.64,.17,.59,.09],[.56,.04,.58,0,.62,0]];
+function vora(ctx,ax,ay,bx,by,e,m){
+  const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy),nx=dy/L,ny=-dx/L;
+  if(!e.s){ctx.lineTo(bx,by);return}
+  const P=(u,w)=>[ax+dx*(u+e.d)+nx*w*e.s*m,ay+dy*(u+e.d)+ny*w*e.s*m];
+  ctx.lineTo(...P(...TAB[0]));
+  for(let k=1;k<TAB.length;k++){const t=TAB[k];ctx.bezierCurveTo(...P(t[0],t[1]),...P(t[2],t[3]),...P(t[4],t[5]))}
+  ctx.lineTo(bx,by);
+}
+function cami(ctx,p,ox,oy,pw,ph){
+  const m=Math.min(pw,ph);ctx.beginPath();ctx.moveTo(ox,oy);
+  vora(ctx,ox,oy,ox+pw,oy,p.v[0],m);vora(ctx,ox+pw,oy,ox+pw,oy+ph,p.v[1],m);
+  vora(ctx,ox+pw,oy+ph,ox,oy+ph,p.v[2],m);vora(ctx,ox,oy+ph,ox,oy,p.v[3],m);ctx.closePath();
+}
+
+// ===== L'ESTAT =====
+// G: la partida que hi ha a la pantalla. Les peces guarden on son en
+// proporcio del marc (u, v), que aixi no canvia si gires el mobil.
+let G=null,IMG=null,mode='dia',dia='',numero=0,paused=false,model=false,brut=true;
+let L={};             // la disposicio: marc, safata, mides (en px de pantalla)
+let drag=null;        // la peça que portes amb el dit
+function novaPartida(m,cols,files,llavor){
+  const V=fesVores(cols,files,llavor),peces=[];
+  for(let f=0;f<files;f++)for(let c=0;c<cols;c++)peces.push({c,f,e:'s',u:0,w:0});
+  return {v:1,mode:m,dia,n:numero,cols,files,llavor,temps:0,safata:barreja(mulberry(hashText(llavor+'-safata')),peces.map((_,i)=>i)),z:[],peces,fi:false,comencat:false,V};
+}
+function prepara(){
+  for(const p of G.peces)p.v=voresDe(p.c,p.f,G.V,G.cols,G.files);
+  L.escala=0;mesura();
+}
+const clauPartida=()=>mode==='dia'?'trencaclosques-'+G.dia:'trencaclosques-foto';
+function desaPartida(){
+  if(!G)return;
+  // de cada peça, nomes on es (u, w: en proporcio del marc); les vores i el
+  // dibuix es tornen a fer en obrir-la
+  desa(clauPartida(),{...G,V:undefined,peces:G.peces.map(p=>({c:p.c,f:p.f,e:p.e,u:p.u,w:p.w}))});
+}
+function recupera(clau){
+  const s=llegeix(clau,null);if(!s||s.v!==1)return null;
+  s.V=fesVores(s.cols,s.files,s.llavor);s.peces.forEach(q=>{q.e=q.e||'s'});return s;
+}
+
+// ===== EL MENU =====
+function menu(){
+  aturaDrag();
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=recupera('trencaclosques-'+dia),f=recupera('trencaclosques-foto'),teFoto=f&&!f.fi&&llegeix('trencaclosques-foto-img',null);
+  const bt=(id,t,c,b,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#9a8a6a;margin-top:2px">'+sub+'</small>':'');
+  msg('<div style="color:#e8c27a;letter-spacing:.12em">EL TRENCACLOSQUES</div>'+
+    '<small>Arrossega cada peça de la safata al seu lloc: quan hi és a prop, hi encaixa sola.</small>'+
+    (d&&d.fi?bt('m-dia','☀ EL D\'AVUI: FET EN '+mmss(d.temps),'color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+numero+' · demà n\'hi haurà un altre')
+      :bt('m-dia',d&&d.comencat?'☀ CONTINUA EL D\'AVUI':'☀ EL D\'AVUI ▸','color:#1a1200;background:#e8c27a','#'+numero+' · '+nomDia(dia)+' · '+COLS_DIA*FILES_DIA+' peces · igual per a tothom'))+
+    (teFoto?bt('m-cont','📷 CONTINUA LA TEVA FOTO','color:#e8dcc4;background:#2a2016;border:1px solid #6a5a3a',f.cols*f.files+' peces · '+mmss(f.temps)):'')+
+    bt('m-foto','📷 AMB UNA FOTO TEVA','color:#e8dcc4;background:#2a2016;border:1px solid #6a5a3a','la foto no surt del mòbil: es talla aquí mateix')+
+    '<small style="color:#776a52;margin-top:12px">La del dia compta per a la taula; les teves fotos, no.</small>');
+  enllac('m-dia',()=>{if(d&&d.fi){G=d;mode='dia';IMG=paisatge(d.n);prepara();finalPartida()}else obreDia()});
+  enllac('m-cont',continuaFoto);
+  enllac('m-foto',()=>$('fitxer').click());
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  IMG=paisatge(numero);
+  G=recupera('trencaclosques-'+dia)||novaPartida('dia',COLS_DIA,FILES_DIA,'TRENCA-'+numero);
+  G.comencat=true;hideMsg();prepara();desaPartida();pintaLider();
+  if(G.fi)finalPartida();
+}
+// ===== LES TEVES FOTOS =====
+// Es llegeix del mobil i es redueix (1.200 px pel costat llarg); es desa
+// reduida a localStorage per poder continuar. No s'envia enlloc.
+const $=id=>document.getElementById(id);
+$('fitxer').addEventListener('change',()=>{
+  const fl=$('fitxer').files&&$('fitxer').files[0];if(!fl)return;
+  const im=new Image(),url=URL.createObjectURL(fl);
+  im.onload=()=>{URL.revokeObjectURL(url);
+    const k=Math.min(1,1200/Math.max(im.naturalWidth,im.naturalHeight));
+    // ni massa llarga ni massa ampla: es retalla pel mig fins a 2 per 1
+    let sw=im.naturalWidth,sh=im.naturalHeight,sx=0,sy=0;
+    if(sw/sh>2){sx=(sw-sh*2)/2;sw=sh*2}else if(sh/sw>2){sy=(sh-sw*2)/2;sh=sw*2}
+    const cv=document.createElement('canvas');cv.width=Math.round(sw*k);cv.height=Math.round(sh*k);
+    cv.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,cv.width,cv.height);
+    $('fitxer').value='';triaPeces(cv)};
+  im.onerror=()=>{URL.revokeObjectURL(url);msg('<div style="color:#ffb3a8">No l\'he pogut obrir</div><small>Prova amb una altra foto.</small><a href="#" class="bt" id="m-tornar" style="color:#1a1200;background:#e8c27a">D\'ACORD</a>');enllac('m-tornar',menu)};
+  im.src=url;
+});
+// quantes peces: es reparteixen perque surtin com mes quadrades millor
+function graella(n,ar){let cols=Math.max(2,Math.round(Math.sqrt(n*ar)));let files=Math.max(2,Math.round(n/cols));return [cols,files]}
+function triaPeces(cv){
+  const ar=cv.width/cv.height,op=[12,24,48,80];
+  msg('<div style="color:#e8c27a">QUANTES PECES?</div><img src="'+cv.toDataURL('image/jpeg',.7)+'" alt="la teva foto">'+
+    '<div class="quantes">'+op.map((n,k)=>{const [c,f]=graella(n,ar);return '<a href="#" data-c="'+c+'" data-f="'+f+'">'+c*f+'<small>'+['fàcil','normal','difícil','per a tota la tarda'][k]+'</small></a>'}).join('')+'</div>'+
+    '<a href="#" id="m-tornar" style="display:block;margin-top:12px;font:12px monospace;color:#b9a888">torna al menú</a>');
+  document.querySelectorAll('#msg .quantes a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();
+    comencaFoto(cv,+a.dataset.c,+a.dataset.f)}));
+  enllac('m-tornar',menu);
+}
+function comencaFoto(cv,cols,files){
+  mode='foto';IMG=cv;dia=diaAvui();numero=numeroDe(dia);
+  if(!desa('trencaclosques-foto-img',cv.toDataURL('image/jpeg',.85)))try{localStorage.removeItem('trencaclosques-foto-img')}catch(e){}
+  G=novaPartida('foto',cols,files,'FOTO-'+Date.now()+'-'+Math.random());G.comencat=true;
+  hideMsg();prepara();desaPartida();pintaLider();
+}
+function continuaFoto(){
+  const s=recupera('trencaclosques-foto'),src=llegeix('trencaclosques-foto-img',null);if(!s||!src){menu();return}
+  const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext('2d').drawImage(im,0,0);
+    mode='foto';IMG=cv;G=s;hideMsg();prepara();pintaLider()};im.src=src;
+}
+
+// ===== LA DISPOSICIO =====
+const CV=$('c'),X=CV.getContext('2d');
+function mesura(){
+  const s=$('screen'),W=s.clientWidth,H=s.clientHeight,dpr=Math.min(2,devicePixelRatio||1);
+  CV.width=Math.round(W*dpr);CV.height=Math.round(H*dpr);L.W=W;L.H=H;L.dpr=dpr;
+  // la safata, a sota; el marc, tan gran com hi capiga a sobre
+  L.sh=Math.round(Math.max(64,Math.min(130,H*.21)));L.sy=H-L.sh;
+  if(!G||!IMG){brut=true;dibuixa();return}
+  const ar=IMG.width/IMG.height,aw=W*.94,ah=L.sy-10;
+  let fw=aw,fh=fw/ar;if(fh>ah){fh=ah;fw=fh*ar}
+  L.fw=fw;L.fh=fh;L.fx=(W-fw)/2;L.fy=Math.max(4,(L.sy-fh)/2);
+  L.pw=fw/G.cols;L.ph=fh/G.files;L.t=Math.min(L.pw,L.ph)*.26;
+  // a la safata: caselles quadrades, amb les fletxes per passar pagina; si hi
+  // ha lloc, dues fileres (amb una, de tres en tres, 35 peces eren 12 pagines)
+  L.fl=26;L.filesS=L.sh-8>=100?2:1;L.slot=Math.floor((L.sh-8)/L.filesS)-6;
+  L.perFila=Math.max(1,Math.floor((W-2*L.fl-8)/(L.slot+6)));L.porPag=L.perFila*L.filesS;
+  if(Math.abs(L.escala-L.pw)>.5){L.escala=L.pw;renderPeces()}
+  if(L.pag==null)L.pag=0;
+  brut=true;dibuixa();
+}
+addEventListener('resize',mesura);
+// cada peça es pinta un sol cop en un llenç a part (amb el tros de foto i la
+// vora) i despres nomes s'enganxa: amb 80 peces, sense aixo, arrossegar-ne
+// una anava a batzegades
+function renderPeces(){
+  const {pw,ph,t,dpr}=L,k=L.fw/IMG.width;
+  for(const p of G.peces){
+    const cv=document.createElement('canvas');cv.width=Math.ceil((pw+2*t)*dpr);cv.height=Math.ceil((ph+2*t)*dpr);
+    const x=cv.getContext('2d');x.scale(dpr,dpr);
+    cami(x,p,t,t,pw,ph);x.save();x.clip();
+    x.drawImage(IMG,(p.c*pw-t)/k,(p.f*ph-t)/k,(pw+2*t)/k,(ph+2*t)/k,0,0,pw+2*t,ph+2*t);
+    x.restore();
+    x.lineWidth=1.6;x.strokeStyle='rgba(0,0,0,.5)';x.stroke();
+    x.save();x.translate(-.8,-.8);cami(x,p,t,t,pw,ph);x.lineWidth=1;x.strokeStyle='rgba(255,255,255,.35)';x.stroke();x.restore();
+    p.cv=cv;
+  }
+}
+const casa=p=>[L.fx+p.c*L.pw,L.fy+p.f*L.ph];
+const posDe=p=>[L.fx+p.u*L.fw,L.fy+p.w*L.fh];
+function slotRect(k){k%=L.porPag;const col=k%L.perFila,fila=Math.floor(k/L.perFila);
+  const x0=L.fl+4+col*(L.slot+6)+((L.W-2*L.fl-8)-L.perFila*(L.slot+6)+6)/2;return [x0,L.sy+6+fila*(L.slot+6),L.slot,L.slot]}
+const pagines=()=>Math.max(1,Math.ceil(G.safata.length/L.porPag));
+
+// ===== EL DIBUIX =====
+function dibuixa(){
+  if(!brut)return;brut=false;
+  const {W,H,dpr}=L;X.setTransform(dpr,0,0,dpr,0,0);
+  // la taula, de fusta
+  X.fillStyle='#3a2a1c';X.fillRect(0,0,W,H);
+  if(!G||!IMG)return;
+  if(paused){X.fillStyle='#e8dcc4';X.font='bold 22px monospace';X.textAlign='center';X.fillText('PAUSA',W/2,H/2);return}
+  // el marc
+  X.fillStyle='#24190f';X.fillRect(L.fx,L.fy,L.fw,L.fh);
+  X.strokeStyle='#6a5a3a';X.lineWidth=2;X.strokeRect(L.fx-1,L.fy-1,L.fw+2,L.fh+2);
+  if(model||G.fi){X.globalAlpha=G.fi?1:.32;X.drawImage(IMG,L.fx,L.fy,L.fw,L.fh);X.globalAlpha=1}
+  const {t,pw,ph}=L,pinta=(p,x,y,s=1)=>X.drawImage(p.cv,x-t*s,y-t*s,(pw+2*t)*s,(ph+2*t)*s);
+  // les encaixades, i despres les que son per la taula (l'ultima tocada, a sobre)
+  if(!G.fi)for(const p of G.peces)if(p.e==='l'){const [x,y]=casa(p);pinta(p,x,y)}
+  for(const i of G.z){const p=G.peces[i];if(p.e==='t'&&p!==drag?.p){const [x,y]=posDe(p);pinta(p,x,y)}}
+  // la safata
+  X.fillStyle='#24190f';X.fillRect(0,L.sy,W,L.sh);X.fillStyle='#6a5a3a';X.fillRect(0,L.sy,W,2);
+  const pag=Math.min(L.pag,pagines()-1),tros=G.safata.slice(pag*L.porPag,(pag+1)*L.porPag);
+  tros.forEach((i,k)=>{const p=G.peces[i],[x,y,s]=slotRect(k),esc=s/(Math.max(pw,ph)+2*t);
+    pinta(p,x+(s-pw*esc)/2,y+(s-ph*esc)/2,esc)});
+  // les fletxes, nomes si hi ha mes d'una pagina
+  if(pagines()>1){X.fillStyle='#e8c27a';X.font='bold 22px monospace';X.textAlign='center';X.textBaseline='middle';
+    X.globalAlpha=pag>0?1:.25;X.fillText('◀',L.fl/2+2,L.sy+L.sh/2);X.globalAlpha=pag<pagines()-1?1:.25;X.fillText('▶',W-L.fl/2-2,L.sy+L.sh/2);X.globalAlpha=1;
+    X.font='10px monospace';X.fillStyle='#9a8a6a';X.fillText((pag+1)+'/'+pagines(),L.fl/2+2,L.sy+L.sh/2+20)}
+  if(!G.safata.length&&!G.fi){X.fillStyle='#776a52';X.font='12px monospace';X.textAlign='center';X.textBaseline='middle';X.fillText('la safata és buida',W/2,L.sy+L.sh/2)}
+  // la que portes, a sobre de tot i amb ombra
+  if(drag){X.save();X.shadowColor='rgba(0,0,0,.55)';X.shadowBlur=12;X.shadowOffsetY=6;pinta(drag.p,drag.x,drag.y);X.restore()}
+  pintaEstat();
+}
+function pintaEstat(){
+  if(!G)return;
+  const fetes=G.peces.filter(p=>p.e==='l').length;
+  $('peces').textContent=fetes+' de '+G.peces.length;
+  if(!avisant)$('que').textContent=G.fi?'Fet!':mode==='dia'?'El d\'avui, #'+G.n:'La teva foto';
+  $('model').classList.toggle('on',model);
+}
+let avisT=null,avisant=false;
+function avisa(t){$('que').textContent=t;avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaEstat()},1800)}
+
+// ===== EL DIT =====
+function punt(ev){const r=CV.getBoundingClientRect();return [ev.clientX-r.left,ev.clientY-r.top]}
+const jugant=()=>G&&!G.fi&&!paused&&$('msg').style.display!=='block';
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const [x,y]=punt(ev);
+  if(y>=L.sy){
+    // fletxes de la safata
+    if(x<L.fl+4){if(L.pag>0){L.pag--;brut=true;sndDeixa()}return}
+    if(x>L.W-L.fl-4){if(L.pag<pagines()-1){L.pag++;brut=true;sndDeixa()}return}
+    const pag=Math.min(L.pag,pagines()-1),tros=G.safata.slice(pag*L.porPag,(pag+1)*L.porPag);
+    for(let k=0;k<tros.length;k++){const [sx,sy,s]=slotRect(k);if(x>=sx-3&&x<=sx+s+3&&y>=sy-3&&y<=sy+s+3){
+      const i=tros[k],p=G.peces[i];G.safata.splice(G.safata.indexOf(i),1);
+      // la peça surt amb el centre una mica per sobre del dit, que es vegi
+      drag={p,i,dx:L.pw/2,dy:L.ph/2+L.ph*.45,x:x-L.pw/2,y:y-L.ph/2-L.ph*.45,de:'s'};
+      CV.setPointerCapture(ev.pointerId);sndAgafa();brut=true;return}}
+    return;
+  }
+  // una que ja es per la taula: la de mes amunt
+  for(let k=G.z.length-1;k>=0;k--){const i=G.z[k],p=G.peces[i];if(p.e!=='t')continue;const [px,py]=posDe(p),m=L.t*.6;
+    if(x>=px-m&&x<=px+L.pw+m&&y>=py-m&&y<=py+L.ph+m){drag={p,i,dx:x-px,dy:y-py,x:px,y:py,de:'t'};
+      G.z.splice(k,1);CV.setPointerCapture(ev.pointerId);sndAgafa();brut=true;return}}
+});
+CV.addEventListener('pointermove',ev=>{if(!drag)return;const [x,y]=punt(ev);drag.x=x-drag.dx;drag.y=y-drag.dy;brut=true});
+CV.addEventListener('pointerup',deixa);
+CV.addEventListener('pointercancel',deixa);
+function deixa(){
+  if(!drag)return;const {p,i}=drag;
+  const cx=drag.x+L.pw/2,cy=drag.y+L.ph/2,[hx,hy]=casa(p);
+  if(cy>L.sy){
+    // a la safata: hi torna, a la pagina que es veu
+    p.e='s';G.safata.splice(Math.min(G.safata.length,L.pag*L.porPag),0,i);sndDeixa();
+  }else if(Math.hypot(drag.x-hx,drag.y-hy)<Math.min(L.pw,L.ph)*.32){
+    p.e='l';sndEncaixa();
+  }else{
+    // per la taula, sense sortir de la pantalla ni ficar-se a la safata
+    const x=Math.max(-L.pw*.3,Math.min(L.W-L.pw*.7,drag.x)),y=Math.max(-L.ph*.3,Math.min(L.sy-L.ph*.6,drag.y));
+    p.e='t';p.u=(x-L.fx)/L.fw;p.w=(y-L.fy)/L.fh;G.z.push(i);sndDeixa();
+  }
+  drag=null;brut=true;
+  // si la pagina s'ha quedat buida, se'n va a l'anterior
+  L.pag=Math.min(L.pag,pagines()-1);
+  desaPartida();
+  if(G.peces.every(q=>q.e==='l'))acaba();
+}
+function aturaDrag(){if(drag&&G){drag.p.e='s';G.safata.unshift(drag.i);drag=null;brut=true}}
+
+// ===== EL FINAL =====
+function acaba(){
+  G.fi=true;G.nou=mode==='dia';model=false;brut=true;desaPartida();sndFi();
+  setTimeout(finalPartida,900);
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!G||!G.fi){msg('<div style="color:#e8c27a">EL TRENCACLOSQUES</div><small>encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));return}
+    const n=G.peces.length,pt=puntsDe(G.temps),dia2=G.dia;
+    let t='<div style="color:#7dff9b">FET!</div>'+
+      '<div style="font-size:32px;font-weight:bold">'+mmss(G.temps)+'</div>'+
+      '<small style="color:#c9b28a">'+n+' peces'+(mode==='dia'?' · el d\'avui, #'+G.n:' · la teva foto')+'</small>';
+    if(mode==='dia'){
+      const tx='El Trencaclosques #'+G.n+' · '+n+' peces en '+mmss(G.temps),enl=location.href.split('#')[0];
+      t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+        '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'+
+        '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    }else t+='<small style="color:#a08860">les teves fotos no compten per a cap taula</small>';
+    t+='<a href="#" class="bt" id="f-foto" style="color:#e8dcc4;background:#2a2016;border:1px solid #6a5a3a">📷 UN ALTRE AMB UNA FOTO</a>'+
+      '<a href="#" id="f-menu" style="display:block;margin-top:12px;font:12px monospace;color:#b9a888">torna al menú del joc</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà un altre':'o toca per tancar'));
+    enllac('f-foto',()=>$('fitxer').click());enllac('f-menu',menu);
+    if(mode==='dia'){
+      // nomes compta el primer cop que l'acabes (i el Worker, la primera de cada inicials)
+      let r={html:'',posicio:0};
+      if(G.nou){r=await Records.fiPartida(taulaDia(dia2),pt);G.nou=false;desaPartida()}
+      else r.html=Records.taulaHTML(await Records.llista(taulaDia(dia2)),null,taulaDia(dia2));
+      const el=document.getElementById('taula');
+      if(el)el.innerHTML='<div style="color:#e8c27a;font-size:13px;margin-top:8px">☀ EL D\'AVUI</div>'+r.html+
+        (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES EL D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+      refrescaLiders();
+    }
+  }finally{enFinal=false}
+}
+function msg(t){const m=document.getElementById('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){document.getElementById('msg').style.display='none'}
+let lider=null;
+function pintaLider(){
+  $('lider').textContent=mode==='foto'?'📷 LA TEVA FOTO · no compta per a la taula':'☀ EL D\'AVUI: '+(lider?lider.n+' en '+mmss(MAX_SEGONS-lider.p):'ningú encara');
+  Records.marcador(taulaDia(diaAvui()),$('best'),0);
+}
+async function refrescaLiders(){try{lider=await Records.lider(taulaDia(diaAvui()))}catch(e){}pintaLider()}
+
+// ===== EL RELLOTGE =====
+// Corre mentre jugues: no amb el menu obert, ni en pausa, ni si surts de l'app.
+let last=performance.now(),desatT=0,segAnt=-1;
+function loop(t){
+  const dt=Math.min(.25,(t-last)/1000);last=t;
+  if(jugant()&&!document.hidden){G.temps+=dt;desatT+=dt;if(desatT>2){desatT=0;desaPartida()}}
+  if(G&&Math.floor(G.temps)!==segAnt){segAnt=Math.floor(G.temps);$('score').textContent=mmss(G.temps)}
+  dibuixa();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function posaPausa(v){paused=v;brut=true;if(paused)desaPartida()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){desaPartida();if(jugant())posaPausa(true)}});
+addEventListener('pagehide',desaPartida);
+
+// ===== ELS BOTONS =====
+function boto(el,fn){el.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}fn()})}
+// el model: la imatge, clareta, dins del marc (com la foto de la capsa)
+boto($('model'),()=>{sndAgafa();if(!G||G.fi)return;model=!model;brut=true;pintaEstat()});
+// les de vora (i les cantonades) passen al davant de la safata
+boto($('vores'),()=>{sndAgafa();if(!jugant())return;const vora=i=>{const p=G.peces[i];return p.c===0||p.f===0||p.c===G.cols-1||p.f===G.files-1};
+  const n=G.safata.filter(vora).length;
+  if(!n){avisa('Ja no queden peces de vora');return}
+  G.safata=[...G.safata.filter(vora),...G.safata.filter(i=>!vora(i))];L.pag=0;brut=true;desaPartida();avisa(n===1?'Queda 1 peça de vora':'Les '+n+' de vora, al davant')});
+boto($('menu'),()=>{sndDeixa();desaPartida();menu()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}});
+document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&G&&G.fi)hideMsg()});
+
+mesura();
+refrescaLiders();
+menu();
+
+// En entrar al joc, els records d'avui uns segons, com les maquines de debo.
+Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false;brut=true},
+  [['☀ EL D\'AVUI (temps)',taulaDia(diaAvui())]]);
+</script>
+</body>
+</html>

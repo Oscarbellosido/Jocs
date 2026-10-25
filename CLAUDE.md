@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i catorze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i quinze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I catorze que no són de saló
+### I quinze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -58,6 +58,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `abecedari.html` | L'Abecedari (de l'estil del *Rosco* del *Pasapalabra*) | 2026 |
 | `conquesta.html` | La Conquesta (de l'estil del *Risk*, amb les comarques) | 2026 |
 | `colles.html` | Les Quatre Colles (de l'estil del *Connections*) | 2026 |
+| `trencaclosques.html` | El Trencaclosques (el de tota la vida, també amb les teves fotos) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -877,6 +878,58 @@ que es jugui tocant: encertar, el «gairebé», no pagar dues vegades el mateix
 intent, desar i continuar, guanyar, perdre, l'arxiu, les dues taules i que
 la paraula més llarga hi càpiga a 320 px.
 
+## El Trencaclosques: el del dia i el de les teves fotos
+
+En Carles va demanar poder pujar una foto i que el joc en fes un
+trencaclosques. N'hi ha dos:
+
+- **El d'avui**: un paisatge que **es pinta sol** a partir del número del
+  dia (`paisatge(n)`: cel de quatre hores diferents, globus, ocells,
+  muntanyes, a vegades una serra com Montserrat i un llac, camps, un poble
+  amb campanar, arbres, un camí i flors). És igual per a tothom, té 35 peces
+  (5 × 7, quadrades) i va a la taula del dia. El #1 és el del 25 d'octubre
+  del 2026. Ha de tenir moltes coses diferents: amb un cel llis, la meitat de
+  les peces serien iguals i seria una loteria.
+- **Amb una foto teva**: es tria de la galeria o es fa amb la càmera (un
+  `<input type=file>`). **La foto no surt mai del mòbil**: es llegeix, es
+  redueix a 1.200 px i es talla allà mateix; per poder continuar, es desa
+  reduïda a `localStorage` (`trencaclosques-foto-img`). Es tria de 12 a 80
+  peces, repartides perquè surtin com més quadrades millor (`graella`), i
+  si és més llarga que 2 per 1 es retalla pel mig. No compta per a res.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Peces de debò, amb pestanyes** (`fesVores`, `voresDe`, `cami`): cada
+  vora de dins té una pestanya que surt d'una peça i entra a l'altra, amb un
+  petit desplaçament (`d`) perquè no totes siguin iguals; la veïna la té al
+  revés (`-s`, `-d`). La prova comprova que totes encaixin.
+- **La peça encaixa sola** quan la deixes a menys d'un terç de peça del seu
+  lloc, i ja no es mou. Si la deixes lluny, es queda per la taula (i es pot
+  tornar a moure); si la deixes sobre la safata, hi torna.
+- **La safata és a sota**, amb pàgines (◀ ▶) i, si hi ha lloc, dues fileres:
+  amb una sola i de tres en tres, 35 peces eren 12 pàgines. **VORES PRIMER**
+  posa les de la vora al davant, que és per on comença tothom. **MODEL**
+  ensenya la imatge clareta dins del marc, com la foto de la capsa.
+- **La peça que treus de la safata surt una mica per sobre del dit**, que si
+  no el dit la tapa i no veus on la poses.
+- **Cada peça es pinta un sol cop** en un llenç a part i després només
+  s'enganxa (com les fruites del Síndria): amb 80 peces, retallar-les a cada
+  fotograma anava a batzegades.
+- **La taula diu el temps, no punts.** La puntuació que es desa és 3.600
+  menys els segons (com més de pressa, més punts), però a la taula, al
+  marcador i al missatge del bot surt «3:12». Per això el `records.js` té
+  `Records.formata(prefix, fn)`: el joc hi apunta com s'ha d'escriure la seva
+  taula, i `taulaHTML` i el marcador ho fan servir. Al Worker, `temps()`.
+- **El rellotge només corre mentre jugues**: no amb el menú obert, ni en
+  pausa, ni si surts de l'app. Es desa cada dos segons i a cada peça.
+
+El `scripts/prova-trencaclosques.mjs` mira que el paisatge surti igual per a
+tothom, que totes les peces encaixin amb les veïnes, i que es jugui amb el
+dit de debò (arrossegant): treure de la safata, encaixar, deixar per la
+taula i tornar a moure, tornar a la safata, les vores, el model, desar i
+continuar, acabar-lo (i que la taula digui el temps), i fer-ne un amb una
+foto, que no s'apunta enlloc.
+
 ## El Temple: aventura per caselles
 
 En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
@@ -1443,6 +1496,9 @@ comproven el comportament.
 - `node scripts/prova-colles.mjs` — que les partides de Les Quatre Colles
   estiguin ben fetes, que la del dia sigui igual per a tothom, i que es
   jugui tocant, amb errors, desar, guanyar, perdre, l'arxiu i les taules.
+- `node scripts/prova-trencaclosques.mjs` — que el paisatge del dia sigui
+  igual per a tothom, que les peces encaixin, i que es jugui arrossegant amb
+  el dit: safata, taula, vores, desar, acabar-lo i fer-ne un amb una foto.
 - `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
   els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,
