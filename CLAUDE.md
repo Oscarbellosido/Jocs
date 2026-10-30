@@ -890,6 +890,16 @@ trencaclosques. N'hi ha dos:
   (5 × 7, quadrades) i va a la taula del dia. El #1 és el del 25 d'octubre
   del 2026. Ha de tenir moltes coses diferents: amb un cel llis, la meitat de
   les peces serien iguals i seria una loteria.
+  **Cada dia, una escena diferent** (`escenaDe(n)`): el poble, la cala (mar,
+  far, barques, platja), l'alta muntanya (cims nevats, avets, refugi, ninot
+  de neu), el castell i les vinyes (amb una barraca de pedra seca), el bosc
+  a la tardor (riu, pont de pedra, ermita, bolets) i la masia amb els
+  gira-sols. Van per tandes de sis barrejades amb la seva llavor, i **mai no
+  surt la mateixa dos dies seguits**. Al principi tots eren el poble i només
+  canviaven els colors i el lloc de les coses: en Carles es pensava que li
+  tornava a sortir el d'ahir. Els sis primers (#1 a #6) es van quedar com
+  eren, que el #6 ja s'estava jugant. El nom de l'escena surt al menú i a
+  dalt del joc.
 - **Amb una foto teva**: es tria de la galeria o es fa amb la càmera (un
   `<input type=file>`). **La foto no surt mai del mòbil**: es llegeix, es
   redueix a 1.200 px i es talla allà mateix; per poder continuar, es desa
@@ -1497,7 +1507,8 @@ comproven el comportament.
   estiguin ben fetes, que la del dia sigui igual per a tothom, i que es
   jugui tocant, amb errors, desar, guanyar, perdre, l'arxiu i les taules.
 - `node scripts/prova-trencaclosques.mjs` — que el paisatge del dia sigui
-  igual per a tothom, que les peces encaixin, i que es jugui arrossegant amb
+  igual per a tothom, que mai no surti la mateixa escena dos dies seguits,
+  que les peces encaixin, i que es jugui arrossegant amb
   el dit: safata, taula, vores, desar, acabar-lo i fer-ne un amb una foto.
 - `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i

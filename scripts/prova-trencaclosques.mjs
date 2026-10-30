@@ -65,6 +65,15 @@ const d = await p.evaluate(() => {
   return { igual: suma(5) === suma(5), diferent: suma(5) !== suma(6), n: G0.peces.length, mal };
 });
 diu(d.igual && d.diferent, 'el paisatge del dia surt igual per a tothom, i l\'endemà és un altre');
+// cada dia una escena: els sis primers eren tots el poble, i semblava el mateix
+const esc = await p.evaluate(() => {
+  const es = []; for (let n = 1; n <= 400; n++) es.push(escenaDe(n));
+  let seguides = 0; for (let n = 7; n <= 400; n++) if (es[n - 1] === es[n - 2]) seguides++;
+  let tandes = 0; for (let n = 7; n + 5 <= 400; n += 6) if (new Set(es.slice(n - 1, n + 5)).size === ESCENES.length) tandes++;
+  let errors = 0; for (let n = 7; n <= 30; n++) try { paisatge(n); } catch (er) { errors++; }
+  return { seguides, tandes, totes: Math.floor((400 - 6) / 6), primers: es.slice(0, 6).every(x => x === 'poble'), errors };
+});
+diu(esc.seguides === 0 && esc.tandes === esc.totes && esc.primers && esc.errors === 0, `a partir del #7, mai la mateixa escena dos dies seguits i, cada sis dies, totes sis (seguides: ${esc.seguides}, errors: ${esc.errors})`);
 diu(d.n === 35 && d.mal === 0, `el del dia té ${d.n} peces; les vores de fora són planes i cada pestanya té el seu forat a la del costat`);
 
 // ---------- 2. jugar amb el dit ----------
