@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Botifarra</title>
+<style>
+html,body{margin:0;height:100%;background:#10241a;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#b8d0a8;padding:2px 0;white-space:nowrap;overflow:hidden;max-width:96%}
+#estat{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#e8f0dc;padding:3px 0 5px;gap:8px;min-height:2.4em;box-sizing:border-box}
+#que{line-height:1.25}
+#trumfo{white-space:nowrap;color:#e8d8a0;text-align:right;line-height:1.25}
+#trumfo img{width:16px;height:16px;vertical-align:-3px;margin-right:3px}
+#screen{flex:1 1 auto;min-height:0;width:100%;position:relative}
+#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#panell{position:absolute;left:50%;transform:translateX(-50%);width:min(92%,340px);display:none;background:rgba(10,22,15,.95);border:1px solid #5a7a4a;border-radius:10px;padding:10px;box-sizing:border-box;text-align:center;z-index:3}
+#panell .t{font-size:14px;color:#e8d8a0;margin-bottom:6px;line-height:1.3}
+#panell .t small{display:block;font-size:11px;color:#a8c098;margin-top:3px}
+#panell .g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#panell a{display:flex;align-items:center;justify-content:center;gap:6px;font:bold 14px monospace;text-decoration:none;color:#1a1a10;background:#efe6cc;border-radius:8px;height:40px;-webkit-user-select:none;user-select:none}
+#panell a img{width:22px;height:22px}
+#panell a.ample{grid-column:1/-1}
+#panell a.fluix{background:#1d2a1d;color:#c8d8b8;border:1px solid #5a7a4a;font-size:13px}
+#panell a.fort{background:#e0503c;color:#fff}
+#controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:94%}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#controls button{flex:1 1 0;color:#c8d8b8;border-color:#4a6a3a;background:#14261a}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.45;display:none;background:rgba(8,16,11,.97);border:1px solid #4a6a3a;border-radius:10px;padding:14px 16px;width:90%;max-width:400px;max-height:92%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:270px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg .comp{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+#msg .comp td{padding:3px 4px;border-bottom:1px solid #263a2a}
+#msg .comp td:last-child{text-align:right}
+#msg .pag{text-align:left;font-size:14px;line-height:1.5}
+#msg .pag p{margin:6px 0}
+#msg .pag img{height:42px;vertical-align:middle;margin:1px}
+#msg .nav{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:#8aa080}
+#msg .nav a{font:bold 14px monospace;color:#1a1a10;background:#e8d8a0;text-decoration:none;border-radius:8px;padding:9px 14px}
+#msg .nav a.no{visibility:hidden}
+#msg .basa img{height:72px;margin:3px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>NOS <b id="score">0</b></span><span>ELLS <b id="ells">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="estat"><span id="que"></span><span id="trumfo"></span></div>
+  <div id="screen"><canvas id="c"></canvas><div id="panell"></div></div>
+  <div id="controls"><button id="b-ultima">ÚLTIMA BASA</button><button id="b-regles">COM ES JUGA</button><button id="b-menu">MENÚ</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Fes més de 36 punts amb el company (a dalt) a cada mà; guanya la parella que arriba a 101.</b> toca una carta i torna-la a tocar per tirar-la · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+const JOC='botifarra';
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+    MG=AC.createGain();MG.gain.value=.12;MG.connect(AC.destination)}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type="sine",vol=.3,slide=0){
+  if(!AC)return;
+  const o=AC.createOscillator(),g=AC.createGain(),now=AC.currentTime;
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  if(slide)o.frequency.linearRampToValueAtTime(Math.max(20,freq+slide),now+dur);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(vol,now+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(MG);o.start(now);o.stop(now+dur+.02);
+}
+function sndToc(){aInit();tone(620,.04,"triangle",.1)}
+function sndCarta(){tone(260,.05,"triangle",.12,-60);tone(1800,.02,"square",.015)}
+function sndNo(){aInit();tone(170,.12,"square",.1,-40)}
+function sndBasa(nostra){if(nostra)[523,659].forEach((f,i)=>setTimeout(()=>tone(f,.1,"triangle",.14),i*70));else tone(300,.12,"triangle",.1,-60)}
+function sndDiu(){tone(440,.08,"sine",.12,80)}
+function sndBe(){aInit();[523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.16,"triangle",.22),i*90))}
+function sndMal(){aInit();tone(220,.35,"sawtooth",.15,-80)}
+function sndFi(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.22,"triangle",.24),i*110))}
+
+// ===== ATZAR AMB LLAVOR =====
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ==REGLES==
+// Les cartes van del 0 al 47: pal*12 + (numero-1). Numeros de l'1 al 12:
+// el 10 es la sota, l'11 el cavall i el 12 el rei.
+const PALS=['oros','copes','espases','bastos'];
+const BOTI=4;                       // el trumfo: 0-3 un pal, 4 botifarra (sense trumfo)
+const FORCA={9:12,1:11,12:10,11:9,10:8,8:7,7:6,6:5,5:4,4:3,3:2,2:1};
+const VALOR={9:5,1:4,12:3,11:2,10:1};
+const pal=c=>Math.floor(c/12),num=c=>c%12+1;
+const forca=c=>FORCA[num(c)],punts=c=>VALOR[num(c)]||0;
+const delPal=s=>Array.from({length:12},(_,k)=>s*12+k);
+function reparteix(llavor){
+  const b=barreja(mulberry(hashText(llavor)),Array.from({length:48},(_,i)=>i));
+  return [0,1,2,3].map(j=>b.slice(j*12,j*12+12));
+}
+// La carta a guanya la b? (led: el pal de sortida, tr: el trumfo)
+function mata(a,b,tr){
+  const ta=tr<4&&pal(a)===tr,tb=tr<4&&pal(b)===tr;
+  if(ta!==tb)return ta;
+  return pal(a)===pal(b)&&forca(a)>forca(b);
+}
+// qui guanya la basa: la posicio dins de la basa
+function guanyadora(basa,tr){let m=0;for(let i=1;i<basa.length;i++)if(mata(basa[i].c,basa[m].c,tr))m=i;return m}
+// Les obligacions: seguir el pal; matar si es pot, menys si guanya el
+// company; sense el pal, fallar (tirar trumfo), i sobrefallar si un rival ja
+// ha fallat. Si no pots sobrefallar, o si guanya el company, tires el que vols.
+function legals(ma,basa,j,tr){
+  if(!basa.length)return ma.slice();
+  const led=pal(basa[0].c),w=basa[guanyadora(basa,tr)],comp=w.j===(j+2)%4;
+  const del=ma.filter(c=>pal(c)===led);
+  if(del.length){
+    if(comp)return del;
+    const m=del.filter(c=>mata(c,w.c,tr));return m.length?m:del;
+  }
+  if(comp||tr===BOTI)return ma.slice();
+  const m=ma.filter(c=>pal(c)===tr&&mata(c,w.c,tr));
+  return m.length?m:ma.slice();
+}
+// Per que no es pot tirar aquesta carta, en paraules
+function perQue(ma,basa,j,tr,c){
+  const led=pal(basa[0].c),w=basa[guanyadora(basa,tr)];
+  if(ma.some(x=>pal(x)===led))return pal(c)!==led?'Has de tirar '+PALS[led]+': en tens.':'Has de matar: tens '+PALS[led]+' que guanya la basa.';
+  return pal(w.c)===tr&&tr!==led?'Has de sobrefallar: tens un trumfo més alt.':'No tens '+PALS[led]+': has de fallar (tirar trumfo).';
+}
+// ----- la partida -----
+function novaMa(G){
+  G.mans=reparteix(G.llavor+'-'+G.ma);G.donador=(G.donador0+G.ma)%4;
+  G.trumfo=null;G.triador=null;G.delegat=false;G.contro=1;G.fase='tria';G.torn=G.donador;
+  G.basa=[];G.jugades=[];G.bases=[0,0];G.puntsMa=[0,0];G.cobrades=[[],[]];G.buits=[0,1,2,3].map(()=>[0,0,0,0,0]);G.ultima=null;
+}
+function multiplicador(G){return (G.trumfo===BOTI?2:1)*G.contro}
+// tira la carta c el jugador j; torna la basa acabada (o null)
+function tira(G,j,c){
+  const basa=G.basa,tr=G.trumfo;
+  if(basa.length){
+    const led=pal(basa[0].c),w=basa[guanyadora(basa,tr)],comp=w.j===(j+2)%4;
+    if(pal(c)!==led){G.buits[j][led]=1;
+      // si no ha fallat quan li tocava, tampoc no te trumfos
+      if(tr<4&&pal(c)!==tr&&!comp&&pal(w.c)!==tr)G.buits[j][tr]=1}
+  }
+  G.mans[j].splice(G.mans[j].indexOf(c),1);basa.push({j,c});G.jugades.push(c);
+  if(basa.length<4){G.torn=(j+1)%4;return null}
+  const g=basa[guanyadora(basa,tr)].j,eq=g%2;
+  G.bases[eq]++;G.puntsMa[eq]+=1+basa.reduce((s,b)=>s+punts(b.c),0);G.cobrades[eq].push(...basa.map(b=>b.c));
+  G.ultima={basa:basa.slice(),g};G.basa=[];G.torn=g;
+  if(!G.mans[0].length)G.fase='fi-ma';
+  return G.ultima;
+}
+// en acabar la ma: qui passa de 36 s'apunta el que passa, pel multiplicador
+function tancaMa(G){
+  const [a,b]=G.puntsMa,m=multiplicador(G),eq=a>36?0:b>36?1:-1,p=eq<0?0:(G.puntsMa[eq]-36)*m;
+  if(eq>=0)G.punts[eq]+=p;
+  const r={ma:G.ma,trumfo:G.trumfo,triador:G.triador,contro:G.contro,punts:G.puntsMa.slice(),bases:G.bases.slice(),eq,p};
+  G.historia.push(r);return r;
+}
+// ----- la maquina -----
+const SUMA=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+// com de bo es aquest pal de trumfo per a aquesta ma
+function valTrumfo(ma,t){
+  const T=ma.filter(c=>pal(c)===t);
+  let v=SUMA(T,c=>({9:3.1,1:3.4,12:2,11:.7,10:1.7})[num(c)]||1.2)+Math.max(0,T.length-3)*1.5;
+  for(let s=0;s<4;s++){if(s===t)continue;const S=ma.filter(c=>pal(c)===s),h=x=>S.some(c=>num(c)===x);
+    if(h(9))v+=1.5;if(h(1)&&!h(9))v+=.5;
+    if(!S.length)v+=T.length>=3?2.5:1;else if(S.length===1&&!h(9))v-=.5}
+  return v;
+}
+function valBotifarra(ma){
+  let v=0;for(let s=0;s<4;s++){const S=ma.filter(c=>pal(c)===s),h=x=>S.some(c=>num(c)===x);
+    if(h(9))v+=6.2;if(h(9)&&h(1))v+=6.3;if(h(9)&&h(1)&&h(12))v+=1;if(h(1)&&!h(9))v+=1.6;if(h(9)&&S.length>=5)v+=1.9}
+  return v;
+}
+// com de bé pot defensar aquesta ma contra aquest trumfo
+function valDefensa(ma,t){
+  let v=0;
+  for(let s=0;s<4;s++){const S=ma.filter(c=>pal(c)===s),h=x=>S.some(c=>num(c)===x);
+    if(s===t){if(h(9))v+=5;if(h(1))v+=h(9)?4.5:3;if(h(12))v+=1.5;if(S.length>=4)v+=3;else if(S.length===3)v+=1}
+    else{if(h(9))v+=t===BOTI?4.5:3.5;if(h(9)&&h(1))v+=t===BOTI?3:2;if(h(1)&&!h(9))v-=t===BOTI?1:.5}}
+  return v;
+}
+const IA={bot:17,delega:11,contro:12,recontro:17,sant:16};
+function iaTria(ma,potDelegar){
+  let best=0,bv=-1;for(let t=0;t<4;t++){const v=valTrumfo(ma,t);if(v>bv){bv=v;best=t}}
+  const vb=valBotifarra(ma);
+  if(vb>=IA.bot&&vb>=bv-5)return BOTI;
+  if(potDelegar&&bv<IA.delega)return -1;
+  return best;
+}
+const iaContra=(ma,t)=>valDefensa(ma,t)>=IA.contro;
+const iaRecontra=(ma,t)=>(t===BOTI?valBotifarra(ma)-12:valTrumfo(ma,t))>=IA.recontro;
+const iaSant=(ma,t)=>valDefensa(ma,t)>=IA.sant;
+// el que encara no ha sortit d'un pal, mirat des de j
+function noVistes(G,j,s){return delPal(s).filter(c=>!G.jugades.includes(c)&&!G.mans[j].includes(c))}
+const mestra=(G,j,c)=>noVistes(G,j,pal(c)).every(x=>forca(x)<forca(c));
+// el rival o pot guanyar la carta w en aquesta basa?
+function potMatar(G,j,o,w,led){
+  const tr=G.trumfo,ve=s=>noVistes(G,j,s);
+  const segueix=!G.buits[o][led]&&ve(led).length>0;
+  const trumfos=tr<4&&!G.buits[o][tr]&&ve(tr).length>0;
+  if(tr<4&&pal(w)===tr){
+    if(led!==tr&&segueix)return false;
+    return trumfos&&ve(tr).some(x=>forca(x)>forca(w));
+  }
+  if(segueix)return ve(led).some(x=>forca(x)>forca(w));
+  return trumfos;
+}
+// la carta w aguantara fins al final de la basa? (els que queden despres de j)
+function aguanta(G,j,w,basa){
+  const led=basa.length?pal(basa[0].c):pal(w);
+  for(let k=basa.length+1;k<4;k++){const o=(j+k-basa.length)%4;if(o%2!==j%2&&potMatar(G,j,o,w,led))return false}
+  return true;
+}
+function rivalFalla(G,j,s){
+  const tr=G.trumfo;if(tr===BOTI||s===tr)return false;
+  const ve=noVistes(G,j,tr).length>0;
+  for(const o of [(j+1)%4,(j+3)%4])if((G.buits[o][s]||noVistes(G,j,s).length<2)&&!G.buits[o][tr]&&ve)return true;
+  return false;
+}
+const cost=c=>punts(c)*20+forca(c);
+const minim=(a,f)=>a.reduce((m,c)=>f(c)<f(m)?c:m);
+function iaJuga(G,j){
+  const ma=G.mans[j],basa=G.basa,tr=G.trumfo,L=legals(ma,basa,j,tr);
+  if(L.length===1)return L[0];
+  if(!basa.length)return iaSurt(G,j,L);
+  const led=pal(basa[0].c),w=basa[guanyadora(basa,tr)],comp=w.j===(j+2)%4,ultim=basa.length===3;
+  if(comp){
+    if(ultim||aguanta(G,j,w.c,basa)){
+      // carregar: dona punts al company, pero no les cartes que guanyaran soles
+      const no=L.filter(c=>!mestra(G,j,c)||punts(c)<3),p=no.length?no:L;
+      return minim(p,c=>-punts(c)*20+forca(c));
+    }
+    const g=L.filter(c=>mata(c,w.c,tr)&&aguanta(G,j,c,basa));
+    if(g.length&&basa.reduce((s,b)=>s+punts(b.c),0)>=2)return minim(g,forca);
+    return minim(L,cost);
+  }
+  const g=L.filter(c=>mata(c,w.c,tr));
+  if(g.length){
+    if(ultim)return minim(g,c=>forca(c)+(pal(c)===tr&&led!==tr?20:0)-punts(c)*.5);
+    const s=g.filter(c=>aguanta(G,j,c,basa));
+    if(s.length)return minim(s,c=>forca(c)+(pal(c)===tr&&led!==tr?20:0));
+  }
+  return minim(L,cost);
+}
+function iaSurt(G,j,L){
+  const tr=G.trumfo,nostre=G.triador%2===j%2;
+  if(tr<4){
+    const t=L.filter(c=>pal(c)===tr),ve=noVistes(G,j,tr);
+    // arrossegar: amb la mestra de trumfo, que caiguin els dels rivals
+    const rivalsTenen=[(j+1)%4,(j+3)%4].some(o=>!G.buits[o][tr]);
+    if(t.length&&ve.length&&rivalsTenen){const m=t.filter(c=>mestra(G,j,c));if(m.length&&(nostre||t.length>=3))return m[0]}
+  }
+  const ms=L.filter(c=>(tr===BOTI||pal(c)!==tr)&&mestra(G,j,c)&&!rivalFalla(G,j,pal(c)));
+  if(ms.length)return minim(ms,c=>-punts(c));
+  const llarg=s=>L.filter(c=>pal(c)===s).length;
+  const fora=L.filter(c=>tr===BOTI||pal(c)!==tr),p=fora.length?fora:L;
+  return minim(p,c=>punts(c)*30-llarg(pal(c))*3+forca(c));
+}
+// ==FI REGLES==
+
+// ===== EL DIA =====
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// la primera partida del dia, la #1, va ser la de l'1 de novembre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-11-01T12:00:00Z'))/864e5)+1;
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix('botifarra-stats',{guanyades:0,perdudes:0,dies:0});
+
+// La partida del dia: vuit mans (cadascu dona dues vegades) amb les mateixes
+// cartes per a tothom. Compten els punts que fa la teva parella.
+const MANS_DIA=8,META=101;
+const NOMS=['TU','ROSA','PERE','JAUME'];        // 0 tu, 1 a la dreta, 2 el company, 3 a l'esquerra
+const QUI=['tu','la Rosa','en Pere','en Jaume'];
+const NOM_TR=['OROS','COPES','ESPASES','BASTOS','BOTIFARRA'];
+const CONTRO=['','CONTRO!','RECONTRO!','SANT VICENÇ!'];
+
+// ===== LA PARTIDA =====
+// G: tot el que cal per continuar-la. Es desa a cada basa.
+let G=null,paused=false,sel=null,veient=null;
+function novaPartida(mode){
+  const dia=diaAvui(),n=numeroDe(dia);
+  const llavor=mode==='dia'?'BOTIFARRA-'+n:'LLIURE-'+Date.now().toString(36)+Math.floor(Math.random()*1e9).toString(36);
+  G={v:1,mode,dia,n,llavor,ma:0,donador0:hashText(llavor)%4,punts:[0,0],historia:[],nova:true,fi:false};
+  novaMa(G);
+}
+const clau=()=>G.mode==='dia'?'botifarra-'+G.dia:'botifarra-partida';
+function desaPartida(){if(G)desa(clau(),G)}
+function recupera(k){const s=llegeix(k,null);return s&&s.v===1?s:null}
+
+// ===== EL RELLOTGE DEL JOC =====
+// Tot el que espera (la maquina pensant, la basa a la vista) va per aqui: aixi
+// la pausa ho atura tot, i tocant la pantalla va mes de pressa.
+let rellotge=0,cues=[];
+function despres(ms,fn){cues.push({t:rellotge+ms,fn})}
+function cuita(){for(const q of cues)q.t=Math.min(q.t,rellotge+60)}
+let bombolles={};                       // el que diu cadascu: {j:{t,fins}}
+function diu(j,t,ms=1800){bombolles[j]={t,fins:rellotge+ms};sndDiu()}
+
+function segueix(){
+  if(!G)return;
+  desaPartida();pintaEstat();amagaPanell();
+  if(veient)return;
+  if(G.fase==='tria'){
+    const j=G.torn;
+    if(j===0){mostraTria();return}
+    despres(900,()=>{
+      const t=iaTria(G.mans[j],j===G.donador&&!G.delegat);
+      if(t===-1){diu(j,'Delego!');G.delegat=true;G.torn=(j+2)%4}
+      else declara(j,t);
+      segueix();
+    });
+    return;
+  }
+  if(G.fase==='contro'){
+    // pas 1: contren els rivals de qui ha fet trumfo; 2: recontren; 3: sant vicenç
+    const eq=G.pas%2===1?(G.triador+1)%2:G.triador%2;
+    if(eq===0){mostraContro();return}
+    despres(800,()=>{
+      const qui=[eq,eq+2].find(j=>G.pas===2?iaRecontra(G.mans[j],G.trumfo):G.pas===1?iaContra(G.mans[j],G.trumfo):iaSant(G.mans[j],G.trumfo));
+      if(qui!==undefined)contra(qui);else{diu(eq,'Passo',1200);comencaJoc()}
+      segueix();
+    });
+    return;
+  }
+  if(G.fase==='joc'){
+    if(G.torn===0){pintaEstat();return}
+    const j=G.torn;
+    despres(G.basa.length?650:900,()=>juga(j,iaJuga(G,j)));
+    return;
+  }
+  if(G.fase==='fi-ma'){mostraResultat();return}
+  if(G.fase==='fi')finalPartida();
+}
+function declara(j,t){
+  G.trumfo=t;G.triador=j;G.fase='contro';G.pas=1;G.contro=1;
+  diu(j,t===BOTI?'Botifarra!':NOM_TR[t].charAt(0)+NOM_TR[t].slice(1).toLowerCase()+'!',2200);
+}
+function contra(j){G.contro*=2;diu(j,CONTRO[G.pas],2200);G.pas++;if(G.pas>3)comencaJoc()}
+function comencaJoc(){G.fase='joc';G.torn=(G.donador+1)%4;sel=null}
+let vistaBasa=null;                    // la basa acabada, a la vista uns moments
+function juga(j,c,ox,oy){
+  if(G.fase!=='joc'||G.torn!==j)return;
+  sel=null;volant={c,j,t0:rellotge,ox,oy};sndCarta();
+  const fi=tira(G,j,c);
+  if(fi){
+    vistaBasa={...fi,t0:rellotge};
+    if(G.fase==='fi-ma'){G.resultat=tancaMa(G);}
+    desaPartida();pintaEstat();
+    despres(1200,()=>{sndBasa(fi.g%2===0);vistaBasa.marxa=rellotge;despres(320,()=>{vistaBasa=null;segueix()})});
+    return;
+  }
+  segueix();
+}
+function seguentMa(){
+  G.ma++;G.resultat=null;
+  const acaba=G.mode==='dia'?G.ma>=MANS_DIA:(G.punts[0]>=META||G.punts[1]>=META);
+  if(acaba){G.fi=true;G.fase='fi'}
+  else novaMa(G);
+  hideMsg();segueix();
+}
+
+// ===== EL PANELL DE TRIAR =====
+const $=id=>document.getElementById(id);
+function panell(html,dalt){const p=$('panell');p.innerHTML=html;p.style.display='block';p.style.top=(dalt??8)+'px'}
+function amagaPanell(){$('panell').style.display='none'}
+function boto(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();if(paused){posaPausa(false);return}sndToc();fn()})}
+function mostraTria(){
+  const pot=G.donador===0&&!G.delegat;
+  panell('<div class="t">'+(G.delegat?'En Pere t\'ha delegat: tries tu el trumfo':'Et toca fer trumfo')+
+    '<small>mira bé la teva mà'+(pot?'; si és fluixa, delega-ho al company':'')+'</small></div>'+
+    '<div class="g">'+[0,1,2,3].map(t=>'<a href="#" id="tr'+t+'"><img src="'+ICONA[t]+'" alt="">'+NOM_TR[t]+'</a>').join('')+
+    '<a href="#" id="tr4" class="ample">BOTIFARRA <span style="font-weight:normal;font-size:12px">(sense trumfo, val doble)</span></a>'+
+    (pot?'<a href="#" id="tr-del" class="ample fluix">DELEGO AL COMPANY</a>':'')+'</div>');
+  for(let t=0;t<5;t++)boto('tr'+t,()=>{declara(0,t);segueix()});
+  boto('tr-del',()=>{diu(0,'Delego!');G.delegat=true;G.torn=2;segueix()});
+}
+function mostraContro(){
+  const mult=['','×2','×4','×8'][G.pas];
+  const qui=G.triador%2===0?(G.triador===0?'Has':'En Pere ha'):(G.triador===1?'La Rosa ha':'En Jaume ha');
+  const tr=G.trumfo===BOTI?'BOTIFARRA':'trumfo <b>'+NOM_TR[G.trumfo]+'</b>';
+  const t=G.pas===1?qui+' fet '+tr+'.<small>Si creus que la mà serà vostra, contra-la: tot el que es faci valdrà '+mult+'.</small>':
+    G.pas===2?'Us han contrat!<small>Si n\'esteu segurs, recontreu: valdrà '+mult+'.</small>':
+    'Us han recontrat!<small>L\'última: sant vicenç, i valdrà '+mult+'.</small>';
+  panell('<div class="t">'+t+'</div><div class="g"><a href="#" id="ct-si" class="fort">'+CONTRO[G.pas].replace('!','')+' '+mult+'</a><a href="#" id="ct-no" class="fluix">PASSO</a></div>');
+  boto('ct-si',()=>{contra(0);segueix()});
+  boto('ct-no',()=>{
+    // si tu passes, el company encara pot contrar
+    const fa=G.pas===2?iaRecontra(G.mans[2],G.trumfo):G.pas===1?iaContra(G.mans[2],G.trumfo):iaSant(G.mans[2],G.trumfo);
+    if(fa)contra(2);else{diu(0,'Passo',1200);comencaJoc()}
+    segueix();
+  });
+}
+
+// ===== LES CARTES =====
+const COL=['#c99400','#c8352a','#2b6cb0','#3f7f32'];
+function pintaPal(x,s,cx,cy,m){
+  x.save();x.translate(cx,cy);x.lineJoin='round';
+  if(s===0){
+    x.fillStyle='#f0c020';x.strokeStyle='#9a6a00';x.lineWidth=m*.07;x.beginPath();x.arc(0,0,m*.44,0,7);x.fill();x.stroke();
+    x.lineWidth=m*.05;x.beginPath();x.arc(0,0,m*.27,0,7);x.stroke();x.fillStyle='#c8352a';x.beginPath();x.arc(0,0,m*.09,0,7);x.fill();
+  }else if(s===1){
+    x.fillStyle='#d8402f';x.strokeStyle='#7a1a12';x.lineWidth=m*.05;
+    x.beginPath();x.moveTo(-m*.38,-m*.38);x.quadraticCurveTo(-m*.36,m*.1,0,m*.1);x.quadraticCurveTo(m*.36,m*.1,m*.38,-m*.38);x.closePath();x.fill();x.stroke();
+    x.fillStyle='#f0c020';x.beginPath();x.ellipse(0,-m*.38,m*.38,m*.08,0,0,7);x.fill();x.stroke();
+    x.fillStyle='#d8402f';x.fillRect(-m*.06,m*.08,m*.12,m*.24);x.strokeRect(-m*.06,m*.08,m*.12,m*.24);
+    x.beginPath();x.ellipse(0,m*.36,m*.24,m*.08,0,0,7);x.fill();x.stroke();
+  }else if(s===2){
+    x.rotate(.12);x.strokeStyle='#123a66';x.lineWidth=m*.035;
+    x.fillStyle='#9cc4ee';x.beginPath();x.moveTo(0,-m*.5);x.lineTo(m*.08,-m*.36);x.lineTo(m*.08,m*.16);x.lineTo(-m*.08,m*.16);x.lineTo(-m*.08,-m*.36);x.closePath();x.fill();x.stroke();
+    x.fillStyle='#2b6cb0';x.fillRect(-m*.3,m*.16,m*.6,m*.09);x.strokeRect(-m*.3,m*.16,m*.6,m*.09);
+    x.fillStyle='#7a4a24';x.fillRect(-m*.055,m*.25,m*.11,m*.17);
+    x.fillStyle='#2b6cb0';x.beginPath();x.arc(0,m*.46,m*.07,0,7);x.fill();x.stroke();
+  }else{
+    x.rotate(-.35);x.strokeStyle='#1f4a1a';x.lineWidth=m*.04;x.fillStyle='#4f9a3a';
+    x.beginPath();x.moveTo(-m*.07,m*.48);x.lineTo(-m*.15,-m*.32);x.arc(0,-m*.32,m*.15,Math.PI,0);x.lineTo(m*.07,m*.48);x.closePath();x.fill();x.stroke();
+    x.fillStyle='#2f6a22';for(const [a,b] of [[-.13,-.12],[.12,.05],[-.1,.24],[.11,-.3]]){x.beginPath();x.arc(a*m,b*m,m*.045,0,7);x.fill()}
+  }
+  x.restore();
+}
+const ETIQ=c=>{const n=num(c);return n===10?'S':n===11?'C':n===12?'R':String(n)};
+const cacheCartes=new Map();
+function imatgeCarta(c,w){
+  const k=c+'|'+w;let cv=cacheCartes.get(k);if(cv)return cv;
+  const dpr=Math.min(3,devicePixelRatio||1),h=Math.round(w*1.5);
+  cv=document.createElement('canvas');cv.width=Math.ceil(w*dpr);cv.height=Math.ceil(h*dpr);
+  const x=cv.getContext('2d');x.scale(dpr,dpr);
+  const r=w*.1;
+  x.fillStyle='#fbf6e9';x.strokeStyle=c<0?'#3a1010':COL[pal(c)];x.lineWidth=Math.max(1.5,w*.035);
+  x.beginPath();x.roundRect(1,1,w-2,h-2,r);x.fill();x.stroke();
+  if(c<0){ // el dors
+    x.fillStyle='#8a2a2a';x.beginPath();x.roundRect(w*.08,w*.08,w*.84,h-w*.16,r*.6);x.fill();
+    x.strokeStyle='rgba(255,220,180,.35)';x.lineWidth=1;for(let k=-h;k<w+h;k+=w*.18){x.beginPath();x.moveTo(k,w*.08);x.lineTo(k+h,h);x.moveTo(k+h,w*.08);x.lineTo(k,h);x.stroke()}
+    return cacheCartes.set(k,cv),cv;
+  }
+  const s=pal(c),n=num(c),col=COL[s];
+  x.fillStyle=col;x.font='bold '+Math.round(w*.3)+'px system-ui,Arial,sans-serif';x.textAlign='center';x.textBaseline='top';
+  x.fillText(ETIQ(c),w*.19,w*.07);
+  pintaPal(x,s,w*.19,w*.52,w*.25);
+  if(n>=10){
+    x.font='bold '+Math.round(w*.5)+'px Georgia,serif';x.fillStyle=col;x.textBaseline='middle';x.fillText(ETIQ(c),w*.6,h*.42);
+    pintaPal(x,s,w*.6,h*.74,w*.34);
+    if(n===12){x.fillStyle='#f0c020';x.strokeStyle='#9a6a00';x.lineWidth=1;const y=h*.16;x.beginPath();x.moveTo(w*.44,y+w*.12);x.lineTo(w*.44,y);x.lineTo(w*.52,y+w*.06);x.lineTo(w*.6,y-w*.02);x.lineTo(w*.68,y+w*.06);x.lineTo(w*.76,y);x.lineTo(w*.76,y+w*.12);x.closePath();x.fill();x.stroke()}
+  }else pintaPal(x,s,w*.6,h*.56,n===1?w*.62:w*.5);
+  // els punts que val, en petit a baix: la manilla 5, l'as 4...
+  if(punts(c)){x.fillStyle='rgba(0,0,0,.45)';x.font='bold '+Math.round(w*.16)+'px system-ui,Arial,sans-serif';x.textAlign='right';x.textBaseline='bottom';x.fillText(punts(c)+'p',w*.92,h*.97)}
+  cacheCartes.set(k,cv);return cv;
+}
+let ICONA=[];
+function fesIcones(){ICONA=[0,1,2,3].map(s=>{const c=document.createElement('canvas');c.width=c.height=48;pintaPal(c.getContext('2d'),s,24,24,46);return c.toDataURL()})}
+const urlCarta=(c,w=40)=>imatgeCarta(c,w).toDataURL();
+
+// ===== DIBUIX =====
+if(!CanvasRenderingContext2D.prototype.roundRect)CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath()};
+const cv=$('c'),ctx=cv.getContext('2d');
+let L={};
+function mesura(){
+  const s=$('screen'),W=s.clientWidth,H=s.clientHeight,dpr=Math.min(3,devicePixelRatio||1);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  const cw=Math.round(Math.max(40,Math.min(78,W/5.3,H*.2))),ch=cw*1.5;
+  const mansY=H-ch-6,aixeca=Math.round(ch*.2);
+  // la basa, en creu, tan grossa com hi capiga entre els de dalt i la teva ma
+  const dalt=6+cw*.63+8,baix=mansY-aixeca-20;
+  const tw=Math.round(Math.max(30,Math.min(cw*1.25,(baix-dalt)/2.08/1.5,(W/2-58)/1.58))),th=tw*1.5;
+  L={W,H,dpr,cw,ch,tw,th,mansY,cx:W/2,cy:(dalt+baix)/2,aixeca};
+  cacheCartes.clear();
+}
+// on va cada carta de la basa: tu a baix, la Rosa a la dreta, en Pere a dalt, en Jaume a l'esquerra
+function llocBasa(j){const {cx,cy,tw,th}=L,d=[[0,th*.52],[tw*1.08,0],[0,-th*.52],[-tw*1.08,0]][j];return [cx+d[0],cy+d[1]]}
+function llocJugador(j){const {W,cy,mansY,ch}=L;return [[W/2,mansY+ch*.3],[W-24,cy],[W/2,6],[24,cy]][j]}
+function ordenaMa(ma){
+  const tr=G&&G.trumfo!=null&&G.trumfo<4?G.trumfo:-1,ordre=s=>s===tr?-1:s;
+  return ma.slice().sort((a,b)=>ordre(pal(a))-ordre(pal(b))||forca(b)-forca(a));
+}
+function posMa(){
+  const ma=ordenaMa(G.mans[0]),n=ma.length,{W,cw}=L;
+  const pas=n>1?Math.min(cw+4,(W-12-cw)/(n-1)):0,x0=(W-(pas*(n-1)+cw))/2;
+  return ma.map((c,i)=>({c,x:x0+i*pas,w:cw}));
+}
+let volant=null;
+function legalsAra(){return G&&G.fase==='joc'&&G.torn===0&&!vistaBasa?legals(G.mans[0],G.basa,0,G.trumfo):null}
+function pinta(){
+  const {W,H,dpr}=L;if(!W)return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const g=ctx.createRadialGradient(W/2,H*.45,20,W/2,H*.45,Math.max(W,H)*.75);g.addColorStop(0,'#2a7048');g.addColorStop(1,'#123a24');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  if(!G)return;
+  // els altres tres: el nom, les cartes que els queden, qui dona i qui ha fet trumfo
+  for(const j of [1,2,3]){
+    const [x,y]=llocJugador(j),n=G.mans[j].length,bw=Math.round(L.cw*.42),bh=bw*1.5,dors=imatgeCarta(-1,bw);
+    const torn=(G.fase==='joc'||G.fase==='tria')&&G.torn===j&&!vistaBasa;
+    let bx,by;
+    if(j===2){bx=x-bw/2-26;by=y}else{bx=x-bw/2;by=y-bh/2-8}
+    if(n){ctx.drawImage(dors,bx,by,bw,bh);ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n,bx+bw/2,by+bh/2)}
+    ctx.font=(torn?'bold ':'')+'11px monospace';ctx.fillStyle=torn?'#ffe680':j===2?'#cfe8ff':'#ffd0c8';
+    const tx=j===2?x+14:x,ty=j===2?y+bh/2:by+bh+10;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(NOMS[j]+(torn?' ◂':''),tx,ty);
+    let marca=(G.donador===j?'DONA ':'')+(G.triador===j&&G.trumfo!=null?'★':'');
+    if(marca){ctx.font='9px monospace';ctx.fillStyle='#e8d8a0';ctx.fillText(marca.trim(),tx,ty+12)}
+  }
+  // la basa: la que s'esta fent, o l'acabada uns moments a la vista
+  const basa=vistaBasa?vistaBasa.basa:G.basa;
+  const anar=vistaBasa&&vistaBasa.marxa!=null?Math.min(1,(rellotge-vistaBasa.marxa)/300):0;
+  const desti=vistaBasa?llocJugador(vistaBasa.g):null;
+  basa.forEach((b,i)=>{
+    let [x,y]=llocBasa(b.j);
+    if(volant&&volant.c===b.c){const t=Math.min(1,(rellotge-volant.t0)/180),[ox,oy]=volant.ox!=null?[volant.ox,volant.oy]:llocJugador(b.j);x=ox+(x-ox)*t;y=oy+(y-oy)*t}
+    if(anar){x+=(desti[0]-x)*anar;y+=(desti[1]-y)*anar}
+    const guanya=vistaBasa&&vistaBasa.basa[guanyadora(vistaBasa.basa,G.trumfo)].c===b.c;
+    ctx.save();ctx.globalAlpha=1-anar*.6;
+    if(guanya&&!anar){ctx.shadowColor='#ffe680';ctx.shadowBlur=16}
+    ctx.drawImage(imatgeCarta(b.c,L.tw),x-L.tw/2,y-L.th/2,L.tw,L.th);ctx.restore();
+  });
+  // la teva ma
+  const lg=legalsAra(),ps=posMa();
+  for(const p of ps){
+    const fora=lg&&!lg.includes(p.c),y=L.mansY-(sel===p.c?L.aixeca:0)+(fora?L.ch*.06:0);
+    ctx.drawImage(imatgeCarta(p.c,L.cw),p.x,y,L.cw,L.ch);
+    if(fora){ctx.fillStyle='rgba(8,20,12,.6)';ctx.beginPath();ctx.roundRect(p.x,y,L.cw,L.ch,L.cw*.1);ctx.fill()}
+  }
+  if(G.fase==='joc'&&G.torn===0&&!vistaBasa){ctx.font='bold 12px monospace';ctx.fillStyle='#ffe680';ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText(sel!=null?'torna-la a tocar per tirar-la':'et toca: tria una carta',W/2,L.mansY-L.aixeca-4)}
+  // les bombolles del que diu cadascu
+  for(const j in bombolles){
+    const b=bombolles[j];if(rellotge>b.fins){delete bombolles[j];continue}
+    let [x,y]=llocJugador(+j);
+    // al costat de cadascu, sense tapar les cartes de la basa
+    if(+j===0)y=L.mansY-L.aixeca-36;else if(+j===2){x+=Math.min(110,L.W*.3);y+=L.cw*.32}else y-=L.cw*.32+22;
+    ctx.font='bold 13px monospace';const w=ctx.measureText(b.t).width+16;
+    x=Math.max(w/2+2,Math.min(L.W-w/2-2,x));
+    ctx.fillStyle='#fffbe8';ctx.beginPath();ctx.roundRect(x-w/2,y-12,w,24,10);ctx.fill();
+    ctx.fillStyle='#1a1a10';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.t,x,y+1);
+  }
+  if(paused){ctx.fillStyle='rgba(8,20,12,.85)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#e8f0dc';ctx.font='22px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('PAUSA',W/2,H/2)}
+}
+let ultim=performance.now();
+function bucle(t){
+  const dt=Math.min(100,t-ultim);ultim=t;
+  if(!paused){rellotge+=dt;
+    for(let i=0;i<cues.length;){if(cues[i].t<=rellotge){const q=cues.splice(i,1)[0];q.fn()}else i++}}
+  pinta();requestAnimationFrame(bucle);
+}
+
+// ===== EL QUE ES DIU A DALT =====
+function pintaEstat(){
+  if(!G){$('que').textContent='';$('trumfo').innerHTML='';return}
+  const f=G.fase,t=G.torn;
+  if(f==='fi'){$('que').textContent='Partida acabada';$('trumfo').innerHTML='';$('score').textContent=G.punts[0];$('ells').textContent=G.punts[1];return}
+  $('que').textContent=f==='tria'?(t===0?'Fes trumfo':QUI[t].charAt(0).toUpperCase()+QUI[t].slice(1)+(G.delegat?' (delegat)':'')+' pensa el trumfo…'):
+    f==='contro'?'Contrar o passar…':f==='joc'?(t===0&&!vistaBasa?'Et toca':'Bases: '+G.bases[0]+' a '+G.bases[1]):
+    f==='fi-ma'?'Mà acabada':'';
+  const mult=multiplicador(G);
+  $('trumfo').innerHTML=(G.trumfo==null?'':(G.trumfo<4?'<img src="'+ICONA[G.trumfo]+'" alt="">':'')+NOM_TR[G.trumfo]+(mult>1?' <b style="color:#ff9a7a">×'+mult+'</b>':''))+
+    '<br><span style="font-size:11px;color:#8aa080">'+(G.mode==='dia'?'mà '+(G.ma+1)+' de '+MANS_DIA:'mà '+(G.ma+1)+' · a '+META)+'</span>';
+  $('score').textContent=G.punts[0];$('ells').textContent=G.punts[1];
+}
+
+// ===== EL RESULTAT DE CADA MA =====
+function mostraResultat(){
+  const r=G.resultat;if(!r)return;
+  const qui=QUI[r.triador],mult=(r.trumfo===BOTI?2:1)*r.contro;
+  const com=(r.trumfo===BOTI?'botifarra':'trumfo '+NOM_TR[r.trumfo].toLowerCase())+(r.contro>1?', '+['','','contrat','recontrat','','','','','sant vicenç'][r.contro]:'');
+  let t='<div style="color:#e8d8a0">MÀ '+(r.ma+1)+(G.mode==='dia'?' DE '+MANS_DIA:'')+'</div>'+
+    '<small style="color:#a8c098">'+com+' · l\'ha fet '+qui+'</small>'+
+    '<table class="comp"><tr><td>Nosaltres</td><td>'+r.bases[0]+' bases</td><td><b>'+r.punts[0]+'</b></td></tr>'+
+    '<tr><td>Ells</td><td>'+r.bases[1]+' bases</td><td><b>'+r.punts[1]+'</b></td></tr></table>';
+  if(r.eq<0)t+='<div style="color:#ccc">Empat a 36: ningú no s\'apunta res.</div>';
+  else t+='<div style="color:'+(r.eq===0?'#7dff9b':'#ffb3a8')+'">'+(r.eq===0?'Guanyeu la mà':'La guanyen ells')+'</div>'+
+    '<small style="color:#ccc">('+r.punts[r.eq]+' − 36)'+(mult>1?' × '+mult:'')+' = <b style="color:#fff">'+r.p+' punts</b></small>';
+  t+='<div style="margin-top:10px;font-size:20px">NOS <b>'+G.punts[0]+'</b> · ELLS <b>'+G.punts[1]+'</b></div>';
+  const ultima=G.mode==='dia'?r.ma+1>=MANS_DIA:(G.punts[0]>=META||G.punts[1]>=META);
+  t+='<a href="#" class="bt" id="b-seg" style="color:#10241a;background:#e8d8a0">'+(ultima?'COM HA ANAT':'SEGÜENT MÀ ▸')+'</a>';
+  msg(t);boto('b-seg',seguentMa);
+  if(r.eq===0)sndBe();else if(r.eq===1)sndMal();
+}
+
+// ===== EL FINAL =====
+let enFinal=false;
+function textCompartir(){
+  return 'La Botifarra · partida del dia #'+G.n+'\nNosaltres '+G.punts[0]+' · ells '+G.punts[1]+' en '+MANS_DIA+' mans';
+}
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!G||!G.fi){msg('<div style="color:#e8d8a0">LA BOTIFARRA</div><small>la partida encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));return}
+    const [a,b]=G.punts,dia=G.mode==='dia',guanya=a>b;
+    // les estadistiques i les taules, una sola vegada
+    let nou=G.nova;G.nova=false;
+    if(nou&&!dia){if(guanya)stats.guanyades++;else stats.perdudes++;desa('botifarra-stats',stats)}
+    if(nou&&dia){stats.dies++;desa('botifarra-stats',stats)}
+    if(!dia)try{localStorage.removeItem('botifarra-partida')}catch(e){}
+    else desaPartida();
+    let t='<div style="color:'+(guanya?'#7dff9b':a===b?'#e8d8a0':'#ffb3a8')+'">'+
+      (dia?'LA PARTIDA DEL DIA':guanya?'HEU GUANYAT!':'HAN GUANYAT ELLS')+'</div>'+
+      '<div style="font-size:30px;font-weight:bold">'+a+' <span style="font-size:16px;color:#a8c098">a</span> '+b+'</div>';
+    if(dia)t+='<small style="color:#ccc">'+(a>b?'Els heu guanyat':a<b?'Us han guanyat':'Empat')+' en les '+MANS_DIA+' mans. A la taula d\'avui compten els <b style="color:#fff">'+a+' punts</b> de la vostra parella.</small>';
+    else t+='<small style="color:#ccc">partides guanyades: <b style="color:#fff">'+stats.guanyades+'</b> · perdudes: '+stats.perdudes+'</small>';
+    t+='<table class="comp">'+G.historia.map(h=>'<tr><td>'+(h.ma+1)+'. '+(h.trumfo<4?'<img src="'+ICONA[h.trumfo]+'" style="width:14px;vertical-align:-2px"> ':'')+NOM_TR[h.trumfo].toLowerCase()+(h.contro>1?' ×'+h.contro:'')+'</td><td>'+QUI[h.triador]+'</td><td>'+(h.eq<0?'—':(h.eq===0?'+':'−')+h.p)+'</td></tr>').join('')+'</table>';
+    if(dia){const enl=location.href.split('#')[0],tx=textCompartir();
+      t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+        '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'}
+    t+='<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    t+='<a href="#" class="bt" id="b-nova" style="color:#10241a;background:#e8d8a0">'+(dia?'UNA PARTIDA LLIURE':'UNA ALTRA PARTIDA')+'</a>';
+    msg(t+Records.peuFinal(dia?'demà n\'hi haurà una altra':'o toca per tancar'));
+    boto('b-nova',()=>{novaPartida('lliure');hideMsg();segueix()});
+    if(guanya||dia)sndFi();
+    // Dues taules: la d'avui (els punts de la parella, nomes la primera
+    // partida de cada inicials) i les partides guanyades de sempre.
+    let r={html:'',posicio:0};
+    if(dia&&nou&&a>0)r=await Records.fiPartida(JOC+'_dia/'+G.dia,a);
+    else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
+    let s={html:'',posicio:0};
+    if(!dia&&nou&&guanya)s=await Records.fiPartida(JOC,stats.guanyades);
+    else s.html=Records.taulaHTML(await Records.llista(JOC));
+    const titol=t2=>'<div style="color:#e8d8a0;font-size:13px;margin-top:8px">'+t2+'</div>';
+    const el=$('taula');
+    if(el)el.innerHTML=titol('☀ LA D\'AVUI (punts en '+MANS_DIA+' mans)')+r.html+
+      (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+       r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
+      titol('★ PARTIDES GUANYADES')+s.html;
+    updateHUD();refrescaLiders();
+  }finally{enFinal=false}
+}
+
+// ===== EL MENU =====
+function menu(){
+  amagaPanell();
+  const dia=diaAvui(),n=numeroDe(dia),d=recupera('botifarra-'+dia),l=recupera('botifarra-partida');
+  const bt=(id,t,c,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#8aa080;margin-top:3px">'+sub+'</small>':'');
+  const gros='color:#10241a;background:#e8d8a0',fluix='color:#e8f0dc;background:#14261a;border:1px solid #4a6a3a';
+  msg('<div style="color:#e8d8a0;letter-spacing:.12em">LA BOTIFARRA</div>'+
+    '<small>Tu i en Pere (a dalt) contra la Rosa i en Jaume. Els altres tres els porta la màquina.</small>'+
+    (d&&d.fi?bt('m-dia','☀ LA D\'AVUI: '+d.punts[0]+' PUNTS','color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+n+' · demà n\'hi haurà una altra')
+      :bt('m-dia',d?'☀ CONTINUA LA D\'AVUI':'☀ LA PARTIDA DEL DIA ▸',gros,d?'mà '+(d.ma+1)+' de '+MANS_DIA+' · NOS '+d.punts[0]+' · ELLS '+d.punts[1]:'#'+n+' · '+nomDia(dia)+' · '+MANS_DIA+' mans amb les mateixes cartes per a tothom'))+
+    (l&&!l.fi?bt('m-cont','CONTINUA LA PARTIDA',fluix,'NOS '+l.punts[0]+' · ELLS '+l.punts[1]+' · a '+META):'')+
+    bt('m-nova','PARTIDA LLIURE (A '+META+')',fluix,l&&!l.fi?'en començaries una de nova':'compta per a les partides guanyades')+
+    '<a href="#" id="m-regles" style="display:block;margin-top:14px;font:13px monospace;color:#e8d8a0">com es juga</a>');
+  boto('m-dia',()=>{if(d){G=d;if(G.fi){finalPartida();return}}else novaPartida('dia');comenca()});
+  boto('m-cont',()=>{G=l;comenca()});
+  boto('m-nova',()=>{
+    if(l&&!l.fi){msg('<div style="color:#ffb3a8">SEGUR?</div><small>Perdries la partida que tens a mig fer: NOS '+l.punts[0]+' · ELLS '+l.punts[1]+'.</small>'+
+      bt('m-no','NO, TORNA ENRERE',gros)+'<a href="#" id="m-si" style="display:block;margin-top:14px;font:13px monospace;color:#ffb3a8">sí, comença\'n una de nova</a>');
+      boto('m-no',menu);boto('m-si',()=>{novaPartida('lliure');comenca()});return}
+    novaPartida('lliure');comenca();
+  });
+  boto('m-regles',()=>regles(0,menu));
+}
+function comenca(){
+  hideMsg();cues=[];bombolles={};vistaBasa=null;volant=null;sel=null;veient=null;
+  pintaEstat();refrescaLiders();
+  if(G.fi){finalPartida();return}
+  if(G.fase==='fi-ma'&&!G.resultat)G.resultat=G.historia[G.historia.length-1];
+  if(!llegeix('botifarra-vist',0)){desa('botifarra-vist',1);regles(0,()=>{hideMsg();segueix()});return}
+  segueix();
+}
+
+// ===== COM ES JUGA =====
+function PAGINES(){
+  const c=(...a)=>a.map(x=>'<img src="'+urlCarta(x)+'" alt="">').join('');
+  return [
+  '<b>La botifarra</b> es juga per parelles: tu i en Pere, que seu davant teu (a dalt), contra la Rosa i en Jaume. Cadascú té 12 cartes de la baralla espanyola, i es tira cap a la dreta.<p>Cada mà, la parella que fa <b>més de 36 punts</b> s\'apunta els que passen de 36. Guanya la primera parella que arriba a <b>'+META+'</b>.</p>',
+  '<b>Les cartes</b>, de la que més mana a la que menys, i el que valen:<p>'+c(8,0,11,10,9)+'</p><p>la <b>manilla</b> (el 9) 5 punts, l\'<b>as</b> 4, el <b>rei</b> 3, el <b>cavall</b> 2 i la <b>sota</b> 1. Després van el 8, el 7... fins al 2, que no valen res.</p><p>Cada basa que guanyes, un punt més. En total hi ha 72: per això cal passar de 36.</p>',
+  '<b>El trumfo.</b> Qui dona tria el pal que serà trumfo: qualsevol carta de trumfo guanya les dels altres pals. Si la mà no li agrada, ho pot <b>delegar</b> al company.<p>També pot dir <b>botifarra</b>: sense trumfo, i tot val el doble.</p><p>Els rivals poden <b>contrar</b> (×2) si creuen que guanyaran; aleshores es pot <b>recontrar</b> (×4), i encara <b>sant vicenç</b> (×8).</p>',
+  '<b>Com es tira.</b> Qui va després de qui dona surt primer, i qui guanya la basa surt a la següent.<p>1. Has de <b>seguir el pal</b> que ha sortit, si en tens.</p><p>2. Si pots, l\'has de <b>matar</b> (tirar-ne una de més alta)... menys si la basa ja la guanya el teu company.</p><p>3. Si no en tens, has de <b>fallar</b> (tirar trumfo), i si un rival ja ha fallat, <b>sobrefallar</b> si pots. Si guanya el company, pots tirar el que vulguis.</p>',
+  '<b>Al mòbil:</b> toca una carta i s\'aixeca; torna-la a tocar i la tires. Les que no pots tirar surten apagades, i si en toques una et diu per què.<p>Tocant el tapet mentre juguen els altres, van més de pressa. <b>ÚLTIMA BASA</b> t\'ensenya la que s\'acaba d\'endur algú.</p><p>La <b>partida del dia</b> són '+MANS_DIA+' mans amb les mateixes cartes per a tothom: compten els punts que feu tu i en Pere.</p>',
+  ];
+}
+function regles(k,tanca){
+  const P=PAGINES();k=Math.max(0,Math.min(P.length-1,k));
+  msg('<div class="pag">'+P[k]+'</div><div class="nav"><a href="#" id="r-ant" class="'+(k?'':'no')+'">◂</a><span>'+(k+1)+' de '+P.length+'</span>'+
+    '<a href="#" id="r-seg">'+(k<P.length-1?'▸':'JUGA')+'</a></div>');
+  boto('r-ant',()=>regles(k-1,tanca));boto('r-seg',()=>k<P.length-1?regles(k+1,tanca):tanca());
+}
+function ensenyaUltima(){
+  if(!G||!G.ultima){avisa('Encara no s\'ha acabat cap basa');return}
+  const u=G.ultima,w=u.basa[guanyadora(u.basa,G.trumfo)];
+  msg('<div style="color:#e8d8a0">ÚLTIMA BASA</div><div class="basa">'+u.basa.map(b=>'<span style="display:inline-block;text-align:center;font-size:11px;color:#a8c098"><img src="'+urlCarta(b.c,48)+'" alt=""><br>'+NOMS[b.j]+'</span>').join('')+'</div>'+
+    '<small>se l\'endú <b>'+QUI[u.g]+'</b> amb '+u.basa.reduce((s,b)=>s+punts(b.c),0)+' punts de cartes (i 1 per la basa)</small><small style="color:#888">toca per tancar</small>');
+}
+
+// ===== ELS QUADRES =====
+function msg(t){const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+let avisT=null;
+function avisa(t){$('que').textContent=t;$('que').style.color='#ffb3a8';clearTimeout(avisT);avisT=setTimeout(()=>{$('que').style.color='';pintaEstat()},2400)}
+function updateHUD(){
+  Records.desaLocal(JOC,stats.guanyades);
+  Records.marcador(JOC,$('best'),stats.guanyades);
+}
+let liderDia=null,liderSempre=null;
+function pintaLider(){
+  $('lider').textContent='☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  GUANYADES: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
+}
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}
+  pintaLider();
+}
+
+// ===== CONTROLS =====
+function posaPausa(v){paused=v}
+function enMa(x,y){
+  const ps=posMa();
+  for(let i=ps.length-1;i>=0;i--){const p=ps[i],yy=L.mansY-(sel===p.c?L.aixeca:0);if(x>=p.x&&x<=p.x+p.w&&y>=yy&&y<=yy+L.ch+L.aixeca)return p}
+  return null;
+}
+cv.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!G)return;
+  const r=cv.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top,p=enMa(x,y);
+  const lg=legalsAra();
+  if(!p||!lg){cuita();if(p&&G.fase==='joc')avisa('Encara no et toca');return}
+  if(!lg.includes(p.c)){sndNo();sel=null;avisa(perQue(G.mans[0],G.basa,0,G.trumfo,p.c));return}
+  if(sel===p.c){juga(0,p.c,p.x+L.cw/2,L.mansY-L.aixeca+L.ch/2);return}
+  sel=p.c;sndToc();
+});
+function botoCtrl(el,fn){el.addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}sndToc();fn()})}
+botoCtrl($('b-ultima'),ensenyaUltima);
+botoCtrl($('b-regles'),()=>{veient=1;regles(0,()=>{veient=null;hideMsg();if(G)segueix()})});
+botoCtrl($('b-menu'),()=>{if(G)desaPartida();cues=[];menu()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}
+});
+$('msg').addEventListener('click',e=>{
+  if(e.target.closest('a'))return;
+  if(G&&(G.fase==='joc'||G.fase==='tria'||G.fase==='contro')&&!veient&&$('msg').querySelector('.basa'))hideMsg();
+  else if(G&&G.fi&&!$('msg').querySelector('#m-dia'))hideMsg();
+});
+addEventListener('pagehide',desaPartida);
+addEventListener('resize',()=>{mesura()});
+
+fesIcones();
+mesura();
+updateHUD();
+Records.pintaMillor(JOC,$('best'),stats.guanyades);
+refrescaLiders();
+menu();
+requestAnimationFrame(bucle);
+
+// En entrar al joc, els records uns segons, com les maquines de debo.
+Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false},
+  [['☀ LA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ PARTIDES GUANYADES',JOC]]);
+</script>
+</body>
+</html>

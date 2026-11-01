@@ -26,7 +26,7 @@ const ORDRE = [
 // trenquin la linia del temps.
 // No son de saló: van a part perquè no trenquin la línia del temps dels
 // clàssics. Dins de l'apartat, també per ordre d'any.
-const MODERNS = [['xifres', 1972], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026]];
+const MODERNS = [['botifarra', 1850], ['xifres', 1972], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026]];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
@@ -49,7 +49,8 @@ for (const [w, h] of MIDES) {
 
   const r = await p.evaluate(() => {
     const fitxes = [...document.querySelectorAll('a.btn')];
-    const dades = f => [f.querySelector('.rec').dataset.joc, +f.querySelector('.any').textContent];
+    // la Botifarra diu «S. XIX»: l'any per ordenar-la va a data-any
+    const dades = f => { const a = f.querySelector('.any'); return [f.querySelector('.rec').dataset.joc, +(a.dataset.any || a.textContent)]; };
     const seccioModerns = document.getElementById('moderns');
     return {
       llista: [...document.querySelectorAll('#classics a.btn')].map(dades),

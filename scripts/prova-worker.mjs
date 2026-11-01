@@ -293,6 +293,14 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(r.status === 200 && r.data.posicio === 1, 'El Trencaclosques: el del dia té la seva taula');
   r = await call('POST', '/records/trencaclosques_dia/' + avui, { nom: 'MAR', punts: 3600 });
   ok(r.status === 400, 'El Trencaclosques: fer-lo en zero segons no pot ser');
+  r = await call('POST', '/records/botifarra_dia/' + avui, { nom: 'CRE', punts: 120 });
+  ok(r.status === 200 && r.data.posicio === 1, 'La Botifarra: la partida del dia té la seva taula');
+  r = await call('POST', '/records/botifarra_dia/' + avui, { nom: 'MAR', punts: 4609 });
+  ok(r.status === 400, 'La Botifarra: més de 4.608 en 8 mans no pot ser');
+  await call('POST', '/records/botifarra', { nom: 'MAR', punts: 2 });
+  await call('POST', '/records/botifarra', { nom: 'MAR', punts: 3 });
+  r = await call('GET', '/records/botifarra');
+  ok(r.data.length === 1 && r.data[0].p === 3, 'La Botifarra: a les partides guanyades cadascú hi surt una vegada');
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 21 });
   await call('POST', '/records/abecedari', { nom: 'MAR', punts: 44 });
   r = await call('GET', '/records/abecedari');
@@ -320,6 +328,8 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.delete('telegram:anunciat:abecedari_dificil_dia');
   store.delete('telegram:anunciat:colles_dia');
   store.delete('telegram:anunciat:trencaclosques_dia');
+  store.delete('telegram:anunciat:botifarra_dia');
+  store.set('joc:botifarra_dia:' + madrid(1), JSON.stringify([{ n: 'JAU', p: 1234, t: 1 }]));
   store.set('joc:trencaclosques_dia:' + madrid(1), JSON.stringify([{ n: 'MAR', p: 3600 - 192, t: 1 }]));
   store.set('joc:colles_dia:' + madrid(1), JSON.stringify([{ n: 'OBE', p: 550, t: 1 }, { n: 'CRE', p: 200, t: 2 }]));
   store.set('joc:abecedari_dificil_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 2850, t: 1 }]));
@@ -340,7 +350,10 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
      'i la de Les Quatre Colles, amb les colles i els errors');
   const tre = m.find(x => /Trencaclosques/.test(x.cos.text));
   ok(tre && /guanyar <b>MAR<\/b>/.test(tre.cos.text) && /un temps de 3:12/.test(tre.cos.text), 'i la del Trencaclosques, amb el temps i no amb punts');
-  ok(m.length === 6 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
+  const bot = m.find(x => /Botifarra/.test(x.cos.text));
+  ok(bot && /guanyar <b>JAU<\/b>/.test(bot.cos.text) && /1\.234 punts en 8 mans/.test(bot.cos.text) && /botifarra\.html/.test(JSON.stringify(bot.cos.reply_markup)),
+     'i la de La Botifarra, amb els punts de les 8 mans');
+  ok(m.length === 7 && imp && /CRE/.test(imp.cos.text) && /5\.400/.test(imp.cos.text) && /MAR/.test(imp.cos.text),
      'cada matí, el primer que obre un joc fa que el bot avisi qui va guanyar la partida del dia d\'ahir de La Impremta');
   ok(gof && /guanyar <b>TRA<\/b>/.test(gof.cos.text) && /★★★★★/.test(gof.cos.text) && /gofra\.html/.test(JSON.stringify(gof.cos.reply_markup)),
      'i la de La Gofra, amb les estrelles i qui la va acabar abans en cas d\'empat');

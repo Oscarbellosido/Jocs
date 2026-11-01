@@ -69,12 +69,13 @@ const JOCS = {
   abecedari:         99999,   // els encerts acumulats de totes les rodes del dia
   conquesta:          2200,   // partides lliures: 1.000 + 50 per cada ronda que sobra
   colles:            99999,   // les colles trobades, acumulades de totes les partides del dia
+  botifarra:         99999,   // les partides lliures guanyades, acumulades
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -88,6 +89,7 @@ const DIARIS = {
   conquesta_dia:      2200,
   colles_dia:          600,   // 100 per colla i, si les trobes totes, 50 per error que sobra
   trencaclosques_dia: 3599,   // 3.600 menys els segons que hi has tardat
+  botifarra_dia:      4608,   // els punts de la parella en 8 mans: com a molt 36 × 2 × 8 cada una
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -134,6 +136,7 @@ const FITXA = {
   abecedari:       ["L'Abecedari",     "a l'Abecedari",      'abecedari.html'],
   conquesta:       ['La Conquesta',    'a la Conquesta',     'conquesta.html'],
   colles:          ['Les Quatre Colles', 'a les Quatre Colles', 'colles.html'],
+  botifarra:       ['La Botifarra',    'a la Botifarra',     'botifarra.html'],
 };
 
 const cors = {
@@ -192,7 +195,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
@@ -265,6 +268,8 @@ const ANUNCIA_DIARI = {
     : Math.floor(p / 100) + (p < 200 ? ' colla' : ' colles') + ' de 4'],
   // Al Trencaclosques la puntuacio es 3.600 menys els segons: es diu el temps
   trencaclosques_dia: ['El Trencaclosques', 'trencaclosques.html', p => 'un temps de ' + temps(p)],
+  // A la Botifarra, els punts que va fer la parella en les 8 mans del dia
+  botifarra_dia: ['La Botifarra', 'botifarra.html', p => xifra(p) + ' punts en 8 mans'],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -300,7 +305,7 @@ const AJUDA =
   '/prou — deixaré d\'avisar\n' +
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles i El Trencaclosques)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles, El Trencaclosques i La Botifarra)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

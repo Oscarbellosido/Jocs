@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i quinze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i setze que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,10 +40,11 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I quinze que no són de saló
+### I setze que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
+| `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
 | `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
@@ -65,12 +66,15 @@ al final de la fila trencaria la línia del temps. Per això la portada va parti
 en dos apartats, cadascun amb el seu títol i la seva graella:
 
 - `#classics` — **CLÀSSICS DELS SALONS 1972 — 1984**, per ordre d'any.
-- `#moderns` — **FORA DELS SALONS, de la tele, l'ordinador i el mòbil**, també per ordre d'any.
+- `#moderns` — **FORA DELS SALONS, del cafè, la tele, l'ordinador i el mòbil**, també per ordre d'any.
 
 El que separa els dos apartats **no és l'any, és si era una màquina de saló**.
 L'apartat de sota es deia «MODERNS del mòbil» mentre només hi havia jocs de
 mòbil; amb el Xifres, que és del 1972 i de la televisió, aquell nom ja era
-mentida. Amb el Temple, que és d'ordinador, s'hi va afegir «l'ordinador».
+mentida. Amb el Temple, que és d'ordinador, s'hi va afegir «l'ordinador», i amb la
+Botifarra, «del cafè». La Botifarra no té un any de naixença clar (és del
+segle XIX): a la fitxa diu «S. XIX» i per ordenar-la porta `data-any="1850"`,
+que és el que llegeix la prova de la portada.
 L'identificador de la graella segueix essent `moderns` perquè no es
 trenqui res, però el que hi surt escrit és el que mana.
 
@@ -752,6 +756,63 @@ no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
 rellotge, la pausa, desar i continuar, i les dues taules. I el mateix amb la
 difícil: les seves definicions, el compte de lletres, que es reprengui on
 era i que vagi a la seva taula.
+
+## La Botifarra: el joc de cartes de casa
+
+En Carles la va triar entre quatre idees de joc nou. És **el joc de tota la
+vida**, no el d'una empresa: va amb el seu nom i les seves regles.
+
+- **Baralla espanyola de 48 cartes**, quatre jugadors per parelles: tu i en
+  Pere (a dalt) contra la Rosa (a la dreta) i en Jaume (a l'esquerra). Els
+  altres tres els porta la màquina. **Es tira cap a la dreta**, i surt qui va
+  després de qui dona.
+- L'ordre i els punts: **manilla (9) 5, as 4, rei 3, cavall 2, sota 1**, i
+  després del 8 al 2, que no valen res. Cada basa, un punt més: 72 en total.
+  La parella que **passa de 36** s'apunta el que passa, pel multiplicador.
+- **Qui dona fa trumfo** o el **delega** al company. **Botifarra** és sense
+  trumfo i val el doble. Els rivals poden **contrar** (×2), aleshores
+  **recontrar** (×4) i encara **sant vicenç** (×8). Si tu passes, el teu
+  company encara pot contrar.
+- **Les obligacions** (`legals`): seguir el pal; si pots, **matar** (menys si
+  la basa ja és del company); sense el pal, **fallar**, i **sobrefallar** si
+  un rival ja ha fallat. Si no pots sobrefallar, o si guanya el company,
+  tires el que vols. Si toques una carta que no pots tirar, diu per què
+  (`perQue`), i les que no pots tirar surten apagades.
+- **Un toc aixeca la carta i el segon la tira.** Amb les cartes encavalcades
+  a 320 px, un sol toc tiraria la del costat massa sovint.
+- **Partida lliure a 101** (va a la taula de les **partides guanyades**,
+  `botifarra`, acumulades i cadascú una vegada) i **la partida del dia**:
+  **8 mans** (cadascú dona dues vegades) amb les **mateixes cartes per a
+  tothom** (llavor `BOTIFARRA-<n>`, #1 = 1 de novembre del 2026). Hi compten
+  els punts que fa la teva parella (`botifarra_dia/<data>`), i el bot diu
+  cada matí qui la va guanyar.
+- Es desa a cada basa (`botifarra-partida` i `botifarra-<data>`). Començar
+  una lliure amb una a mig fer pregunta abans (SEGUR?), com al Temple.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Les regles i la màquina són funcions pures** entre `==REGLES==` i
+  `==FI REGLES==`: el joc i la prova fan servir les mateixes.
+- **La màquina no fa servir l'atzar**: amb les mateixes cartes i jugant
+  igual, fa el mateix. Si no, la partida del dia no seria la mateixa per a
+  tothom. Només sap el que sabria una persona: les cartes que han sortit i
+  qui ha fallat (`buits`: qui no ha seguit un pal no en té, i qui no ha
+  fallat quan tocava tampoc no té trumfos).
+- **Com juga**: surt amb la mestra de trumfo per fer-los caure si el trumfo
+  és seu, després amb les cartes que ja no les mata ningú (`mestra`) si cap
+  rival no les pot fallar, i si no, la més baixa del pal més llarg. Si la
+  basa és del company i aguantarà (`aguanta`), hi **carrega** punts; si la
+  guanya un rival, el mata amb la carta més baixa que aguanti, i si no,
+  tira la que val menys.
+- **Com tria el trumfo** (`valTrumfo`, `valBotifarra`): els pesos es van
+  ajustar jugant 3.000 mans amb cadascun dels cinc trumfos possibles i
+  mirant quin sortia millor. **Delega** per sota d'11 (`IA.delega`): per sota,
+  de mitjana, el company ho fa millor. **Contra** (`valDefensa`) a partir de
+  12, que és on qui ha fet trumfo ja perd més de la meitat de les vegades.
+- Calibrat: contra qui tira a l'atzar fa uns 8-11 punts per mà; una partida
+  a 101 entre màquines dura unes 13 mans, i una del dia fa uns 50 punts de
+  mitjana per parella. Es contra un 15% de les mans i es fa botifarra en una
+  de cada quatre o cinc.
 
 ## La Conquesta: el joc de conquesta de taula, amb les comarques
 
@@ -1510,6 +1571,12 @@ comproven el comportament.
   igual per a tothom, que mai no surti la mateixa escena dos dies seguits,
   que les peces encaixin, i que es jugui arrossegant amb
   el dit: safata, taula, vores, desar, acabar-lo i fer-ne un amb una foto.
+- `node scripts/prova-botifarra.mjs` — les regles de La Botifarra (l'ordre,
+  els punts, seguir, matar, fallar i sobrefallar), que la màquina no faci mai
+  una jugada prohibida i jugui millor que l'atzar, que la del dia tingui les
+  mateixes cartes per a tothom, i que es jugui tocant: trumfo, contro, la
+  carta que no es pot tirar, desar i continuar, les dues taules i que hi
+  capiga a 320 px.
 - `node scripts/prova-conquesta.mjs` — que el mapa de La Conquesta estigui
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
   els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,
