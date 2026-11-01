@@ -80,6 +80,9 @@ const so={
   fletxa(){aInit();noise(.12,.12,5000);tone(900,.1,'triangle',.06,-500)},
   os(){aInit();[300,220,330].forEach((f,i)=>setTimeout(()=>tone(f,.05,'square',.14),i*45))},
   ajup(){aInit();noise(.05,.06,800)},
+  llisca(){aInit();tone(1800,.25,'sine',.05,-900)},
+  bloc(){aInit();noise(.25,.18,400);tone(90,.2,'square',.1,-20)},
+  fantasma(){aInit();tone(520,.4,'sine',.14,-260);setTimeout(()=>tone(480,.35,'sine',.1,-240),120)},
   ratpenat(){aInit();tone(2400,.05,'square',.1,600);setTimeout(()=>tone(2600,.04,'square',.08,500),70)},
   mata(){aInit();tone(500,.08,'square',.18,-300);noise(.1,.15,2000)},
   ai(){aInit();tone(220,.18,'sawtooth',.22,-120)},
@@ -238,6 +241,33 @@ const NIVELLS=[
   '28,2':"Estalactites! Quan passes per sota, tremolen i cauen. No t'hi aturis.",
   '30,10':"El guardià del cor de foc. Calen quatre cops de FUET, i cada cop el fa recular.",
 }},
+{nom:'LA COVA DE GEL',a:'A LA COVA DE GEL',
+ // tot blanc i blau: gel, i foc fred
+ colors:{fons:'#0a121c',ratlla:'#132232',pedra:'#6a8cae',pedra2:'#45678a',junta:'#2a4460',llum:'#cfeaff',llosa:'#7d8c9c',llosa2:'#48586a',
+   foc:'150,220,255',flama:'#6ad0ff',flama2:'#eafaff'},
+ tresor:'LA CORONA DE GEL',idol:7000,ensorra:100,mapa:[
+'##########│##########│##########│########  │_V_V_$_ ##',
+'##########│#######   │_ ########│#######  #│#######_ #',
+' E@_T_____│_T=====_##│#_TC_   __│_TC=====_<│########_ ',
+
+'_ ########│##########│#####_  ##│##########│######## _',
+'#_ #######│##########│######  ##│##########│#       _#',
+'# _#######│##########│#$_V__  __│__=== ===T│__$_F_T__#',
+
+'#_ #######│##########│#$_V______│__F__ _V__│TC====   I',
+'# _#######│##########│##########│##### ####│######_  #',
+'#_________│_|_o_$_T__│____*_____│___+______│_______T_#',
+],textos:{
+  '4,2':"La cova de gel. Al fons hi ha la corona de gel. Aquí tot rellisca: compte on poses els peus.",
+  '11,2':"Gel! Si hi camines, llisques fins que topes amb alguna cosa o s'acaba el gel.",
+  '22,2':"Un bloc de gel! Camina-hi contra i l'empenys. Si cau al forat, fa de pont.",
+  '31,2':"Les fletxes no travessen el gel. Empeny el bloc: pel gel, llisca fins al fons.",
+  '46,5':"Un fantasma de gel! Travessa les parets i et ve a buscar. Un cop de FUET el desfà.",
+  '39,5':"Caminant pel gel no t'atures, però saltant sí: on caus del salt, t'hi quedes.",
+  '40,6':"L'últim bloc. El gel el porta fins al forat... i aleshores el forat ja no ho és tant.",
+  '47,8':"Corre cap a l'oest per aquí sota! La placa obre la reixa des d'aquesta banda.",
+  '17,8':"Ara amunt per la torre, fins a la porta per on has entrat.",
+}},
 ];
 
 // ===================================================================
@@ -266,19 +296,26 @@ const NIVELLS=[
 //   'L' lava (no s'hi camina: si hi caus, et cremes)
 //   'V' estalactita al sostre (quan hi passes per sota, cau)
 //   'G' el guardia del tresor (quatre cops de fuet)
+// i des del sise:
+//   '=' gel: si hi camines, llisques fins que topes (o caus)
+//   'C' bloc de gel: caminant-hi a sobre l'empenys; al gel llisca, si no te
+//       terra cau, i on s'atura fa de paret (a sobre s'hi pot caminar)
+//   'F' fantasma de gel: travessa les parets i et ve a buscar (FUET)
 const RC=10,RF=3;
 let MAPA,SX,SY;
-let MW,MH,MON,BASE;
+let MW,MH,MON,BASE,SOTA={};
 function carregaMapa(){
   const ll=MAPA.map(s=>s.split('│').join(''));
   MH=ll.length;MW=ll[0].length;
   BASE=ll.join('').split('');MON=BASE.slice();
+  // el que hi ha sota de cada bloc de gel, per quan l'empenyis
+  SOTA={};BASE.forEach((t,i)=>{if(t==='C')SOTA[i]='_'});
 }
 function cel(x,y){return(x<0||y<0||x>=MW||y>=MH)?'#':MON[y*MW+x]}
 function posa(x,y,t){MON[y*MW+x]=t}
-function paret(x,y){const t=cel(x,y);return t==='#'||t==='%'||t==='<'||t==='>'}
+function paret(x,y){const t=cel(x,y);return t==='#'||t==='%'||t==='<'||t==='>'||t==='C'}
 // on no es pot entrar de costat (la roca quieta tampoc no es travessa)
-function tancat(x,y){const t=cel(x,y);return t==='#'||t==='%'||t==='<'||t==='>'||t==='|'||t==='D'||t==='O'}
+function tancat(x,y){const t=cel(x,y);return t==='#'||t==='%'||t==='<'||t==='>'||t==='|'||t==='D'||t==='O'||t==='C'}
 function teTerra(x,y){const t=cel(x,y);return!(t===' '||t==='a'||t==='#'||t==='%'||t==='<'||t==='>')}
 // et pots aguantar en una casella si te terra o si a sota hi ha paret
 // (sota el temple no hi ha res: un forat a baix de tot no te fons)
@@ -288,7 +325,11 @@ function segur(x,y){return aguanta(x,y)&&cel(x,y)!=='^'&&cel(x,y)!=='L'}
 function caiguda(x,y){let d=0;while(!aguanta(x,y)){y++;d++;if(y>=MH)return{x,y,d:99}}return{x,y,d}}
 function mouCamina(x,y,dir){
   const nx=x+dir;if(tancat(nx,y)||cel(nx,y)==='L')return null;   // a la lava no s'hi camina
-  const c=caiguda(nx,y);return{t:'camina',x:nx,y:c.y,cau:c.d,dir,dx:nx,dy:y};
+  // al gel no t'hi pots aturar: llisques fins que topes amb alguna cosa, o
+  // fins que s'acaba el terra i caus
+  let sx=nx,c=caiguda(nx,y);
+  while(c.d===0&&cel(sx,y)==='='&&!tancat(sx+dir,y)&&cel(sx+dir,y)!=='L'){sx+=dir;c=caiguda(sx,y)}
+  return{t:'camina',x:sx,y:c.y,cau:c.d,dir,dx:sx,dy:y,llisca:sx-nx?Math.abs(sx-nx):0};
 }
 // T'enfiles si tens un forat al damunt i un replà al costat del forat.
 function mouEnfila(x,y,dir){
@@ -344,16 +385,46 @@ function camiRoca(x,y,dir){
   }
   return{p,fi:[x,y]};
 }
+// El bloc de gel que hi ha a x,y, empès cap a dir: fa una casella, i si
+// cau al gel llisca fins que topa; si es queda sense terra, cau. Torna el
+// cami i on s'atura (fi null: ha caigut fora del temple), o null si no es
+// pot moure (davant hi ha paret, o un objecte que no deixa passar).
+const lliureBloc=(x,y)=>' _=/'.includes(cel(x,y));
+function empenyBloc(x,y,dir){
+  let bx=x+dir,by=y;if(!lliureBloc(bx,by))return null;
+  const p=[[x,y],[bx,by]];
+  for(let i=0;i<99;i++){
+    if(!aguanta(bx,by)){if(by+1>=MH)return{p,fi:null};if(!lliureBloc(bx,by+1))break;by++;p.push([bx,by]);continue}
+    if(cel(bx,by)==='='&&lliureBloc(bx+dir,by)){bx+=dir;p.push([bx,by]);continue}
+    break;
+  }
+  return{p,fi:[bx,by]};
+}
+// mou el bloc al mon: on era hi torna a haver el que tenia a sota
+function aplicaBloc(b){
+  const[x0,y0]=b.p[0],i0=y0*MW+x0;posa(x0,y0,SOTA[i0]||'_');delete SOTA[i0];
+  if(b.fi){const[x1,y1]=b.fi,i1=y1*MW+x1;SOTA[i1]=cel(x1,y1);posa(x1,y1,'C')}
+}
+// Caminant contra un bloc, l'empenys i passes on era ell.
+function mouEmpeny(x,y,dir){
+  if(cel(x+dir,y)!=='C')return null;
+  const b=empenyBloc(x+dir,y,dir);if(!b)return null;
+  // on quedes tu, ja amb el bloc mogut
+  const desa=b.p.concat(b.fi?[b.fi]:[]).map(([a,c])=>[a,c,cel(a,c)]),sota={...SOTA};
+  aplicaBloc(b);const c=caiguda(x+dir,y);
+  for(const[a,cc,t]of desa)posa(a,cc,t);SOTA=sota;
+  return{t:'empeny',x:x+dir,y:c.y,cau:c.d,dir,dx:x+dir,dy:y,bloc:b};
+}
 // ==FI REGLES==
 // ===================================================================
 
-let nivell=0,NV,INICI,SERPS0,RATS0,ESQ0,ARAN0,ESTAL0,TIRADORS,SORTIDA,IDOL,COMENCA,TOTAL_TRESORS,SALES_N,TEXTOS,ENSORRA;
+let nivell=0,NV,INICI,SERPS0,RATS0,ESQ0,ARAN0,ESTAL0,FANT0,TIRADORS,SORTIDA,IDOL,COMENCA,TOTAL_TRESORS,SALES_N,TEXTOS,ENSORRA;
 function carregaNivell(n){
   nivell=n;NV=NIVELLS[n];MAPA=NV.mapa;TEXTOS=NV.textos;ENSORRA=NV.ensorra;
   carregaMapa();SX=MW/RC;SY=MH/RF;
   if(typeof COL!=='undefined')Object.assign(COL,NV.colors);
   INICI=BASE.slice();             // el mon de sortida, sense bestioles ni tu
-  SERPS0=[];RATS0=[];ESQ0=[];ARAN0=[];ESTAL0=[];TIRADORS=[];SORTIDA=IDOL=COMENCA=null;TOTAL_TRESORS=0;
+  SERPS0=[];RATS0=[];ESQ0=[];ARAN0=[];ESTAL0=[];FANT0=[];TIRADORS=[];SORTIDA=IDOL=COMENCA=null;TOTAL_TRESORS=0;
   const sales=new Set();
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
     const i=y*MW+x,t=INICI[i];
@@ -361,6 +432,7 @@ function carregaNivell(n){
     if(t==='B'||t==='b'){RATS0.push({id:RATS0.length,x,y});INICI[i]=t==='B'?'_':' '}
     if(t==='K'||t==='G'){ESQ0.push({id:ESQ0.length,x,y,gran:t==='G'});INICI[i]='_'}
     if(t==='V'){ESTAL0.push({id:ESTAL0.length,x,y});INICI[i]='_'}
+    if(t==='F'){FANT0.push({id:FANT0.length,x,y});INICI[i]='_'}
     if(t==='X'){ARAN0.push({id:ARAN0.length,x,y,fase:(x*.71+y*.37)%CICLE_ARANYA});INICI[i]='_'}
     if(t==='<'||t==='>')TIRADORS.push({x,y,dir:t==='>'?1:-1,fase:(x*.53+y*.31)%PERIODE_FLETXA,ultim:-1});
     if(t==='@'){COMENCA={x,y};INICI[i]='_'}
@@ -374,9 +446,10 @@ function carregaNivell(n){
 carregaNivell(0);
 
 // ===== PUNTS =====
-const PUNTS={tresor:100,gemma:300,serp:50,ratpenat:75,esquelet:100,guardia:500,aranya:75,sala:25,surt:1000,vida:500,segon:10};
+const PUNTS={tresor:100,gemma:300,serp:50,ratpenat:75,esquelet:100,guardia:500,aranya:75,fantasma:100,sala:25,surt:1000,vida:500,segon:10};
 const TEMPS_REIXA=4;           // segons que una placa 'q' deixa la reixa oberta
 const IMUNE=1.6;               // segons que no et poden tornar a fer mal
+const VEL_FANT=.85;            // caselles per segon: el fantasma va a poc a poc, pero no s'atura
 
 // ===== L'ESTAT =====
 const cv=document.getElementById('c'),g=cv.getContext('2d');
@@ -385,7 +458,7 @@ const JOC='temple';
 let estat='menu',paused=false,manual=false;
 let J=null;                    // tu
 let punts=0,vides=3,cors=3,maxCors=3,claus=0,idol=false,ensorra=0,tresors=0,temps=0;
-let visitades=new Set(),serps=[],ratpenats=[],esquelets=[],aranyes=[],estalactites=[],fletxes=[],roques=[],caients=[],runes=[],obertes={},reixesTemps={},cp=null,salaAra='';
+let visitades=new Set(),serps=[],ratpenats=[],esquelets=[],aranyes=[],estalactites=[],fantasmes=[],blocsMov=[],fletxes=[],roques=[],caients=[],runes=[],obertes={},reixesTemps={},cp=null,salaAra='';
 let avis='',avisT=0,rellotge=0,sacseig=0,pols=[],fuetVis=null,mortT=0,teclaFresca={esq:false,dre:false};
 let ordre=null,ordreT=0,girT=0;
 const tecles={esq:false,dre:false};
@@ -434,8 +507,10 @@ function tornaAlControl(){
   punts=q.punts||0;vides=3;maxCors=q.maxCors||3;temps=0;
   comencaNivell(q.nivell);
 }
-function posaBestioles(mortes,ratsMorts,esqMorts=[],aranMortes=[],estalCaigudes=[]){
-  const sm=new Set(mortes),rm=new Set(ratsMorts),em=new Set(esqMorts),am=new Set(aranMortes),ec=new Set(estalCaigudes);
+function posaBestioles(mortes,ratsMorts,esqMorts=[],aranMortes=[],estalCaigudes=[],fantMorts=[]){
+  const sm=new Set(mortes),rm=new Set(ratsMorts),em=new Set(esqMorts),am=new Set(aranMortes),ec=new Set(estalCaigudes),fm=new Set(fantMorts);
+  // el fantasma no surt mai de la seva sala
+  fantasmes=FANT0.map(f=>({id:f.id,x:f.x,y:f.y,x0:f.x,y0:f.y,sx:Math.floor(f.x/RC),sy:Math.floor(f.y/RF),viu:!fm.has(f.id),fuig:0,t:f.x*.7}));blocsMov=[];
   estalactites=ESTAL0.map(e=>({id:e.id,x:e.x,y:e.y,estat:ec.has(e.id)?'fet':'penja',t:0}));
   aranyes=ARAN0.map(a=>({id:a.id,x:a.x,y:a.y,fase:a.fase,viu:!am.has(a.id)}));
   esquelets=ESQ0.map(e=>({id:e.id,x:e.x,y:e.y,dir:-1,viu:!em.has(e.id),vida:e.gran?4:2,gran:e.gran,atordit:0,t:Math.random()*3}));
@@ -454,7 +529,7 @@ function desaPartida(){
   try{localStorage.setItem(CLAU_PARTIDA,JSON.stringify({v:1,nivell,mon,cp,punts,vides,cors,maxCors,claus,idol,
     ensorra,tresors,temps,visitades:[...visitades],mortes:serps.filter(s=>!s.viu).map(s=>s.id),
     ratsMorts:ratpenats.filter(r=>!r.viu).map(r=>r.id),esqMorts:esquelets.filter(e=>!e.viu).map(e=>e.id),aranMortes:aranyes.filter(a=>!a.viu).map(a=>a.id),
-    estalCaigudes:estalactites.filter(e=>e.estat==='fet').map(e=>e.id)}))}catch(e){}
+    estalCaigudes:estalactites.filter(e=>e.estat==='fet').map(e=>e.id),fantMorts:fantasmes.filter(f=>!f.viu).map(f=>f.id),sota:SOTA}))}catch(e){}
 }
 function partidaDesada(){
   try{const q=JSON.parse(localStorage.getItem(CLAU_PARTIDA)||'null');
@@ -470,7 +545,8 @@ function continuaPartida(){
   ({punts,vides,cors,maxCors,claus,idol,ensorra,tresors,temps}=q);
   visitades=new Set(q.visitades);caients=[];runes=[];obertes={};reixesTemps={};roques=[];pols=[];
   for(let i=0;i<MON.length;i++)if(MON[i]==='/')obertes[i]=1;
-  posaBestioles(q.mortes||[],q.ratsMorts||[],q.esqMorts||[],q.aranMortes||[],q.estalCaigudes||[]);fletxes=[];
+  posaBestioles(q.mortes||[],q.ratsMorts||[],q.esqMorts||[],q.aranMortes||[],q.estalCaigudes||[],q.fantMorts||[]);fletxes=[];
+  SOTA={};MON.forEach((t,i)=>{if(t==='C')SOTA[i]=(q.sota&&q.sota[i])||'_'});
   cp=q.cp;J=nouJugador(cp.x,cp.y,cp.dir);J.imune=IMUNE;
   cors=Math.max(1,cors);
   salaAra='';estat='joc';hideMsg();actualitzaHUD();entraSala();presentaT=3.4;
@@ -499,18 +575,21 @@ function entraSala(){
 // ===== MOURE'S =====
 // Cada moviment te dues parts: el gest (caminar, saltar, enfilar-se...) i,
 // si on arribes no t'aguanta, la caiguda.
-const DUR={camina:.16,salta:.46,enfila:.5,baixa:.3,penja:.7};
+const DUR={camina:.16,salta:.46,enfila:.5,baixa:.3,penja:.7,empeny:.34};
 function comenca(m){
   if(!m)return false;
-  m.t0=m.t0||m.t;m.etapa='gest';m.t=0;m.dur=DUR[m.t0]||.001;m.ox=J.x;m.oy=J.y;
+  // al gel, com mes llisques mes dura
+  m.t0=m.t0||m.t;m.etapa='gest';m.t=0;m.dur=(DUR[m.t0]||.001)+(m.llisca||0)*.09;m.ox=J.x;m.oy=J.y;
   J.mov=m;if(m.dir)J.dir=m.dir;
   if(m.t0==='salta')so.salt();else if(m.t0==='enfila')so.enfila();else if(m.t0==='camina')so.pas();
+  if(m.llisca)so.llisca();
+  if(m.bloc){aplicaBloc(m.bloc);blocsMov.push({p:m.bloc.p,fi:m.bloc.fi,i:0,t:0,x:m.bloc.p[0][0],y:m.bloc.p[0][1]});so.bloc()}
   return true;
 }
 function posGest(m,p){
   const ox=m.ox,oy=m.oy,dx=m.dx,dy=m.dy;
   switch(m.t0){
-    case'camina':return[ox+(dx-ox)*p,oy];
+    case'camina':case'empeny':return[ox+(dx-ox)*p,oy];
     case'salta':return[ox+(dx-ox)*p,oy-Math.sin(Math.PI*p)*.5];
     case'enfila':
       if(p<.45)return[ox+(dx-ox)*.18,oy-(p/.45)*.55];
@@ -535,7 +614,9 @@ function accio(tipus,dir){
   else if(tipus==='enfila')m=mouEnfila(J.x,J.y,dir);
   else if(tipus==='baixa')m=mouBaixa(J.x,J.y,dir);
   else if(tipus==='fuet')return fuetada(dir);
+  if(tipus==='camina'&&!m)m=mouEmpeny(J.x,J.y,dir);
   if(tipus==='camina'&&!m){
+    if(cel(J.x+dir,J.y)==='C'){J.dir=dir;so.no();diu('EL BLOC NO ES MOU: DARRERE HI HA ALGUNA COSA',1.6);return false}
     // una porta: si portes clau, s'obre
     const t=cel(J.x+dir,J.y);J.dir=dir;
     if(t==='D'){
@@ -578,6 +659,9 @@ function fuetada(dir){
   if(ar){ar.viu=false;ar.mortT=.5;so.mata();suma(PUNTS.aranya);fuetVis={x:ar.x,y:ar.y,t:.3};return true}
   const r=ratpenats.find(davant);
   if(r){r.viu=false;r.mortT=.5;so.mata();suma(PUNTS.ratpenat);fuetVis={x:r.x,y:r.y,t:.3};return true}
+  // el fantasma sura: el fuet l'agafa si es mes o menys a la teva alçada
+  const fa=fantasmes.find(f=>f.viu&&Math.abs(f.y-J.y)<.65&&(f.x-J.x)*dir>-.3&&(f.x-J.x)*dir<2.4);
+  if(fa){fa.viu=false;fa.mortT=.6;so.mata();suma(PUNTS.fantasma);diu('+'+PUNTS.fantasma,1);fuetVis={x:Math.round(fa.x),y:J.y,t:.3};return true}
   // despres una paret esquerdada
   if(cel(J.x+dir,J.y)==='%'){
     posa(J.x+dir,J.y,'_');so.paret();sacseig=.3;
@@ -798,6 +882,28 @@ function actualitza(dt){
     if(tancat(cx,r.y)||Math.floor(cx/RC)!==sx)r.dir=-r.dir;else r.x=nx;
   }
 
+  // els fantasmes de gel: travessen les parets i et venen a buscar, a poc a
+  // poc; quan t'han tocat, s'allunyen una estona
+  for(const f of fantasmes){
+    if(!f.viu){if(f.mortT>0)f.mortT-=dt;continue}
+    f.t+=dt;
+    if(f.sx!==sx||f.sy!==sy||J.mort)continue;
+    const dx=J.fx-f.x,dy=J.fy-f.y,d=Math.hypot(dx,dy)||1,v=VEL_FANT*dt*(f.fuig>0?-1.3:1);
+    if(f.fuig>0)f.fuig-=dt;
+    if(d>.05||f.fuig>0){f.x+=dx/d*v;f.y+=dy/d*v}
+    f.x=Math.max(f.sx*RC,Math.min(f.sx*RC+RC-1,f.x));f.y=Math.max(f.sy*RF,Math.min(f.sy*RF+RF-1,f.y));
+  }
+  // els blocs de gel que llisquen o cauen
+  for(const b of blocsMov){
+    b.t+=dt;
+    for(;;){const a=b.p[b.i],c=b.p[b.i+1];if(!c){b.fet=true;break}
+      const dur=c[1]!==a[1]?.12:.09;
+      if(b.t<dur){const q=b.t/dur;b.x=a[0]+(c[0]-a[0])*q;b.y=a[1]+(c[1]-a[1])*q;break}
+      b.t-=dur;b.i++;b.x=c[0];b.y=c[1]}
+    if(b.fet&&b.i>1)so.cau();
+  }
+  blocsMov=blocsMov.filter(b=>!b.fet);
+
   if(J.mort){
     mortT-=dt;if(mortT<=0){J.reapareix=J.reapareix||null;reapareix()}
     return;
@@ -867,6 +973,9 @@ function actualitza(dt){
   for(const r of ratpenats)if(r.viu&&r.y===fila&&Math.abs(r.x-J.fx)<.55&&J.imune<=0){
     so.ratpenat();fesMal(1);r.dir=r.x>J.fx?1:-1;
   }
+  for(const f of fantasmes)if(f.viu&&Math.abs(f.x-J.fx)<.5&&Math.abs(f.y-J.fy)<.5&&J.imune<=0){
+    so.fantasma();fesMal(1);f.fuig=2;
+  }
   if(J.mort)return;
 
   // les ordres
@@ -882,7 +991,9 @@ function actualitza(dt){
           // de tornar a premer (o ▼, que es el que no fa mal)
           const m=mouCamina(J.x,J.y,dir);
           const porta=cel(J.x+dir,J.y)==='D'&&claus>0;
-          if(fresca||porta||(m&&m.cau===0)){teclaFresca[dir>0?'dre':'esq']=false;accio('camina',dir)}
+          // un bloc de gel l'empenys seguit, si es pot moure
+          const bloc=!m&&mouEmpeny(J.x,J.y,dir);
+          if(fresca||porta||(bloc&&bloc.cau===0)||(m&&m.cau===0)){teclaFresca[dir>0?'dre':'esq']=false;accio('camina',dir)}
         }
       }
     }
@@ -1069,6 +1180,8 @@ function dibuixaCasella(x,y,px,py){
     g.strokeStyle='#2a1f16';g.lineWidth=2;g.beginPath();g.moveTo(px+10,py+8);g.lineTo(px+20,py+30);g.lineTo(px+14,py+48);g.lineTo(px+26,py+70);g.lineTo(px+22,py+86);g.stroke();
     g.beginPath();g.moveTo(px+20,py+30);g.lineTo(px+32,py+36);g.stroke();return}
   if(t==='L'){dibuixaLava(px,py,x);return}
+  // el bloc de gel (si no s'esta movent: aleshores es dibuixa a part)
+  if(t==='C'){if(!blocsMov.some(b=>b.fi&&b.fi[0]===x&&b.fi[1]===y))dibuixaBloc(px,py);return}
   // les antorxes de la paret del fons
   if(t===' '||t==='_'){if((x*7+y*13)%11===0&&!paret(x,y-1))dibuixaAntorxa(px+CW/2,py+30)}
   if(t==='T'){g.fillStyle='#4a3e30';g.fillRect(px+6,py+22,28,40);g.fillStyle='#2e261d';
@@ -1093,6 +1206,14 @@ function dibuixaCasella(x,y,px,py){
   if(aguanta(x,y)){
     const c=caients.find(c=>c.x===x&&c.y===y&&!c.fet);
     dibuixaLlosa(px,py,!!c);
+    // el gel: blau i brillant, que ja es veu que rellisca
+    if(t==='='){
+      // un reflex blau a sobre, la placa blanca i una espurna que corre
+      const gl=g.createLinearGradient(0,py+CH-LLOSA-26,0,py+CH-LLOSA);gl.addColorStop(0,'rgba(150,220,255,0)');gl.addColorStop(1,'rgba(150,220,255,.28)');
+      g.fillStyle=gl;g.fillRect(px,py+CH-LLOSA-26,CW,26);
+      g.fillStyle='#eefbff';g.fillRect(px,py+CH-LLOSA,CW,4);g.fillStyle='#78c4ee';g.fillRect(px,py+CH-LLOSA+4,CW,LLOSA-4);
+      g.fillStyle='rgba(255,255,255,.9)';const e=((rellotge*.6+x*.37)%1)*CW;g.fillRect(px+e-6,py+CH-LLOSA+1,12,1.5);
+      g.fillStyle='rgba(40,110,170,.5)';g.fillRect(px+7+(x*13)%20,py+CH-LLOSA+6,6,1)}
     if(t==='~'){g.strokeStyle='#3a2a1a';g.lineWidth=1;g.beginPath();g.moveTo(px+6,py+CH-LLOSA);g.lineTo(px+12,py+CH-3);g.moveTo(px+22,py+CH-LLOSA);g.lineTo(px+18,py+CH-4);g.lineTo(px+28,py+CH-1);g.stroke()}
   }
   if(t==='^'){
@@ -1133,7 +1254,14 @@ function dibuixaCasella(x,y,px,py){
     g.fillStyle='#5a4a3a';g.fillRect(cx-12,by-14,24,14);g.fillStyle='#7a6a52';g.fillRect(cx-12,by-14,24,3);
     const gl=g.createRadialGradient(cx,by-34,2,cx,by-34,30);gl.addColorStop(0,'rgba(255,220,100,'+(.35+bri*.25)+')');gl.addColorStop(1,'rgba(255,220,100,0)');
     g.fillStyle=gl;g.fillRect(cx-30,by-64,60,60);
-    if(nivell===4){
+    if(nivell===5){
+      // la corona de gel: punxes de vidre blau, que brillen
+      g.fillStyle='#bfeaff';g.fillRect(cx-12,by-30,24,9);
+      g.beginPath();g.moveTo(cx-12,by-30);g.lineTo(cx-10,by-44);g.lineTo(cx-5,by-33);g.lineTo(cx,by-50);g.lineTo(cx+5,by-33);g.lineTo(cx+10,by-44);g.lineTo(cx+12,by-30);g.fill();
+      g.fillStyle='#5ab0e8';g.fillRect(cx-12,by-24,24,3);
+      g.fillStyle='rgba(255,255,255,'+(.6+bri*.4)+')';g.fillRect(cx-1,by-46,2,10);g.fillRect(cx-9,by-40,2,6);g.fillRect(cx+8,by-40,2,6);
+      g.fillStyle='#2a70c8';g.beginPath();g.arc(cx,by-26,2.5,0,7);g.fill();
+    }else if(nivell===4){
       // el cor de foc: un robi en forma de cor
       const hx=cx,hy=by-44;
       g.fillStyle='#e01830';g.beginPath();g.moveTo(hx,hy+6);g.bezierCurveTo(hx,hy,hx-12,hy-2,hx-12,hy+7);g.bezierCurveTo(hx-12,hy+14,hx,hy+20,hx,hy+24);
@@ -1160,6 +1288,30 @@ function dibuixaCasella(x,y,px,py){
       g.fillStyle=COL.or;g.beginPath();g.arc(cx,by-42,6,0,7);g.fill();g.fillRect(cx-6,by-36,12,16);g.fillRect(cx-9,by-22,18,6);
       g.fillStyle='#c8961e';g.fillRect(cx-3,by-43,2,2);g.fillRect(cx+1,by-43,2,2);g.fillRect(cx-6,by-30,12,2);
     }}
+}
+// el bloc de gel: ocupa tota la casella, com una paret de vidre
+function dibuixaBloc(px,py){
+  g.fillStyle='rgba(160,215,248,.93)';g.fillRect(px+1,py+2,CW-2,CH-2);
+  g.fillStyle='rgba(255,255,255,.55)';g.fillRect(px+4,py+5,CW-8,4);g.fillRect(px+4,py+5,4,CH-12);
+  g.strokeStyle='#4a8ac0';g.lineWidth=2;g.strokeRect(px+2,py+3,CW-4,CH-4);
+  g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=1;g.beginPath();
+  g.moveTo(px+14,py+22);g.lineTo(px+21,py+36);g.lineTo(px+17,py+48);g.moveTo(px+26,py+60);g.lineTo(px+31,py+72);g.stroke();
+}
+// el fantasma de gel: transparent, et mira, i fa onades per sota
+function dibuixaFantasma(f,ox,oy){
+  const px=(f.x+.5)*CW-ox,py=f.y*CH+CH-LLOSA-40-oy+Math.sin(f.t*2.6)*4;
+  if(!f.viu){if(f.mortT>0){g.globalAlpha=Math.min(1,f.mortT*1.6);g.fillStyle='#dff4ff';
+    for(let i=0;i<8;i++){const a=i*.8,r=(.6-f.mortT)*60;g.beginPath();g.arc(px+Math.cos(a)*r,py+Math.sin(a)*r,3,0,7);g.fill()}g.globalAlpha=1}return}
+  g.save();g.globalAlpha=Math.max(.2,(f.fuig>0?.35:.75)+Math.sin(f.t*5)*.1);
+  const gl=g.createRadialGradient(px,py,4,px,py,36);gl.addColorStop(0,'rgba(170,225,255,.55)');gl.addColorStop(1,'rgba(170,225,255,0)');
+  g.fillStyle=gl;g.fillRect(px-36,py-36,72,72);
+  g.fillStyle='#eef9ff';g.beginPath();g.moveTo(px-14,py+16);g.lineTo(px-14,py-6);g.arc(px,py-6,14,Math.PI,0);g.lineTo(px+14,py+16);
+  for(let i=0;i<4;i++){const xx=px+14-(i+1)*7;g.quadraticCurveTo(xx+3.5,py+16+(i%2?-6:6)+Math.sin(f.t*8+i)*2,xx,py+16)}
+  g.closePath();g.fill();
+  const d=J&&J.fx>f.x?2:-2;g.fillStyle='#1a3a5a';
+  g.beginPath();g.ellipse(px-5+d,py-6,2.5,3.5,0,0,7);g.fill();g.beginPath();g.ellipse(px+5+d,py-6,2.5,3.5,0,0,7);g.fill();
+  g.beginPath();g.ellipse(px+d,py+5,3,2.2,0,0,7);g.fill();
+  g.restore();
 }
 // la lava: bull, fa bombolles i il·lumina la paret
 function dibuixaLava(px,py,x){
@@ -1294,7 +1446,8 @@ function dibuixaJugador(ox,oy){
   let cames=0,bracos='baix',ajup=J.ajup>0?Math.min(1,J.ajup*5):0;
   if(pose==='camina'){cames=Math.sin(m.t/m.dur*Math.PI)*(Math.floor((J.fx+J.fy)*2)%2?1:-1)}
   if(pose==='salta'||pose==='cau'||pose==='penja'||pose==='enfila'||pose==='baixa')bracos='dalt';
-  if(pose==='fuet')bracos='fuet';
+  if(pose==='fuet'||pose==='empeny')bracos='fuet';
+  if(pose==='empeny')cames=Math.sin(m.t/m.dur*Math.PI*2)*.6;
   if(ajup)g.scale(1,1-ajup*.38);
   // cames
   g.fillStyle=pant;
@@ -1359,6 +1512,8 @@ function dibuixa(){
     g.strokeStyle='#d8c8a0';g.lineWidth=2;g.beginPath();g.moveTo(fx-d.dir*14,fy);g.lineTo(fx,fy);g.stroke();
     g.fillStyle='#ccc';g.beginPath();g.moveTo(fx+d.dir*6,fy);g.lineTo(fx,fy-3);g.lineTo(fx,fy+3);g.fill();
     g.fillStyle='#c84040';g.fillRect(fx-d.dir*14-2,fy-3,3,6)}
+  for(const b of blocsMov)if(Math.floor(b.x/RC)===sx)dibuixaBloc(b.x*CW-ox,b.y*CH-oy);
+  for(const f of fantasmes)if(f.sx===sx&&f.sy===sy)dibuixaFantasma(f,ox,oy);
   for(const r of roques)dibuixaRoca((r.x+.5)*CW-ox+(r.espera>0?(Math.random()-.5)*4:0),r.y*CH+CH-LLOSA-30-oy,r.gir);
   for(const r of runes){g.fillStyle=r.foc?'#ffb030':r.llosa?COL.llosa:COL.pedra;
     if(r.llosa){g.fillRect(r.x-ox,r.y-oy,CW-8,LLOSA-2)}else g.fillRect(r.x-ox,r.y-oy,4,4)}
@@ -1405,8 +1560,8 @@ function dibuixaMapa(sx,sy){
     g.fillStyle='#1e1812';g.fillRect(bx,by,RC*mw,RF*mh);
     for(let r=0;r<RF;r++)for(let c=0;c<RC;c++){
       const x=rx*RC+c,yy=ry*RF+r,t=cel(x,yy),cx=bx+c*mw,cy=by+r*mh;
-      if(t==='#'||t==='%'||t==='<'||t==='>'){g.fillStyle=t==='<'||t==='>'?'#a04a3a':COL.pedra2;g.fillRect(cx,cy,mw,mh);continue}
-      if(aguanta(x,yy)){g.fillStyle=t==='^'?'#aaa':t==='L'?'#ff6a10':COL.llosa;g.fillRect(cx,cy+mh-(t==='L'?3:2),mw,t==='L'?3:2)}
+      if(t==='#'||t==='%'||t==='<'||t==='>'||t==='C'){g.fillStyle=t==='<'||t==='>'?'#a04a3a':t==='C'?'#a0d8f8':COL.pedra2;g.fillRect(cx,cy,mw,mh);continue}
+      if(aguanta(x,yy)){g.fillStyle=t==='^'?'#aaa':t==='L'?'#ff6a10':t==='='?'#c8ecff':COL.llosa;g.fillRect(cx,cy+mh-(t==='L'?3:2),mw,t==='L'?3:2)}
       if(t==='$'||t==='*'||t==='I'){g.fillStyle=t==='*'?'#4ad0ff':COL.or;g.fillRect(cx+2,cy+2,3,3)}
       if(t==='k'){g.fillStyle=COL.or;g.fillRect(cx+1,cy+3,5,2)}
       if(t==='E'){g.fillStyle='#7aa6c8';g.fillRect(cx+1,cy+1,5,5)}

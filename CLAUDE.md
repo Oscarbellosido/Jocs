@@ -1057,7 +1057,7 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-**Cinc nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
+**Sis nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
 acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
@@ -1140,6 +1140,49 @@ porta tres coses noves:
 El pilot automàtic, sota una estalactita que ja tremola, no espera res: hi
 passa de llarg. Hi necessita 14 segons per sortir amb el tresor.
 
+**La Cova de Gel**, el sisè (14 sales, la corona de gel, 100 segons per
+sortir). En Carles va demanar un nivell més quan anava pel Volcà, i va triar
+aquest entre tres idees. En porta tres coses noves, i les tres demanen pensar:
+
+- **Gel** (`=`): **caminant-hi, llisques** fins que topes amb alguna cosa o
+  s'acaba el gel (i si s'acaba en un forat, hi caus). **Saltant, no**: on
+  caus del salt, t'hi quedes, encara que sigui gel. És la manera d'aturar-se
+  a mig gel, i la inscripció ho diu. Ho fa `mouCamina` (i per això també el
+  pilot i la prova del mapa); el salt no llisca a posta, que si no no hi
+  hauria manera d'aturar-se. Caminant seguit, si el lliscament acabaria en
+  un forat, et pares abans de començar, com a la vora de qualsevol forat.
+- **Blocs de gel** (`C`): caminant-hi contra, **l'empenys** una casella i
+  passes on era (`mouEmpeny`, `empenyBloc`, `aplicaBloc`). Al gel llisca
+  fins que topa, i si es queda sense terra, cau. On s'atura **fa de paret**:
+  a sobre s'hi pot caminar (dins d'un forat, fa de pont), s'hi pot pujar i
+  **les fletxes no el travessen**. El que hi havia a sota de cada bloc es
+  guarda a `SOTA`, i es desa amb la partida.
+- **Fantasmes de gel** (`F`): **travessen les parets** i et venen a buscar a
+  poc a poc (`VEL_FANT`), sense sortir mai de la seva sala. Si et toquen,
+  et treuen un cor i s'allunyen un parell de segons. Un cop de FUET els
+  desfà (100).
+
+I els caramells del sostre són les estalactites del Volcà, i hi ha una
+paret de fletxes.
+
+Els blocs són perillosos per al mapa: **un bloc empès on no tocava pot
+deixar el temple sense sortida**. Per això cada bloc està posat de manera
+que **només es pot empènyer cap on cal** (no hi ha manera de posar-se a
+l'altra banda) i, on va, ja hi fa la seva feina: al forat de la segona sala
+fa de pont, a la quarta llisca fins a la paret de les fletxes (les tapa i fa
+de graó per pujar), i a la del tresor llisca fins al forat i fa el pont per
+saltar fins a la corona. **Sense moure'ls, al tresor no s'hi arriba**: la
+prova ho mira. Si mai se n'hi afegeix un, ha de ser igual.
+
+Els forats que s'han de creuar amb un bloc tenen **la columna de l'altra
+banda fonda**: si el fons fos a un pis, caient-hi i enfilant-te per l'altra
+banda creuaries sense el bloc. La columna on cau el bloc sí que és d'un pis,
+que si no el bloc cauria massa avall i no faria de pont.
+
+El camí de tornada és per sota: des de la corona baixes penjat (▼), corres
+cap a l'oest per un passadís nou, una placa obre la reixa des de dins i
+s'enfila per una torre fins a la porta. El pilot hi tarda uns 15-20 segons.
+
 **Cada nivell es reconeix**: en començar-lo (o en continuar-lo) surt uns
 segons un rètol gran al mig, NIVELL 2 DE 5 · LES CATACUMBES, i el nom del
 nivell queda sempre escrit a sota del mapa. I **cada nivell té els seus
@@ -1185,9 +1228,9 @@ es desa dins de cada navegador, i l'app instal·lada, el navegador i Telegram
 per dins són llocs diferents (com a La Rotllana).
 
 Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, guardià 500, aranya 75,
-sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000), i en sortir de cada nivell 1.000 més 500 per vida i
+sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000, la corona de gel 7.000), fantasma 100, i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
-uns 47.000 amb els cinc.
+uns 58.000 amb els sis.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
@@ -1552,9 +1595,9 @@ comproven el comportament.
   nivell acabat apuntat a la taula i tot desat en tornar-hi.
 - `node scripts/prova-temple.mjs` — que cada nivell del temple es pugui acabar i
   no tingui racons on quedar-te tancat, que dos pilots automàtics surtin amb
-  el tresor de cada nivell i que la partida sencera passi pels cinc; que els
+  el tresor de cada nivell i que la partida sencera passi pels sis; que els
   ratpenats, la roca, la reixa amb temps, la fossa, les fletxes, els
-  esquelets, les aranyes, la lava, les estalactites i el guardià vagin com
+  esquelets, les aranyes, la lava, les estalactites, el guardià, el gel, els blocs de gel i els fantasmes vagin com
   toca, i que les caigudes, les punxes, les serps, el terra que cau, les portes, les
   reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
   continuï, que els punts vagin a la taula i que els sis botons càpiguen a
