@@ -983,6 +983,13 @@ Coses que no s'han de desfer sense entendre-les:
   ensenya la imatge clareta dins del marc, com la foto de la capsa.
 - **La peça que treus de la safata surt una mica per sobre del dit**, que si
   no el dit la tapa i no veus on la poses.
+- **Un sol dit alhora, i cap peça pot quedar enlloc** (`repara`). En Carles
+  va acabar amb 33 de 35 i la safata buida: tocant una segona peça mentre en
+  portava una altra (dos dits, o el palmell), la primera es quedava a l'aire,
+  fora de la safata i de la taula, i no es veia mai més. Ara el segon dit no
+  agafa res, la peça que portes es desa a la safata si es desa a mig
+  arrossegar, i en obrir una partida desada, la peça que no és enlloc torna a
+  la safata.
 - **Cada peça es pinta un sol cop** en un llenç a part i després només
   s'enganxa (com les fruites del Síndria): amb 80 peces, retallar-les a cada
   fotograma anava a batzegades.

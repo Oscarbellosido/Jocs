@@ -492,11 +492,24 @@ function desaPartida(){
   if(!G)return;
   // de cada peça, nomes on es (u, w: en proporcio del marc); les vores i el
   // dibuix es tornen a fer en obrir-la
-  desa(clauPartida(),{...G,V:undefined,peces:G.peces.map(p=>({c:p.c,f:p.f,e:p.e,u:p.u,w:p.w}))});
+  // (la que portes amb el dit es desa a la safata, que si tanques ara no es perdi)
+  desa(clauPartida(),repara({...G,V:undefined,safata:G.safata.slice(),z:G.z.slice(),peces:G.peces.map(p=>({c:p.c,f:p.f,e:p.e,u:p.u,w:p.w}))}));
+}
+// Cada peça que no és al seu lloc ha de ser a la safata o per la taula. En
+// Carles va acabar amb 33 de 35 i la safata buida: tocant dues peces alhora
+// amb dos dits, la primera quedava a l'aire i no era enlloc. La que no és
+// enlloc torna a la safata (aixi també es recuperen les partides desades
+// amb peces perdudes).
+function repara(s){
+  const a=new Set(s.safata),t=new Set(s.z);
+  s.peces.forEach((q,i)=>{if(q.e==='l'||(q.e==='s'&&a.has(i))||(q.e==='t'&&t.has(i)))return;q.e='s';s.safata.push(i)});
+  s.safata=s.safata.filter((i,k,l)=>s.peces[i].e==='s'&&l.indexOf(i)===k);
+  s.z=s.z.filter((i,k,l)=>s.peces[i].e==='t'&&l.indexOf(i)===k);
+  return s;
 }
 function recupera(clau){
   const s=llegeix(clau,null);if(!s||s.v!==1)return null;
-  s.V=fesVores(s.cols,s.files,s.llavor);s.peces.forEach(q=>{q.e=q.e||'s'});return s;
+  s.V=fesVores(s.cols,s.files,s.llavor);s.peces.forEach(q=>{q.e=q.e||'s'});return repara(s);
 }
 
 // ===== EL MENU =====
@@ -649,12 +662,14 @@ let avisT=null,avisant=false;
 function avisa(t){$('que').textContent=t;avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaEstat()},1800)}
 
 // ===== EL DIT =====
+function agafaDit(ev){try{CV.setPointerCapture(ev.pointerId)}catch(e){}}
 function punt(ev){const r=CV.getBoundingClientRect();return [ev.clientX-r.left,ev.clientY-r.top]}
 const jugant=()=>G&&!G.fi&&!paused&&$('msg').style.display!=='block';
 CV.addEventListener('pointerdown',ev=>{
   ev.preventDefault();aInit();
   if(paused){posaPausa(false);return}
-  if(!jugant())return;
+  // un sol dit alhora: el segon no agafa res (si no, la primera peça es perdia)
+  if(!jugant()||drag)return;
   const [x,y]=punt(ev);
   if(y>=L.sy){
     // fletxes de la safata
@@ -664,20 +679,20 @@ CV.addEventListener('pointerdown',ev=>{
     for(let k=0;k<tros.length;k++){const [sx,sy,s]=slotRect(k);if(x>=sx-3&&x<=sx+s+3&&y>=sy-3&&y<=sy+s+3){
       const i=tros[k],p=G.peces[i];G.safata.splice(G.safata.indexOf(i),1);
       // la peça surt amb el centre una mica per sobre del dit, que es vegi
-      drag={p,i,dx:L.pw/2,dy:L.ph/2+L.ph*.45,x:x-L.pw/2,y:y-L.ph/2-L.ph*.45,de:'s'};
-      CV.setPointerCapture(ev.pointerId);sndAgafa();brut=true;return}}
+      drag={p,i,dx:L.pw/2,dy:L.ph/2+L.ph*.45,x:x-L.pw/2,y:y-L.ph/2-L.ph*.45,de:'s',dit:ev.pointerId};
+      agafaDit(ev);sndAgafa();brut=true;return}}
     return;
   }
   // una que ja es per la taula: la de mes amunt
   for(let k=G.z.length-1;k>=0;k--){const i=G.z[k],p=G.peces[i];if(p.e!=='t')continue;const [px,py]=posDe(p),m=L.t*.6;
-    if(x>=px-m&&x<=px+L.pw+m&&y>=py-m&&y<=py+L.ph+m){drag={p,i,dx:x-px,dy:y-py,x:px,y:py,de:'t'};
-      G.z.splice(k,1);CV.setPointerCapture(ev.pointerId);sndAgafa();brut=true;return}}
+    if(x>=px-m&&x<=px+L.pw+m&&y>=py-m&&y<=py+L.ph+m){drag={p,i,dx:x-px,dy:y-py,x:px,y:py,de:'t',dit:ev.pointerId};
+      G.z.splice(k,1);agafaDit(ev);sndAgafa();brut=true;return}}
 });
-CV.addEventListener('pointermove',ev=>{if(!drag)return;const [x,y]=punt(ev);drag.x=x-drag.dx;drag.y=y-drag.dy;brut=true});
+CV.addEventListener('pointermove',ev=>{if(!drag||ev.pointerId!==drag.dit)return;const [x,y]=punt(ev);drag.x=x-drag.dx;drag.y=y-drag.dy;brut=true});
 CV.addEventListener('pointerup',deixa);
 CV.addEventListener('pointercancel',deixa);
-function deixa(){
-  if(!drag)return;const {p,i}=drag;
+function deixa(ev){
+  if(!drag||(ev&&ev.pointerId!==undefined&&ev.pointerId!==drag.dit))return;const {p,i}=drag;
   const cx=drag.x+L.pw/2,cy=drag.y+L.ph/2,[hx,hy]=casa(p);
   if(cy>L.sy){
     // a la safata: hi torna, a la pagina que es veu

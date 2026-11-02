@@ -104,9 +104,29 @@ diu(vores.n > 0 && vores.primer && vores.pag === 0, `VORES PRIMER posa les ${vor
 await p.tap('#model');
 diu(await p.evaluate(() => model === true), 'MODEL ensenya la imatge, clareta, dins del marc');
 await p.tap('#model');
+// En Carles va acabar amb 33 de 35 i la safata buida: tocant dues peces
+// alhora amb dos dits, la primera es quedava a l'aire i no era enlloc
+const enLloc = 'G.peces.every((q, i) => q.e === "l" || (q.e === "s" && G.safata.includes(i)) || (q.e === "t" && G.z.includes(i)))';
+const dosDits = await p.evaluate(enLloc => {
+  const c = document.getElementById('c'), rc = c.getBoundingClientRect(), n = G.safata.length;
+  const ev = (t, id, k) => { const [x, y, s] = slotRect(k); c.dispatchEvent(new PointerEvent(t, { pointerId: id, bubbles: true, clientX: rc.left + x + s / 2, clientY: rc.top + y + s / 2, pointerType: 'touch' })); };
+  ev('pointerdown', 1, 0); ev('pointerdown', 2, 1); ev('pointerup', 2, 1); ev('pointerup', 1, 0);
+  return { totes: eval(enLloc), n, ara: G.safata.length };
+}, enLloc);
+diu(dosDits.totes && dosDits.ara === dosDits.n, 'tocant dues peces alhora amb dos dits, no se\'n perd cap');
+const aMig = await p.evaluate(() => {
+  const c = document.getElementById('c'), rc = c.getBoundingClientRect(), [x, y, s] = slotRect(0);
+  c.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 3, bubbles: true, clientX: rc.left + x + s / 2, clientY: rc.top + y + s / 2 }));
+  desaPartida(); const q = JSON.parse(localStorage.getItem('trencaclosques-' + G.dia));
+  c.dispatchEvent(new PointerEvent('pointerup', { pointerId: 3, bubbles: true, clientX: rc.left + x + s / 2, clientY: rc.top + y + s / 2 }));
+  return q.peces.every((r, i) => r.e === 'l' || (r.e === 's' && q.safata.includes(i)) || (r.e === 't' && q.z.includes(i)));
+});
+diu(aMig, 'si es desa mentre arrossegues una peça, la peça es desa a la safata');
 
 // ---------- 3. desar i continuar ----------
-const desat = await p.evaluate(() => ({ fetes: G.peces.filter(q => q.e === 'l').length, temps: G.temps }));
+// i una partida desada amb una peça perduda (com la d'en Carles) la recupera
+await p.evaluate(() => { const k = 'trencaclosques-' + G.dia; desaPartida(); const q = JSON.parse(localStorage.getItem(k)); q.safata.shift(); localStorage.setItem(k, JSON.stringify(q)); G = null; });
+const desat = await p.evaluate(() => { const q = JSON.parse(localStorage.getItem('trencaclosques-' + diaAvui())); return { fetes: q.peces.filter(r => r.e === 'l').length, temps: q.temps, safata: q.safata.length }; });
 await p.reload(); await p.waitForTimeout(500);
 await p.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
 diu(await p.evaluate(() => /CONTINUA EL D'AVUI/.test(document.getElementById('msg').textContent)), 'tancant i tornant-hi, el menú ofereix CONTINUA EL D\'AVUI');
@@ -114,6 +134,7 @@ await p.click('#m-dia');
 await p.waitForTimeout(200);
 let e = await p.evaluate(() => ({ fetes: G.peces.filter(q => q.e === 'l').length, temps: G.temps }));
 diu(e.fetes === desat.fetes && Math.abs(e.temps - desat.temps) < 3, `i continues on eres: ${e.fetes} peces fetes i el rellotge a ${Math.round(e.temps)} s`);
+diu(await p.evaluate(enLloc => eval(enLloc), enLloc) && await p.evaluate(n => G.safata.length === n + 1, desat.safata), 'i si se n\'havia perdut alguna, torna a ser a la safata');
 
 // ---------- 4. acabar-lo ----------
 enviats.length = 0;
