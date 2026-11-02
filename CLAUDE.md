@@ -104,6 +104,19 @@ hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
+**L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
+que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
+graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
+amb quantes vegades (12×), i els altres darrere per any. En Carles ho va
+demanar. Es compta cada joc obert des de la portada, sigui des de la fitxa o
+des d'ELS JOCS D'AVUI (`jocs-jugats`, en aquest mòbil), i els jocs on ja hi
+havia un rècord local d'abans (`best_<joc>`) compten com a jugats un cop, que
+si no el primer dia sortirien tots a zero. La tria es recorda (`jocs-ordre`).
+Les fitxes es mouen a la graella de MÉS JUGATS i, tornant a PER ANY, cadascuna
+torna al seu apartat. El títol no és `h2.seccio`, que la prova en compta dos,
+i cal `[hidden]{display:none!important}` perquè les graelles porten
+`display:grid`, que si no manaria sobre l'atribut `hidden`.
+
 I com que aquests sí que són jocs d'empreses vives —no màquines de fa quaranta
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
 nom de l'original.

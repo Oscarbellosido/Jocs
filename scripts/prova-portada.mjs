@@ -171,6 +171,41 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
+// L'ordre: per any (tots, el museu) o els que mes jugues primer. Es compta
+// cada joc que obres des de la portada, i els que ja tenien record compten
+// com a jugats un cop. Tornant a PER ANY, tot torna al seu lloc.
+{
+  const ctx = await b.newContext({ viewport: { width: 320, height: 568 } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  await p.goto('file://' + resolve(ARREL, 'index.html'));
+  await p.evaluate(() => { localStorage.clear(); localStorage.setItem('jocs-jugats', JSON.stringify({ colles: 3, pong: 1 })); localStorage.setItem('best_galaga', '3000'); });
+  await p.reload(); await p.waitForTimeout(300);
+  // obrir el Tetris des de la portada en suma un (sense anar-hi de debò)
+  await p.evaluate(() => { const a = document.querySelector('a.btn[href="tetris.html"]'); a.addEventListener('click', e => e.preventDefault()); for (let i = 0; i < 5; i++) a.click(); });
+  await p.click('#ordre button[data-ordre="jugats"]');
+  const ids = sel => p.evaluate(s => [...document.querySelectorAll(s)].map(a => a.querySelector('.rec').dataset.joc), sel);
+  const jug = await ids('#jugats a.btn');
+  const vist = await p.evaluate(() => ({
+    titols: [...document.querySelectorAll('h2.seccio')].every(h => h.offsetParent === null), jugats: document.getElementById('jugats').offsetParent !== null,
+    scroll: document.documentElement.scrollWidth > innerWidth + 1, boto: document.querySelector('#ordre').scrollWidth <= innerWidth,
+  }));
+  const tots = jug.length === ORDRE.length + MODERNS.length;
+  let be = tots && jug.slice(0, 4).join() === 'tetris,colles,pong,galaga' && jug[4] === 'breakout' && vist.titols && vist.jugats && !vist.scroll && vist.boto;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} MÉS JUGATS: primer els que més obres (${jug.slice(0, 5).join(', ')}...), i els altres per any, sense els títols dels apartats`);
+  await p.reload(); await p.waitForTimeout(300);
+  const recorda = (await ids('#jugats a.btn')).length === jug.length;
+  await p.click('#ordre button[data-ordre="any"]');
+  const cl = await ids('#classics a.btn'), mo = await ids('#moderns a.btn');
+  be = recorda && cl.join() === ORDRE.map(x => x[0]).join() && mo.join() === MODERNS.map(x => x[0]).join() && !(await ids('#jugats a.btn')).length && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} es recorda en tornar-hi, i PER ANY ho torna tot al seu lloc` + (errors.length ? ' ' + errors[0] : ''));
+  await ctx.close();
+}
+
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);
 await b.close();
 process.exit(malament ? 1 : 0);

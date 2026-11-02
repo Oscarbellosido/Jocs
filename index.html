@@ -224,6 +224,21 @@
   .avui .lliga .podi { white-space: normal; }
   .avui .lliga small { display: block; color: #6a7a8c; font-size: 0.62rem; }
   .avui .lliga .tu { color: #9fdcff; }
+  /* com van ordenats els jocs: per any (tots, com un museu) o els que mes
+     jugues primer */
+  .ordre { display: flex; gap: 0.4rem; justify-content: center; align-items: center;
+    font: normal 0.66rem monospace; color: #6a7a8c; letter-spacing: 0.06em; flex-wrap: wrap; }
+  .ordre button { font: normal 0.7rem monospace; letter-spacing: 0.06em; color: #9fb3c6; background: #0a0e14;
+    border: 1px solid #2c3a4f; border-radius: 999px; padding: 0.35rem 0.75rem; cursor: pointer; }
+  .ordre button[aria-pressed="true"] { color: #10241a; background: #ffd27a; border-color: #ffd27a; font-weight: bold; }
+  h2.jugats { width: 100%; max-width: 430px; padding: 0 0.8rem; margin-top: 0.4rem; font: normal 0.72rem monospace;
+    letter-spacing: 0.16em; color: #ffd27a; text-align: center; }
+  h2.jugats i { font-style: normal; color: #6a6a6a; }
+  @media (min-width: 560px) { h2.jugats { max-width: 760px; } }
+  @media (min-width: 900px) { h2.jugats { max-width: 1020px; } }
+  a.btn em .cops { flex: none; color: #ffd27a; font-style: normal; }
+  /* .games porta display:grid, que manaria sobre l'atribut hidden */
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -234,6 +249,9 @@
     <ul id="avui-llista"></ul>
     <div class="lliga" id="lliga" hidden></div>
   </details>
+  <div class="ordre" id="ordre">ORDRE: <button type="button" data-ordre="any" aria-pressed="true">PER ANY</button><button type="button" data-ordre="jugats" aria-pressed="false">MÉS JUGATS</button></div>
+  <h2 class="jugats" id="titol-jugats" hidden>ELS QUE MÉS JUGUES <i>en aquest mòbil</i></h2>
+  <div class="games" id="jugats" hidden></div>
   <h2 class="seccio">CLÀSSICS DELS SALONS <i>1972 — 1984</i></h2>
   <div class="games" id="classics">
     <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em><i class="any">1972</i><b class="rec" data-joc="pong"></b></em></a>
@@ -413,6 +431,58 @@ posaLiders();
   // la portada torna a la pantalla, es torna a mirar.
   addEventListener('pageshow',e=>{if(e.persisted){pintaLlista();carregaLliga();posaLiders()}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pintaLlista()});
+})();
+
+// ===== L'ORDRE DELS JOCS =====
+// En Carles va demanar poder triar: tots per any (el museu, com sempre) o
+// primer els que mes jugues. Es compta cada vegada que obres un joc des de la
+// portada, en aquest mobil (jocs-jugats). Els jocs on ja tenies un record
+// abans de comptar-ho compten com a jugats una vegada, que si no, el primer
+// dia sortirien tots a zero. La tria es recorda (jocs-ordre).
+(function(){
+  const llegeix=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
+  const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+  const fitxes=[...document.querySelectorAll('a.btn')];
+  // on era cada fitxa, per tornar-la al seu lloc
+  const lloc=new Map(fitxes.map(a=>[a,a.parentNode]));
+  const idDe=a=>a.querySelector('.rec').dataset.joc;
+  const perHref=new Map(fitxes.map(a=>[a.getAttribute('href'),idDe(a)]));
+  const cops=()=>{
+    const c=llegeix('jocs-jugats')||{};
+    for(const a of fitxes){const id=idDe(a);if(!c[id]){let b=0;try{b=parseInt(localStorage.getItem('best_'+id)||'0',10)}catch(e){}if(b>0)c[id]=1}}
+    return c;
+  };
+  // cada joc obert des de la portada (les fitxes o ELS JOCS D'AVUI) suma un
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('a[href]');if(!a)return;
+    const id=perHref.get(a.getAttribute('href'));if(!id)return;
+    const c=llegeix('jocs-jugats')||{};c[id]=(c[id]||0)+1;desa('jocs-jugats',c);
+  },true);
+  const caixa=document.getElementById('jugats'),titol=document.getElementById('titol-jugats');
+  const seccions=[...document.querySelectorAll('h2.seccio')].flatMap(h=>[h,h.nextElementSibling]);
+  function posa(ordre){
+    document.querySelectorAll('#ordre button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ordre===ordre)));
+    fitxes.forEach(a=>{const v=a.querySelector('.cops');if(v)v.remove()});
+    if(ordre==='jugats'){
+      const c=cops();
+      // els mes jugats primer; si n'hi ha d'empatats, per any, com sempre
+      fitxes.map((a,i)=>[a,c[idDe(a)]||0,i]).sort((x,y)=>y[1]-x[1]||x[2]-y[2]).forEach(([a,n])=>{
+        caixa.appendChild(a);
+        if(n){const v=document.createElement('i');v.className='cops';v.textContent=n+'×';a.querySelector('em').prepend(v)}
+      });
+      caixa.hidden=titol.hidden=false;seccions.forEach(e=>e.hidden=true);
+    }else{
+      fitxes.forEach(a=>lloc.get(a).appendChild(a));
+      caixa.hidden=titol.hidden=true;seccions.forEach(e=>e.hidden=false);
+    }
+  }
+  document.getElementById('ordre').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    desa('jocs-ordre',b.dataset.ordre);posa(b.dataset.ordre);
+  });
+  if(llegeix('jocs-ordre')==='jugats')posa('jugats');
+  // tornant enrere des d'un joc, el compte ha canviat
+  addEventListener('pageshow',e=>{if(e.persisted&&llegeix('jocs-ordre')==='jugats')posa('jugats')});
 })();
 </script>
 </body>
