@@ -145,6 +145,32 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
+// Tornant d'un joc amb el boto d'enrere del mobil, el navegador ensenya la
+// portada tal com era, sense tornar-la a llegir (avisa amb un «pageshow»
+// amb persisted). La partida que acabaves de fer ha de sortir com a feta.
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  await p.goto('file://' + resolve(ARREL, 'index.html'));
+  await p.waitForTimeout(400);
+  const estat = () => p.evaluate(() => [[...document.querySelectorAll('#avui-llista li')].find(l => /POBLE/.test(l.textContent)).querySelector('.est').textContent, document.getElementById('avui-fets').textContent]);
+  const abans = await estat();
+  await p.evaluate(() => {
+    const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+    localStorage.setItem('poble-' + d, JSON.stringify({ v: 1, intents: [1, 2], fi: true, encert: true }));
+    dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+  });
+  await p.waitForTimeout(200);
+  const despres = await estat();
+  const be = abans[0] === 'PER FER' && despres[0] === '✓ FET' && despres[1] === '1 de 9 fets' && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} tornant enrere des d'un joc, la partida acabada surt com a feta (${abans[0]} → ${despres[0]}, ${despres[1]})` + (errors.length ? ' ' + errors[0] : ''));
+  await ctx.close();
+}
+
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);
 await b.close();
 process.exit(malament ? 1 : 0);

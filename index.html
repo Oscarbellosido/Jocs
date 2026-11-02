@@ -320,14 +320,18 @@ try{
   addEventListener('load',()=>{if(!hasTocat)hiVa()});
 })();
 
-// qui mana a cada joc, en una sola consulta
-Records.tots().then(taules => {
-  if (!taules) return;                       // sense connexio: les fitxes es queden netes
-  document.querySelectorAll('a.btn em .rec[data-joc]').forEach(el => {
-    const lider = (taules[el.dataset.joc] || [])[0];
-    if (lider) el.textContent = lider.n + '  ' + lider.p;
+// qui mana a cada joc, en una sola consulta (i un altre cop si tornes
+// enrere des d'un joc, que potser acabes de fer un record)
+function posaLiders() {
+  Records.tots().then(taules => {
+    if (!taules) return;                     // sense connexio: les fitxes es queden netes
+    document.querySelectorAll('a.btn em .rec[data-joc]').forEach(el => {
+      const lider = (taules[el.dataset.joc] || [])[0];
+      if (lider) el.textContent = lider.n + '  ' + lider.p;
+    });
   });
-});
+}
+posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
 // Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
@@ -358,23 +362,28 @@ Records.tots().then(taules => {
       return llegeix('conquesta-dia')===avui?'mig':null}],
   ];
   const ul=document.getElementById('avui-llista');
-  let fets=0;
-  for(const [joc,nom,href,estat] of JOCS){
-    let e=null;try{e=estat()}catch(err){}
-    if(e==='fet')fets++;
-    const li=document.createElement('li');
-    li.innerHTML='<a href="'+href+'"><i class="est'+(e?' '+e:'')+'">'+(e==='fet'?'✓ FET':e==='mig'?'A MIG FER':'PER FER')+
-      '</i><span class="nom">'+nom+'</span><b class="lid" data-joc="'+joc+'"></b></a>';
-    ul.appendChild(li);
+  let lliga=null;
+  function pintaLlista(){
+    ul.innerHTML='';
+    let fets=0;
+    for(const [joc,nom,href,estat] of JOCS){
+      let e=null;try{e=estat()}catch(err){}
+      if(e==='fet')fets++;
+      const li=document.createElement('li');
+      li.innerHTML='<a href="'+href+'"><i class="est'+(e?' '+e:'')+'">'+(e==='fet'?'✓ FET':e==='mig'?'A MIG FER':'PER FER')+
+        '</i><span class="nom">'+nom+'</span><b class="lid" data-joc="'+joc+'"></b></a>';
+      ul.appendChild(li);
+    }
+    document.getElementById('avui-fets').textContent=fets+' de '+JOCS.length+' fets';
+    if(lliga)pintaLliga(lliga);
   }
-  document.getElementById('avui-fets').textContent=fets+' de '+JOCS.length+' fets';
+  pintaLlista();
   // es recorda si l'has plegat
   const det=document.getElementById('avui');
   if(cru('jocs-avui-plegat')==='1')det.open=false;
   det.addEventListener('toggle',()=>{try{localStorage.setItem('jocs-avui-plegat',det.open?'0':'1')}catch(e){}});
 
-  Records.lliga().then(l=>{
-    if(!l||!Array.isArray(l.classificacio))return;      // sense connexio: res
+  function pintaLliga(l){
     const av=l.avui||{};
     for(const [joc,,,,fmt] of JOCS){
       const el=ul.querySelector('[data-joc="'+joc+'"]'),g=av[joc];
@@ -390,7 +399,20 @@ Records.tots().then(taules => {
       (jo?'<div class="tu">'+(pos>=0?'Tu, '+esc(jo)+': '+ordinal(pos+1)+' amb '+c[pos].p+' punts':'Tu, '+esc(jo)+': encara no hi ets')+'</div>':'')+
       '<small>Cada partida del dia: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi. Dilluns el bot diu qui l\'ha guanyada.</small>';
     box.hidden=false;
-  });
+  }
+  function carregaLliga(){
+    Records.lliga().then(l=>{
+      if(!l||!Array.isArray(l.classificacio))return;    // sense connexio: res
+      lliga=l;pintaLliga(l);
+    });
+  }
+  carregaLliga();
+  // Tornant d'un joc amb el boto d'enrere del mobil, el navegador ensenya la
+  // portada tal com era quan en vas sortir, sense tornar-la a llegir: la
+  // partida que acabaves de fer seguia dient PER FER. Ara, cada vegada que
+  // la portada torna a la pantalla, es torna a mirar.
+  addEventListener('pageshow',e=>{if(e.persisted){pintaLlista();carregaLliga();posaLiders()}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pintaLlista()});
 })();
 </script>
 </body>

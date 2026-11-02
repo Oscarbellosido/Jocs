@@ -91,7 +91,14 @@ lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
 si algun joc canvia com desa la del dia, s'ha de canviar també aquí. Qui guanya
 i la lliga venen del Worker (`/lliga`); sense connexió la llista surt igual,
-sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). Hi va perquè
+sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant
+d'un joc amb el botó d'enrere del mòbil**, el navegador ensenya la portada
+tal com era quan en vas sortir, sense tornar-la a llegir, i la partida que
+acabaves de fer seguia dient PER FER (ho va veure en Carles). Per això la
+llista es torna a pintar amb el `pageshow` que porta `persisted` (i en tornar
+a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
+navegador de les proves això no passa (allà la pàgina sempre es torna a
+carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va perquè
 cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
 hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
