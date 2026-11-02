@@ -919,7 +919,7 @@ després del Wordle), amb nom nostre: en català no n'hi havia cap.
 
 Coses que no s'han de desfer sense entendre-les:
 
-- **Les partides són escrites a mà** (`COLLES`, dins del joc), 30 de moment.
+- **Les partides són escrites a mà** (`COLLES`, dins del joc), 60 de moment (la darrera, la #60, és la del 22 de desembre del 2026).
   Cada dia surt la següent **en l'ordre en què estan escrites** (no
   barrejades: així es tria quina va primer, i les fluixes no surten mai al
   principi). La #1 és la del 24 d'octubre del 2026. Quan s'acaben, tornen a
