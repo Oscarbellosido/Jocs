@@ -26,9 +26,9 @@ const ORDRE = [
 // trenquin la linia del temps.
 // No son de saló: van a part perquè no trenquin la línia del temps dels
 // clàssics. Dins de l'apartat, també per ordre d'any.
-const MODERNS = [['botifarra', 1850], ['xifres', 1972], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026]];
+const MODERNS = [['botifarra', 1850], ['xifres', 1972], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026], ['poble', 2026]];
 // les partides del dia, que surten a dalt de tot a ELS JOCS D'AVUI
-const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'abecedari_dificil_dia', 'colles_dia', 'trencaclosques_dia', 'botifarra_dia', 'conquesta_dia'];
+const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'abecedari_dificil_dia', 'colles_dia', 'poble_dia', 'trencaclosques_dia', 'botifarra_dia', 'conquesta_dia'];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
@@ -44,7 +44,7 @@ for (const [w, h] of MIDES) {
     body: JSON.stringify(/\/lliga$/.test(r.request().url())
       ? { setmana: '2026-11-02', fins: '2026-11-02',
           classificacio: [{ n: 'BOB', p: 120 }, { n: 'TRA', p: 118 }, { n: 'MAR', p: 99 }, { n: 'CRE', p: 6 }],
-          avui: Object.fromEntries(DIARIS.map(j => [j, j === 'conquesta_dia' ? null : { n: 'WWW', p: j === 'gofra_dia' ? 5 : 3400 }])) }
+          avui: Object.fromEntries(DIARIS.map(j => [j, j === 'conquesta_dia' ? null : { n: 'WWW', p: j === 'gofra_dia' ? 5 : j === 'poble_dia' ? 500 : 3400 }])) }
       : Object.fromEntries([...ORDRE, ...MODERNS].map(([joc]) => [joc, [{ n: 'CRE', p: 188400, t: 1 }]]))),
   }));
   const p = await ctx.newPage();
@@ -128,9 +128,9 @@ for (const [w, h] of MIDES) {
   if (r.tg) problemes.push('el botó de Telegram: ' + r.tg);
   const a = r.avui;
   if (JSON.stringify(a.joc) !== JSON.stringify(DIARIS)) problemes.push('a ELS JOCS D\'AVUI hi falten partides del dia: ' + a.joc.join(','));
-  if (a.est[0] !== '✓ FET' || a.est[4] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.fets !== '1 de 8 fets')
+  if (a.est[0] !== '✓ FET' || a.est[4] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.fets !== '1 de 9 fets')
     problemes.push('els estats de les partides del dia no quadren: ' + a.est.join(','));
-  if (a.lid[0] !== 'WWW ★★★★★' || a.lid[5] !== 'WWW 3:20' || a.lid[1] !== 'WWW 3.400' || a.lid[7] !== '')
+  if (a.lid[0] !== 'WWW ★★★★★' || a.lid[6] !== 'WWW 3:20' || a.lid[5] !== 'WWW 6/6' || a.lid[1] !== 'WWW 3.400' || a.lid[8] !== '')
     problemes.push('qui guanya avui no surt bé: ' + a.lid.join(','));
   if (a.vessa) problemes.push(`${a.vessa} files de les partides del dia que no hi caben`);
   if (!/BOB 120/.test(a.lliga) || !/Tu, CRE: 4t amb 6 punts/.test(a.lliga)) problemes.push('la lliga de la setmana no surt: ' + a.lliga);

@@ -278,6 +278,7 @@
     <a class="btn" href="conquesta.html"><img src="thumbs/conquesta.png" alt="LA CONQUESTA" width="240" height="240"><span>LA CONQUESTA</span><em><i class="any">2026</i><b class="rec" data-joc="conquesta"></b></em></a>
     <a class="btn" href="colles.html"><img src="thumbs/colles.png" alt="LES QUATRE COLLES" width="240" height="240"><span>LES QUATRE COLLES</span><em><i class="any">2026</i><b class="rec" data-joc="colles"></b></em></a>
     <a class="btn" href="trencaclosques.html"><img src="thumbs/trencaclosques.png" alt="EL TRENCACLOSQUES" width="240" height="240"><span>EL TRENCACLOSQUES</span><em><i class="any">2026</i><b class="rec" data-joc="trencaclosques"></b></em></a>
+    <a class="btn" href="poble.html"><img src="thumbs/poble.png" alt="EL POBLE DEL DIA" width="240" height="240"><span>EL POBLE DEL DIA</span><em><i class="any">2026</i><b class="rec" data-joc="poble"></b></em></a>
   </div>
 <script src="records.js"></script>
 <script>
@@ -329,7 +330,7 @@ Records.tots().then(taules => {
 });
 
 // ===== ELS JOCS D'AVUI =====
-// Les vuit partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
@@ -349,6 +350,7 @@ Records.tots().then(taules => {
     ['abecedari_dia',"L'ABECEDARI",'abecedari.html',()=>{const d=llegeix('abecedari-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null}],
     ['abecedari_dificil_dia',"L'ABECEDARI DIFÍCIL",'abecedari.html',()=>{const d=llegeix('abecedari-dificil-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null}],
     ['colles_dia','LES QUATRE COLLES','colles.html',()=>{const d=llegeix('colles-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null}],
+    ['poble_dia','EL POBLE DEL DIA','poble.html',()=>{const d=llegeix('poble-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null},p=>p>=500?(11-p/100)+'/6':'✗'],
     ['trencaclosques_dia','EL TRENCACLOSQUES','trencaclosques.html',()=>{const d=llegeix('trencaclosques-'+avui);return !d?null:d.fi?'fet':'mig'},temps],
     ['botifarra_dia','LA BOTIFARRA','botifarra.html',()=>{const d=llegeix('botifarra-'+avui);return !d?null:d.fi?'fet':'mig'}],
     ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{

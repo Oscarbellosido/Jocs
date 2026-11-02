@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i setze que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i disset que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -40,7 +40,7 @@ mòbil, instal·lat com a aplicació.
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I setze que no són de saló
+### I disset que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -60,6 +60,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `conquesta.html` | La Conquesta (de l'estil del *Risk*, amb les comarques) | 2026 |
 | `colles.html` | Les Quatre Colles (de l'estil del *Connections*) | 2026 |
 | `trencaclosques.html` | El Trencaclosques (el de tota la vida, també amb les teves fotos) | 2026 |
+| `poble.html` | El Poble del Dia (de l'estil del *Worldle*, amb els municipis) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -82,15 +83,16 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les vuit partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
-difícil, les Colles, el Trencaclosques, la Botifarra i la Conquesta), cadascuna
+les nou partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
+difícil, les Colles, el Poble del Dia, el Trencaclosques, la Botifarra i la
+Conquesta), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
 si algun joc canvia com desa la del dia, s'ha de canviar també aquí. Qui guanya
 i la lliga venen del Worker (`/lliga`); sense connexió la llista surt igual,
 sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). Hi va perquè
-cada dia n'hi ha vuit, de partides del dia, escampades per la portada, i no
+cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
 hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
@@ -953,6 +955,68 @@ que es jugui tocant: encertar, el «gairebé», no pagar dues vegades el mateix
 intent, desar i continuar, guanyar, perdre, l'arxiu, les dues taules i que
 la paraula més llarga hi càpiga a 320 px.
 
+## El Poble del Dia: endevina el municipi
+
+En Carles el va triar entre quatre idees de millora. És **inspirat en** el
+*Worldle* (endevinar un país per la silueta), amb els municipis de Catalunya
+i nom nostre.
+
+- Cada dia hi ha **un municipi amagat**: se'n veu la **silueta** (amb el nord
+  a dalt i una regla de quilòmetres, que la mida també és una pista) i tens
+  **6 intents**. A cada intent, **a quants km** és el bo, **cap on** (una
+  fletxa, com en un mapa) i un **%** de com t'hi acostes (100% al bo, 0% a
+  300 km). Els intents surten numerats al mapa de Catalunya del costat.
+- **Pistes**: al cap de 3 intents, la comarca (i al mapa s'il·lumina); al
+  cap de 5, per quina lletra comença (sense l'article).
+- **S'escriu amb un teclat propi**, que el del mòbil taparia la silueta i el
+  mapa, i a sobre surten els municipis que hi encaixen: **es toca el nom**, no
+  s'envia el que has escrit, i així no hi ha faltes d'ortografia possibles.
+  Sense accents ni apòstrofs, i per qualsevol paraula del nom («hospi»,
+  «llobregat» o «seu» troben el que toca; `busca`). A l'ordinador, la P
+  s'escriu (Pals, Puigcerdà): només fa pausa la P de mentida del botó del
+  marcador, com a L'Abecedari.
+- **Punts** (`punts`): endevinar-lo al 1r intent, 1.000; al 2n, 900... al 6è,
+  500. Si no, **400 menys els km** del que t'hi has quedat més a prop: també
+  perdent, qui s'hi acosta més va davant. Taula del dia (`poble_dia/<data>`,
+  surt «3/6» o «✗ 12 km», `Records.formata`) i **pobles endevinats**
+  (`poble`, acumulats, cadascú una vegada). El bot anuncia cada matí qui el
+  va guanyar, i compta per a la lliga.
+- **El que s'envia al grup són els colors i les fletxes** (🟩🟩🟩⬜⬜ ↗️), mai
+  els noms. Al final hi ha un enllaç a la Viquipèdia (una cerca, que si el
+  títol no hi coincideix exactament et deixa a la llista).
+- **PRÀCTICA**: un altre poble a l'atzar, que no compta.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Les dades són les mateixes de La Conquesta**: la Base municipal de l'ICGC
+  via `gmarull/cat-topojson` (CC BY 4.0, ho diu el codi), amb la mateixa
+  projecció. Són **siluetes simplificades** (uns 16 punts per municipi de
+  mitjana): no n'hi ha de més fines que es puguin baixar des d'aquí, i per al
+  joc ja van bé. Van **dins del joc** (`NOMS`, `COMARCA`, `CENTRES`,
+  `SILUETES`), codificades en enters de 5 en 5 bits: 79 KB. El script que les
+  fa no és al repositori.
+- **Els noms són els d'ara**, no els del mapa d'origen: la Ràpita, Calonge i
+  Sant Antoni, Bigues i Riells del Fai i Brunyola i Sant Martí Sapresa. El
+  Lluçanès és la comarca 43, com a la Conquesta. **Medinyà** (2018) no hi és:
+  el mapa d'origen és d'abans, i encara era de Sant Julià de Ramis.
+- **Puigdàlber, al mapa d'origen, és una ratlla sense àrea**: no té silueta i
+  el seu centre és el mig dels punts. Es pot provar com a intent, però no és
+  a la llista dels del dia.
+- **El centre de cada municipi és el centre de masses** del seu polígon, no
+  l'ajuntament. Els municipis amb trossos (Barcelona en té quatre) el tenien
+  a fora fins que es va arreglar el càlcul: amb els trossos en sentits
+  diferents, les àrees es restaven, i Barcelona–Girona sortia a 98 km en lloc
+  de 86. La prova mira tres distàncies de debò i quatre fletxes.
+- **El del dia surt dels pobles coneguts** (`CONEGUTS`, 257, escrits a mà):
+  les capitals de comarca, les viles grosses, els de la costa i els que surten
+  a les postals. Amb un poble de 200 habitants que no coneix ningú, la silueta
+  no diria res i seria una loteria. Van barrejats amb la seva llavor
+  (`POBLE-<tanda>`), **cap no es repeteix fins que no han sortit tots** i
+  mai dos dies seguits (`pobleDe`). El #1 és el del 2 de novembre del 2026.
+  Els intents, en canvi, poden ser qualsevol dels 947.
+- El del dia es desa a cada intent (`poble-<data>`), amb el poble: si algun
+  dia canviés la llista, el desat d'un altre poble no es carrega.
+
 ## El Trencaclosques: el del dia i el de les teves fotos
 
 En Carles va demanar poder pujar una foto i que el joc en fes un
@@ -1467,7 +1531,7 @@ de nou. És l'únic codi de fora que carrega la col·lecció.
 diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
 2, 1, 1, 1 (`PUNTS_LLIGA`), i qui hi ha jugat sense entrar als 10 millors, 1
 (surt de `jugat:<joc>_dia:<data>`). No es desa enlloc: es calcula cada vegada
-llegint les taules del dia (`lliga()`, 112 lectures del KV com a molt). En
+llegint les taules del dia (`lliga()`, 126 lectures del KV com a molt). En
 empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
 avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el
 dilluns**, la primera petició del dia anuncia qui va guanyar la setmana
@@ -1643,6 +1707,12 @@ comproven el comportament.
 - `node scripts/prova-colles.mjs` — que les partides de Les Quatre Colles
   estiguin ben fetes, que la del dia sigui igual per a tothom, i que es
   jugui tocant, amb errors, desar, guanyar, perdre, l'arxiu i les taules.
+- `node scripts/prova-poble.mjs` — que els 947 municipis del Poble del Dia
+  tinguin nom, comarca, centre i silueta, que les distàncies i les fletxes
+  diguin la veritat, que el del dia sigui igual per a tothom i no es
+  repeteixi, que el cercador trobi els noms com s'escriuen, i que es jugui
+  tocant: intents, pistes, perdre, guanyar, desar, la pràctica, la P, les
+  dues taules i que hi capiga a 320 px.
 - `node scripts/prova-trencaclosques.mjs` — que el paisatge del dia sigui
   igual per a tothom, que mai no surti la mateixa escena dos dies seguits,
   que les peces encaixin, i que es jugui arrossegant amb
