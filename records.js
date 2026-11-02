@@ -482,6 +482,11 @@ const Records = (() => {
       return await crida('/records');
     },
 
+    // La lliga de la setmana i qui guanya avui cada partida del dia.
+    async lliga() {
+      return await crida('/lliga');
+    },
+
     // Qui va primer. Torna null si no s'hi pot connectar.
     async lider(joc) {
       const llista = await crida('/records/' + joc);

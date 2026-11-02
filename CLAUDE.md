@@ -81,6 +81,20 @@ trenqui res, però el que hi surt escrit és el que mana.
 El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
+**A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
+les vuit partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
+difícil, les Colles, el Trencaclosques, la Botifarra i la Conquesta), cadascuna
+amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
+lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
+joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
+si algun joc canvia com desa la del dia, s'ha de canviar també aquí. Qui guanya
+i la lliga venen del Worker (`/lliga`); sense connexió la llista surt igual,
+sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). Hi va perquè
+cada dia n'hi ha vuit, de partides del dia, escampades per la portada, i no
+hi havia manera de saber d'una ullada quines et quedaven. **No porta
+`h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
+la prova i el codi que recorda l'últim joc obert els compten.
+
 I com que aquests sí que són jocs d'empreses vives —no màquines de fa quaranta
 anys—, es fan **inspirats en**, amb nom, fruites i dibuixos propis, i mai amb el
 nom de l'original.
@@ -1448,6 +1462,18 @@ al Ram o al Tetris és just el que fas per jugar. El `records.js` ho desactiva
 primera pàgina arriba amb `#tgWebAppData` a l'adreça, i ho apunta a
 `sessionStorage` per quan passes a un joc. Fora de Telegram no es carrega res
 de nou. És l'únic codi de fora que carrega la col·lecció.
+
+**La lliga de la setmana** suma totes les partides del dia de dilluns a
+diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
+2, 1, 1, 1 (`PUNTS_LLIGA`), i qui hi ha jugat sense entrar als 10 millors, 1
+(surt de `jugat:<joc>_dia:<data>`). No es desa enlloc: es calcula cada vegada
+llegint les taules del dia (`lliga()`, 112 lectures del KV com a molt). En
+empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
+avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el
+dilluns**, la primera petició del dia anuncia qui va guanyar la setmana
+passada amb el podi (`anunciaLliga`, marcat a `telegram:anunciat:lliga` abans
+d'enviar, com els de cada matí). És dilluns i no diumenge al vespre perquè el
+Worker no té rellotge: tot ho engega la primera visita del dia.
 
 Per posar-lo en marxa (ho fa en Carles, una sola vegada):
 

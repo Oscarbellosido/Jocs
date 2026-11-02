@@ -159,11 +159,81 @@
     font-weight: normal;
     color: #ffd000;
   }
+  /* ELS JOCS D'AVUI: les partides del dia, si ja les has fet i qui guanya.
+     No porta h2.seccio ni a.btn: aquells noms son dels dos apartats de jocs
+     i de les seves fitxes (la prova de la portada i el codi de l'ultim joc
+     obert els compten). */
+  details.avui {
+    width: calc(100% - 1.6rem);
+    max-width: 430px;
+    border: 1px solid #2c3a4f;
+    border-radius: 10px;
+    background: #070b12;
+    font: normal 0.74rem monospace;
+  }
+  details.avui summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.5rem 0.7rem;
+    letter-spacing: 0.14em;
+    color: #ffd27a;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  details.avui summary::-webkit-details-marker { display: none; }
+  details.avui summary::after { content: '▾'; color: #7f9fc4; }
+  details.avui:not([open]) summary::after { content: '▸'; }
+  details.avui summary .fets { color: #7f9fc4; letter-spacing: 0.04em; margin-left: auto; }
+  .avui ul { list-style: none; padding: 0 0.4rem 0.3rem; }
+  .avui li a {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.32rem 0.3rem;
+    border-top: 1px solid #141c28;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .avui li a:active { background: #101826; }
+  .avui .est {
+    flex: none;
+    width: 6.6em;
+    text-align: center;
+    font-style: normal;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0;
+    border-radius: 4px;
+    color: #9fb3c6;
+    border: 1px solid #2c3a4f;
+  }
+  .avui .est.fet { color: #0b1a0e; background: #7dff9b; border-color: #7dff9b; }
+  .avui .est.mig { color: #1a1408; background: #ffd27a; border-color: #ffd27a; }
+  .avui .nom { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .avui .lid { flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; color: #ffd000; }
+  .avui .lliga {
+    margin: 0.2rem 0.7rem 0.6rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid #2c3a4f;
+    line-height: 1.5;
+  }
+  .avui .lliga b { color: #ffd27a; letter-spacing: 0.12em; font-weight: normal; }
+  .avui .lliga .podi { white-space: normal; }
+  .avui .lliga small { display: block; color: #6a7a8c; font-size: 0.62rem; }
+  .avui .lliga .tu { color: #9fdcff; }
 </style>
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
   <a class="tg" id="tg" href="https://t.me/jocs_carles_bot" target="_blank" rel="noopener" hidden>🏆 RÈCORDS AL MOMENT A TELEGRAM</a>
+  <details class="avui" id="avui" open>
+    <summary>ELS JOCS D'AVUI <span class="fets" id="avui-fets"></span></summary>
+    <ul id="avui-llista"></ul>
+    <div class="lliga" id="lliga" hidden></div>
+  </details>
   <h2 class="seccio">CLÀSSICS DELS SALONS <i>1972 — 1984</i></h2>
   <div class="games" id="classics">
     <a class="btn" href="pong.html"><img src="thumbs/pong.png" alt="PONG" width="240" height="240"><span>PONG</span><em><i class="any">1972</i><b class="rec" data-joc="pong"></b></em></a>
@@ -257,6 +327,69 @@ Records.tots().then(taules => {
     if (lider) el.textContent = lider.n + '  ' + lider.p;
   });
 });
+
+// ===== ELS JOCS D'AVUI =====
+// Les vuit partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
+// setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
+// Sense connexio, la llista surt igual, nomes sense qui guanya.
+(function(){
+  const avui=(()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}catch(e){return new Date().toISOString().slice(0,10)}})();
+  const llegeix=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
+  const cru=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+  const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  const temps=p=>{const s=Math.max(0,3600-p);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+  // estat: 'fet', 'mig' o null (per fer)
+  const JOCS=[
+    ['gofra_dia','LA GOFRA','gofra.html',()=>{const d=llegeix('gofra-'+avui);return !d?null:d.fi?'fet':d.queden<20?'mig':null},p=>'★'.repeat(p)+'☆'.repeat(Math.max(0,5-p))],
+    ['impremta_dia','LA IMPREMTA','impremta.html',()=>{
+      if(cru('impremta-dia')!==avui)return null;
+      const d=llegeix('impremta-partida');
+      return d&&d.P&&d.P.llavor==='DIA-'+avui?'mig':'fet'}],
+    ['abecedari_dia',"L'ABECEDARI",'abecedari.html',()=>{const d=llegeix('abecedari-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null}],
+    ['abecedari_dificil_dia',"L'ABECEDARI DIFÍCIL",'abecedari.html',()=>{const d=llegeix('abecedari-dificil-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null}],
+    ['colles_dia','LES QUATRE COLLES','colles.html',()=>{const d=llegeix('colles-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null}],
+    ['trencaclosques_dia','EL TRENCACLOSQUES','trencaclosques.html',()=>{const d=llegeix('trencaclosques-'+avui);return !d?null:d.fi?'fet':'mig'},temps],
+    ['botifarra_dia','LA BOTIFARRA','botifarra.html',()=>{const d=llegeix('botifarra-'+avui);return !d?null:d.fi?'fet':'mig'}],
+    ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{
+      if(llegeix('conquesta-fi-'+avui))return 'fet';
+      return llegeix('conquesta-dia')===avui?'mig':null}],
+  ];
+  const ul=document.getElementById('avui-llista');
+  let fets=0;
+  for(const [joc,nom,href,estat] of JOCS){
+    let e=null;try{e=estat()}catch(err){}
+    if(e==='fet')fets++;
+    const li=document.createElement('li');
+    li.innerHTML='<a href="'+href+'"><i class="est'+(e?' '+e:'')+'">'+(e==='fet'?'✓ FET':e==='mig'?'A MIG FER':'PER FER')+
+      '</i><span class="nom">'+nom+'</span><b class="lid" data-joc="'+joc+'"></b></a>';
+    ul.appendChild(li);
+  }
+  document.getElementById('avui-fets').textContent=fets+' de '+JOCS.length+' fets';
+  // es recorda si l'has plegat
+  const det=document.getElementById('avui');
+  if(cru('jocs-avui-plegat')==='1')det.open=false;
+  det.addEventListener('toggle',()=>{try{localStorage.setItem('jocs-avui-plegat',det.open?'0':'1')}catch(e){}});
+
+  Records.lliga().then(l=>{
+    if(!l||!Array.isArray(l.classificacio))return;      // sense connexio: res
+    const av=l.avui||{};
+    for(const [joc,,,,fmt] of JOCS){
+      const el=ul.querySelector('[data-joc="'+joc+'"]'),g=av[joc];
+      if(el&&g&&g.n)el.textContent=g.n+' '+(fmt?fmt(g.p):xifra(g.p));
+    }
+    const box=document.getElementById('lliga'),c=l.classificacio;
+    const ordinal=n=>n+(n===1?'r':n===2?'n':n===3?'r':n===4?'t':'è');
+    const jo=cru('jugador')||'';
+    const pos=jo?c.findIndex(e=>e.n===jo):-1;
+    const esc=t=>String(t).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+    box.innerHTML='<b>LLIGA DE LA SETMANA</b><div class="podi">'+
+      (c.length?c.slice(0,3).map((e,i)=>['🥇','🥈','🥉'][i]+' '+esc(e.n)+' '+e.p).join('  '):'Encara no hi ha jugat ningú: comença ara!')+'</div>'+
+      (jo?'<div class="tu">'+(pos>=0?'Tu, '+esc(jo)+': '+ordinal(pos+1)+' amb '+c[pos].p+' punts':'Tu, '+esc(jo)+': encara no hi ets')+'</div>':'')+
+      '<small>Cada partida del dia: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi. Dilluns el bot diu qui l\'ha guanyada.</small>';
+    box.hidden=false;
+  });
+})();
 </script>
 </body>
 </html>

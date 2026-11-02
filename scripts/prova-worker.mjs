@@ -336,6 +336,10 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.set('joc:impremta_dia:' + madrid(1), JSON.stringify([{ n: 'CRE', p: 5400, t: 1 }, { n: 'MAR', p: 3100, t: 2 }]));
   store.set('joc:gofra_dia:' + madrid(1), JSON.stringify([{ n: 'TRA', p: 5, t: 1 }, { n: 'CRE', p: 5, t: 2 }, { n: 'MAR', p: 3, t: 3 }]));
   store.set('joc:abecedari_dia:' + madrid(1), JSON.stringify([{ n: 'MAR', p: 2134, t: 1 }, { n: 'CRE', p: 1900, t: 2 }]));
+  // (la lliga de la setmana passada, ja anunciada: aqui es proven els dies)
+  const dia12 = d => new Date(d + 'T12:00:00Z'), mesDies = (d, n) => new Date(dia12(d).getTime() + n * 864e5).toISOString().slice(0, 10);
+  const dilluns = mesDies(madrid(0), -((dia12(madrid(0)).getUTCDay() + 6) % 7)), passada = mesDies(dilluns, -7);
+  store.set('telegram:anunciat:lliga', passada);
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/tetris');
   const m = missatges();
@@ -366,6 +370,38 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await crida(envTg, 'POST', '/telegram', msg('/avui'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
   const t = (missatges()[0] || { cos: {} }).cos.text || '';
   ok(/TRA/.test(t) && /BOB/.test(t) && /★★★★☆/.test(t), '/avui ensenya com van les dues partides del dia d\'avui');
+
+  // la lliga de la setmana: 10 al primer de cada partida del dia, 8 al segon...
+  // i 1 per haver-hi jugat sense entrar als 10 millors
+  const netejaDies = () => { for (const k of [...store.keys()]) if (/^(joc|jugat):\w+_dia:/.test(k)) store.delete(k); };
+  netejaDies();
+  store.set('joc:impremta_dia:' + madrid(0), JSON.stringify([{ n: 'TRA', p: 900, t: 1 }]));
+  store.set('joc:gofra_dia:' + madrid(0), JSON.stringify([{ n: 'BOB', p: 4, t: 1 }]));
+  store.set('joc:colles_dia:' + madrid(0), JSON.stringify([{ n: 'BOB', p: 500, t: 1 }, { n: 'TRA', p: 300, t: 2 }]));
+  store.set('jugat:colles_dia:' + madrid(0), JSON.stringify(['BOB', 'TRA', 'ZZZ']));
+  r = await crida(envTg, 'GET', '/lliga');
+  const pl = n => (r.data.classificacio.find(e => e.n === n) || {}).p;
+  ok(r.status === 200 && r.data.setmana === dilluns && pl('BOB') === 20 && pl('TRA') === 18 && pl('ZZZ') === 1 && r.data.classificacio[0].n === 'BOB',
+     `la lliga de la setmana: BOB ${pl('BOB')} (dos primers), TRA ${pl('TRA')} (un primer i un segon), ZZZ ${pl('ZZZ')} (hi ha jugat)`);
+  ok(r.data.avui.gofra_dia && r.data.avui.gofra_dia.n === 'BOB' && r.data.avui.colles_dia.n === 'BOB' && r.data.avui.trencaclosques_dia === null,
+     'i diu qui guanya avui cada partida del dia (per a la portada)');
+  enviats.length = 0;
+  await crida(envTg, 'POST', '/telegram', msg('/lliga'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+  const tl = (missatges()[0] || { cos: {} }).cos.text || '';
+  ok(/lliga de la setmana/.test(tl) && /1\.\s+BOB\s+20 punts/.test(tl), '/lliga ensenya la classificació de la setmana');
+  // dilluns, el bot anuncia qui va guanyar la setmana passada, un sol cop
+  store.delete('telegram:anunciat:lliga');
+  netejaDies();
+  store.set('joc:conquesta_dia:' + mesDies(passada, 2), JSON.stringify([{ n: 'GUA', p: 1500, t: 1 }, { n: 'SEG', p: 300, t: 2 }]));
+  store.set('joc:gofra_dia:' + mesDies(passada, 4), JSON.stringify([{ n: 'GUA', p: 5, t: 1 }]));
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  const al = missatges().find(x => /lliga de la setmana/.test(x.cos.text));
+  ok(al && /guanya <b>GUA<\/b> amb 20 punts/.test(al.cos.text) && /2 partides del dia guanyades/.test(al.cos.text) && /SEG/.test(al.cos.text),
+     'cada dilluns, el bot anuncia qui va guanyar la lliga de la setmana passada, amb el podi');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  ok(!missatges().some(x => /lliga/.test(x.cos.text)), 'i només un cop');
   store.delete('telegram:xat');
 }
 
