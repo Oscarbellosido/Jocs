@@ -285,6 +285,14 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(r.status === 200 && r.data.posicio === 1, 'Les Quatre Colles: la del dia té la seva taula, fins a 600');
   r = await call('POST', '/records/colles_dia/' + avui, { nom: 'MAR', punts: 601 });
   ok(r.status === 400, 'Les Quatre Colles: més de 600 en un dia no pot ser');
+  // fer 0 (la Gofra sense acabar, cap colla...) també és haver-hi jugat
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'ZER', punts: 0 });
+  ok(r.status === 200 && r.data.jugat && r.data.posicio === 0 && !r.data.top.some(e => e.n === 'ZER') && JSON.parse(store.get('jugat:gofra_dia:' + avui)).includes('ZER'),
+     'una partida del dia amb 0 no entra a la taula, però queda apuntat que hi has jugat (per a la lliga)');
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'ZER', punts: 5 });
+  ok(r.status === 200 && r.data.repetida && !r.data.top.some(e => e.n === 'ZER'), 'i compta com la primera: tornar-la a fer amb més punts ja és repetida');
+  r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'ZER', punts: -1 });
+  ok(r.status === 400, 'els punts negatius, en canvi, no');
   await call('POST', '/records/colles', { nom: 'MAR', punts: 4 });
   await call('POST', '/records/colles', { nom: 'MAR', punts: 7 });
   r = await call('GET', '/records/colles');

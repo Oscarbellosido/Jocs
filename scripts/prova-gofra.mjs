@@ -18,7 +18,7 @@ let malament = 0;
 function diu(be, text) { if (!be) malament++; console.log(`${be ? '✓' : '✗'} ${text}`); }
 
 const b = await chromium.launch();
-const enviats = [];
+const enviats = [], cossos = [];
 const errors = [];
 async function obre(ctx) {
   const p = await ctx.newPage();
@@ -31,7 +31,7 @@ async function context() {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   await ctx.route('**/jocs-records*/**', r => {
     const post = r.request().method() === 'POST';
-    if (post) enviats.push(r.request().url());
+    if (post) { enviats.push(r.request().url()); cossos.push({ url: r.request().url(), ...JSON.parse(r.request().postData() || '{}') }); }
     return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
       body: post ? JSON.stringify({ top: [{ n: 'TST', p: 5, t: 1 }], posicio: 1 }) : '[]' });
   });
@@ -224,6 +224,31 @@ const mig = await p3.evaluate(() => { const mal = CASELLES.filter(([f, k]) => G.
 const p4 = await obre(ctx1);
 r = await p4.evaluate(() => ({ q: G.queden, cur: G.cur.map(f => f.join('')).join('/') }));
 diu(r.q === mig.q && r.cur === mig.cur, `una del dia a mig fer es troba igual en tornar-hi (en queden ${r.q})`);
+
+// perdre la del dia: no surts a la taula, però queda apuntat que hi has jugat
+// (a la lliga de la setmana, això val un punt)
+{
+  const ctx2 = await context();
+  const p5 = await obre(ctx2);
+  await p5.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); stats = { jugades: 0, guanyades: 0, estrelles: 0, ratxa: 0, millor: 0, ultim: '' }; obreDia(); });
+  enviats.length = 0; cossos.length = 0;
+  await p5.evaluate(() => {
+    for (let i = 0; i < 20 && state === 'play'; i++) {
+      const mal = CASELLES.filter(([f, k]) => G.cur[f][k] !== G.sol[f][k]);
+      let fet = false;
+      for (const a of mal) { for (const c of mal) { if (a === c) continue;
+        if (G.cur[c[0]][c[1]] !== G.sol[a[0]][a[1]] && G.cur[a[0]][a[1]] !== G.sol[c[0]][c[1]]) { intercanvia(a, c); fet = true; break } }
+        if (fet) break; }
+      if (!fet) intercanvia(mal[0], mal[1]);
+    }
+  });
+  await p5.waitForTimeout(2200);
+  r = await p5.evaluate(() => ({ fi: G.fi, dia }));
+  const zero = cossos.find(c => c.url.endsWith('/records/gofra_dia/' + r.dia));
+  diu(r.fi === 'perdut' && zero && zero.punts === 0 && zero.nom === 'TST' && !cossos.some(c => /records\/gofra$/.test(c.url)) && !await p5.$('#rec-ok'),
+    'perdent la del dia, s\'envia amb 0 (sense demanar res) perquè compti com a jugada per a la lliga, i no suma a les estrelles');
+  await ctx2.close();
+}
 
 diu(errors.length === 0, errors.length ? 'error de JavaScript: ' + errors[0] : 'cap error de JavaScript');
 console.log(malament ? `\n${malament} coses malament` : '\nLa Gofra, bé');

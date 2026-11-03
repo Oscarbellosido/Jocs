@@ -548,7 +548,7 @@ async function finalPartida(){
     // Les dues taules: la d'avui (els punts; nomes la primera partida de
     // cada inicials) i les colles de sempre (acumulades, cadascu un cop).
     let r={html:'',posicio:0};
-    if(mode==='dia'&&R.nova&&pt>0)r=await Records.fiPartida(JOC+'_dia/'+diaDe(R.n),pt);
+    if(mode==='dia'&&R.nova)r=await Records.fiPartida(JOC+'_dia/'+diaDe(R.n),pt);
     else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
     if(mode==='dia'&&R.nova&&stats.colles>0&&Records.nom())await Records.envia(JOC,stats.colles);
     if(mode==='dia'){R.nova=false;desaDia()}

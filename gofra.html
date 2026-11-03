@@ -396,7 +396,7 @@ async function finalPartida(){
       // l'ha feta amb mes estrelles; nomes s'hi apunta el primer cop que
       // l'acabes) i la de les estrelles de sempre.
       let r={html:'',posicio:0};
-      if(mode==='dia'&&G.nova&&est>0)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
+      if(mode==='dia'&&G.nova)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
       else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
       if(mode==='dia'&&G.nova&&est>0&&Records.nom())await Records.envia(JOC,stats.estrelles);
       if(mode==='dia')G.nova=false;

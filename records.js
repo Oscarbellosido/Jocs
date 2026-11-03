@@ -525,7 +525,20 @@ const Records = (() => {
     // entre els 10 millors, demana les inicials. Torna el HTML de la taula.
     async fiPartida(joc, punts) {
       desaLocal(joc, punts);
-      if (!punts) return { html: taulaHTML(await crida('/records/' + joc), null, joc), posicio: 0 };
+      if (!punts) {
+        // A les partides del dia, fer 0 tambe es haver-hi jugat, i a la lliga
+        // de la setmana aixo val un punt. S'envia, sense demanar res, si ja hi
+        // ha inicials: el Worker t'apunta com a jugat pero no et posa a la
+        // taula. (A la Gofra, qui no l'acabava no comptava ni com a jugat.)
+        if (joc.includes('_dia/') && nom()) {
+          const r = await crida('/records/' + joc, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nom: nom(), punts: 0 }),
+          });
+          if (r && r.top) return { html: taulaHTML(r.top, null, joc) + (r.repetida ? avisRepetida() : ''), posicio: 0 };
+        }
+        return { html: taulaHTML(await crida('/records/' + joc), null, joc), posicio: 0 };
+      }
 
       const actual = await crida('/records/' + joc);
       if (actual === null) return { html: avisFall(), posicio: 0 };

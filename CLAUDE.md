@@ -1556,7 +1556,12 @@ de nou. És l'únic codi de fora que carrega la col·lecció.
 **La lliga de la setmana** suma totes les partides del dia de dilluns a
 diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
 2, 1, 1, 1 (`PUNTS_LLIGA`), i qui hi ha jugat sense entrar als 10 millors, 1
-(surt de `jugat:<joc>_dia:<data>`). No es desa enlloc: es calcula cada vegada
+(surt de `jugat:<joc>_dia:<data>`). **Fer 0 també és haver-hi jugat**: la
+Gofra sense acabar, cap colla, cap encert, la Botifarra sense punts... Abans
+aquestes partides no s'enviaven i, a la lliga, era com si no hi haguessis
+jugat (en Carles ho va preguntar per la Gofra). Ara `Records.fiPartida` les
+envia amb 0, sense demanar res, si ja hi ha inicials, i el Worker les apunta
+a `jugat:` però no a la taula. No es desa enlloc: es calcula cada vegada
 llegint les taules del dia (`lliga()`, 126 lectures del KV com a molt). En
 empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
 avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el

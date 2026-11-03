@@ -514,7 +514,10 @@ async function diari(request, env, joc, dia) {
   let cos;
   try { cos = await request.json(); } catch { return json({ error: 'cos invalid' }, 400); }
   const punts = Math.floor(Number(cos.punts));
-  if (!Number.isFinite(punts) || punts <= 0 || punts > DIARIS[joc]) return json({ error: 'puntuacio fora de rang' }, 400);
+  // 0 vol dir que hi has jugat i no has fet res (la Gofra sense acabar, cap
+  // colla...): no entra a la taula, pero queda apuntat que hi has jugat, que
+  // a la lliga de la setmana val un punt
+  if (!Number.isFinite(punts) || punts < 0 || punts > DIARIS[joc]) return json({ error: 'puntuacio fora de rang' }, 400);
   const entrada = { n: netejaNom(cos.nom), p: punts, t: Date.now() };
   const llista = await llegir(env, clau);
   // Nomes compta la primera partida del dia de cada inicials. Al mateix mobil
@@ -528,6 +531,7 @@ async function diari(request, env, joc, dia) {
     return json({ top: llista, posicio: 0, repetida: true });
   jugat.push(entrada.n);
   await env.RECORDS.put(clauJugat, JSON.stringify(jugat), { expirationTtl: DIES_DIARI * 86400 });
+  if (!punts) return json({ top: llista, posicio: 0, jugat: true });
   llista.push(entrada);
   llista.sort((a, b) => b.p - a.p || a.t - b.t);
   const retallada = llista.slice(0, TOP);

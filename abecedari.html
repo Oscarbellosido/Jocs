@@ -1717,7 +1717,7 @@ async function finalPartida(){
     // son els de la roda normal.
     let r={html:'',posicio:0};
     const taulaDia=(dif?JOC+'_dificil_dia/':JOC+'_dia/')+(delDia()?dia:diaAvui());
-    if(delDia()&&R.nova&&pt>0)r=await Records.fiPartida(taulaDia,pt);
+    if(delDia()&&R.nova)r=await Records.fiPartida(taulaDia,pt);
     else r.html=Records.taulaHTML(await Records.llista(taulaDia));
     if(mode==='dia'&&R.nova&&stats.encerts>0&&Records.nom())await Records.envia(JOC,stats.encerts);
     if(delDia())R.nova=false;

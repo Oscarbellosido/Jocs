@@ -627,7 +627,7 @@ async function finalPartida(){
     // Dues taules: la d'avui (els punts de la parella, nomes la primera
     // partida de cada inicials) i les partides guanyades de sempre.
     let r={html:'',posicio:0};
-    if(dia&&nou&&a>0)r=await Records.fiPartida(JOC+'_dia/'+G.dia,a);
+    if(dia&&nou)r=await Records.fiPartida(JOC+'_dia/'+G.dia,a);
     else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
     let s={html:'',posicio:0};
     if(!dia&&nou&&guanya)s=await Records.fiPartida(JOC,stats.guanyades);

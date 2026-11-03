@@ -521,7 +521,7 @@ async function finalPartida(f){
     // partida del dia) i la de sempre (les partides lliures).
     const idDia=JOC+'_dia/'+diaAvui();
     let r={html:'',posicio:0};
-    if(f.nova&&f.punts>0)r=await Records.fiPartida(f.mode==='dia'?JOC+'_dia/'+f.dia:JOC,f.punts);
+    if(f.nova&&(f.punts>0||f.mode==='dia'))r=await Records.fiPartida(f.mode==='dia'?JOC+'_dia/'+f.dia:JOC,f.punts);
     if(f.nova){f.nova=false;if(f.mode==='dia')desa('conquesta-fi-'+f.dia,f)}
     const htmlDia=f.mode==='dia'&&r.html?r.html:Records.taulaHTML(await Records.llista(idDia));
     const htmlSempre=f.mode!=='dia'&&r.html?r.html:Records.taulaHTML(await Records.llista(JOC));
