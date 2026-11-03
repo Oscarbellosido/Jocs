@@ -224,6 +224,7 @@
   .avui .lliga .podi { white-space: normal; }
   .avui .lliga small { display: block; color: #6a7a8c; font-size: 0.62rem; }
   .avui .lliga .tu { color: #9fdcff; }
+  .avui .pal { margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px dashed #2c3a4f; }
   /* com van ordenats els jocs: per any (tots, com un museu) o els que mes
      jugues primer */
   .ordre { display: flex; gap: 0.4rem; justify-content: center; align-items: center;
@@ -415,8 +416,18 @@ posaLiders();
     box.innerHTML='<b>LLIGA DE LA SETMANA</b><div class="podi">'+
       (c.length?c.slice(0,3).map((e,i)=>['🥇','🥈','🥉'][i]+' '+esc(e.n)+' '+e.p).join('  '):'Encara no hi ha jugat ningú: comença ara!')+'</div>'+
       (jo?'<div class="tu">'+(pos>=0?'Tu, '+esc(jo)+': '+ordinal(pos+1)+' amb '+c[pos].p+' punts':'Tu, '+esc(jo)+': encara no hi ets')+'</div>':'')+
-      '<small>Cada partida del dia: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi. Dilluns el bot diu qui l\'ha guanyada.</small>';
+      '<small>Cada partida del dia: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi. Dilluns el bot diu qui l\'ha guanyada.</small>'+
+      medalles(l.palmares,jo,esc);
     box.hidden=false;
+  }
+  // Les medalles de sempre: el podi de cada setmana tancada (copa, plata i
+  // bronze), els cinc primers i, si no hi ets, tu.
+  function medalles(pal,jo,esc){
+    if(!Array.isArray(pal)||!pal.length)return '';
+    const txt=t=>[esc(t.n),t.copes&&'🏆'+t.copes,t.plates&&'🥈'+t.plates,t.bronzes&&'🥉'+t.bronzes].filter(Boolean).join(' ');
+    const meu=jo?pal.findIndex(t=>t.n===jo):-1;
+    return '<div class="pal"><b>MEDALLES DE SEMPRE</b><div>'+pal.slice(0,5).map(t=>'<span style="white-space:nowrap">'+txt(t)+'</span>').join(' · ')+'</div>'+
+      (meu>=5?'<div class="tu">Tu: '+txt(pal[meu])+'</div>':'')+'</div>';
   }
   function carregaLliga(){
     Records.lliga().then(l=>{

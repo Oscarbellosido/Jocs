@@ -349,6 +349,43 @@ async function lliga(env, dilluns, fins) {
   for (const { joc, dia, llista } of taules) if (dia === fins) avui[joc] = llista[0] || null;
   return { setmana: dilluns, fins, classificacio, avui };
 }
+// ===== LES MEDALLES DE SEMPRE =====
+// Cada dilluns es tanca la setmana passada i el podi s'apunta per sempre al
+// palmares (`lliga:palmares`): la copa al primer, la plata i el bronze als
+// altres dos. Es fa amb o sense bot, a la primera peticio del dia, i una
+// setmana cada vegada (si en falta mes d'una, la seguent peticio fa la
+// seguent), que cada setmana son fins a 126 lectures. La primera que compta
+// es la del 26 d'octubre del 2026, la que el bot ja va anunciar.
+const PRIMERA_SETMANA = '2026-10-26';
+async function llegirPalmares(env) {
+  let llista = [];
+  try { llista = JSON.parse(await env.RECORDS.get('lliga:palmares') || '[]'); } catch {}
+  if (!Array.isArray(llista)) llista = [];
+  // si dues peticions alhora han tancat la mateixa setmana, una sola vegada
+  const vistes = new Set();
+  return llista.filter(e => e && e.s && !vistes.has(e.s) && vistes.add(e.s)).sort((a, b) => a.s < b.s ? -1 : 1);
+}
+async function tancaSetmana(env) {
+  const passada = sumaDies(dillunsDe(diaMadrid(0)), -7);
+  const llista = await llegirPalmares(env);
+  const ultima = llista.length ? llista[llista.length - 1].s : sumaDies(PRIMERA_SETMANA, -7);
+  if (ultima >= passada) return;
+  const s = sumaDies(ultima, 7);
+  const l = await lliga(env, s, sumaDies(s, 6));
+  llista.push({ s, podi: l.classificacio.slice(0, 3).map(e => ({ n: e.n, p: e.p })) });
+  await env.RECORDS.put('lliga:palmares', JSON.stringify(llista));
+}
+// el palmares de cadascu: copes (primer), plates i bronzes
+function medalles(llista) {
+  const m = {};
+  for (const { podi } of llista) (podi || []).forEach((e, i) => {
+    const t = m[e.n] || (m[e.n] = { n: e.n, copes: 0, plates: 0, bronzes: 0 });
+    t[['copes', 'plates', 'bronzes'][i]]++;
+  });
+  return Object.values(m).sort((a, b) => b.copes - a.copes || b.plates - a.plates || b.bronzes - a.bronzes || a.n.localeCompare(b.n));
+}
+const textMedalles = t => [t.copes && '🏆' + t.copes, t.plates && '🥈' + t.plates, t.bronzes && '🥉' + t.bronzes].filter(Boolean).join(' ');
+
 async function anunciaLliga(env) {
   if (!env.TELEGRAM_TOKEN) return;
   const xat = await env.RECORDS.get('telegram:xat');
@@ -361,9 +398,11 @@ async function anunciaLliga(env) {
   if (!l.classificacio.length) return;
   const g = l.classificacio[0];
   const podi = l.classificacio.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + e.p + ' punts').join('\n');
+  const meu = medalles(await llegirPalmares(env)).find(t => t.n === g.n);
+  const copes = meu && meu.copes > 1 ? '\n\n🏆 És la seva copa número ' + meu.copes + '.' : '';
   const text = '🏆 La <b>lliga de la setmana</b> la guanya <b>' + esc(g.n) + '</b> amb ' + g.p + ' punts' +
     (g.primers ? ' (' + g.primers + (g.primers === 1 ? ' partida del dia guanyada' : ' partides del dia guanyades') + ')' : '') + '.\n\n' + podi +
-    '\n\nAvui en comença una de nova: totes les partides del dia hi compten.';
+    copes + '\n\nAvui en comença una de nova: totes les partides del dia hi compten.';
   await telegram(env, 'sendMessage', { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true,
     reply_markup: { inline_keyboard: [[{ text: '🎮 Els jocs d\'avui', url: WEB }]] } });
 }
@@ -416,7 +455,9 @@ async function ordre(env, msg) {
   }
   if (o === 'lliga') {
     const avui = diaMadrid(0);
-    return respon(textLliga(await lliga(env, dillunsDe(avui), avui)));
+    const pal = medalles(await llegirPalmares(env));
+    return respon(textLliga(await lliga(env, dillunsDe(avui), avui)) + (pal.length
+      ? '\n\n🏆 <b>Les medalles de sempre</b>\n' + pal.slice(0, 10).map(t => esc(t.n) + '  ' + textMedalles(t)).join('\n') : ''));
   }
   if (o === 'records' || o === 'rècords') {
     if (!resta.length) return respon(await quiMana(env));
@@ -499,8 +540,10 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     // el podi d'ahir, si encara no s'ha avisat (despres de respondre)
-    if (env.TELEGRAM_TOKEN) {
-      const a = anunciaAhir(env).catch(() => {}).then(() => anunciaLliga(env)).catch(() => {});
+    // i, els dilluns, la setmana passada al palmares (amb bot o sense)
+    {
+      const a = tancaSetmana(env).catch(() => {}).then(() => env.TELEGRAM_TOKEN &&
+        anunciaAhir(env).catch(() => {}).then(() => anunciaLliga(env))).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(a); else await a;
     }
 
@@ -527,7 +570,9 @@ export default {
     // la lliga de la setmana i, de cada partida del dia, qui guanya avui
     if (parts[0] === 'lliga' && request.method === 'GET') {
       const avui = diaMadrid(0);
-      return json(await lliga(env, dillunsDe(avui), avui));
+      const l = await lliga(env, dillunsDe(avui), avui);
+      l.palmares = medalles(await llegirPalmares(env));
+      return json(l);
     }
 
     if (parts[0] !== 'records') {

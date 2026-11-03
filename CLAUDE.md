@@ -1559,6 +1559,18 @@ passada amb el podi (`anunciaLliga`, marcat a `telegram:anunciat:lliga` abans
 d'enviar, com els de cada matí). És dilluns i no diumenge al vespre perquè el
 Worker no té rellotge: tot ho engega la primera visita del dia.
 
+**Les medalles de sempre** (el palmarès): cada dilluns, la setmana passada es
+tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
+plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la
+primera petició del dia). Si en falta més d'una (el Worker no s'ha tocat en
+setmanes), en tanca una per petició, que cada una són fins a 126 lectures. La
+primera que compta és la del 26 d'octubre del 2026 (`PRIMERA_SETMANA`), la
+que el bot ja va anunciar. Si dues peticions alhora tanquen la mateixa
+setmana, en llegir-ho només compta un cop (`llegirPalmares`). A la portada
+surten els cinc primers a sota de la lliga (i tu, si no hi ets), `/lliga` al
+grup també les ensenya i l'anunci del dilluns diu quantes copes porta qui
+guanya. En Carles ho va demanar.
+
 Per posar-lo en marxa (ho fa en Carles, una sola vegada):
 
 1. Enganxar el `worker/records.js` nou a Cloudflare i **Implementar**.

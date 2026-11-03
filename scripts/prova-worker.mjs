@@ -405,6 +405,8 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   // dilluns, el bot anuncia qui va guanyar la setmana passada, un sol cop
   store.delete('telegram:anunciat:lliga');
   netejaDies();
+  // (al palmarès, GUA ja havia guanyat la setmana d'abans)
+  store.set('lliga:palmares', JSON.stringify([{ s: mesDies(passada, -7), podi: [{ n: 'GUA', p: 30 }, { n: 'SEG', p: 20 }, { n: 'TRA', p: 10 }] }]));
   store.set('joc:conquesta_dia:' + mesDies(passada, 2), JSON.stringify([{ n: 'GUA', p: 1500, t: 1 }, { n: 'SEG', p: 300, t: 2 }]));
   store.set('joc:gofra_dia:' + mesDies(passada, 4), JSON.stringify([{ n: 'GUA', p: 5, t: 1 }]));
   enviats.length = 0;
@@ -415,6 +417,28 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/tetris');
   ok(!missatges().some(x => /lliga/.test(x.cos.text)), 'i només un cop');
+  // les medalles de sempre
+  ok(/És la seva copa número 2/.test(al.cos.text), "i, si ja n'havia guanyat alguna, diu quantes copes porta");
+  let pal = JSON.parse(store.get('lliga:palmares'));
+  ok(pal.length === 2 && pal[1].s === passada && pal[1].podi.map(e => e.n + e.p).join() === 'GUA20,SEG8',
+     'el dilluns, el podi de la setmana passada queda apuntat per sempre al palmarès');
+  r = await crida(envTg, 'GET', '/lliga');
+  const med = n => r.data.palmares.find(t => t.n === n) || {};
+  ok(r.data.palmares[0].n === 'GUA' && med('GUA').copes === 2 && med('SEG').plates === 2 && med('TRA').bronzes === 1,
+     'i /lliga torna el palmarès de cadascú: GUA 2 copes, SEG 2 plates, TRA 1 bronze');
+  enviats.length = 0;
+  await crida(envTg, 'POST', '/telegram', msg('/lliga'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+  const tm = (missatges()[0] || { cos: {} }).cos.text || '';
+  ok(/medalles de sempre/.test(tm) && /GUA\s+🏆2/.test(tm) && /SEG\s+🥈2/.test(tm), '/lliga al grup també ensenya les medalles de sempre');
+  // sense bot també s'apunten, una setmana per petició, i mai dues vegades
+  store.set('lliga:palmares', JSON.stringify([{ s: mesDies(passada, -14), podi: [] }, { s: mesDies(passada, -14), podi: [] }]));
+  await call('GET', '/records/tetris');
+  pal = JSON.parse(store.get('lliga:palmares'));
+  ok(pal.length === 2 && pal[1].s === mesDies(passada, -7), 'sense el bot també es tanca la setmana, i si en falta més d\'una, de una en una');
+  await call('GET', '/records/tetris');
+  await call('GET', '/records/tetris');
+  pal = JSON.parse(store.get('lliga:palmares'));
+  ok(pal.length === 3 && pal[2].s === passada && pal[2].podi[0].n === 'GUA', 'i quan ja és al dia, ja no n\'hi afegeix cap més');
   store.delete('telegram:xat');
 }
 

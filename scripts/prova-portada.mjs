@@ -44,6 +44,8 @@ for (const [w, h] of MIDES) {
     body: JSON.stringify(/\/lliga$/.test(r.request().url())
       ? { setmana: '2026-11-02', fins: '2026-11-02',
           classificacio: [{ n: 'BOB', p: 120 }, { n: 'TRA', p: 118 }, { n: 'MAR', p: 99 }, { n: 'CRE', p: 6 }],
+          palmares: [{ n: 'BOB', copes: 3, plates: 1, bronzes: 0 }, { n: 'TRA', copes: 1, plates: 2, bronzes: 1 }, { n: 'MAR', copes: 0, plates: 1, bronzes: 2 },
+            { n: 'AAA', copes: 0, plates: 0, bronzes: 2 }, { n: 'BBB', copes: 0, plates: 0, bronzes: 1 }, { n: 'CRE', copes: 0, plates: 0, bronzes: 1 }],
           avui: Object.fromEntries(DIARIS.map(j => [j, j === 'conquesta_dia' ? null : { n: 'WWW', p: j === 'gofra_dia' ? 5 : j === 'poble_dia' ? 500 : 3400 }])) }
       : Object.fromEntries([...ORDRE, ...MODERNS].map(([joc]) => [joc, [{ n: 'CRE', p: 188400, t: 1 }]]))),
   }));
@@ -134,6 +136,7 @@ for (const [w, h] of MIDES) {
     problemes.push('qui guanya avui no surt bé: ' + a.lid.join(','));
   if (a.vessa) problemes.push(`${a.vessa} files de les partides del dia que no hi caben`);
   if (!/BOB 120/.test(a.lliga) || !/Tu, CRE: 4t amb 6 punts/.test(a.lliga)) problemes.push('la lliga de la setmana no surt: ' + a.lliga);
+  if (!/MEDALLES DE SEMPRE/.test(a.lliga) || !/BOB 🏆3 🥈1/.test(a.lliga) || !/Tu: CRE 🥉1/.test(a.lliga)) problemes.push('les medalles de sempre no surten: ' + a.lliga);
   if (!a.dalt) problemes.push('ELS JOCS D\'AVUI no és a dalt de tot');
   if (errors.length) problemes.push(errors[0]);
 
