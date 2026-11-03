@@ -108,10 +108,16 @@ la prova i el codi que recorda l'últim joc obert els compten.
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
 amb quantes vegades (12×), i els altres darrere per any. En Carles ho va
-demanar. Es compta cada joc obert des de la portada, sigui des de la fitxa o
-des d'ELS JOCS D'AVUI (`jocs-jugats`, en aquest mòbil), i els jocs on ja hi
-havia un rècord local d'abans (`best_<joc>`) compten com a jugats un cop, que
-si no el primer dia sortirien tots a zero. La tria es recorda (`jocs-ordre`).
+demanar. **Ho compta el joc mateix en obrir-se** (el `records.js`, a
+`jocs-obertes`, per nom de fitxer i amb l'hora de l'última vegada), i no si
+el tornes a carregar o hi tornes enrere. Al principi ho comptava la portada en
+tocar la fitxa (`jocs-jugats`, que es segueix sumant), però en Carles va fer
+el Trencaclosques i hi deia 1×: el que obries des de l'enllaç del bot, o quan
+l'app s'obria directament al joc, no comptava. **De quan encara no es
+comptava**: els jocs del dia sumen els dies que hi ha partida desada en aquest
+mòbil (`gofra-<data>`, `trencaclosques-<data>`...), i els altres, una vegada
+si hi tens rècord local (`best_<joc>`). En empat, primer el que has obert més
+recentment. La tria es recorda (`jocs-ordre`).
 Les fitxes es mouen a la graella de MÉS JUGATS i, tornant a PER ANY, cadascuna
 torna al seu apartat. El títol no és `h2.seccio`, que la prova en compta dos,
 i cal `[hidden]{display:none!important}` perquè les graelles porten

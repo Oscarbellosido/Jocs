@@ -446,10 +446,13 @@ posaLiders();
 
 // ===== L'ORDRE DELS JOCS =====
 // En Carles va demanar poder triar: tots per any (el museu, com sempre) o
-// primer els que mes jugues. Es compta cada vegada que obres un joc des de la
-// portada, en aquest mobil (jocs-jugats). Els jocs on ja tenies un record
-// abans de comptar-ho compten com a jugats una vegada, que si no, el primer
-// dia sortirien tots a zero. La tria es recorda (jocs-ordre).
+// primer els que mes jugues. Cada joc compta les vegades que s'obre
+// (jocs-obertes, ho fa el records.js), i a mes, de quan encara no es
+// comptava: els jocs del dia, els dies que hi ha partida desada en aquest
+// mobil (gofra-2026-11-02...), i els altres, una vegada si hi tens record.
+// El primer dia, el compte el feia la portada en tocar la fitxa
+// (jocs-jugats): es segueix sumant. En empat, primer el que has obert mes
+// recentment. La tria es recorda (jocs-ordre).
 (function(){
   const llegeix=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
   const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
@@ -457,18 +460,22 @@ posaLiders();
   // on era cada fitxa, per tornar-la al seu lloc
   const lloc=new Map(fitxes.map(a=>[a,a.parentNode]));
   const idDe=a=>a.querySelector('.rec').dataset.joc;
-  const perHref=new Map(fitxes.map(a=>[a.getAttribute('href'),idDe(a)]));
+  // les partides del dia que es desen amb la data: cada dia desat, una vegada jugat
+  const DIES={gofra:['gofra-'],colles:['colles-'],abecedari:['abecedari-','abecedari-dificil-'],poble:['poble-'],
+    trencaclosques:['trencaclosques-'],botifarra:['botifarra-'],conquesta:['conquesta-fi-'],impremta:[]};
   const cops=()=>{
-    const c=llegeix('jocs-jugats')||{};
-    for(const a of fitxes){const id=idDe(a);if(!c[id]){let b=0;try{b=parseInt(localStorage.getItem('best_'+id)||'0',10)}catch(e){}if(b>0)c[id]=1}}
-    return c;
+    const vells=llegeix('jocs-jugats')||{},oberts=llegeix('jocs-obertes')||{};
+    let claus=[];try{claus=Object.keys(localStorage)}catch(e){}
+    const res={};
+    for(const a of fitxes){
+      const id=idDe(a),o=oberts[a.getAttribute('href')]||{};
+      let abans=0;
+      if(DIES[id])abans=claus.filter(k=>DIES[id].some(pf=>k.startsWith(pf)&&/^\d{4}-\d\d-\d\d$/.test(k.slice(pf.length)))).length;
+      if(!abans){let b=0;try{b=parseInt(localStorage.getItem('best_'+id)||'0',10)}catch(e){}if(b>0)abans=1}
+      res[id]={n:abans+(vells[id]||0)+(o.n||0),t:o.t||0};
+    }
+    return res;
   };
-  // cada joc obert des de la portada (les fitxes o ELS JOCS D'AVUI) suma un
-  document.addEventListener('click',e=>{
-    const a=e.target.closest('a[href]');if(!a)return;
-    const id=perHref.get(a.getAttribute('href'));if(!id)return;
-    const c=llegeix('jocs-jugats')||{};c[id]=(c[id]||0)+1;desa('jocs-jugats',c);
-  },true);
   const caixa=document.getElementById('jugats'),titol=document.getElementById('titol-jugats');
   const seccions=[...document.querySelectorAll('h2.seccio')].flatMap(h=>[h,h.nextElementSibling]);
   function posa(ordre){
@@ -476,8 +483,9 @@ posaLiders();
     fitxes.forEach(a=>{const v=a.querySelector('.cops');if(v)v.remove()});
     if(ordre==='jugats'){
       const c=cops();
-      // els mes jugats primer; si n'hi ha d'empatats, per any, com sempre
-      fitxes.map((a,i)=>[a,c[idDe(a)]||0,i]).sort((x,y)=>y[1]-x[1]||x[2]-y[2]).forEach(([a,n])=>{
+      // els mes jugats primer
+      // (en empat, el que has obert mes recentment; i si no, per any)
+      fitxes.map((a,i)=>[a,c[idDe(a)].n,i,c[idDe(a)].t]).sort((x,y)=>y[1]-x[1]||y[3]-x[3]||x[2]-y[2]).forEach(([a,n])=>{
         caixa.appendChild(a);
         if(n){const v=document.createElement('i');v.className='cops';v.textContent=n+'×';a.querySelector('em').prepend(v)}
       });

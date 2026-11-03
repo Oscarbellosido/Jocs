@@ -8,6 +8,23 @@
 const Records = (() => {
   const URL_BASE = 'https://jocs-records.oscarbellosido.workers.dev';
 
+  // ---- quantes vegades obres cada joc ----
+  // Per a l'ordre MÉS JUGATS de la portada. Ho compta el joc mateix en
+  // obrir-se, i no la portada en tocar la fitxa: si no, el que obries des de
+  // l'enllaç del bot, o quan l'app s'obria directament on eres, no comptava.
+  // Tornar a carregar la pagina o tornar-hi enrere no compta. Es desa per nom
+  // de fitxer (jocs-obertes), amb l'hora de l'ultima vegada.
+  try {
+    const f = location.pathname.split('/').pop() || '';
+    const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (/\.html$/.test(f) && f !== 'index.html' && !(nav && (nav.type === 'reload' || nav.type === 'back_forward'))) {
+      const c = JSON.parse(localStorage.getItem('jocs-obertes') || '{}');
+      const e = c[f] || (c[f] = { n: 0, t: 0 });
+      e.n++; e.t = Date.now();
+      localStorage.setItem('jocs-obertes', JSON.stringify(c));
+    }
+  } catch (e) { }
+
   // ---- dins de Telegram ----
   // Quan els jocs s'obren des del boto "Jocs" del bot, Telegram afegeix
   // #tgWebAppData=... a l'adreça de la primera pagina. Alla dins, lliscar el

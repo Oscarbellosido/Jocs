@@ -184,10 +184,20 @@ for (const [w, h] of MIDES) {
   const errors = [];
   p.on('pageerror', e => errors.push(String(e)));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
-  await p.evaluate(() => { localStorage.clear(); localStorage.setItem('jocs-jugats', JSON.stringify({ colles: 3, pong: 1 })); localStorage.setItem('best_galaga', '3000'); });
-  await p.reload(); await p.waitForTimeout(300);
-  // obrir el Tetris des de la portada en suma un (sense anar-hi de debò)
-  await p.evaluate(() => { const a = document.querySelector('a.btn[href="tetris.html"]'); a.addEventListener('click', e => e.preventDefault()); for (let i = 0; i < 5; i++) a.click(); });
+  await p.evaluate(() => {
+    localStorage.clear();
+    // el compte del primer dia (de la portada), un record d'abans i dos dies de trencaclosques desats
+    localStorage.setItem('jocs-jugats', JSON.stringify({ colles: 3, pong: 1 }));
+    localStorage.setItem('best_galaga', '3000'); localStorage.setItem('best_breakout', '50');
+    localStorage.setItem('trencaclosques-2026-10-30', '{}'); localStorage.setItem('trencaclosques-2026-10-31', '{}');
+  });
+  // obrir un joc el compta el joc mateix (aquí el Tetris, cinc vegades)...
+  for (let i = 0; i < 5; i++) { await p.goto('file://' + resolve(ARREL, 'tetris.html')); await p.waitForTimeout(150); }
+  // ...tornar-lo a carregar no compta, i el Breakout, l'últim que has obert, va davant dels altres d'1×
+  await p.reload(); await p.waitForTimeout(150);
+  await p.goto('file://' + resolve(ARREL, 'breakout.html')); await p.waitForTimeout(150);
+  const oberts = await p.evaluate(() => JSON.parse(localStorage.getItem('jocs-obertes') || '{}'));
+  await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(300);
   await p.click('#ordre button[data-ordre="jugats"]');
   const ids = sel => p.evaluate(s => [...document.querySelectorAll(s)].map(a => a.querySelector('.rec').dataset.joc), sel);
   const jug = await ids('#jugats a.btn');
@@ -196,9 +206,10 @@ for (const [w, h] of MIDES) {
     scroll: document.documentElement.scrollWidth > innerWidth + 1, boto: document.querySelector('#ordre').scrollWidth <= innerWidth,
   }));
   const tots = jug.length === ORDRE.length + MODERNS.length;
-  let be = tots && jug.slice(0, 4).join() === 'tetris,colles,pong,galaga' && jug[4] === 'breakout' && vist.titols && vist.jugats && !vist.scroll && vist.boto;
+  let be = tots && jug.slice(0, 6).join() === 'tetris,colles,breakout,trencaclosques,pong,galaga' && jug[6] === 'space_invaders' && vist.titols && vist.jugats && !vist.scroll && vist.boto
+    && oberts['tetris.html'].n === 5 && oberts['breakout.html'].n === 1;
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} MÉS JUGATS: primer els que més obres (${jug.slice(0, 5).join(', ')}...), i els altres per any, sense els títols dels apartats`);
+  console.log(`${be ? '✓' : '✗'} MÉS JUGATS: compta cada vegada que obres un joc (no si el tornes a carregar), els dies desats dels del dia i els records d'abans; en empat, l'últim obert (${jug.slice(0, 7).join(', ')}...)`);
   await p.reload(); await p.waitForTimeout(300);
   const recorda = (await ids('#jugats a.btn')).length === jug.length;
   await p.click('#ordre button[data-ordre="any"]');
