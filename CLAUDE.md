@@ -1015,8 +1015,19 @@ i nom nostre.
   **6 intents**. A cada intent, **a quants km** és el bo, **cap on** (una
   fletxa, com en un mapa) i un **%** de com t'hi acostes (100% al bo, 0% a
   300 km). Els intents surten numerats al mapa de Catalunya del costat.
-- **Pistes**: al cap de 3 intents, la comarca (i al mapa s'il·lumina); al
-  cap de 5, per quina lletra comença (sense l'article).
+- **Pistes** (`PISTES_ARA`): al cap de 2 intents fallats, la comarca (i al
+  mapa s'il·lumina); al cap de 4, per quina lletra comença (sense l'article),
+  i al cap de 5, **com es veu el nom**, amb la primera lletra de cada paraula
+  (`esquelet`: «S___ C____ d__ V_____»). Al principi eren al cap de 3 i de 5,
+  i sense la del nom, i en Carles el trobava molt difícil: la silueta d'un
+  poble no la coneix gaire ningú. Els tres primers dies (#1 a #3), que ja
+  s'havien jugat, van amb les d'abans (`PISTES_ABANS`), que la taula del dia
+  sigui justa.
+- **Tocant el mapa surten els pobles d'aquell lloc** (`aPropDe`): el que hi
+  ha a sota del dit i els dos que tenen el centre més a prop, al lloc dels
+  suggeriments, i tocant-ne un és un intent. Per acostar-te amb els km i la
+  fletxa calia saber noms de pobles de cada zona; ara n'hi ha prou de tocar
+  cap on diu la fletxa. Escrivint, tornen a sortir els noms.
 - **S'escriu amb un teclat propi**, que el del mòbil taparia la silueta i el
   mapa, i a sobre surten els municipis que hi encaixen: **es toca el nom**, no
   s'envia el que has escrit, i així no hi ha faltes d'ortografia possibles.

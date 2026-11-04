@@ -23,7 +23,7 @@ body{display:flex;align-items:flex-start;justify-content:center}
 .int .dir{flex:none;width:1.2em;text-align:center;font-size:15px}
 .int .pc{flex:none;width:3.2em;text-align:right;color:#cfd8cc}
 .int.be{background:#1f5a2c;border-color:#7dff9b}
-#pista{flex:none;min-height:16px;font-size:12px;color:#ffd27a;text-align:center;padding:3px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pista{flex:none;min-height:16px;font-size:12px;line-height:15px;color:#ffd27a;text-align:center;padding:3px 0 1px;overflow:hidden;max-height:34px}
 #pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,21,18,.95);font-size:22px;letter-spacing:.2em;color:#e8f0dc;border-radius:8px;z-index:3}
 /* el que escrius i els municipis que hi encaixen */
 #entrada{flex:none;width:96%;display:flex;flex-direction:column;gap:4px;margin-top:2px}
@@ -62,7 +62,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="entrada"><div id="escrit" class="buit"></div><div id="suggeriments"></div></div>
   <div id="teclat"></div>
   <div id="msg"></div>
-  <small><b style="color:#ddd">Endevina el poble del dia en 6 intents.</b> et diré a quants km i cap on és · pausa: P</small>
+  <small><b style="color:#ddd">Endevina el poble del dia en 6 intents.</b> et diré a quants km i cap on és · toca el mapa per veure'n els pobles · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -149,6 +149,9 @@ function busca(q,quants){
   res.sort((a,b)=>a[1]-b[1]||(CONEGUT.has(b[0])-CONEGUT.has(a[0]))||NOMS[a[0]].localeCompare(NOMS[b[0]],'ca'));
   return res.slice(0,quants).map(r=>r[0]);
 }
+// com es veu el nom, amb la primera lletra de cada paraula (l'última pista):
+// «Sant Cugat del Vallès» → «S___ C____ d__ V_____»
+const esquelet=i=>NOMS[i].replace(/[^\s'’\-·.,]+/g,w=>{const l=[...w];return l[0]+'_'.repeat(l.length-1)});
 // la primera lletra del nom, sense l'article (per a la segona pista)
 const inicial=i=>{const t=NOMS[i].split(/[\s'’]+/);const p=t.find(x=>!ARTICLES.has(x.toLowerCase()))||t[0];return pla(p)[0].toUpperCase()};
 
@@ -189,6 +192,13 @@ const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let stats=llegeix('poble-stats',{jugades:0,encerts:0,ratxa:0,millor:0,ultim:'',intents:[0,0,0,0,0,0]});
 
 const INTENTS=6;
+// Quan surt cada pista (la comarca, la inicial, com es veu el nom), en
+// intents fallats. Al principi eren al 3r i al 5è, i sense la del nom: en
+// Carles el trobava molt difícil. La silueta d'un poble no la coneix gaire
+// ningú, i calia saber noms de pobles d'una zona per anar-s'hi acostant.
+// Els tres primers dies (#1 a #3) ja s'havien jugat amb les d'abans.
+const PISTES_ARA=[2,4,5],PISTES_ABANS=[3,5,99];
+const pistes=()=>mode==='dia'&&R&&R.n<4?PISTES_ABANS:PISTES_ARA;
 // Punts: endevinar-lo al primer intent, 1.000; al segon, 900... al sise, 500.
 // Si no l'endevines, 400 menys els quilometres del que hi has quedat mes a
 // prop: aixi, tambe perdent, qui s'hi acosta mes va davant.
@@ -222,7 +232,8 @@ function benvinguda(){
     '<small style="color:#a9c4a0">#'+numero+' · '+nomDia(dia)+' · igual per a tothom</small>'+
     '<small>Cada dia hi ha un <b>municipi de Catalunya</b> amagat. En veus la <b>silueta</b> i tens <b>6 intents</b> per endevinar quin és.</small>'+
     '<small>Escriu el nom d\'un municipi i toca\'l. Et diré <b>a quants quilòmetres</b> és el bo i <b>cap on</b> (↗ vol dir al nord-est), i el veuràs al mapa.</small>'+
-    '<small>Al 4t intent et diré <b>de quina comarca</b> és, i al 6è, <b>per quina lletra</b> comença.</small>'+
+    '<small>No en saps cap de per allà? <b>Toca el mapa</b> i et sortiran els pobles d\'aquell lloc.</small>'+
+    '<small>Al 3r intent et diré <b>de quina comarca</b> és; al 5è, <b>per quina lletra</b> comença, i al 6è, <b>com es veu el nom</b>.</small>'+
     '<a href="#" class="bt" id="b-jugar" style="color:#10241a;background:#e8c56a">A JUGAR ▸</a>'+CREDIT);
   enllac('b-jugar',()=>{desa('poble-vist',1);hideMsg()});
 }
@@ -239,7 +250,7 @@ function escriu(t){
 function intenta(i){
   if(!enJoc())return;
   if(R.intents.includes(i)){sndNo();avisa('Aquest ja l\'has provat');return}
-  R.intents.push(i);escrit='';
+  R.intents.push(i);escrit='';aprop=null;
   if(i===R.obj){R.encert=true;acaba()}
   else{sndIntent(proximitat(i,R.obj));if(R.intents.length>=INTENTS)acaba();else{desaDia();pinta()}}
 }
@@ -333,10 +344,11 @@ function pintaPista(){
   if(avisant||!R)return;
   const p=$('pista'),f=R.intents.length;p.style.color='';
   if(R.fi){p.textContent=R.encert?'Era '+NOMS[R.obj]+'!':'Era '+NOMS[R.obj]+', '+DE_COMARCA(comarca(R.obj));return}
-  const pistes=[];
-  if(f>=3)pistes.push('és '+DE_COMARCA(comarca(R.obj)));
-  if(f>=5)pistes.push('comença per '+inicial(R.obj));
-  p.textContent=pistes.length?'PISTA: '+pistes.join(' i '):'Intent '+(f+1)+' de '+INTENTS;
+  const [pc,pi,pn]=pistes(),ps=[];
+  if(f>=pc)ps.push('és '+DE_COMARCA(comarca(R.obj)));
+  if(f>=pn)ps.push('es diu '+esquelet(R.obj));
+  else if(f>=pi)ps.push('comença per '+inicial(R.obj));
+  p.textContent=ps.length?'PISTA: '+ps.join(' i '):'Intent '+(f+1)+' de '+INTENTS+(f?'':' · toca el mapa per veure els pobles d\'una zona');
 }
 function color(pc){return pc>=100?'#7dff9b':pc>=90?'#b7f06a':pc>=75?'#ffd27a':pc>=50?'#ff9a4a':'#ff6a5a'}
 function pintaIntents(){
@@ -353,13 +365,22 @@ function pintaIntents(){
     c.appendChild(d);
   }
 }
-let sugs=[];
+let sugs=[],aprop=null;   // aprop: on has tocat el mapa, en coordenades del mapa
+// Els municipis d'on has tocat: primer el que hi és a sota, després els que
+// tenen el centre més a prop. Al mòbil el mapa és petit i el dit, gros.
+function dins(rs,x,y){let d=false;for(const r of rs)for(let a=0,b=r.length-1;a<r.length;b=a++){const [xa,ya]=r[a],[xb,yb]=r[b];
+  if((ya>y)!==(yb>y)&&x<(xb-xa)*(y-ya)/(yb-ya)+xa)d=!d}return d}
+function aPropDe(x,y,quants){
+  const res=[];for(let i=0;i<N;i++)if(!R.intents.includes(i))res.push([i,dins(anells(i),x,y)?-1:Math.hypot(CENTRE[i][0]-x,CENTRE[i][1]-y)]);
+  return res.sort((a,b)=>a[1]-b[1]).slice(0,quants).map(r=>r[0]);
+}
 function pintaEntrada(){
   const e=$('escrit'),s=$('suggeriments');
   const viu=R&&!R.fi;
   e.className=escrit?'':'buit';
-  e.textContent=escrit?escrit.toUpperCase()+'_':viu?'Escriu el nom d\'un municipi':R&&R.fi?'Demà, un altre!':'';
-  sugs=viu&&escrit?busca(escrit,3).filter(i=>!R.intents.includes(i)):[];
+  if(escrit||!viu)aprop=null;
+  e.textContent=escrit?escrit.toUpperCase()+'_':aprop?'Els pobles d\'on has tocat:':viu?'Escriu el nom d\'un municipi, o toca el mapa':R&&R.fi?'Demà, un altre!':'';
+  sugs=viu&&escrit?busca(escrit,3).filter(i=>!R.intents.includes(i)):viu&&aprop?aPropDe(aprop[0],aprop[1],3):[];
   s.innerHTML='';
   if(viu&&escrit&&!sugs.length){s.innerHTML='<i>Cap municipi no comença així</i>';return}
   if(!sugs.length){if(viu)s.innerHTML='<i>i toca\'l aquí, quan surti</i>';return}
@@ -411,12 +432,14 @@ function dibuixaMapa(){
   pintaFons(w,h,dpr);g.drawImage(fons,0,0);
   if(!R)return;
   const {e,ox,oy}=geometria(w,h,dpr),P=(x,y)=>[ox+x*e,oy+y*e];
-  if(R.intents.length>=3||R.fi){
+  if(R.intents.length>=pistes()[0]||R.fi){
     const c=comarca(R.obj);g.fillStyle=R.fi?'#3a5a3088':'#6a6a2a88';
     for(let i=0;i<N;i++)if(comarca(i)===c){cami(g,anells(i),P);g.fill('evenodd')}
   }
   if(R.fi){cami(g,anells(R.obj),P);g.fillStyle=R.encert?'#7dff9b':'#e8c56a';g.fill('evenodd');
     const [x,y]=P(...CENTRE[R.obj]);g.strokeStyle=R.encert?'#7dff9b':'#e8c56a';g.lineWidth=2*dpr;g.beginPath();g.arc(x,y,7*dpr,0,7);g.stroke()}
+  if(aprop&&!R.fi){const [x,y]=P(...aprop);g.strokeStyle='#fff';g.lineWidth=1.5*dpr;g.beginPath();
+    g.moveTo(x-6*dpr,y);g.lineTo(x+6*dpr,y);g.moveTo(x,y-6*dpr);g.lineTo(x,y+6*dpr);g.stroke()}
   g.font='bold '+(9*dpr)+'px monospace';g.textAlign='center';g.textBaseline='middle';
   R.intents.forEach((i,k)=>{if(i===R.obj)return;const [x,y]=P(...CENTRE[i]),pc=proximitat(i,R.obj);
     g.fillStyle=color(pc);g.beginPath();g.arc(x,y,5.5*dpr,0,7);g.fill();g.fillStyle='#0b100d';g.fillText(k+1,x,y+.5*dpr)});
@@ -453,6 +476,13 @@ $('suggeriments').addEventListener('click',ev=>{
   intenta(+a.dataset.i);
 });
 $('screen').addEventListener('pointerdown',()=>{aInit();if(paused)posaPausa(false)});
+$('mapa').addEventListener('pointerdown',ev=>{
+  if(!enJoc())return;
+  const cv=$('mapa'),r=cv.getBoundingClientRect(),dpr=cv.width/r.width,{e,ox,oy}=geometria(cv.width,cv.height,dpr);
+  const x=((ev.clientX-r.left)*dpr-ox)/e,y=((ev.clientY-r.top)*dpr-oy)/e;
+  if(x<-20||y<-20||x>AMPLE+20||y>ALT+20)return;
+  escrit='';aprop=[x,y];sndTecla();pintaEntrada();dibuixaMapa();
+});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 // La P del teclat de l'ordinador s'escriu (Pals, Puigcerda): nomes fa pausa
 // la P de mentida que envia el boto de pausa del marcador.

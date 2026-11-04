@@ -123,7 +123,7 @@ diu(cerca.canco[0] === 'Cassà de la Selva' && cerca.sant && cerca.res === 0, 's
 
 // ---------- 4. jugar tocant: perdre ----------
 // el poble d'avui, de debò (es desa amb el poble, i en tornar a obrir ha de quadrar)
-const T = await p.evaluate(() => ({ nom: NOMS[R.obj], com: COMARQUES[comarca(R.obj)], ini: inicial(R.obj) }));
+const T = await p.evaluate(() => ({ nom: NOMS[R.obj], com: COMARQUES[comarca(R.obj)], ini: inicial(R.obj), esq: esquelet(R.obj) }));
 const FALSOS = ['Lleida', 'Tarragona', 'Girona', 'Manresa', 'Vic', 'Figueres', 'Tremp'].filter(x => x !== T.nom).slice(0, 6);
 const tocats = [];
 for (const n of FALSOS.slice(0, 3)) tocats.push(await prova(p, n));
@@ -133,14 +133,15 @@ let e = await p.evaluate(() => ({
 }));
 diu(tocats.every(Boolean) && e.files[0].includes(FALSOS[0].toUpperCase()) && /\d+ km/.test(e.files[0]) && /[↑↗→↘↓↙←↖]/.test(e.files[0]) && /%/.test(e.files[0]) && e.escrit === '',
   'escrivint al teclat i tocant el municipi, surt la fila amb els km, la fletxa i el %: ' + e.files[0]);
-diu(e.pista.includes(T.com), `al cap de 3 intents, la pista diu la comarca (avui és ${T.nom}): ` + e.pista);
+const PC = await p.evaluate(() => pistes());
+diu(e.pista.includes(T.com), `al cap de ${PC[0]} intents fallats o més, la pista diu la comarca (avui és ${T.nom}): ` + e.pista);
 // el mateix dues vegades no compta
 const repetit = await prova(p, FALSOS[0]);
 let n = await p.evaluate(() => R.intents.length);
 diu(n === 3 && !repetit, 'el mateix municipi no es pot provar dues vegades (ni surt als suggeriments)');
 await prova(p, FALSOS[3]); await prova(p, FALSOS[4]);
 e = await p.evaluate(() => ({ pista: document.getElementById('pista').textContent }));
-diu(e.pista.includes('comença per ' + T.ini), 'al cap de 5, també per quina lletra comença: ' + e.pista);
+diu(PC[2] <= 5 ? e.pista.includes('es diu ' + T.esq) : e.pista.includes('comença per ' + T.ini), 'al cap de 5, també per quina lletra comença (o, des del dia #4, com es veu el nom): ' + e.pista);
 // desar i continuar a mig fer
 await p.reload(); await p.waitForTimeout(500); await neteja(p);
 e = await p.evaluate(() => ({ n: R.intents.length, noms: R.intents.map(i => NOMS[i]) }));
@@ -171,6 +172,37 @@ await prova(p, 'Vic');
 await p.waitForTimeout(1600);
 e = await p.evaluate(() => ({ fi: R.fi, encert: R.encert, msg: document.getElementById('msg').textContent }));
 diu(e.fi && e.encert && /PRÀCTICA/.test(e.msg) && !enviats.length, 'i encertant-la no compta per a cap taula');
+// les pistes d'ara: la comarca al 3r intent, la inicial al 5è i com es veu el nom al 6è
+await p.evaluate(() => { hideMsg(); obre('practica', 0); R.obj = NOMS.indexOf('Sant Cugat del Vallès'); pinta(); });
+const ps = [];
+for (const nom of ['Lleida', 'Tarragona', 'Girona', 'Manresa', 'Vic']) {
+  ps.push(await p.evaluate(() => document.getElementById('pista').textContent));
+  await prova(p, nom);
+}
+ps.push(await p.evaluate(() => document.getElementById('pista').textContent));
+diu(/toca el mapa/.test(ps[0]) && !/PISTA/.test(ps[1]) && /del Vallès Occidental/.test(ps[2]) && !/comença/.test(ps[3]) && /comença per S/.test(ps[4]) && /es diu S___ C____ d__ V_____/.test(ps[5]),
+  'les pistes surten abans: la comarca al 3r intent, la inicial al 5è i com es veu el nom al 6è («' + ps[5] + '»)');
+const vell = await p.evaluate(() => { const m = mode, rr = R; mode = 'dia'; R = { n: 3 }; const a = pistes(); R = { n: 4 }; const b = pistes(); mode = m; R = rr; return [a.join(), b.join()]; });
+diu(vell[0] === '3,5,99' && vell[1] === '2,4,5', 'els tres primers dies, que ja s\'havien jugat, van amb les pistes d\'abans');
+// tocar el mapa: surten els pobles d'aquell lloc, i tocant-ne un és un intent
+await p.evaluate(() => { obre('practica', 0); R.obj = NOMS.indexOf('Figueres'); pinta(); });
+const lloc = async nom => p.evaluate(nom => {
+  const cv = document.getElementById('mapa'), r = cv.getBoundingClientRect(), dpr = cv.width / r.width, { e, ox, oy } = geometria(cv.width, cv.height, dpr), i = NOMS.indexOf(nom);
+  return [r.left + (ox + CENTRE[i][0] * e) / dpr, r.top + (oy + CENTRE[i][1] * e) / dpr];
+}, nom);
+let [mx, my] = await lloc('Olot');
+await p.touchscreen.tap(mx, my);
+e = await p.evaluate(() => ({ s: [...document.querySelectorAll('#suggeriments a')].map(a => a.textContent), t: document.getElementById('escrit').textContent }));
+diu(e.s[0] === 'Olot' && e.s.length === 3 && /on has tocat/.test(e.t), 'tocant el mapa a Olot, surten Olot i els del costat: ' + e.s.join(', '));
+await p.locator('#suggeriments a').first().tap();
+e = await p.evaluate(() => ({ int: R.intents.map(i => NOMS[i]), s: document.querySelectorAll('#suggeriments a').length }));
+diu(e.int[0] === 'Olot' && e.s === 0, 'i tocant-ne un, és un intent, com escrivint-lo');
+await p.touchscreen.tap(mx, my);
+e = await p.evaluate(() => [...document.querySelectorAll('#suggeriments a')].map(a => a.textContent));
+diu(!e.includes('Olot'), 'el que ja has provat ja no surt: ' + e.join(', '));
+await p.keyboard.press('g');
+e = await p.evaluate(() => ({ t: document.getElementById('escrit').textContent, aprop }));
+diu(e.t === 'G_' && e.aprop === null, 'i escrivint, tornen a sortir els noms que comencen així');
 await ctx.close();
 
 // ---------- 5. guanyar ----------
