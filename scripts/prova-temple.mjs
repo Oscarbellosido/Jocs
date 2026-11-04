@@ -729,6 +729,17 @@ await p.evaluate(() => { manual = false; estat = 'menu'; esborraPartida(); local
 await p.reload(); await p.waitForTimeout(600);
 diu(await p.evaluate(() => { const c = control(); return c && c.nivell === 5 && !!document.getElementById('m-ctl') && /TORNA A LA COVA DE GEL/.test(document.getElementById('msg').textContent) && nivellsFets().max === 5; }),
   'qui ja havia acabat el temple quan n\'eren sis, en entrar, pot tornar a la cova de gel');
+// si el rècord d'aquest mòbil no hi arriba però a la taula de tothom les teves inicials sí (l'app i el navegador desen cadascun el seu)
+await p.route('**/jocs-records*/records/temple', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[{"n":"CAR","p":54730},{"n":"TST","p":2000}]' }));
+await p.evaluate(() => { estat = 'menu'; localStorage.removeItem('temple-nivells'); localStorage.removeItem('temple-control'); localStorage.setItem('best_temple', '2000'); localStorage.setItem('jugador', 'TST'); });
+await p.reload(); await p.waitForTimeout(800);
+diu(await p.evaluate(() => !control() && !document.getElementById('m-ctl')), 'si a la taula les teves inicials no passen de 35.000, no hi ha cova');
+await p.evaluate(() => { estat = 'menu'; localStorage.setItem('jugador', 'CAR'); });
+await p.reload(); await p.waitForTimeout(800);
+diu(await p.evaluate(() => { const c = control(); return c && c.nivell === 5 && /TORNA A LA COVA DE GEL/.test(document.getElementById('msg').textContent); }),
+  'però si a la taula de tothom les teves inicials tenen 54.730, encara que en aquest mòbil no, també pots tornar a la cova');
+await p.unroute('**/jocs-records*/records/temple');
+await p.evaluate(() => { localStorage.setItem('jugador', 'TST'); localStorage.setItem('best_temple', '41000'); });
 // i també si ja havia tornat a començar i portava el punt de control del segon nivell
 await p.evaluate(() => { estat = 'menu'; localStorage.removeItem('temple-nivells'); localStorage.setItem('temple-control', JSON.stringify({ nivell: 1, punts: 9000, maxCors: 3 })); });
 await p.reload(); await p.waitForTimeout(600);

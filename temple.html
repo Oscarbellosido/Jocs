@@ -562,24 +562,40 @@ function apuntaNivell(n,acabat=false){
   q.max=Math.max(q.max,n);
   try{localStorage.setItem(CLAU_NIVELLS,JSON.stringify(q))}catch(e){}
 }
-// La primera vegada: qui ja havia acabat el temple quan n'eren sis (i, per
-// tant, ja no tenia punt de control) torna a la cova de gel. Se sap pel
-// rècord d'aquest mòbil: per arribar a 35.000 punts cal haver passat cinc
-// nivells. No se sap amb quants punts hi vas entrar: hi tornes amb 0.
+// Qui ja havia acabat el temple quan n'eren sis (i, per tant, ja no tenia
+// punt de control) torna a la cova de gel. Se sap pel rècord: per arribar a
+// 35.000 punts cal haver passat cinc nivells. Primer el d'aquest mòbil i, si
+// no hi és, el de la taula de tothom amb les teves inicials: en Carles tenia
+// 54.730 punts a la taula, però l'app i el navegador desen cadascun el seu
+// rècord, i al lloc on jugava no hi era. No se sap amb quants punts hi vas
+// entrar: hi tornes amb 0.
+const PUNTS_COVA=35000;
+function potTornarCova(){const q=nivellsFets(),c=control();return q.max<5&&!(c&&c.nivell>=5)}
+function donaCova(){
+  try{
+    localStorage.setItem(CLAU_CONTROL,JSON.stringify({nivell:5,punts:0,maxCors:3}));
+    const q=nivellsFets();q.max=Math.max(q.max,5);if(q.punts[5]===undefined){q.punts[5]=0;q.cors[5]=3}
+    localStorage.setItem(CLAU_NIVELLS,JSON.stringify(q));
+  }catch(e){}
+}
 (function(){
   try{
-    if(localStorage.getItem(CLAU_NIVELLS))return;
-    // si ja havies tornat a començar i portes un punt de control de més amunt,
-    // la cova també: el punt de control no recula mai
-    const c=control(),q={max:c?c.nivell:0,punts:{},cors:{}};
-    if(c){q.punts[c.nivell]=c.punts||0;q.cors[c.nivell]=c.maxCors||3}
-    if(Records.local(JOC)>=35000&&q.max<5){
-      localStorage.setItem(CLAU_CONTROL,JSON.stringify({nivell:5,punts:0,maxCors:3}));
-      q.max=5;q.punts[5]=0;q.cors[5]=3;
-    }
-    if(q.max>0)localStorage.setItem(CLAU_NIVELLS,JSON.stringify(q));
+    // la primera vegada, el punt de control que hi hagués passa a la llista
+    if(!localStorage.getItem(CLAU_NIVELLS)){const c=control();
+      if(c)localStorage.setItem(CLAU_NIVELLS,JSON.stringify({max:c.nivell,punts:{[c.nivell]:c.punts||0},cors:{[c.nivell]:c.maxCors||3}}))}
+    if(potTornarCova()&&Records.local(JOC)>=PUNTS_COVA)donaCova();
   }catch(e){}
 })();
+let mirantTaula=false;
+async function covaDeLaTaula(){
+  if(mirantTaula||!potTornarCova()||!Records.nom())return;
+  mirantTaula=true;
+  try{
+    const ll=await Records.llista(JOC),jo=Records.nom();
+    if(ll&&ll.some(e=>e.n===jo&&e.p>=PUNTS_COVA)&&potTornarCova()){donaCova();if(estat==='menu')menu()}
+  }catch(e){}
+  mirantTaula=false;
+}
 function comencaA(n){
   if(n<=0){novaPartida();return}
   const q=nivellsFets();
@@ -1198,6 +1214,7 @@ async function final(titol,cos){
 // ===== EL MENU =====
 function menu(){
   estat='menu';
+  covaDeLaTaula();
   // el punt de control surt si es mes avall que la partida a mig fer (si has
   // tornat a comencar sense voler, el nivell on havies arribat hi segueix)
   const q=partidaDesada(),c0=control(),ctl=c0&&(!q||c0.nivell>(q.nivell||0))&&c0;
