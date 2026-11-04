@@ -117,6 +117,12 @@ const MAPA={"ample":1000,"alt":991,"vegueries":{"Alt Pirineu i Aran":[4,5,15,25,
 //      passant per comarques teves. Nomes un cop per torn.
 // Guanya qui arriba primer a 30 comarques.
 const N=43,OBJECTIU=30,MAX_RONDES=25;
+// Tu jugues sol contra dos, i amb les mateixes forces no hi havia manera:
+// jugant tan bé com la maquina en guanyaves un terç, i una persona que en sap
+// poc, gairebe cap. Per aixo comences amb mes soldats i cada torn te'n donen
+// 2 de propina. Les batalles comencades abans del canvi (S.ajut buit) van com
+// abans, i la d'avui també: ja l'havia jugat algú.
+const SOLDATS_TU=45,SOLDATS_ELLS=35,PROPINA=2,AJUT_DES_DE='2026-11-05';
 const VEI=MAPA.comarques.map(c=>c.veines.map(v=>v-1));
 const BONUS={'Alt Pirineu i Aran':3,'Ponent':3,'Camp de Tarragona':3,"Terres de l'Ebre":2,'Penedès':2,'Catalunya Central':3,'Comarques Gironines':4,'Àmbit Metropolità':3};
 const VEGS=Object.entries(MAPA.vegueries).map(([nom,ids])=>({nom,cs:ids.map(i=>i-1),bonus:BONUS[nom]}));
@@ -138,17 +144,19 @@ function novaPartida(seed){
   const r=mulberry(hashText('CONQUESTA-'+seed));
   const ordre=[...Array(N).keys()];
   for(let i=N-1;i>0;i--){const j=Math.floor(r()*(i+1));[ordre[i],ordre[j]]=[ordre[j],ordre[i]]}
-  const S={seed,ronda:1,torn:0,fase:'reforc',dueny:Array(N).fill(0),soldats:Array(N).fill(1),posar:0,daus:0,fi:null,vius:[true,true,true]};
+  const ajut=!(/^DIA-/.test(seed)&&seed.slice(4)<AJUT_DES_DE);
+  const S={seed,ajut,ronda:1,torn:0,fase:'reforc',dueny:Array(N).fill(0),soldats:Array(N).fill(1),posar:0,daus:0,fi:null,vius:[true,true,true]};
   ordre.forEach((c,i)=>S.dueny[c]=i%3);
-  // 35 soldats per cap, repartits a l'atzar per les seves comarques
-  for(let p=0;p<3;p++){const meves=ordre.filter(c=>S.dueny[c]===p);
-    for(let k=meves.length;k<35;k++)S.soldats[meves[Math.floor(r()*meves.length)]]++}
+  // els soldats de cadascú, repartits a l'atzar per les seves comarques
+  for(let p=0;p<3;p++){const meves=ordre.filter(c=>S.dueny[c]===p),tots=ajut&&p===0?SOLDATS_TU:SOLDATS_ELLS;
+    for(let k=meves.length;k<tots;k++)S.soldats[meves[Math.floor(r()*meves.length)]]++}
   S.posar=reforcos(S,0);
   return S;
 }
 const comarquesDe=(S,p)=>S.dueny.reduce((n,d)=>n+(d===p),0);
 function vegueriesDe(S,p){return VEGS.filter(v=>v.cs.every(c=>S.dueny[c]===p))}
-function reforcos(S,p){return Math.max(3,Math.floor(comarquesDe(S,p)/3))+vegueriesDe(S,p).reduce((n,v)=>n+v.bonus,0)}
+const propina=(S,p)=>p===0&&S.ajut?PROPINA:0;
+function reforcos(S,p){return Math.max(3,Math.floor(comarquesDe(S,p)/3))+propina(S,p)+vegueriesDe(S,p).reduce((n,v)=>n+v.bonus,0)}
 const veines=(a,b)=>VEI[a].includes(b);
 function potAtacar(S,a,d){return S.dueny[a]!==S.dueny[d]&&veines(a,d)&&S.soldats[a]>=2}
 // Una tirada: torna els daus i qui perd que
@@ -300,7 +308,8 @@ const PAGINES=[
    '<p><b>Guanya qui arriba primer a tenir 30 comarques.</b> Les guanyes atacant les dels altres.</p>'+
    '<p>Es juga per torns: primer tu, després els vermells i després els grocs. El teu torn té <b>tres passos</b>, i a dalt de la pantalla sempre diu en quin ets i què has de tocar.</p>'],
   ['1 · REFORÇA',
-   '<p>A començament de torn et donen <b>soldats nous</b>: un per cada tres comarques que tens (com a mínim 3), i més si tens una vegueria sencera.</p>'+
+   '<p>A començament de torn et donen <b>soldats nous</b>: un per cada tres comarques que tens (com a mínim 3), '+PROPINA+' de propina, i més si tens una vegueria sencera.</p>'+
+   '<p style="color:#9fb3c6">La propina és només per a tu, i també comences amb més soldats ('+SOLDATS_TU+' contra '+SOLDATS_ELLS+'): ells són dos contra tu.</p>'+
    '<p><b>Toca les teves comarques</b> per posar-los-hi: cada toc, un soldat. '+cer(B,3)+' → toc → '+cer(B,4)+'</p>'+
    '<p>Posa\'ls a les que toquen comarques dels altres: és on faran falta, per atacar o per defensar-te. Si els vols tots a la mateixa, toca-la i prem <b>POSA\'LS TOTS AQUÍ</b>.</p>'],
   ['2 · ATACA',
@@ -349,7 +358,7 @@ function menu(){
   const bt=(id,t,c,b,sub)=>'<a href="#" class="bt" id="'+id+'" style="color:'+c+';background:#111;border:1px solid '+b+'">'+t+'</a>'+(sub?'<small style="color:#888;margin-top:2px">'+sub+'</small>':'');
   msg('<div style="color:#ffd27a;letter-spacing:.15em">LA CONQUESTA</div>'+
     '<small>Tres exèrcits es disputen les 43 comarques. <b>Guanya qui arriba primer a 30.</b> A cada torn reforces les teves, ataques les del costat amb els daus i, si vols, mous soldats.</small>'+
-    '<small style="color:#9fb3c6">Les vegueries senceres donen soldats de més cada torn.</small>'+
+    '<small style="color:#9fb3c6">Són dos contra tu: comences amb més soldats i cada torn en tens '+PROPINA+' de propina.</small>'+
     (contDia?bt('m-dia','CONTINUA LA D\'AVUI','#7dff9b','#3a8a4a','ronda '+q.S.ronda+' · '+comarquesDe(q.S,0)+' comarques')
       :jaDia?bt('m-dia','LA BATALLA D\'AVUI (JA JUGADA)','#888','#444','demà n\'hi haurà una altra')
       :bt('m-dia','LA BATALLA D\'AVUI ▸','#ffd27a','#a07a30','#'+numero+' · '+nomDia(dia)+' · igual per a tothom'))+
@@ -596,7 +605,7 @@ function pintaEstat(){
   if(S.fase==='reforc'){
     const vs=vegueriesDe(S,0),base=Math.max(3,Math.floor(comarquesDe(S,0)/3));
     e.innerHTML='<b style="color:#ffd27a">1 · REFORÇA</b>: tens <b>'+S.posar+'</b> soldats nous. Toca les teves (blaves): un a cada toc.'+
-      (vs.length?'<br><span style="color:#9fb3c6">'+base+' per les comarques + '+vs.map(v=>v.bonus+' per '+v.nom).join(' + ')+'</span>':'');
+      (vs.length||propina(S,0)?'<br><span style="color:#9fb3c6">'+[base+' per les comarques'].concat(propina(S,0)?[propina(S,0)+' de propina']:[],vs.map(v=>v.bonus+' per '+v.nom)).join(' + ')+'</span>':'');
   }else if(S.fase==='atac'){
     e.innerHTML='<b style="color:#ffd27a">2 · ATACA</b>: '+(sel===null?'toca una teva (blava) amb 2 soldats o més.':'ara toca la marcada que vols atacar. Cada toc, una tirada.');
   }else e.innerHTML='<b style="color:#ffd27a">3 · MOU</b> (si vols): '+(sel===null?'toca una teva i després una altra de teva.':'ara toca on els vols portar.');

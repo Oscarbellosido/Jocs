@@ -877,13 +877,13 @@ mateixa màquina, i la taula diu qui ho ha fet millor. És **inspirat en** el
 *Risk* (d'una empresa viva), amb nom nostre.
 
 - **Les 43 comarques** (amb el Moianès i el Lluçanès) i **tres exèrcits**:
-  tu (blau), els VERMELLS i els GROCS. Comences amb 15 comarques i 35
-  soldats; ells, amb 14 i 35 cadascun.
+  tu (blau), els VERMELLS i els GROCS. Comences amb 15 comarques i 45
+  soldats; ells, amb 14 i 35 cadascun (`SOLDATS_TU`, `SOLDATS_ELLS`).
 - **Guanya qui arriba primer a 30 comarques** (`OBJECTIU`), i no qui les té
   totes: conquerir-les totes duraria massa per a una partida del dia. Si no
   hi arriba ningú en **25 rondes** (`MAX_RONDES`), s'acaba igual.
 - Cada torn: **REFORÇA** (un soldat per cada tres comarques, com a mínim 3,
-  i el premi de cada **vegueria** sencera, que fan de continents), **ATACA**
+  **2 de propina només per a tu** (`PROPINA`), i el premi de cada **vegueria** sencera, que fan de continents), **ATACA**
   (fins a 3 daus contra 2, de gran a petit, i si empaten perd qui ataca) i
   **MOU** soldats un cop per comarques teves. Són les regles de tota la vida.
 - **Punts**: guanyant, 1.000 i 50 més per cada ronda que sobra. Si no,
@@ -909,9 +909,19 @@ Coses que no s'han de desfer sense entendre-les:
   i, si tanques a mig torn dels altres, en tornar-hi el tornen a jugar igual.
 - **La màquina** (`iaTorn`) reforça la frontera on té més a guanyar, ataca
   només quan té 2 soldats més (`AGRESSIU`), va a completar vegueries i, si
-  algú s'acosta a les 30, li va al darrere. Calibrat: si tu jugues com ella,
-  de 80 partides en guanyes unes 27 i les guanyades duren unes 12 rondes.
-  Una persona que pensi una mica ha de guanyar més sovint.
+  algú s'acosta a les 30, li va al darrere.
+- **Tu tens avantatge, a posta: 45 soldats contra 35 i 2 de propina cada
+  torn.** Al principi anaven tots tres igualats, i en Carles la trobava molt
+  difícil. Era veritat: són dos contra tu, i jugant tan bé com la màquina en
+  guanyaves 27 de 80; un jugador automàtic que en sap poc (reforça una
+  frontera qualsevol, ataca a l'atzar quan en té més i no mou mai), 2 de 25.
+  Ara, jugant com la màquina, en guanyes unes 72 de 80 en unes 7 rondes, i el
+  que en sap poc, unes 23. Guanyar és el normal, i la taula del dia la fa qui
+  guanya **més de pressa** (50 punts per ronda que sobra). Ho mira el
+  `scripts/prova-conquesta.mjs` amb tots dos jugadors.
+  Les batalles començades abans del canvi (sense `S.ajut`) i la del 4 de
+  novembre del 2026, que ja havia jugat algú, van sense avantatge
+  (`AJUT_DES_DE`), que si no la taula d'aquell dia no seria justa.
 - **Els torns dels altres es veuen a poc a poc** i amb **▶▶ DE PRESSA** (o
   tocant el mapa) passen de cop fins que et torna a tocar.
 - **L'explicació de com es juga** (`PAGINES`, sis pàgines curtes amb

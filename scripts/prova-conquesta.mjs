@@ -58,8 +58,13 @@ const regles = await p.evaluate(() => {
   const r = {};
   r.repartiment = [0, 1, 2].map(q => comarquesDe(S, q)).join(',');
   r.soldats = [0, 1, 2].map(q => S.soldats.reduce((n, s, c) => n + (S.dueny[c] === q ? s : 0), 0)).join(',');
-  r.minim = (() => { const T = structuredClone(S); T.dueny.fill(1); T.dueny[0] = 0; return reforcos(T, 0); })();
-  r.ambVegueria = (() => { const T = structuredClone(S); T.dueny.fill(1); for (const c of VEGS[0].cs) T.dueny[c] = 0; return reforcos(T, 0) === 3 + VEGS[0].bonus; })();
+  r.minim = (() => { const T = structuredClone(S); T.dueny.fill(0); T.dueny[0] = 1; return reforcos(T, 1); })();
+  r.propina = (() => { const T = structuredClone(S); T.dueny.fill(1); T.dueny[0] = 0; return reforcos(T, 0); })();
+  // les batalles d'abans del canvi, i la d'avui, van com abans: sense propina ni soldats de més
+  const V = novaPartida('DIA-2026-11-04'), W = novaPartida('DIA-2026-11-05');
+  r.vella = !V.ajut && W.ajut && V.soldats.reduce((n, s, c) => n + (V.dueny[c] === 0 ? s : 0), 0) === 35 && reforcos(V, 0) === Math.max(3, Math.floor(comarquesDe(V, 0) / 3));
+  r.desadaVella = (() => { const T = structuredClone(S); delete T.ajut; return reforcos(T, 0) === reforcos(S, 0) - PROPINA; })();
+  r.ambVegueria = (() => { const T = structuredClone(S); T.dueny.fill(1); for (const c of VEGS[0].cs) T.dueny[c] = 0; return reforcos(T, 0) === 3 + PROPINA + VEGS[0].bonus; })();
   // els daus a ma: 6 5 4 contra 6 3 → el 6 empata (perd qui ataca) i el 5 guanya
   const vell = dau; let cua = [6, 5, 4, 6, 3]; dau = () => cua.shift();
   const T = structuredClone(S); const a = T.dueny.indexOf(0), d = VEI[a].find(v => T.dueny[v] !== 0) ?? VEI[a][0];
@@ -83,8 +88,10 @@ const regles = await p.evaluate(() => {
   r.mateixosDaus = JSON.stringify(A) === JSON.stringify(B);
   return r;
 });
-diu(regles.repartiment === '15,14,14' && regles.soldats === '35,35,35', `en començar, 15, 14 i 14 comarques, i 35 soldats cadascú (${regles.repartiment} / ${regles.soldats})`);
+diu(regles.repartiment === '15,14,14' && regles.soldats === '45,35,35', `en començar, 15, 14 i 14 comarques, i 45 soldats tu i 35 ells (${regles.repartiment} / ${regles.soldats})`);
 diu(regles.minim === 3, 'amb poques comarques, com a mínim 3 soldats de reforç');
+diu(regles.propina === 5, `tu, a sobre, 2 de propina cada torn (${regles.propina})`);
+diu(regles.vella && regles.desadaVella, 'la batalla d\'avui (ja començada per algú) i les desades d\'abans van sense ajuda, com abans');
 diu(regles.ambVegueria, 'amb una vegueria sencera, el seu premi a sobre');
 diu(regles.daus, 'els daus es comparen de gran a petit, i en cas d\'empat perd qui ataca');
 diu(regles.unDau, 'amb 2 soldats només es tira un dau, i el defensor en tira fins a dos');
@@ -107,8 +114,31 @@ const cal = await p.evaluate(() => {
   rondes.sort((a, b) => a - b);
   return { tu, ells, llarga, mediana: rondes[rondes.length >> 1] };
 });
-diu(cal.tu >= 16 && cal.tu <= 50 && cal.mediana >= 7 && cal.mediana <= 16,
+diu(cal.tu >= 56 && cal.tu <= 78 && cal.mediana >= 5 && cal.mediana <= 12,
   `jugant com la màquina, de 80 partides en guanyes ${cal.tu} i ells ${cal.ells} (${cal.llarga} sense guanyador); les guanyades duren ${cal.mediana} rondes`);
+// i qui en sap poc: reforça una frontera qualsevol, ataca a l'atzar quan en té més i no mou mai
+const nov = await p.evaluate(() => {
+  let tu = 0;
+  for (let s = 0; s < 80; s++) {
+    const S = novaPartida('NOV' + s); let g = -1; const rr = mulberry(s * 7 + 1);
+    for (let k = 0; k < 400; k++) {
+      if (S.torn === 0) {
+        const fr = []; for (let c = 0; c < N; c++) if (S.dueny[c] === 0 && VEI[c].some(v => S.dueny[v] !== 0)) fr.push(c);
+        S.soldats[fr[Math.floor(rr() * fr.length)] ?? S.dueny.indexOf(0)] += S.posar; S.posar = 0;
+        for (let j = 0; j < 20 && guanyador(S) < 0; j++) {
+          const op = []; for (let a = 0; a < N; a++) if (S.dueny[a] === 0 && S.soldats[a] >= 2) for (const d of VEI[a]) if (S.dueny[d] !== 0 && S.soldats[a] > S.soldats[d]) op.push([a, d]);
+          if (!op.length || rr() < .15) break; const [a, d] = op[Math.floor(rr() * op.length)];
+          while (S.soldats[a] >= 2 && S.dueny[d] !== 0) { const r = tirada(S, a, d); if (r.conquesta) { ocupa(S, a, d, Math.ceil((S.soldats[a] - 1) / 2), r.min); break } }
+        }
+      } else for (const _ of iaTorn(S, S.torn)) {}
+      g = guanyador(S); if (g >= 0 || !S.vius[0]) break;
+      seguentTorn(S); if (S.ronda > MAX_RONDES) break;
+    }
+    if (g === 0) tu++;
+  }
+  return tu;
+});
+diu(nov >= 16 && nov <= 50, `jugant sense gaire traça (reforços i atacs a l'atzar), de 80 en guanyes ${nov}: no és regalada, però tampoc impossible`);
 
 // ---------- 4. jugar tocant ----------
 await p.click('#m-dia');
@@ -127,17 +157,17 @@ diu(await p.evaluate(() => ajudaObert && /REFORÇA/.test(document.querySelector(
 await p.click('#a-salta');
 diu(await p.evaluate(() => !ajudaObert && !paused), 'i «ja ho sé» la tanca');
 const toca = c => p.evaluate(c => { const e = ETIQ[c].cer.getBoundingClientRect(); return [e.x + e.width / 2, e.y + e.height / 2]; }, c).then(([x, y]) => p.touchscreen.tap(x, y));
-let e = await p.evaluate(() => ({ fase: S.fase, posar: S.posar, torn: S.torn, n: numero }));
-diu(e.fase === 'reforc' && e.posar === 5 && e.torn === 0, `la batalla d'avui (#${e.n}) comença amb el teu torn: ${e.posar} soldats per reforçar`);
+let e = await p.evaluate(() => ({ fase: S.fase, posar: S.posar, torn: S.torn, n: numero, toca: 5 + (S.ajut ? PROPINA : 0) }));
+diu(e.fase === 'reforc' && e.posar === e.toca && e.torn === 0, `la batalla d'avui (#${e.n}) comença amb el teu torn: ${e.posar} soldats per reforçar`);
 const meva = await p.evaluate(() => { for (let c = 0; c < 43; c++) if (S.dueny[c] === 0 && VEI[c].some(v => S.dueny[v] !== 0)) return c; });
 const abans = await p.evaluate(c => S.soldats[c], meva);
 await toca(meva);
-diu(await p.evaluate(([c, a]) => S.soldats[c] === a + 1 && S.posar === 4, [meva, abans]), 'tocant una comarca teva, hi poses un soldat');
+diu(await p.evaluate(([c, a, t]) => S.soldats[c] === a + 1 && S.posar === t - 1, [meva, abans, e.toca]), 'tocant una comarca teva, hi poses un soldat');
 const enemiga = await p.evaluate(() => S.dueny.findIndex(d => d !== 0));
 await toca(enemiga);
-diu(await p.evaluate(() => S.posar === 4 && /comarques teves/.test(document.getElementById('info').textContent)), 'a les dels altres no, i et diu per què');
+diu(await p.evaluate(t => S.posar === t - 1 && /comarques teves/.test(document.getElementById('info').textContent), e.toca), 'a les dels altres no, i et diu per què');
 await p.click('#controls button:has-text("POSA\'LS TOTS")');
-diu(await p.evaluate(([c, a]) => S.fase === 'atac' && S.soldats[c] === a + 5, [meva, abans]), 'POSA\'LS TOTS AQUÍ posa la resta on havies tocat, i passes a atacar');
+diu(await p.evaluate(([c, a, t]) => S.fase === 'atac' && S.soldats[c] === a + t, [meva, abans, e.toca]), 'POSA\'LS TOTS AQUÍ posa la resta on havies tocat, i passes a atacar');
 // atacar: amb molts soldats contra una del costat
 const [at, df] = await p.evaluate(c => { S.soldats[c] = 30; const d = VEI[c].find(v => S.dueny[v] !== 0); S.soldats[d] = 2; pinta(); return [c, d]; }, meva);
 await toca(at); await toca(df);
