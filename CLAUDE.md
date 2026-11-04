@@ -11,31 +11,44 @@ mòbil, instal·lat com a aplicació.
 
 ## Els jocs
 
-| Fitxer | Joc | Any |
-|---|---|---|
-| `pong.html` | Pong | 1972 |
-| `breakout.html` | Breakout | 1976 |
-| `space_invaders.html` | Space Invaders | 1978 |
-| `lunar_lander.html` | Lunar Lander | 1979 |
-| `galaxian.html` | Galaxian | 1979 |
-| `asteroid_belt_joc.html` | Asteroids | 1979 |
-| `comecocos.html` | Pac-Man | 1980 |
-| `missile_command.html` | Missile Command | 1980 |
-| `crazy_climber.html` | Crazy Climber | 1980 |
-| `battlezone.html` | Battlezone | 1980 |
-| `defender.html` | Defender | 1980 |
-| `centipede.html` | Centipede | 1981 |
-| `frogger.html` | Frogger | 1981 |
-| `donkey_kong.html` | Donkey Kong | 1981 |
-| `galaga.html` | Galaga | 1981 |
-| `tempest.html` | Tempest | 1981 |
-| `dig_dug.html` | Dig Dug | 1982 |
-| `moon_patrol.html` | Moon Patrol | 1982 |
-| `nibbler.html` | Nibbler | 1982 |
-| `pole_position.html` | Pole Position | 1982 |
-| `qbert.html` | Q*bert | 1982 |
-| `track_field.html` | Track & Field | 1983 |
-| `tetris.html` | Tetris | 1984 |
+| Fitxer | Nom a la web | De quina màquina | Any |
+|---|---|---|---|
+| `pong.html` | Les Raquetes | Pong | 1972 |
+| `breakout.html` | El Trencamaons | Breakout | 1976 |
+| `space_invaders.html` | Els Invasors | Space Invaders | 1978 |
+| `lunar_lander.html` | L'Allunatge | Lunar Lander | 1979 |
+| `galaxian.html` | L'Esquadra | Galaxian | 1979 |
+| `asteroid_belt_joc.html` | Roques de l'Espai | Asteroids | 1979 |
+| `comecocos.html` | Comecocos | Pac-Man | 1980 |
+| `missile_command.html` | Els Míssils | Missile Command | 1980 |
+| `crazy_climber.html` | L'Escalador | Crazy Climber | 1980 |
+| `battlezone.html` | Els Tancs | Battlezone | 1980 |
+| `defender.html` | L'Escorta | Defender | 1980 |
+| `centipede.html` | El Centpeus | Centipede | 1981 |
+| `frogger.html` | La Granota | Frogger | 1981 |
+| `donkey_kong.html` | El Goril·la | Donkey Kong | 1981 |
+| `galaga.html` | L'Eixam | Galaga | 1981 |
+| `tempest.html` | El Túnel | Tempest | 1981 |
+| `dig_dug.html` | L'Excavador | Dig Dug | 1982 |
+| `moon_patrol.html` | El Totterreny | Moon Patrol | 1982 |
+| `nibbler.html` | El Cuc | Nibbler | 1982 |
+| `pole_position.html` | La Cursa | Pole Position | 1982 |
+| `qbert.html` | La Piràmide | Q*bert | 1982 |
+| `track_field.html` | L'Atletisme | Track & Field | 1983 |
+| `tetris.html` | Els Blocs | Tetris | 1984 |
+
+**Els noms de la web no són els de les màquines**, i no s'han de tornar a
+posar. En Carles va preguntar si feia alguna il·legalitat: les regles d'un joc
+no tenen drets, però els noms (Tetris, Donkey Kong, Space Invaders...) són
+marques registrades d'empreses vives, i els dibuixos i personatges tenen drets
+d'autor. Per això a la portada, als títols de les pàgines, a la descripció de
+l'app i als missatges del bot (`FITXA`) cada clàssic es diu com diu el que
+fa (Els Blocs, El Goril·la...), com el Pac-Man ja era el Comecocos. Els noms
+dels fitxers i els identificadors de les taules (`tetris`, `donkey_kong`) es
+van quedar com eren: canviar-los hauria fet perdre els rècords. **No se'n fan
+de nous que copiïn un joc concret**, encara que sigui amb un altre nom: els
+nous són nostres o «de l'estil de». El bot troba els jocs amb l'article o
+sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
@@ -1015,12 +1028,15 @@ i nom nostre.
 Coses que no s'han de desfer sense entendre-les:
 
 - **Les dades són les mateixes de La Conquesta**: la Base municipal de l'ICGC
-  via `gmarull/cat-topojson` (CC BY 4.0, ho diu el codi), amb la mateixa
+  via `gmarull/cat-topojson` (CC BY 4.0), amb la mateixa
   projecció. Són **siluetes simplificades** (uns 16 punts per municipi de
   mitjana): no n'hi ha de més fines que es puguin baixar des d'aquí, i per al
   joc ja van bé. Van **dins del joc** (`NOMS`, `COMARCA`, `CENTRES`,
   `SILUETES`), codificades en enters de 5 en 5 bits: 79 KB. El script que les
   fa no és al repositori.
+- **La llicència del mapa demana dir d'on surt, i a la vista**: al principi
+  només ho deia el codi. Ara surt a la benvinguda i al quadre del final
+  (`CREDIT`), com a La Conquesta surt al menú, i la prova ho mira.
 - **Els noms són els d'ara**, no els del mapa d'origen: la Ràpita, Calonge i
   Sant Antoni, Bigues i Riells del Fai i Brunyola i Sant Martí Sapresa. El
   Lluçanès és la comarca 43, com a la Conquesta. **Medinyà** (2018) no hi és:

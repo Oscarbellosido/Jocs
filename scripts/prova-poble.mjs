@@ -211,6 +211,7 @@ await p.evaluate(() => localStorage.removeItem('poble-vist'));
 await p.reload(); await p.waitForTimeout(500); await neteja(p);
 e = await p.evaluate(() => document.getElementById('msg').textContent);
 diu(/6 intents/.test(e) && /quilòmetres/.test(e) && /comarca/.test(e), 'la primera vegada explica com es juga');
+diu(/Institut Cartogràfic i Geològic de Catalunya \(CC BY 4\.0\)/.test(e), "i diu d'on surt el mapa, com demana la seva llicència");
 await ctx.close();
 
 // ---------- 8. que hi capiga ----------

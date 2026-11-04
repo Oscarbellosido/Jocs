@@ -214,13 +214,16 @@ function obre(m,n){
   if(!llegeix('poble-vist',0))benvinguda();
 }
 const obreDia=()=>obre('dia',numeroDe(diaAvui()));
+// La llicencia del mapa (CC BY) demana dir d'on surt, i a la vista: surt a
+// la benvinguda i al quadre del final, com a La Conquesta surt al menu.
+const CREDIT='<small style="color:#6f8a74;font-size:11px;margin-top:12px">Mapa dels municipis: Institut Cartogràfic i Geològic de Catalunya (CC BY 4.0)</small>';
 function benvinguda(){
   msg('<div style="color:#e8c56a;letter-spacing:.12em">EL POBLE DEL DIA</div>'+
     '<small style="color:#a9c4a0">#'+numero+' · '+nomDia(dia)+' · igual per a tothom</small>'+
     '<small>Cada dia hi ha un <b>municipi de Catalunya</b> amagat. En veus la <b>silueta</b> i tens <b>6 intents</b> per endevinar quin és.</small>'+
     '<small>Escriu el nom d\'un municipi i toca\'l. Et diré <b>a quants quilòmetres</b> és el bo i <b>cap on</b> (↗ vol dir al nord-est), i el veuràs al mapa.</small>'+
     '<small>Al 4t intent et diré <b>de quina comarca</b> és, i al 6è, <b>per quina lletra</b> comença.</small>'+
-    '<a href="#" class="bt" id="b-jugar" style="color:#10241a;background:#e8c56a">A JUGAR ▸</a>');
+    '<a href="#" class="bt" id="b-jugar" style="color:#10241a;background:#e8c56a">A JUGAR ▸</a>'+CREDIT);
   enllac('b-jugar',()=>{desa('poble-vist',1);hideMsg()});
 }
 function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
@@ -284,7 +287,7 @@ async function finalPartida(){
     t+='<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
     t+='<a href="#" class="bt" id="b-practica" style="color:#e8f0dc;background:#1d2a22;border:1px solid #4a6a3a">UN ALTRE, DE PRÀCTICA</a>';
     if(mode!=='dia')t+='<a href="#" id="b-dia" style="display:block;margin-top:12px;font:12px monospace;color:#e8c56a">torna al d\'avui</a>';
-    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà un altre':'o toca per tancar'));
+    msg(t+CREDIT+Records.peuFinal(mode==='dia'?'demà n\'hi haurà un altre':'o toca per tancar'));
     lligaCopia(tx+'\n'+enl);
     enllac('b-practica',()=>obre('practica',0));enllac('b-dia',obreDia);
     // Les dues taules: la d'avui (els punts; nomes la primera partida de

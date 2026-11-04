@@ -101,35 +101,35 @@ const TOP = 10;
 // amb el nom del fitxer: l'Asteroids, per exemple.
 const WEB = 'https://oscarbellosido.github.io/Jocs/';
 const FITXA = {
-  tetris:          ['Tetris',          'al Tetris',          'tetris.html'],
+  tetris:          ['Els Blocs', 'als Blocs', 'tetris.html'],
   comecocos:       ['Comecocos',       'al Comecocos',       'comecocos.html'],
-  space_invaders:  ['Space Invaders',  'al Space Invaders',  'space_invaders.html'],
-  asteroids:       ['Asteroids',       "a l'Asteroids",      'asteroid_belt_joc.html'],
-  breakout:        ['Breakout',        'al Breakout',        'breakout.html'],
-  missile_command: ['Missile Command', 'al Missile Command', 'missile_command.html'],
-  galaxian:        ['Galaxian',        'al Galaxian',        'galaxian.html'],
-  frogger:         ['Frogger',         'al Frogger',         'frogger.html'],
-  battlezone:      ['Battlezone',      'al Battlezone',      'battlezone.html'],
-  centipede:       ['Centipede',       'al Centipede',       'centipede.html'],
-  pong:            ['Pong',            'al Pong',            'pong.html'],
-  donkey_kong:     ['Donkey Kong',     'al Donkey Kong',     'donkey_kong.html'],
-  crazy_climber:   ['Crazy Climber',   'al Crazy Climber',   'crazy_climber.html'],
-  dig_dug:         ['Dig Dug',         'al Dig Dug',         'dig_dug.html'],
-  defender:        ['Defender',        'al Defender',        'defender.html'],
-  qbert:           ['Q*bert',          'al Q*bert',          'qbert.html'],
-  tempest:         ['Tempest',         'al Tempest',         'tempest.html'],
-  galaga:          ['Galaga',          'al Galaga',          'galaga.html'],
-  pole_position:   ['Pole Position',   'al Pole Position',   'pole_position.html'],
-  moon_patrol:     ['Moon Patrol',     'al Moon Patrol',     'moon_patrol.html'],
-  track_field:     ['Track & Field',   'al Track & Field',   'track_field.html'],
-  nibbler:         ['Nibbler',         'al Nibbler',         'nibbler.html'],
+  space_invaders:  ['Els Invasors', 'als Invasors', 'space_invaders.html'],
+  asteroids:       ["Roques de l'Espai", "a les Roques de l'Espai", 'asteroid_belt_joc.html'],
+  breakout:        ['El Trencamaons', 'al Trencamaons', 'breakout.html'],
+  missile_command: ['Els Míssils', 'als Míssils', 'missile_command.html'],
+  galaxian:        ["L'Esquadra", "a l'Esquadra", 'galaxian.html'],
+  frogger:         ['La Granota', 'a la Granota', 'frogger.html'],
+  battlezone:      ['Els Tancs', 'als Tancs', 'battlezone.html'],
+  centipede:       ['El Centpeus', 'al Centpeus', 'centipede.html'],
+  pong:            ['Les Raquetes', 'a les Raquetes', 'pong.html'],
+  donkey_kong:     ['El Goril·la', 'al Goril·la', 'donkey_kong.html'],
+  crazy_climber:   ["L'Escalador", "a l'Escalador", 'crazy_climber.html'],
+  dig_dug:         ["L'Excavador", "a l'Excavador", 'dig_dug.html'],
+  defender:        ["L'Escorta", "a l'Escorta", 'defender.html'],
+  qbert:           ['La Piràmide', 'a la Piràmide', 'qbert.html'],
+  tempest:         ['El Túnel', 'al Túnel', 'tempest.html'],
+  galaga:          ["L'Eixam", "a l'Eixam", 'galaga.html'],
+  pole_position:   ['La Cursa', 'a la Cursa', 'pole_position.html'],
+  moon_patrol:     ['El Totterreny', 'al Totterreny', 'moon_patrol.html'],
+  track_field:     ["L'Atletisme", "a l'Atletisme", 'track_field.html'],
+  nibbler:         ['El Cuc', 'al Cuc', 'nibbler.html'],
   sindria:         ['Síndria',         'al Síndria',         'sindria.html'],
   amunt:           ['Amunt',           "a l'Amunt",          'amunt.html'],
   boles:           ['Boles',           'a les Boles',        'boles.html'],
   balanca:         ['Balança',         'a la Balança',       'balanca.html'],
   xifres:          ['Xifres',          'al Xifres',          'xifres.html'],
   ram:             ['El Ram',          'al Ram',             'ram.html'],
-  lunar_lander:    ['Lunar Lander',    'al Lunar Lander',    'lunar_lander.html'],
+  lunar_lander:    ["L'Allunatge", "a l'Allunatge", 'lunar_lander.html'],
   garbuix:         ['Garbuix',         'al Garbuix',         'garbuix.html'],
   impremta:        ['La Impremta',     'a la Impremta',      'impremta.html'],
   gofra:           ['La Gofra',        'a la Gofra',         'gofra.html'],
@@ -223,11 +223,14 @@ async function avisaRecord(env, joc, entrada, abans) {
 // "/records ram", "/records lunar", "/records@ElBot tetris": es busca el joc
 // pel nom o pel principi del nom, sense fer cas d'accents ni majuscules.
 const pla = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+// (i amb l'article o sense: «/records blocs» troba Els Blocs)
+const senseArticle = nom => pla(String(nom).replace(/^(els|les|el|la|l')\s*/i, ''));
 function trobaJoc(t) {
   const q = pla(t);
   if (!q) return null;
-  for (const id of Object.keys(JOCS)) if (pla(id) === q || pla(FITXA[id][0]) === q) return id;
-  for (const id of Object.keys(JOCS)) if (pla(id).startsWith(q) || pla(FITXA[id][0]).startsWith(q)) return id;
+  const noms = id => [pla(id), pla(FITXA[id][0]), senseArticle(FITXA[id][0])];
+  for (const id of Object.keys(JOCS)) if (noms(id).some(n => n === q)) return id;
+  for (const id of Object.keys(JOCS)) if (noms(id).some(n => n.startsWith(q))) return id;
   return null;
 }
 

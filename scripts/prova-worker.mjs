@@ -190,7 +190,7 @@ ok(missatges().length === 0, 'un segon lloc no avisa: només el número 1, que s
 enviats.length = 0;
 await crida(envTg, 'POST', '/records/track_field', { nom: 'CAR', punts: 80000 });
 m = missatges()[0];
-ok(m && /Track &amp; Field/.test(m.cos.text), 'els noms amb «&» s\'escriuen bé (Track & Field)');
+ok(m && /a l'Atletisme/.test(m.cos.text) && !/Track/.test(m.cos.text), "el bot diu els noms nous dels clàssics, sense les marques (a l'Atletisme)");
 
 // si Telegram falla, el rècord es desa igualment
 telegramFalla = true;
@@ -207,7 +207,10 @@ ok(m && /El Ram/.test(m.cos.text) && /1\.\s+ERR\s+7\.000/.test(m.cos.text) && /M
    '/records ram: respon amb la taula');
 enviats.length = 0;
 await tg('/records@JocsBot lunar');
-ok(missatges()[0] && /Lunar Lander/.test(missatges()[0].cos.text), '/records lunar: troba el Lunar Lander pel principi del nom');
+ok(missatges()[0] && /L'Allunatge/.test(missatges()[0].cos.text), "/records lunar: encara troba l'Allunatge pel nom de sempre (lunar_lander)");
+enviats.length = 0;
+await tg('/records blocs');
+ok(missatges()[0] && /Els Blocs/.test(missatges()[0].cos.text), "/records blocs troba Els Blocs, sense haver de dir l'article");
 enviats.length = 0;
 await tg('/records síndria');
 ok(missatges()[0] && /Síndria/.test(missatges()[0].cos.text), '/records síndria: amb accent també');
