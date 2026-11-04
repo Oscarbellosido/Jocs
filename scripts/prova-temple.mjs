@@ -707,6 +707,34 @@ diu(await p.evaluate(() => JSON.parse(localStorage.getItem('temple-control')).ni
 await p.evaluate(() => { manual = true; comencaNivell(NIVELLS.length - 1); idol = true; ensorra = 50; const d = tancat(SORTIDA.x - 1, SORTIDA.y) ? 1 : -1; J.x = SORTIDA.x + d; J.fx = J.x; J.y = SORTIDA.y; J.fy = J.y; accio('camina', -d); for (let i = 0; i < 30; i++) actualitza(1 / 60); });
 await confirma();
 diu(await p.evaluate(() => estat === 'fi' && !localStorage.getItem('temple-control')), 'acabant-ho tot, el punt de control s\'esborra');
+// però es recorda fins on has arribat, i des del menú es pot triar qualsevol nivell
+diu(await p.evaluate(() => nivellsFets().max === NIVELLS.length), 'i es recorda que ho has acabat tot');
+await p.evaluate(() => { esborraPartida(); manual = false; menu(); });
+await p.click('#m-tria');
+let tria = await p.evaluate(() => [...document.querySelectorAll('#msg a[data-n]')].map(a => a.textContent));
+diu(tria.length === 7 && /6 · LA COVA DE GEL/.test(tria[5]) && /7 · LA TOMBA DEL REI/.test(tria[6]), 'TRIA UN NIVELL ensenya tots els nivells on has arribat: ' + tria.join(' / '));
+const puntsCova = await p.evaluate(() => nivellsFets().punts[5]);
+await p.click('#msg a[data-n="5"]');
+tc = await p.evaluate(() => ({ nivell, punts, vides, estat }));
+diu(tc.nivell === 5 && tc.punts === puntsCova && tc.vides === 3 && tc.estat === 'joc', `i tocant-ne un, hi comences amb els punts que hi portaves en entrar-hi i tres vides: ${JSON.stringify(tc)}`);
+// amb una partida a mig fer, pregunta abans
+await p.evaluate(() => { desaPartida(); menu(); });
+await p.click('#m-tria'); await p.click('#msg a[data-n="6"]');
+diu(await p.evaluate(() => /SEGUR/.test(document.getElementById('msg').textContent) && /a la tomba del rei/.test(document.getElementById('msg').textContent)), 'si tens una partida a mig fer, abans pregunta');
+await p.click('#z-si');
+diu(await p.evaluate(() => nivell === 6 && estat === 'joc'), 'i dient que sí, comences a la tomba del rei');
+// qui ja havia acabat el temple de sis nivells (sense punt de control ni nivells apuntats) torna a la cova de gel
+const migra = await p.evaluate(() => { const desa = { ...localStorage }; return desa; });
+await p.evaluate(() => { manual = false; estat = 'menu'; esborraPartida(); localStorage.removeItem('temple-control'); localStorage.removeItem('temple-nivells'); localStorage.setItem('best_temple', '41000'); });
+await p.reload(); await p.waitForTimeout(600);
+diu(await p.evaluate(() => { const c = control(); return c && c.nivell === 5 && !!document.getElementById('m-ctl') && /TORNA A LA COVA DE GEL/.test(document.getElementById('msg').textContent) && nivellsFets().max === 5; }),
+  'qui ja havia acabat el temple quan n\'eren sis, en entrar, pot tornar a la cova de gel');
+// i també si ja havia tornat a començar i portava el punt de control del segon nivell
+await p.evaluate(() => { estat = 'menu'; localStorage.removeItem('temple-nivells'); localStorage.setItem('temple-control', JSON.stringify({ nivell: 1, punts: 9000, maxCors: 3 })); });
+await p.reload(); await p.waitForTimeout(600);
+diu(await p.evaluate(() => control().nivell === 5 && /TORNA A LA COVA DE GEL/.test(document.getElementById('msg').textContent)), 'i també si ja havia tornat a començar i havia arribat al segon nivell');
+await p.evaluate(m => { estat = 'menu'; localStorage.clear(); for (const k in m) localStorage.setItem(k, m[k]); localStorage.removeItem('temple-control'); localStorage.removeItem('temple-partida'); }, migra);
+await p.reload(); await p.waitForTimeout(500);
 await p.evaluate(() => { manual = false; });
 
 // ---------- 4. desar i continuar ----------
