@@ -1412,7 +1412,7 @@ ja has arribat** (`triaNivell`) els ensenya tots, i hi tornes amb tres vides i
 els punts d'entrar-hi (si tens una partida a mig fer, pregunta abans). Abans,
 en acabar-ho tot, el punt de control s'esborrava i no en quedava res: quan es
 va afegir el setè nivell, en Carles ja havia acabat la cova i hauria hagut de
-tornar a començar pel primer. Per als que ja l'havien acabat abans d'això, la
+tornar a començar pel primer. Per als que ja l'havien acabat abans d'això, el
 joc mira el rècord (`PUNTS_COVA`, 35.000: cal haver passat cinc nivells) i,
 si hi arriba, posa el punt de control a la cova de gel amb 0 punts (no se sap
 amb quants hi havia entrat). Primer mira el d'aquest mòbil i, si no, **el de
