@@ -57,7 +57,7 @@ window.pilot=function(opts={}){
     const r=[];
     for(const d of[-1,1]){
       for(const[f,t]of[[mouCamina,'camina'],[mouEnfila,'enfila'],[mouBaixa,'baixa'],[mouSalta,'salta'],[mouPenja,'fuet']]){
-        const m=f(x,y,d);if(m&&m.cau<3&&cel(m.x,m.y)!=='L')r.push({a:t,dir:d,x:m.x,y:m.y,cost:m.cau===2?20:1,m});}
+        const m=f(x,y,d);if(m&&m.cau<3&&cel(m.x,m.y)!=='L'){const pt=surtPortal(m.x,m.y)||[m.x,m.y];r.push({a:t,dir:d,x:pt[0],y:pt[1],cost:m.cau===2?20:1,m})}}
       if(cel(x+d,y)==='D'&&claus>0)r.push({a:'camina',dir:d,x:x+d,y,cost:1});
       if(cel(x+d,y)==='%')r.push({a:'trenca',dir:d,x:x+d,y:caiguda(x+d,y).y,cost:2});
     }
@@ -75,7 +75,7 @@ window.pilot=function(opts={}){
         if(dist[kk]===undefined||nd<dist[kk]){dist[kk]=nd;prev[kk]={de:k,mv};cua.push([nd,mv.x,mv.y])}}}
     return null;
   };
-  const serpPropera=()=>[...serps,...ratpenats,...esquelets].find(s=>s.viu&&s.y===J.y&&Math.abs(s.x-J.x)<3.2&&Math.floor(s.x/RC)===Math.floor(J.x/RC)&&Math.floor(s.y/RF)===Math.floor(J.y/RF));
+  const serpPropera=()=>[...serps,...ratpenats,...esquelets].find(s=>s.viu&&!(s.jau>0)&&s.y===J.y&&Math.abs(s.x-J.x)<3.2&&Math.floor(s.x/RC)===Math.floor(J.x/RC)&&Math.floor(s.y/RF)===Math.floor(J.y/RF));
   const segurPunxes=(x,y,dur)=>{if(cel(x,y)!=='^')return true;for(let t=0;t<=dur;t+=.05)if(punxes(x,rellotge+t)>0)return false;return true};
   const fes=(mv)=>{
     // sota una estalactita que ja tremola no s'hi pot esperar res: fora
@@ -85,7 +85,7 @@ window.pilot=function(opts={}){
     // abans de posar els peus a terra que cau, que no hi hagi cap bestiola a prop
     // (a sobre no s'hi pot esperar: cau)
     if(cel(mv.x,mv.y)==='~'||cel(J.x+mv.dir,J.y)==='~')
-      for(let k=0;k<600;k++){const b=[...serps,...ratpenats,...esquelets].find(b=>b.viu&&b.y===J.y&&Math.abs(b.x-J.x)<6&&salaDe(Math.round(b.x),b.y)===salaDe(J.x,J.y));
+      for(let k=0;k<600;k++){const b=[...serps,...ratpenats,...esquelets].find(b=>b.viu&&!(b.jau>0)&&b.y===J.y&&Math.abs(b.x-J.x)<6&&salaDe(Math.round(b.x),b.y)===salaDe(J.x,J.y));
         if(!b)break;if(Math.abs(b.x-J.x)<2.3){accio('fuet',b.x>J.x?1:-1);espera();pas(22)}else pas(3)}
     // fantasmes: s'esperen i, quan son a l'alçada, fuet
     for(let k=0;k<900;k++){const f=fantasmes.find(f=>f.viu&&f.sx===Math.floor(J.x/RC)&&f.sy===Math.floor(J.y/RF)&&Math.hypot(f.x-J.x,f.y-J.y)<3.5);if(!f)break;
@@ -181,8 +181,9 @@ const mapa = await p.evaluate(nv => {
       if (cel(x, y) === '~') { const t = cel(x, y); posa(x, y, ' '); ms.push(caiguda(x, y)); posa(x, y, t); }
       for (const m of ms) {
         if (!m || (m.cau ?? m.d) >= 3 || cel(m.x, m.y) === 'L') continue;
-        const k = m.x + ',' + m.y;
-        if (!vist.has(k)) { vist.add(k); cua.push([m.x, m.y]); }
+        const [mx, my] = surtPortal(m.x, m.y) || [m.x, m.y];
+        const k = mx + ',' + my;
+        if (!vist.has(k)) { vist.add(k); cua.push([mx, my]); }
       }
     }
     return vist;
@@ -254,7 +255,7 @@ const NIVELLS_N = await p.evaluate(() => NIVELLS.length);
 
 // ---------- 2. el pilot ----------
 // Primer cada nivell per separat, i després la partida sencera de cap a cap.
-for (const [nv, tot] of [[0, false], [0, true], [1, false], [1, true], [2, false], [2, true], [3, false], [3, true], [4, false], [4, true], [5, false], [5, true]]) {
+for (const [nv, tot] of [[0, false], [0, true], [1, false], [1, true], [2, false], [2, true], [3, false], [3, true], [4, false], [4, true], [5, false], [5, true], [6, false], [6, true]]) {
   const r = await p.evaluate(([nv, tot]) => { manual = true; novaPartida(nv); return Object.assign(pilot({ tot }), { nom: NV.nom, ens: ENSORRA }); }, [nv, tot]);
   const fi = nv < NIVELLS_N - 1 ? 'entre' : 'fi';
   diu(r.estat === fi && r.morts === 0 && !r.log.length,
@@ -279,13 +280,15 @@ const sencera = await p.evaluate(() => {
   const r5 = pilot({ tot: true });
   document.getElementById('m-seg').click();
   const r6 = pilot({ tot: true });
-  return { r1, abans, enNivell2, r2, r3, r4, r5, r6 };
+  document.getElementById('m-seg').click();
+  const r7 = pilot({ tot: true });
+  return { r1, abans, enNivell2, r2, r3, r4, r5, r6, r7 };
 });
 diu(sencera.r1.estat === 'entre' && /BAIXA-HI/.test(sencera.abans.msg) && /LES CATACUMBES/.test(sencera.abans.msg),
   'en sortir del primer temple, et convida a baixar a les catacumbes');
 diu(sencera.enNivell2.nivell === 1 && sencera.enNivell2.punts === sencera.abans.punts && sencera.enNivell2.vides === sencera.abans.vides && sencera.enNivell2.estat === 'joc',
   `i hi baixes amb els punts (${sencera.abans.punts}) i les vides que portaves`);
-diu(sencera.r2.estat === 'entre' && sencera.r3.estat === 'entre' && sencera.r4.estat === 'entre' && sencera.r5.estat === 'entre' && sencera.r6.estat === 'fi' && sencera.r6.punts > 55000, `la partida sencera, els sis nivells agafant-ho tot: ${sencera.r6.punts} punts ` + JSON.stringify([sencera.r2, sencera.r3, sencera.r4, sencera.r5, sencera.r6].map(r => [r.estat, r.punts, r.vides, r.morts, r.log])));
+diu(sencera.r2.estat === 'entre' && sencera.r3.estat === 'entre' && sencera.r4.estat === 'entre' && sencera.r5.estat === 'entre' && sencera.r6.estat === 'entre' && sencera.r7.estat === 'fi' && sencera.r7.punts > 65000, `la partida sencera, els set nivells agafant-ho tot: ${sencera.r7.punts} punts ` + JSON.stringify([sencera.r2, sencera.r3, sencera.r4, sencera.r5, sencera.r6, sencera.r7].map(r => [r.estat, r.punts, r.vides, r.morts, r.log])));
 await confirma();
 diu(enviats.length >= 1 && enviats.at(-1).punts > 0, `en sortir, els punts van a la taula (${enviats.map(e => e.punts).join(', ')})`);
 diu(await p.evaluate(() => !localStorage.getItem('temple-partida')), 'en acabar, la partida desada s\'esborra');
@@ -622,6 +625,41 @@ ab = (await estat()).punts;
 await p.evaluate(() => { const f = fantasmes.find(f => f.sx === 4 && f.sy === 1); f.x = 44.6; f.y = 5.2; f.fuig = 0; accio('fuet', 1); });
 await corre(.4);
 diu(await p.evaluate(() => !fantasmes.find(f => f.sx === 4 && f.sy === 1).viu) && (await estat()).punts === ab + 100, 'un cop de FUET el desfà (+100)');
+
+// ---------- les coses noves de la tomba del rei ----------
+// el portal: arribant-hi surts per l'altre del mateix color, i alli no et torna a portar
+await posa(17, 8, 1, 6);
+await p.evaluate(() => accio('camina', 1)); await corre(.6);
+e = await estat();
+diu(e.x === 31 && e.y === 8, `caminant cap al portal 1, surts per l'altre (a ${e.x},${e.y})`);
+await corre(1);
+diu((await estat()).x === 31, 'i quedant-t\'hi quiet, no et torna a portar');
+await p.evaluate(() => accio('camina', 1)); await corre(.5);
+await p.evaluate(() => accio('camina', -1)); await corre(.6);
+e = await estat();
+diu(e.x === 18 && e.y === 8, `tornant-hi, et torna a l'altra banda (a ${e.x},${e.y})`);
+diu(await p.evaluate(() => { const m = mouSalta(32, 8, -1); return m && m.x === 30 && m.y === 8; }), 'i saltant-hi per sobre, no t\'hi fiques');
+// el portal de tornada: surts dins d'un racó, i la placa del costat obre la reixa
+await posa(2, 11, -1, 6);
+await p.evaluate(() => accio('camina', -1)); await corre(.6);
+e = await estat();
+diu(e.x === 13 && e.y === 1 && await p.evaluate(() => cel(15, 1) === '|'), `el portal de l'oest et porta a dalt de tot, a un racó tancat (a ${e.x},${e.y})`);
+await p.evaluate(() => accio('camina', 1)); await corre(.8);
+diu(await p.evaluate(() => cel(15, 1) === '/'), 'i la placa del racó obre la reixa des de dins');
+// la mòmia: el fuet la tomba, no fa mal mentre és a terra, i s'aixeca
+await posa(12, 8, 1, 6);
+const mu = await p.evaluate(() => {
+  const k = esquelets.find(k => k.mumia && k.y === 8 && k.x > 10 && k.x < 20); k.x = 13.4; k.dir = -1; J.imune = 0; const p0 = punts;
+  accio('fuet', 1); const jau = k.jau > 0, viu = k.viu;
+  for (let i = 0; i < 30; i++) actualitza(1 / 60);
+  J.x = 13; J.fx = 13; k.x = 13; for (let i = 0; i < 30; i++) actualitza(1 / 60);
+  const senseMal = cors === maxCors;
+  for (let i = 0; i < 60 * JAU_MUMIA; i++) actualitza(1 / 60);
+  J.imune = 0; J.x = 12; J.fx = 12; k.x = 12.2; k.atordit = 0; for (let i = 0; i < 20; i++) actualitza(1 / 60);
+  return { jau, viu, senseMal, aixecada: k.jau <= 0 && k.viu, mossega: cors < maxCors, punts: punts - p0 };
+});
+diu(mu.jau && mu.viu && mu.senseMal, 'un cop de FUET tomba la mòmia, però no la desfà, i mentre és a terra s\'hi pot passar per sobre');
+diu(mu.aixecada && mu.mossega && mu.punts === 0, `al cap de ${await p.evaluate(() => JAU_MUMIA)} segons s'aixeca i torna a fer mal ${JSON.stringify(mu)}`);
 
 // el pont sobre la fossa: si cau, no hi ha fons
 await posa(24, 10, 1, 1);                            // a sobre del pont que cau

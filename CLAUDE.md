@@ -1205,7 +1205,7 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
-**Sis nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
+**Set nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
 acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
@@ -1331,8 +1331,42 @@ El camí de tornada és per sota: des de la corona baixes penjat (▼), corres
 cap a l'oest per un passadís nou, una placa obre la reixa des de dins i
 s'enfila per una torre fins a la porta. El pilot hi tarda uns 15-20 segons.
 
+**La cova era massa fàcil**, va dir en Carles quan el va acabar. Era el nivell
+més curt (14 sales) i tenia poca cosa a més del gel. Sense tocar els blocs
+(que són el que fa que tingui sortida), s'hi va afegir: **80 segons per
+sortir en lloc de 100**; **punxes on s'acaba el gel**, de manera que
+lliscant hi vas a parar (a la segona sala i al passadís de tornada);
+esquelets al costat del pont del bloc i a la sala de les gemmes; un
+fantasma més a dalt de tot, i el passadís de tornada, que abans era una
+cursa sense res, ara té un esquelet, un fantasma, un ratpenat, punxes i una
+estalactita a la torre. El pilot hi tarda uns 22 segons.
+
+**La Tomba del Rei**, el setè (19 sales, el ceptre del rei, **60 segons per
+sortir**). En Carles va demanar un nivell més, i en porta dues coses noves:
+
+- **Mòmies** (`M`): caminen com els esquelets, més a poc a poc, però **no
+  es desfan mai**: un cop de FUET les tomba a terra uns segons
+  (`JAU_MUMIA`, 4) i després s'aixequen. Mentre són a terra no fan mal i hi
+  pots passar per sobre. No donen punts (si no, se'n farien a cops de fuet).
+  Són als `esquelets` amb `mumia:true`.
+- **Portals** (`1`, `2`, `3`): dues caselles amb el mateix número i el mateix
+  color (`COLP`: lila, turquesa, taronja). **Arribant a l'un, surts per
+  l'altre** (`surtPortal`, a `arriba`), i allà quiet no et torna a portar.
+  Funcionen en tots dos sentits, i per això no et poden deixar mai tancat.
+  El de la tercera sala de sota (lila) salta una paret que no es pot passar;
+  tornant-hi, et torna enrere, i per seguir cal **saltar per sobre del
+  portal**. El taronja porta a una cambra del tresor que no té cap altra
+  entrada. I el turquesa és **el camí de tornada**: des del ceptre, cap a
+  l'oest per un passadís amb fletxes, una aranya i una mòmia, et porta a dalt
+  de tot, a un racó tancat amb una reixa que només s'obre des de dins (com
+  al primer temple), i d'allà a la porta. Abans d'agafar el ceptre també hi
+  pots entrar, saltant-lo, però a dalt no et deixen sortir sense ell.
+
+El pilot automàtic i la prova del mapa tenen en compte els portals: un
+moviment que acaba en un portal acaba a l'altre.
+
 **Cada nivell es reconeix**: en començar-lo (o en continuar-lo) surt uns
-segons un rètol gran al mig, NIVELL 2 DE 5 · LES CATACUMBES, i el nom del
+segons un rètol gran al mig, NIVELL 2 DE 7 · LES CATACUMBES, i el nom del
 nivell queda sempre escrit a sota del mapa. I **cada nivell té els seus
 colors** (`colors` a `NIVELLS`, que es copien a `COL`): pedra de color sorra
 al temple, grisa i blavosa amb foc blau a les catacumbes, vermellosa de
@@ -1376,9 +1410,9 @@ es desa dins de cada navegador, i l'app instal·lada, el navegador i Telegram
 per dins són llocs diferents (com a La Rotllana).
 
 Punts: tresor 100, gemma 300, serp 50, ratpenat 75, esquelet 100, guardià 500, aranya 75,
-sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000, la corona de gel 7.000), fantasma 100, i en sortir de cada nivell 1.000 més 500 per vida i
+sala nova 25, l'ídol 2.000 (la màscara 3.000, la corona 4.000, l'ull 5.000, el cor de foc 6.000, la corona de gel 7.000, el ceptre 8.000), fantasma 100, i en sortir de cada nivell 1.000 més 500 per vida i
 10 per segon de marge. Qui ho agafa tot sense morir fa uns 8.300 al primer i
-uns 58.000 amb els sis.
+uns 70.000 amb els set.
 
 **Si es toca el mapa**, el `scripts/prova-temple.mjs` mira que s'arribi a
 l'ídol i es torni a la sortida, que tots els objectes es puguin agafar i, el
@@ -1772,9 +1806,9 @@ comproven el comportament.
   nivell acabat apuntat a la taula i tot desat en tornar-hi.
 - `node scripts/prova-temple.mjs` — que cada nivell del temple es pugui acabar i
   no tingui racons on quedar-te tancat, que dos pilots automàtics surtin amb
-  el tresor de cada nivell i que la partida sencera passi pels sis; que els
+  el tresor de cada nivell i que la partida sencera passi pels set; que els
   ratpenats, la roca, la reixa amb temps, la fossa, les fletxes, els
-  esquelets, les aranyes, la lava, les estalactites, el guardià, el gel, els blocs de gel i els fantasmes vagin com
+  esquelets, les aranyes, la lava, les estalactites, el guardià, el gel, els blocs de gel, els fantasmes, les mòmies i els portals vagin com
   toca, i que les caigudes, les punxes, les serps, el terra que cau, les portes, les
   reixes, l'anella i el temple que s'ensorra vagin com toca; que es desi i es
   continuï, que els punts vagin a la taula i que els sis botons càpiguen a
