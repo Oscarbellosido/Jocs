@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Sopa de Lletres</title>
+<style>
+html,body{margin:0;height:100%;background:#13202a;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,520px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#9fc0d0;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96%}
+#tema{flex:none;font:bold 15px monospace;letter-spacing:.14em;color:#ffd77a;padding:3px 0 4px;text-align:center;max-width:96%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen{flex:1 1 auto;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#c{touch-action:none;user-select:none;-webkit-user-select:none;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(19,32,42,.96);font-size:22px;letter-spacing:.2em;color:#e8f0f4;z-index:3}
+#paraules{flex:none;width:96%;display:grid;grid-template-columns:repeat(3,1fr);gap:3px 6px;margin-top:6px}
+#paraules span{font:bold 12px monospace;color:#e8f0f4;text-align:center;padding:3px 2px;border-radius:5px;background:#1d2e3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#paraules span.feta{color:#6a8090;text-decoration:line-through;background:#16232c}
+#controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:94%}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#pista{flex:1 1 0;color:#1a1200;background:#ffd77a;border-color:#ffd77a}
+#menu{flex:0 0 auto;width:26%;font-size:12px;color:#9fc0d0;border-color:#2e4656;background:#162530}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(14,24,32,.97);border:1px solid #3a5a6a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:270px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TEMPS <b id="score">0:00</b></span><span>TROBADES <b id="trobades">0/10</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="tema"></div>
+  <div id="screen"><canvas id="c"></canvas><div id="pausa">PAUSA</div></div>
+  <div id="paraules"></div>
+  <div id="controls"><button id="pista">💡 PISTA (+30 s)</button><button id="menu">MENÚ</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Troba les deu paraules amagades a la sopa.</b> llisca el dit per sobre de cada una (o toca la primera lletra i després l'última); poden anar en qualsevol direcció, també del revés · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}
+}
+function tone(f,d,type='sine',vol=.2,slide=0){
+  if(!AC)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  toca(){aInit();tone(660,.04,'triangle',.07)},
+  troba(){aInit();[784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,.12,'triangle',.18),i*70))},
+  no(){aInit();tone(180,.12,'square',.08,-40)},
+  pista(){aInit();tone(523,.2,'sine',.15,260)},
+  fi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.24,'triangle',.22),i*110))},
+};
+
+// ===== LES PARAULES =====
+// Un tema cada dia, amb paraules corrents. A la sopa van sense accents ni
+// ç ni punt volat (la ç és una C, la l·l són dues L): a la llista de sota
+// s'ensenyen ben escrites. Cap no fa més de 10 lletres, que és la sopa.
+const TEMES=[
+  ['FRUITES','poma pera préssec cirera maduixa plàtan taronja llimona raïm meló síndria pruna figa albercoc mandarina magrana nespra'],
+  ['ANIMALS DE GRANJA','vaca porc gallina ànec ovella cabra cavall ruc conill gall oca bou xai gat gos gallet'],
+  ['A LA CUINA','olla paella cullera forquilla ganivet plat got tassa forn nevera aigüera cassola escorredor tovalló gerra'],
+  ['COLORS','vermell blau verd groc negre blanc rosa lila marró gris taronja daurat platejat beix'],
+  ['LA PLATJA','sorra ona mar sol tovallola castell cranc petxina barca gavina crema banyador dutxa roca pala galleda'],
+  ['OFICIS','metge fuster pagès cuiner pintor mestre forner pastor bomber pilot jutge paleta sastre barber infermer carter'],
+  ['EL COS','cap mà peu braç cama ull nas boca orella dit genoll colze espatlla coll esquena panxa cuixa turmell'],
+  ['ARBRES','pi roure alzina faig avet olivera pollancre castanyer xiprer om freixe bedoll avellaner noguera salze'],
+  ['INSTRUMENTS','piano guitarra violí flauta trompeta tambor arpa gralla tenora tible acordió bateria saxo corn viola'],
+  ['LA CASA','porta finestra teulada paret sostre escala balcó cuina menjador lavabo passadís terrat garatge armari cadira taula'],
+  ['ESPORTS','futbol tennis bàsquet handbol rugbi golf esquí natació ciclisme atletisme hoquei boxa rem vela pàdel judo'],
+  ['FESTA MAJOR','castell pinya enxaneta acotxador gegant capgròs diables sardana cobla ball focs traca envelat cercavila faixa canalla'],
+  ['LA SETMANA','dilluns dimarts dimecres dijous divendres dissabte diumenge matí tarda nit hora minut segon setmana mes any'],
+  ['EL TEMPS QUE FA','pluja neu vent núvol sol boira glaçada calamarsa tro llamp tempesta calor fred rosada xàfec gebre'],
+  ["A L'ESCOLA",'llapis goma llibre llibreta motxilla pissarra guix regle tisores cola cartera estoig mestre pati classe deures'],
+  ['VERDURES','tomàquet enciam ceba all pastanaga patata carbassó albergínia pebrot col bròquil espinacs pèsol mongeta carxofa porro'],
+  ['ANIMALS DEL BOSC','guineu senglar esquirol cérvol llop ós teixó eriçó cabirol mussol òliba picot geneta marta llebre talp'],
+  ['ROBA','camisa pantaló jersei jaqueta abric faldilla vestit mitjons sabata barret bufanda guants corbata samarreta cinturó espardenya'],
+  ['PEIXOS I MARISC','sardina anxova lluç bacallà tonyina rap sípia pop calamar gamba musclo orada llobarro llagosta escamarlà cranc'],
+  ['TRANSPORTS','cotxe tren avió vaixell bicicleta moto camió bus metro taxi tramvia globus barca helicòpter furgoneta patinet'],
+  ['JOCS DE TAULA','escacs dames parxís dominó cartes daus oca botifarra bitlles tauler fitxa peó rei reina torre'],
+  ['ELS NÚMEROS','un dos tres quatre cinc sis set vuit nou deu onze dotze tretze catorze quinze setze disset divuit dinou vint'],
+  ['LA MUNTANYA','cim cingle vall riu font bosc prat refugi camí roca cova llac cascada estany carena coll pic'],
+  ['PER ESMORZAR','pa llet cafè sucre mel mantega melmelada galeta torrada ou pernil formatge suc ensaïmada xocolata iogurt'],
+  ['EINES','martell serra clau cargol tornavís alicates pala raspall escala pinzell metre llima falç aixada tisores destral'],
+  ['MOBLES','taula cadira llit sofà armari calaix prestatge còmoda banc tamboret butaca calaixera escriptori bressol mirall llum'],
+  ['OCELLS','pardal oreneta gavina àliga merla garsa colom cigonya oriol perdiu corb falcia cadernera verdum tórtora estornell'],
+  ['CIUTATS DE CASA','vic reus lleida girona tarragona manresa olot figueres tortosa terrassa sabadell berga blanes calella igualada solsona tremp valls'],
+  ['DOLÇOS','pastís bombó caramel gelat crema flam xurro coca panellet bunyol torró neula magdalena mató xuixo'],
+  ['NADAL','tió pessebre caganer torró neula estrella àngel pastor camell reis regal arbre neu escudella canelons galets'],
+];
+const pla=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z]/g,'').toUpperCase();
+const N=10,PARAULES=10;
+const DIRS=[[1,0],[0,1],[1,1],[1,-1],[-1,0],[0,-1],[-1,-1],[-1,1]];
+// les lletres de farciment, amb la freqüència del català escrit
+const FARCIT='EEEEEEEEEEEAAAAAAAAAAASSSSSSSIIIIIIRRRRRRNNNNNNTTTTTOOOOOLLLLLUUUUCCCCDDDDMMMPPPGGBBVVFFQHJXZ';
+
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// Quantes vegades surt una paraula a la sopa, en qualsevol direcció.
+function vegades(g,w){
+  let n=0;
+  for(let y=0;y<N;y++)for(let x0=0;x0<N;x0++)for(const[dx,dy]of DIRS){
+    let k=0;for(;k<w.length;k++){const xx=x0+dx*k,yy=y+dy*k;if(xx<0||yy<0||xx>=N||yy>=N||g[yy][xx]!==w[k])break}
+    if(k===w.length)n++;
+  }
+  return n;
+}
+// Fa la sopa d'un tema amb una llavor: col·loca les paraules (de la més
+// llarga a la més curta) en direccions a l'atzar, i omple la resta. Cada
+// paraula ha de sortir UNA sola vegada: si el farciment en fa sortir una
+// altra (SOL, MAR...), es torna a omplir.
+function fesSopa(llavor,tema){
+  for(let intent=0;intent<40;intent++){
+    const r=mulberry(hashText('SOPA-'+llavor+'-'+intent));
+    const totes=barreja(r,TEMES[tema][1].split(' ')).filter(w=>{const p=pla(w);return p.length>=3&&p.length<=N});
+    const g=Array.from({length:N},()=>Array(N).fill(''));
+    const posades=[];
+    for(const w of totes.slice().sort((a,b)=>pla(b).length-pla(a).length)){
+      if(posades.length>=PARAULES)break;
+      const p=pla(w);let ok=false;
+      // si una cap dins d'una altra (GALL i GALLINA, SET i DISSET), sortiria
+      // dues vegades: aquesta es queda fora
+      const rev=t=>[...t].reverse().join('');
+      if(posades.some(q=>q.p.includes(p)||q.p.includes(rev(p))||q.p===p))continue;
+      for(let t=0;t<300&&!ok;t++){
+        const[dx,dy]=DIRS[Math.floor(r()*8)],x0=Math.floor(r()*N),y0=Math.floor(r()*N);
+        const xf=x0+dx*(p.length-1),yf=y0+dy*(p.length-1);
+        if(xf<0||yf<0||xf>=N||yf>=N)continue;
+        let cap=true;for(let k=0;k<p.length;k++){const c=g[y0+dy*k][x0+dx*k];if(c&&c!==p[k]){cap=false;break}}
+        if(!cap)continue;
+        for(let k=0;k<p.length;k++)g[y0+dy*k][x0+dx*k]=p[k];
+        posades.push({w,p,x:x0,y:y0,dx,dy});ok=true;
+      }
+    }
+    if(posades.length<PARAULES)continue;
+    for(let f=0;f<30;f++){
+      const h=g.map(row=>row.map(c=>c||FARCIT[Math.floor(r()*FARCIT.length)]));
+      if(posades.every(q=>vegades(h,q.p)===1)){
+        // a la llista van per ordre alfabètic, que no es vegi on són
+        posades.sort((a,b)=>a.p.localeCompare(b.p));
+        return {tema,graella:h,paraules:posades};
+      }
+    }
+  }
+  return null;
+}
+
+// ===== EL DIA =====
+const JOC='sopa',taulaDia=d=>JOC+'_dia/'+d;
+const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+// A la taula, la puntuacio es 3.600 menys els segons, com al Trencaclosques,
+// pero el que s'ensenya es el temps.
+const MAX_SEGONS=3600,PENA_PISTA=30;
+const puntsDe=s=>Math.max(1,MAX_SEGONS-Math.round(s));
+Records.formata(JOC+'_dia',p=>mmss(MAX_SEGONS-p));
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// la primera, la #1, és la del 5 de novembre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-11-05T12:00:00Z'))/864e5)+1;
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+// El tema de cada dia: tots barrejats per tandes, sense repetir-ne cap fins
+// que no han sortit tots, i mai el mateix dos dies seguits.
+function temaDe(n){
+  const L=TEMES.length,tanda=Math.floor((n-1)/L),k=(n-1)%L;
+  const ordre=t=>barreja(mulberry(hashText('SOPA-TEMES-'+t)),TEMES.map((_,i)=>i));
+  const o=ordre(tanda);
+  if(tanda>0&&o[0]===ordre(tanda-1)[L-1]){if(k===0)return o[1];if(k===1)return o[0]}
+  return o[k];
+}
+const sopaDia=n=>fesSopa('DIA-'+n,temaDe(n));
+
+// ===== LA PARTIDA =====
+let S=null,P=null,mode='dia',dia='',numero=0,paused=false,brut=true;
+// P: el que es desa (quines has trobat, el temps, les pistes); S: la sopa,
+// que es torna a fer igual a partir de la llavor
+function novaP(m,llavor,tema){return {v:1,mode:m,dia,n:numero,llavor,tema,temps:0,trobades:[],pistes:0,fi:false,comencada:false}}
+const clau=()=>mode==='dia'?'sopa-'+P.dia:'sopa-practica';
+function desaP(){if(P)desa(clau(),P)}
+function carregaS(){S=P.mode==='dia'?sopaDia(P.n):fesSopa(P.llavor,P.tema);sel=null;inici=null;pistaVis=null;pintaParaules();mesura();brut=true}
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('sopa-'+dia,null);
+  P=d&&d.v===1&&d.n===numero?d:novaP('dia','DIA-'+numero,temaDe(numero));
+  P.comencada=true;carregaS();desaP();hideMsg();pintaLider();
+  if(P.fi)finalPartida();
+}
+function obrePractica(nova){
+  mode='practica';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('sopa-practica',null);
+  if(!nova&&d&&d.v===1&&!d.fi)P=d;
+  else{
+    // una altra sopa, d'un tema que no sigui el d'avui
+    let t;do t=Math.floor(Math.random()*TEMES.length);while(t===temaDe(numero)&&TEMES.length>1);
+    P=novaP('practica','PRACTICA-'+Date.now()+'-'+Math.random(),t);
+  }
+  P.comencada=true;carregaS();desaP();hideMsg();pintaLider();
+}
+const jugant=()=>P&&S&&!P.fi&&!paused&&$('msg').style.display!=='block';
+
+// ===== EL MENU =====
+function menu(){
+  desaP();
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('sopa-'+dia,null),pr=llegeix('sopa-practica',null);
+  const bt=(id,t,c,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#8aa8b8;margin-top:2px">'+sub+'</small>':'');
+  msg('<div style="color:#ffd77a;letter-spacing:.12em">LA SOPA DE LLETRES</div>'+
+    '<small>Hi ha deu paraules amagades, d\'un mateix tema. Poden anar de costat, amunt, avall o en diagonal, i també del revés.</small>'+
+    '<small style="color:#9fc0d0">Llisca el dit per sobre de cada una, o toca la primera lletra i després l\'última.</small>'+
+    (d&&d.fi?bt('m-dia','☀ LA D\'AVUI: FETA EN '+mmss(d.temps),'color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+numero+' · demà n\'hi haurà una altra')
+      :bt('m-dia',d&&d.comencada?'☀ CONTINUA LA D\'AVUI':'☀ LA D\'AVUI ▸','color:#1a1200;background:#ffd77a','#'+numero+' · '+nomDia(dia)+' · igual per a tothom'))+
+    (pr&&!pr.fi&&pr.comencada?bt('m-cont','CONTINUA LA PRÀCTICA','color:#e8f0f4;background:#1d2e3a;border:1px solid #3a5a6a',TEMES[pr.tema][0].toLowerCase()+' · '+pr.trobades.length+' de 10'):'')+
+    bt('m-prac','PRÀCTICA: UNA ALTRA SOPA','color:#e8f0f4;background:#1d2e3a;border:1px solid #3a5a6a','no compta per a res')+
+    '<small style="color:#6a8898;margin-top:12px">La d\'avui va a la taula pel temps. Cada pista suma 30 segons.</small>');
+  enllac('m-dia',obreDia);enllac('m-cont',()=>obrePractica(false));enllac('m-prac',()=>obrePractica(true));
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+
+// ===== DIBUIX =====
+const $=id=>document.getElementById(id);
+const CV=$('c'),g=CV.getContext('2d');
+const COLORS=['#ff6a6a','#ffb04a','#ffe04a','#7ae07a','#4ad0c0','#5aa8ff','#a88aff','#ff7ad0','#c8a070','#9ad04a'];
+let L={mida:300,cela:30,dpr:1};
+function mesura(){
+  const sc=$('screen').getBoundingClientRect();
+  const m=Math.max(200,Math.floor(Math.min(sc.width,sc.height)));
+  L.dpr=Math.min(3,window.devicePixelRatio||1);L.mida=m;L.cela=m/N;
+  CV.style.width=m+'px';CV.style.height=m+'px';
+  CV.width=Math.round(m*L.dpr);CV.height=Math.round(m*L.dpr);brut=true;
+}
+addEventListener('resize',mesura);
+// la càpsula de color al voltant d'una paraula
+function capsula(x0,y0,x1,y1,col,ample){
+  const c=L.cela,ax=(x0+.5)*c,ay=(y0+.5)*c,bx=(x1+.5)*c,by=(y1+.5)*c;
+  g.strokeStyle=col;g.lineWidth=c*ample;g.lineCap='round';
+  g.beginPath();g.moveTo(ax,ay);g.lineTo(bx,by);g.stroke();
+}
+let pistaVis=null;
+function dibuixa(){
+  if(!S){return}
+  g.setTransform(L.dpr,0,0,L.dpr,0,0);
+  const c=L.cela,m=L.mida;
+  // el paper
+  g.fillStyle='#f4ecd8';g.fillRect(0,0,m,m);
+  g.fillStyle='rgba(120,90,40,.06)';for(let y=0;y<N;y++)for(let x=(y%2);x<N;x+=2)g.fillRect(x*c,y*c,c,c);
+  // les trobades
+  g.globalAlpha=.42;
+  P.trobades.forEach(i=>{const q=S.paraules[i];capsula(q.x,q.y,q.x+q.dx*(q.p.length-1),q.y+q.dy*(q.p.length-1),COLORS[i%COLORS.length],.78)});
+  g.globalAlpha=1;
+  // el que estàs marcant
+  if(sel){g.globalAlpha=.5;capsula(sel.x0,sel.y0,sel.x1,sel.y1,'#5aa8ff',.82);g.globalAlpha=1}
+  if(inici&&!sel){g.globalAlpha=.5;capsula(inici.x,inici.y,inici.x,inici.y,'#5aa8ff',.82);g.globalAlpha=1}
+  // la pista: la primera lletra d'una paraula, que batega
+  if(pistaVis&&performance.now()<pistaVis.fins){const k=.5+.5*Math.sin(performance.now()/120);
+    g.strokeStyle='rgba(255,140,0,'+(.5+k*.5)+')';g.lineWidth=3;g.beginPath();g.arc((pistaVis.x+.5)*c,(pistaVis.y+.5)*c,c*.46,0,7);g.stroke()}
+  // les lletres
+  g.fillStyle='#2a2218';g.font='bold '+Math.round(c*.56)+'px monospace';g.textAlign='center';g.textBaseline='middle';
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++)g.fillText(S.graella[y][x],(x+.5)*c,(y+.53)*c);
+  if(paused){g.fillStyle='rgba(19,32,42,.96)';g.fillRect(0,0,m,m)}
+}
+function pintaParaules(){
+  const el=$('paraules');el.innerHTML='';
+  if(!S)return;
+  $('tema').textContent=TEMES[S.tema][0]+(mode==='dia'?' · #'+P.n:' · PRÀCTICA');
+  S.paraules.forEach((q,i)=>{const sp=document.createElement('span');sp.textContent=q.w.toUpperCase();if(P.trobades.includes(i))sp.className='feta';el.appendChild(sp)});
+  $('trobades').textContent=P.trobades.length+'/'+S.paraules.length;
+}
+
+// ===== MARCAR AMB EL DIT =====
+// Lliscant: de la primera lletra a l'última, en línia recta (si el dit va
+// una mica de través, es queda amb la direcció més propera de les vuit).
+// Tocant: la primera lletra queda marcada i el següent toc fa la línia.
+let sel=null,inici=null,dit=null,mogut=false;
+function celaDe(ev){const r=CV.getBoundingClientRect();return {x:Math.floor((ev.clientX-r.left)/L.cela),y:Math.floor((ev.clientY-r.top)/L.cela)}}
+function linia(a,b){
+  let dx=b.x-a.x,dy=b.y-a.y;
+  if(!dx&&!dy)return {x0:a.x,y0:a.y,x1:a.x,y1:a.y};
+  const ang=Math.round(Math.atan2(dy,dx)/(Math.PI/4)),sx=Math.round(Math.cos(ang*Math.PI/4)),sy=Math.round(Math.sin(ang*Math.PI/4));
+  let n=Math.max(Math.abs(dx),Math.abs(dy));
+  while(n>0&&(a.x+sx*n<0||a.x+sx*n>=N||a.y+sy*n<0||a.y+sy*n>=N))n--;
+  return {x0:a.x,y0:a.y,x1:a.x+sx*n,y1:a.y+sy*n};
+}
+function llegeixSel(s){
+  const n=Math.max(Math.abs(s.x1-s.x0),Math.abs(s.y1-s.y0)),sx=Math.sign(s.x1-s.x0),sy=Math.sign(s.y1-s.y0);
+  let t='';for(let k=0;k<=n;k++)t+=S.graella[s.y0+sy*k][s.x0+sx*k];return t;
+}
+function prova(s){
+  const t=llegeixSel(s),r=[...t].reverse().join('');
+  if(t.length<2)return false;
+  const i=S.paraules.findIndex((q,k)=>!P.trobades.includes(k)&&(q.p===t||q.p===r));
+  if(i<0){so.no();return false}
+  P.trobades.push(i);so.troba();pintaParaules();desaP();brut=true;
+  if(pistaVis&&pistaVis.i===i)pistaVis=null;
+  if(P.trobades.length===S.paraules.length)acaba();
+  return true;
+}
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const c=celaDe(ev);if(c.x<0||c.y<0||c.x>=N||c.y>=N)return;
+  try{CV.setPointerCapture(ev.pointerId)}catch(e){}
+  dit=c;mogut=false;sel=null;brut=true;so.toca();
+});
+CV.addEventListener('pointermove',ev=>{
+  if(!dit)return;ev.preventDefault();
+  const c=celaDe(ev);
+  if(c.x!==dit.x||c.y!==dit.y)mogut=true;
+  if(mogut){sel=linia(dit,{x:Math.max(0,Math.min(N-1,c.x)),y:Math.max(0,Math.min(N-1,c.y))});inici=null;brut=true}
+});
+function deixa(ev){
+  if(!dit)return;
+  const d=dit;dit=null;
+  if(mogut&&sel){prova(sel);sel=null;brut=true;return}
+  // un toc sense lliscar: o comença la línia, o l'acaba
+  if(inici&&(inici.x!==d.x||inici.y!==d.y)){const s=linia(inici,d);inici=null;prova(s)}
+  else if(inici&&inici.x===d.x&&inici.y===d.y)inici=null;
+  else inici=d;
+  brut=true;
+}
+CV.addEventListener('pointerup',deixa);
+CV.addEventListener('pointercancel',()=>{dit=null;sel=null;brut=true});
+
+// ===== LA PISTA =====
+// Encercla la primera lletra de la paraula que falta més llarga, i et costa
+// trenta segons.
+$('pista').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const falten=S.paraules.map((q,i)=>i).filter(i=>!P.trobades.includes(i));
+  if(!falten.length)return;
+  const i=falten.sort((a,b)=>S.paraules[b].p.length-S.paraules[a].p.length)[0],q=S.paraules[i];
+  pistaVis={i,x:q.x,y:q.y,fins:performance.now()+4000};
+  P.temps+=PENA_PISTA;P.pistes++;so.pista();desaP();brut=true;
+  avisa('Comença a la lletra encerclada: '+q.w.toUpperCase()+' · +'+PENA_PISTA+' s');
+});
+$('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();menu()});
+let avisT=null;
+function avisa(t){$('lider').textContent=t;$('lider').style.color='#ffb070';clearTimeout(avisT);avisT=setTimeout(()=>{$('lider').style.color='';pintaLider()},3000)}
+
+// ===== EL FINAL =====
+function acaba(){
+  P.fi=true;P.nou=mode==='dia';desaP();so.fi();
+  setTimeout(finalPartida,700);
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!P||!S||!P.fi){msg('<div style="color:#ffd77a">LA SOPA DE LLETRES</div><small>encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!(P&&S);return}
+    const pt=puntsDe(P.temps),dia2=P.dia,pi=P.pistes?' ('+P.pistes+(P.pistes===1?' pista':' pistes')+')':'';
+    let t='<div style="color:#7dff9b">FETA!</div>'+
+      '<div style="font-size:32px;font-weight:bold">'+mmss(P.temps)+'</div>'+
+      '<small style="color:#9fc0d0">'+TEMES[S.tema][0].toLowerCase()+pi+(mode==='dia'?' · la d\'avui, #'+P.n:' · pràctica')+'</small>';
+    if(mode==='dia'){
+      const tx='La Sopa de Lletres #'+P.n+' · '+TEMES[S.tema][0].toLowerCase()+' · '+mmss(P.temps)+(P.pistes?' 💡'.repeat(Math.min(5,P.pistes)):' sense pistes'),enl=location.href.split('#')[0];
+      t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+        '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'+
+        '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    }else t+='<small style="color:#8aa8b8">les de pràctica no compten per a cap taula</small>';
+    t+='<a href="#" class="bt" id="f-prac" style="color:#e8f0f4;background:#1d2e3a;border:1px solid #3a5a6a">PRÀCTICA: UNA ALTRA SOPA</a>'+
+      '<a href="#" id="f-menu" style="display:block;margin-top:12px;font:12px monospace;color:#9fc0d0">torna al menú del joc</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar'));potTancar=true;
+    enllac('f-prac',()=>obrePractica(true));enllac('f-menu',menu);
+    if(mode==='dia'){
+      // nomes compta el primer cop que l'acabes (i el Worker, la primera de cada inicials)
+      let r={html:'',posicio:0};
+      if(P.nou){r=await Records.fiPartida(taulaDia(dia2),pt);P.nou=false;desaP()}
+      else r.html=Records.taulaHTML(await Records.llista(taulaDia(dia2)),null,taulaDia(dia2));
+      const el=document.getElementById('taula');
+      if(el)el.innerHTML='<div style="color:#ffd77a;font-size:13px;margin-top:8px">☀ LA D\'AVUI</div>'+r.html+
+        (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+      refrescaLiders();
+    }
+  }finally{enFinal=false}
+}
+let potTancar=false;
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+let lider=null;
+function pintaLider(){
+  $('lider').textContent=mode==='practica'?'PRÀCTICA · no compta per a la taula':'☀ LA D\'AVUI: '+(lider?lider.n+' en '+mmss(MAX_SEGONS-lider.p):'ningú encara');
+  Records.marcador(taulaDia(diaAvui()),$('best'),0);
+}
+async function refrescaLiders(){try{lider=await Records.lider(taulaDia(diaAvui()))}catch(e){}pintaLider()}
+
+// ===== EL RELLOTGE =====
+// Corre mentre jugues: no amb el menú obert, ni en pausa, ni si surts de l'app.
+let last=performance.now(),desatT=0,segAnt=-1;
+function loop(t){
+  const dt=Math.min(.25,(t-last)/1000);last=t;
+  if(jugant()&&!document.hidden){P.temps+=dt;desatT+=dt;if(desatT>2){desatT=0;desaP()}}
+  if(P&&Math.floor(P.temps)!==segAnt){segAnt=Math.floor(P.temps);$('score').textContent=mmss(P.temps)}
+  if(brut||pistaVis||dit){dibuixa();brut=!!(pistaVis&&performance.now()<pistaVis.fins)}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';brut=true;if(paused)desaP()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){desaP();if(jugant())posaPausa(true)}});
+addEventListener('pagehide',desaP);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+
+mesura();
+refrescaLiders();
+// en entrar, el menú: la d'avui, continuar la pràctica o fer-ne una altra
+menu();
+
+// En entrar al joc, els records d'avui uns segons, com les maquines de debo.
+Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false;brut=true},
+  [['☀ LA D\'AVUI (temps)',taulaDia(diaAvui())]]);
+</script>
+</body>
+</html>

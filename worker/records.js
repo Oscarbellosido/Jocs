@@ -90,6 +90,7 @@ const DIARIS = {
   conquesta_dia:      2200,
   colles_dia:          600,   // 100 per colla i, si les trobes totes, 50 per error que sobra
   trencaclosques_dia: 3599,   // 3.600 menys els segons que hi has tardat
+  sopa_dia:           3599,   // igual: 3.600 menys els segons (i 30 per pista)
   botifarra_dia:      4608,   // els punts de la parella en 8 mans: com a molt 36 × 2 × 8 cada una
   poble_dia:          1000,   // 1.000 al primer intent... 500 al sise; si no, 400 menys els km
 };
@@ -274,6 +275,7 @@ const ANUNCIA_DIARI = {
     : Math.floor(p / 100) + (p < 200 ? ' colla' : ' colles') + ' de 4'],
   // Al Trencaclosques la puntuacio es 3.600 menys els segons: es diu el temps
   trencaclosques_dia: ['El Trencaclosques', 'trencaclosques.html', p => 'un temps de ' + temps(p)],
+  sopa_dia: ['La Sopa de Lletres', 'sopa.html', p => 'un temps de ' + temps(p)],
   // A la Botifarra, els punts que va fer la parella en les 8 mans del dia
   botifarra_dia: ['La Botifarra', 'botifarra.html', p => xifra(p) + ' punts en 8 mans'],
   // Al Poble del Dia, 1.000 punts al primer intent i 100 menys per cada
@@ -286,7 +288,7 @@ const ANUNCIA_DIARI = {
 };
 const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const ordinal = n => n + (n === 1 ? 'r' : n === 2 ? 'n' : n === 3 ? 'r' : n === 4 ? 't' : 'è');
-const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : joc === 'trencaclosques_dia' ? temps(p)
+const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencaclosques_dia' || joc === 'sopa_dia') ? temps(p)
   : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km') : xifra(p);
 // «a La Impremta», pero «al Trencaclosques» i «al Poble del Dia»
 const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : 'a ' + nom;
@@ -357,7 +359,7 @@ async function lliga(env, dilluns, fins) {
 // palmares (`lliga:palmares`): la copa al primer, la plata i el bronze als
 // altres dos. Es fa amb o sense bot, a la primera peticio del dia, i una
 // setmana cada vegada (si en falta mes d'una, la seguent peticio fa la
-// seguent), que cada setmana son fins a 126 lectures. La primera que compta
+// seguent), que cada setmana son fins a 140 lectures. La primera que compta
 // es la del 26 d'octubre del 2026, la que el bot ja va anunciar.
 const PRIMERA_SETMANA = '2026-10-26';
 async function llegirPalmares(env) {
@@ -423,7 +425,7 @@ const AJUDA =
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
   '/lliga — la classificació de la setmana\n' +
-  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles, El Trencaclosques, La Botifarra i El Poble del Dia)\n\n' +
+  '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles, El Trencaclosques, La Botifarra, El Poble del Dia i La Sopa de Lletres)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
 async function ordre(env, msg) {

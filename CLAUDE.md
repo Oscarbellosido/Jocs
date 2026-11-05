@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i disset que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i divuit que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,11 +53,12 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I disset que no són de saló
+### I divuit que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
 | `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
+| `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
 | `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
@@ -96,9 +97,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les nou partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
-difícil, les Colles, el Poble del Dia, el Trencaclosques, la Botifarra i la
-Conquesta), cadascuna
+les deu partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
+difícil, les Colles, el Poble del Dia, el Trencaclosques, la Sopa de
+Lletres, la Botifarra i la Conquesta), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -112,7 +113,7 @@ llista es torna a pintar amb el `pageshow` que porta `persisted` (i en tornar
 a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
 navegador de les proves això no passa (allà la pàgina sempre es torna a
 carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va perquè
-cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
+cada dia n'hi ha deu, de partides del dia, escampades per la portada, i no
 hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
@@ -876,6 +877,50 @@ no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
 rellotge, la pausa, desar i continuar, i les dues taules. I el mateix amb la
 difícil: les seves definicions, el compte de lletres, que es reprengui on
 era i que vagi a la seva taula.
+
+## La Sopa de Lletres: deu paraules amagades
+
+En Carles la va demanar. És **el passatemps de tota la vida** (el primer que
+se sap que es va publicar és del 1968, en un diari d'Oklahoma), no el d'una
+empresa: va amb el seu nom.
+
+- Una graella de **10 × 10** amb **deu paraules d'un mateix tema** (`TEMES`,
+  30 temes escrits a mà: fruites, oficis, festa major, ciutats de casa...).
+  Poden anar en qualsevol de les vuit direccions, també del revés.
+- **Es marca lliscant el dit** de la primera lletra a l'última (si el dit va
+  una mica de través, es queda amb la direcció més propera, `linia`), o
+  **tocant la primera i després l'última**. Una paraula llegida al revés
+  també val.
+- **La sopa del dia és igual per a tothom** (`sopaDia`, llavor `DIA-<n>`, la
+  #1 és la del 5 de novembre del 2026) i va a la taula del dia
+  (`sopa_dia/<data>`) **pel temps**, com el Trencaclosques: es desa 3.600
+  menys els segons i a la taula surt «2:41». No té taula de sempre.
+- **💡 PISTA**: encercla la primera lletra de la paraula més llarga que falta
+  i **suma 30 segons** (`PENA_PISTA`). Al missatge del grup, una 💡 per pista.
+- El rellotge només corre mentre jugues (no amb el menú, ni en pausa, ni fora
+  de l'app). Es desa cada dos segons i a cada paraula (`sopa-<data>`).
+- **PRÀCTICA**: una altra sopa, d'un tema que no és el d'avui, que no compta.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Cada paraula surt una sola vegada a la graella**, comptant les vuit
+  direccions (`vegades`). Si les lletres de farciment en fan sortir una altra
+  còpia (SOL, MAR...), es torna a omplir. Si no, trobaries la bona i el joc
+  et diria que no, o al revés.
+- **Si una paraula cap dins d'una altra, es queda fora** (GALL dins de
+  GALLINA, SET dins de DISSET, REI dins de REINA): sortiria dues vegades.
+  Per això cada tema té de 13 a 19 paraules i se n'agafen deu.
+- **A la sopa van sense accents, sense ç i sense punt volat** (`pla`: la ç és
+  una C i la l·l són dues L), però a la llista de sota surten ben escrites.
+  Cap paraula no pot fer més de 10 lletres.
+- **El farciment té la freqüència de les lletres del català** (`FARCIT`): amb
+  lletres a l'atzar, les rares (K, W, Y) cridarien i les paraules es veurien
+  de seguida.
+- **El tema de cada dia** surt de tandes barrejades (`temaDe`): no se'n
+  repeteix cap fins que no han sortit tots, i mai el mateix dos dies seguits.
+  Amb 30 temes, cal anar-ne afegint.
+- **El missatge per al grup no diu cap paraula**: el tema, el temps i les
+  pistes.
 
 ## La Botifarra: el joc de cartes de casa
 
@@ -1713,7 +1758,7 @@ aquestes partides no s'enviaven i, a la lliga, era com si no hi haguessis
 jugat (en Carles ho va preguntar per la Gofra). Ara `Records.fiPartida` les
 envia amb 0, sense demanar res, si ja hi ha inicials, i el Worker les apunta
 a `jugat:` però no a la taula. No es desa enlloc: es calcula cada vegada
-llegint les taules del dia (`lliga()`, 126 lectures del KV com a molt). En
+llegint les taules del dia (`lliga()`, 140 lectures del KV com a molt). En
 empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
 avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el
 dilluns**, la primera petició del dia anuncia qui va guanyar la setmana
@@ -1725,7 +1770,7 @@ Worker no té rellotge: tot ho engega la primera visita del dia.
 tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
 plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la
 primera petició del dia). Si en falta més d'una (el Worker no s'ha tocat en
-setmanes), en tanca una per petició, que cada una són fins a 126 lectures. La
+setmanes), en tanca una per petició, que cada una són fins a 140 lectures. La
 primera que compta és la del 26 d'octubre del 2026 (`PRIMERA_SETMANA`), la
 que el bot ja va anunciar. Si dues peticions alhora tanquen la mateixa
 setmana, en llegir-ho només compta un cop (`llegirPalmares`). A la portada
@@ -1911,6 +1956,11 @@ comproven el comportament.
   igual per a tothom, que mai no surti la mateixa escena dos dies seguits,
   que les peces encaixin, i que es jugui arrossegant amb
   el dit: safata, taula, vores, desar, acabar-lo i fer-ne un amb una foto.
+- `node scripts/prova-sopa.mjs` — que totes les sopes de tots els temes
+  surtin amb deu paraules i cadascuna una sola vegada, que la del dia sigui
+  igual per a tothom i no repeteixi tema, i que es jugui amb el dit: lliscant,
+  tocant, del revés, la pista, la pausa, desar i continuar, acabar-la (va a la
+  taula del dia una vegada), la pràctica i que hi capiga a 320 px.
 - `node scripts/prova-botifarra.mjs` — les regles de La Botifarra (l'ordre,
   els punts, seguir, matar, fallar i sobrefallar), que la màquina no faci mai
   una jugada prohibida i jugui millor que l'atzar, que la del dia tingui les
