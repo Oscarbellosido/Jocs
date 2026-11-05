@@ -85,7 +85,7 @@ const LANES=[
   {row:10,kind:'dozer',  len:1, dir: 1, sp:0.030, n:3},
   {row:11,kind:'car',    len:1, dir:-1, sp:0.045, n:3}
 ];
-const CARCOL={car:['#ffe000','#00e0ff','#ff7000'],truck:['#dddddd'],dozer:['#ffd000']};
+const CARCOL={car:['#ffd020','#20b8e8','#ff6a20','#e83a8a'],truck:['#dddddd'],dozer:['#ffc000']};
 
 let score=0,level=1,lives=3,state='play',paused=false,extraGiven=false;
 let homes,frog,timeLeft,maxRow,fly,lanes,startTime;
@@ -180,6 +180,7 @@ function hop(dx,dy){
   const nrow=frog.row+dy, nx=frog.x+dx*CELL;
   if(nrow>12||nrow<0||nx<CELL/2-1||nx>W-CELL/2+1)return;
   frog.hop={fx:frog.x,fy:rowY(frog.row),tx:nx,ty:rowY(nrow),t:0,row:nrow};
+  frog.ang=dy<0?0:dy>0?Math.PI:dx>0?Math.PI/2:-Math.PI/2;   // mira cap on salta
   sndHop();
 }
 function landing(){
@@ -236,40 +237,101 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
-function drawFrog(px,py,squash){
+// Vist des de dalt: el riu amb ones que corren, troncs amb escorça i anells
+// a les puntes, tortugues amb closca que neden, una carretera d'asfalt amb
+// cotxes, camions i tractors de debò (amb vidres, rodes i llums), i la
+// granota mira cap on salta. Abans eren rectangles i rodones.
+function drawFrog(px,py,squash,ang=0,salta=0){
+  const cy=py+CELL/2;
   if(squash){
-    x.fillStyle='#ff4040';x.beginPath();x.arc(px,py+16,10,0,6.283);x.fill();
-    x.fillStyle='#fff';x.font='12px monospace';x.textAlign='center';x.fillText('✱',px,py+20);
+    // aixafada o ofegada: una taca i uns cercles
+    x.fillStyle='rgba(60,200,60,.85)';
+    for(const[dx,dy,r]of[[0,0,9],[-8,-5,4],[8,-6,4],[-7,7,4],[8,6,4]]){x.beginPath();x.arc(px+dx,cy+dy,r,0,7);x.fill()}
+    x.fillStyle='#fff';x.beginPath();x.arc(px-3,cy-2,2.5,0,7);x.arc(px+3,cy-2,2.5,0,7);x.fill();
     return;
   }
-  const g='#4ad830';
-  x.fillStyle=g;
-  x.fillRect(px-9,py+9,18,14);          // cos
-  x.fillRect(px-13,py+11,4,5);x.fillRect(px+9,py+11,4,5);   // potes davanteres
-  x.fillRect(px-13,py+19,4,6);x.fillRect(px+9,py+19,4,6);   // potes del darrere
-  x.fillStyle='#9fff70';x.fillRect(px-6,py+12,12,7);
-  x.fillStyle='#fff';x.fillRect(px-6,py+7,5,5);x.fillRect(px+1,py+7,5,5);
-  x.fillStyle='#000';x.fillRect(px-5,py+9,3,3);x.fillRect(px+2,py+9,3,3);
+  x.save();x.translate(px,cy);x.rotate(ang);
+  const e=salta?6:0;
+  // potes: les del darrere s'estiren quan salta
+  x.fillStyle='#2a9a20';
+  x.beginPath();x.ellipse(-9,7+e,4,6+e,.5,0,7);x.fill();x.beginPath();x.ellipse(9,7+e,4,6+e,-.5,0,7);x.fill();
+  x.beginPath();x.ellipse(-9,-5,3,5,-.6,0,7);x.fill();x.beginPath();x.ellipse(9,-5,3,5,.6,0,7);x.fill();
+  x.fillStyle='#1a7a14';for(const s of[-1,1]){x.fillRect(s*12-2,11+e*1.6,4,3);x.fillRect(s*11-2,-10,3,3)}
+  // el cos, amb taques
+  x.fillStyle='#4ad830';x.beginPath();x.ellipse(0,1,9,11,0,0,7);x.fill();
+  x.fillStyle='#8aff60';x.beginPath();x.ellipse(0,3,5,6,0,0,7);x.fill();
+  x.fillStyle='#2a9a20';x.beginPath();x.arc(-4,5,1.5,0,7);x.arc(4,7,1.5,0,7);x.arc(0,-2,1.3,0,7);x.fill();
+  // els ulls, a dalt de tot
+  for(const s of[-1,1]){x.fillStyle='#4ad830';x.beginPath();x.arc(s*5,-8,4,0,7);x.fill();
+    x.fillStyle='#fff';x.beginPath();x.arc(s*5,-8.5,2.8,0,7);x.fill();x.fillStyle='#000';x.beginPath();x.arc(s*5,-9,1.5,0,7);x.fill()}
+  x.restore();
+}
+// un vehicle vist des de dalt, mirant cap a on va (dir 1: a la dreta)
+function drawVehicle(kind,o,y,col,dir){
+  const x0=o.x,w=o.w,y0=y+6,h=CELL-12;
+  x.save();x.translate(x0+w/2,y+CELL/2);x.scale(dir,1);x.translate(-(x0+w/2),-(y+CELL/2));
+  // l'ombra
+  x.fillStyle='rgba(0,0,0,.35)';x.fillRect(x0+2,y0+3,w-2,h);
+  if(kind==='truck'){
+    // remolc i cabina
+    x.fillStyle='#2a2a2a';x.fillRect(x0+4,y0-2,6,3);x.fillRect(x0+4,y0+h-1,6,3);x.fillRect(x0+w-14,y0-2,6,3);x.fillRect(x0+w-14,y0+h-1,6,3);
+    x.fillStyle='#e8e8e8';x.fillRect(x0+1,y0,w-18,h);
+    x.fillStyle='#c0c0c0';for(let i=x0+5;i<x0+w-18;i+=6)x.fillRect(i,y0+1,1,h-2);
+    x.fillStyle='#d83030';x.fillRect(x0+w-16,y0+1,14,h-2);
+    x.fillStyle='#8ad0ff';x.fillRect(x0+w-6,y0+3,3,h-6);
+    x.fillStyle='#ffe080';x.fillRect(x0+w-2,y0+1,2,3);x.fillRect(x0+w-2,y0+h-4,2,3);
+  }else if(kind==='dozer'){
+    // un tractor amb la pala al davant
+    x.fillStyle='#2a2a2a';x.fillRect(x0+3,y0-2,10,4);x.fillRect(x0+3,y0+h-2,10,4);x.fillRect(x0+16,y0,6,3);x.fillRect(x0+16,y0+h-3,6,3);
+    x.fillStyle=col;x.fillRect(x0+2,y0+2,w-10,h-4);
+    x.fillStyle='#3a3a3a';x.fillRect(x0+5,y0+5,8,h-10);
+    x.fillStyle='#bdbdbd';x.fillRect(x0+w-6,y0-3,4,h+6);x.fillStyle='#8a8a8a';x.fillRect(x0+w-8,y0+2,2,h-4);
+  }else{
+    // un cotxe: carrosseria, vidres, rodes i fars
+    x.fillStyle='#1a1a1a';x.fillRect(x0+4,y0-2,6,3);x.fillRect(x0+4,y0+h-1,6,3);x.fillRect(x0+w-10,y0-2,6,3);x.fillRect(x0+w-10,y0+h-1,6,3);
+    x.fillStyle=col;x.beginPath();x.roundRect(x0+1,y0,w-2,h,4);x.fill();
+    x.fillStyle='rgba(255,255,255,.35)';x.fillRect(x0+3,y0+1,w-8,2);
+    x.fillStyle='#24344a';x.fillRect(x0+w-12,y0+3,4,h-6);x.fillRect(x0+6,y0+3,3,h-6);
+    x.fillStyle='rgba(0,0,0,.2)';x.fillRect(x0+10,y0+3,w-22,h-6);
+    x.fillStyle='#fff6b0';x.fillRect(x0+w-3,y0+1,2,3);x.fillRect(x0+w-3,y0+h-4,2,3);
+    x.fillStyle='#ff4040';x.fillRect(x0+1,y0+1,1.5,3);x.fillRect(x0+1,y0+h-4,1.5,3);
+  }
+  x.restore();
 }
 function draw(){
-  // fons per zones
+  const ara=performance.now();
   x.fillStyle='#000';x.fillRect(0,0,W,H+BAR);
-  x.fillStyle='#0d2b8a';x.fillRect(0,rowY(1),W,CELL*5);      // riu
-  x.fillStyle='#1d7a2a';x.fillRect(0,rowY(6),W,CELL);        // mitjana
-  x.fillStyle='#333';x.fillRect(0,rowY(7),W,CELL*5);         // carretera
-  x.fillStyle='#1d7a2a';x.fillRect(0,rowY(12),W,CELL);       // sortida
-  // marques de la carretera
-  x.fillStyle='#666';
+  // el riu, amb ones que corren
+  const gr=x.createLinearGradient(0,rowY(1),0,rowY(6));gr.addColorStop(0,'#0a2a7a');gr.addColorStop(1,'#123c9a');
+  x.fillStyle=gr;x.fillRect(0,rowY(1),W,CELL*5);
+  x.fillStyle='rgba(140,190,255,.22)';
+  for(let r=1;r<=5;r++)for(let i=0;i<8;i++){const wx=((i*61+r*37+ara*.02*(r%2?1:-1))%(W+30)+W+30)%(W+30)-15;x.fillRect(wx,rowY(r)+6+(i*11)%20,12,1.5)}
+  // la mitjana i la sortida: voravia de rajoles amb herba
+  for(const r of[6,12]){
+    x.fillStyle='#6a5a7a';x.fillRect(0,rowY(r),W,CELL);
+    x.fillStyle='#7a6a8a';for(let i=0;i<COLS*2;i++)x.fillRect(i*16+1,rowY(r)+1,14,CELL/2-2),x.fillRect(i*16+9,rowY(r)+CELL/2+1,14,CELL/2-2);
+    x.fillStyle='#3a8a3a';x.fillRect(0,rowY(r)+(r===6?0:CELL-4),W,4);
+  }
+  // la carretera: asfalt, vorals i ratlles discontínues
+  x.fillStyle='#2e2e34';x.fillRect(0,rowY(7),W,CELL*5);
+  x.fillStyle='rgba(255,255,255,.04)';for(let i=0;i<70;i++)x.fillRect((i*53)%W,rowY(7)+(i*29)%(CELL*5),2,2);
+  x.fillStyle='#d8d8d8';x.fillRect(0,rowY(7),W,2);x.fillRect(0,rowY(12)-2,W,2);
+  x.fillStyle='#e8d040';
   for(let r=8;r<=11;r++)for(let i=0;i<COLS*2;i++)x.fillRect(i*20+4,rowY(r)-1,10,2);
-  // casetes d'arribada
-  x.fillStyle='#123d12';x.fillRect(0,0,W,CELL);
+  // les casetes d'arribada: una bardissa amb cinc badies d'aigua i un nenúfar
+  x.fillStyle='#1d6a24';x.fillRect(0,0,W,CELL);
+  x.fillStyle='#2a8a30';for(let i=0;i<W;i+=8)x.beginPath(),x.arc(i+4,4+(i%16?2:0),6,0,7),x.fill();
   for(let i=0;i<5;i++){
     const cx=HOME_COLS[i]*CELL;
-    x.fillStyle='#0a0a2a';x.fillRect(cx+2,4,CELL-4,CELL-6);
-    if(homes[i])drawFrog(cx+CELL/2,-2,false);
+    x.fillStyle='#0d2b7a';x.fillRect(cx+3,6,CELL-6,CELL-6);
+    x.fillStyle='#3aa04a';x.beginPath();x.arc(cx+CELL/2,CELL/2+4,9,.4,Math.PI*2-.1);x.lineTo(cx+CELL/2,CELL/2+4);x.fill();
+    if(homes[i])drawFrog(cx+CELL/2,2,false);
     else if(fly&&fly.idx===i){
-      x.fillStyle='#ff40ff';x.fillRect(cx+CELL/2-5,14,10,7);
-      x.fillStyle='#fff';x.fillRect(cx+CELL/2-8,13,4,3);x.fillRect(cx+CELL/2+4,13,4,3);
+      // la mosca, amb ales que bateguen
+      const fx=cx+CELL/2,fy=17,b=Math.floor(ara/60)%2;
+      x.fillStyle='rgba(220,240,255,.8)';x.beginPath();x.ellipse(fx-4,fy-2-b,4,2.5,-.4,0,7);x.ellipse(fx+4,fy-2-b,4,2.5,.4,0,7);x.fill();
+      x.fillStyle='#2a2a2a';x.beginPath();x.ellipse(fx,fy,3,5,0,0,7);x.fill();
+      x.fillStyle='#ff3030';x.fillRect(fx-2,fy-5,1.5,1.5);x.fillRect(fx+.5,fy-5,1.5,1.5);
     }
   }
   // objectes de cada carril
@@ -277,36 +339,51 @@ function draw(){
     for(const o of laneObjs(l)){
       const y=rowY(l.row);
       if(l.kind==='log'){
-        x.fillStyle='#7a4a1e';x.fillRect(o.x,y+5,o.w,CELL-10);
-        x.fillStyle='#5c3616';for(let i=0;i<o.w;i+=16)x.fillRect(o.x+i+3,y+8,2,CELL-16);
+        // un tronc: escorça, anells a les puntes i una mica d'aigua que esquitxa
+        x.fillStyle='rgba(255,255,255,.18)';x.fillRect(o.x-3,y+8,3,CELL-16);x.fillRect(o.x+o.w,y+8,3,CELL-16);
+        x.fillStyle='#7a4a1e';x.beginPath();x.roundRect(o.x,y+5,o.w,CELL-10,8);x.fill();
+        x.fillStyle='#9a6430';x.fillRect(o.x+4,y+7,o.w-8,3);
+        x.fillStyle='#5c3616';for(let i=8;i<o.w-8;i+=11)x.fillRect(o.x+i,y+12+(i%3),7,1.5);
+        x.fillStyle='#c8a070';x.beginPath();x.ellipse(o.x+o.w-5,y+CELL/2,4,CELL/2-6,0,0,7);x.fill();
+        x.strokeStyle='#8a6030';x.lineWidth=1;x.beginPath();x.ellipse(o.x+o.w-5,y+CELL/2,2,5,0,0,7);x.stroke();
       }else if(l.kind==='turtle'){
         const d=turtleDown(l,o.i);
-        if(d===2)continue;
-        for(let i=0;i<l.len;i++){
-          const tx=o.x+i*CELL+CELL/2;
-          x.fillStyle=d===1?'#2a7a4a':'#3fbf6a';
-          x.beginPath();x.arc(tx,y+CELL/2,11,0,6.283);x.fill();
-          x.fillStyle=d===1?'#1d5c36':'#2a8f4e';
-          x.beginPath();x.arc(tx,y+CELL/2,6,0,6.283);x.fill();
-          x.fillStyle=d===1?'#2a7a4a':'#3fbf6a';x.fillRect(tx-13,y+CELL/2-3,4,6);
+        if(d===2){
+          // sota l'aigua: només es veuen les bombolles
+          x.fillStyle='rgba(180,220,255,.5)';for(let i=0;i<l.len;i++){const tx=o.x+i*CELL+CELL/2;x.beginPath();x.arc(tx-3,y+CELL/2,2,0,7);x.arc(tx+4,y+CELL/2+3,1.5,0,7);x.fill()}
+          continue;
         }
+        x.globalAlpha=d===1?.55:1;
+        for(let i=0;i<l.len;i++){
+          const tx=o.x+i*CELL+CELL/2,ty=y+CELL/2,nada=Math.sin(ara/180+i)*2;
+          // aletes, cap i closca (miren cap on neden: a l'esquerra)
+          x.fillStyle='#2a8a50';
+          x.beginPath();x.ellipse(tx-6,ty-9-nada,3,5,.6,0,7);x.ellipse(tx-6,ty+9+nada,3,5,-.6,0,7);x.ellipse(tx+7,ty-8+nada,2.5,4,-.6,0,7);x.ellipse(tx+7,ty+8-nada,2.5,4,.6,0,7);x.fill();
+          x.beginPath();x.arc(tx-12,ty,4,0,7);x.fill();
+          x.fillStyle='#000';x.fillRect(tx-14,ty-2,1.5,1.5);x.fillRect(tx-14,ty+1,1.5,1.5);
+          x.fillStyle=d===1?'#2a6a4a':'#1d7a40';x.beginPath();x.ellipse(tx,ty,10,9,0,0,7);x.fill();
+          x.strokeStyle=d===1?'#4a8a6a':'#5ac078';x.lineWidth=1.2;
+          x.beginPath();x.moveTo(tx-6,ty-4);x.lineTo(tx,ty-7);x.lineTo(tx+6,ty-4);x.lineTo(tx+6,ty+4);x.lineTo(tx,ty+7);x.lineTo(tx-6,ty+4);x.closePath();x.stroke();
+          x.beginPath();x.moveTo(tx-3,ty-2);x.lineTo(tx+3,ty-2);x.lineTo(tx+3,ty+2);x.lineTo(tx-3,ty+2);x.closePath();x.stroke();
+        }
+        x.globalAlpha=1;
       }else{
         const col=CARCOL[l.kind][o.i%CARCOL[l.kind].length];
-        x.fillStyle=col;x.fillRect(o.x,y+6,o.w,CELL-12);
-        x.fillStyle='#000';x.fillRect(o.x+3,y+9,o.w-6,4);
-        x.fillStyle='#222';x.fillRect(o.x+2,y+CELL-8,6,4);x.fillRect(o.x+o.w-8,y+CELL-8,6,4);
+        drawVehicle(l.kind,o,y,col,l.dir);
       }
     }
   }
   // granota
   if(state!=='over'){
-    const px=frog.hop?frog.hop.fx+(frog.hop.tx-frog.hop.fx)*Math.min(1,frog.hop.t/130):frog.x;
-    const py=frog.hop?frog.hop.fy+(frog.hop.ty-frog.hop.fy)*Math.min(1,frog.hop.t/130):rowY(frog.row);
-    drawFrog(px,py,state==='dying');
+    const k=frog.hop?Math.min(1,frog.hop.t/130):0;
+    const px=frog.hop?frog.hop.fx+(frog.hop.tx-frog.hop.fx)*k:frog.x;
+    const py=frog.hop?frog.hop.fy+(frog.hop.ty-frog.hop.fy)*k:rowY(frog.row);
+    drawFrog(px,py,state==='dying',frog.ang||0,frog.hop?Math.sin(k*Math.PI):0);
   }
   // barra de temps
   x.fillStyle='#111';x.fillRect(0,H,W,BAR);
   const total=Math.max(18,32-level*1.5), frac=Math.max(0,timeLeft/total);
+  x.fillStyle='#2a2a2a';x.fillRect(82,H+10,W-90,12);
   x.fillStyle=frac<0.3?'#ff3030':'#30ff30';
   x.fillRect(W-8-(W-90)*frac,H+10,(W-90)*frac,12);
   x.fillStyle='#fff';x.font='12px monospace';x.textAlign='left';x.fillText('TEMPS',6,H+21);

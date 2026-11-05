@@ -180,6 +180,11 @@ colors perquè les màquines eren així.
   apagada al fons. **Els personatges són nostres**: un obrer amb casc groc i
   armilla, i no el de la gorra vermella i la granota blava, que és d'una
   empresa viva; i una noia de verd que diu AJUDA!
+- **La Granota**: vist des de dalt, amb ones al riu, troncs amb escorça i
+  anells, tortugues amb closca que neden (i bombolles quan són a sota),
+  asfalt amb ratlles grogues i vehicles amb vidres, rodes i llums
+  (`drawVehicle`, que mira cap on va el carril). La granota mira cap on
+  salta (`frog.ang`) i estira les potes.
 
 ## L'Atletisme: com es dibuixa
 
