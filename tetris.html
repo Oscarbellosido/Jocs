@@ -240,13 +240,23 @@
     while(!collide(cur.shape,cur.x,cur.y+1))cur.y++;
     merge();clearRows();spawn();render();
   }
+  // Cada bloc té relleu: la vora de dalt i l'esquerra clares, la de baix i
+  // la dreta fosques, i una lluentor. Abans eren quadrats plans.
+  function bloc(g,px,py,s,col){
+    g.fillStyle=col;g.fillRect(px,py,s-1,s-1);
+    const b=Math.max(1,Math.round(s/8));
+    g.fillStyle='rgba(255,255,255,0.38)';g.fillRect(px,py,s-1,b);g.fillRect(px,py,b,s-1);
+    g.fillStyle='rgba(0,0,0,0.32)';g.fillRect(px,py+s-1-b,s-1,b);g.fillRect(px+s-1-b,py,b,s-1);
+    if(s>10){g.fillStyle='rgba(255,255,255,0.22)';g.fillRect(px+b+2,py+b+2,s/4,s/6)}
+  }
   function drawBoard(){
-    ctx.fillStyle='#0e121f';ctx.fillRect(0,0,300,600);
+    const gf=ctx.createLinearGradient(0,0,0,600);gf.addColorStop(0,'#0c1020');gf.addColorStop(1,'#141a30');
+    ctx.fillStyle=gf;ctx.fillRect(0,0,300,600);
     for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-      if(board[r][c]){ctx.fillStyle=COLORS[board[r][c]];ctx.fillRect(c*BS,r*BS,BS-1,BS-1);ctx.fillStyle='rgba(255,255,255,0.18)';ctx.fillRect(c*BS+2,r*BS+2,6,4)}
-      else{ctx.fillStyle='rgba(255,255,255,0.03)';ctx.fillRect(c*BS,r*BS,BS-1,BS-1)}
+      if(board[r][c])bloc(ctx,c*BS,r*BS,BS,COLORS[board[r][c]]);
+      else{ctx.fillStyle='rgba(255,255,255,0.035)';ctx.fillRect(c*BS,r*BS,BS-1,BS-1)}
     }
-    if(cur.shape&&!gameOver)cur.shape.forEach((row,r)=>row.forEach((v,c)=>{if(v){ctx.fillStyle=COLORS[cur.colorIdx];ctx.fillRect((cur.x+c)*BS,(cur.y+r)*BS,BS-1,BS-1);ctx.fillStyle='rgba(255,255,255,0.2)';ctx.fillRect((cur.x+c)*BS+2,(cur.y+r)*BS+2,6,4)}}));
+    if(cur.shape&&!gameOver)cur.shape.forEach((row,r)=>row.forEach((v,c)=>{if(v)bloc(ctx,(cur.x+c)*BS,(cur.y+r)*BS,BS,COLORS[cur.colorIdx])}));
     if(paused&&!gameOver){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,300,600);ctx.fillStyle='#dbe4f5';ctx.font='bold 28px sans-serif';ctx.textAlign='center';ctx.fillText('⏸ PAUSA',150,310);ctx.textAlign='left'}
   }
   function drawNext(){
@@ -255,7 +265,7 @@
     const cell=6,w=nxt.shape[0].length*cell,h=nxt.shape.length*cell;
     const ox=(44-w)/2,oy=(24-h)/2;
     nxt.shape.forEach((row,r)=>row.forEach((v,c)=>{
-      if(v){nctx.fillStyle=COLORS[nxt.colorIdx];nctx.fillRect(ox+c*cell,oy+r*cell,cell-1,cell-1)}
+      if(v)bloc(nctx,ox+c*cell,oy+r*cell,cell,COLORS[nxt.colorIdx])
     }));
   }
   function render(){drawBoard();drawNext()}

@@ -197,6 +197,9 @@ colors perquè les màquines eren així.
   antenes, l'aranya de vuit potes, la puça i l'escorpí amb la cua enlaire.
   El canó és un gnom amb barret (el de la màquina era un cap, i no cal
   copiar-lo).
+- **Els Blocs**: cada bloc té relleu (`bloc`, vora clara a dalt i a
+  l'esquerra, fosca a baix i a la dreta, i una lluentor). No hi ha peça
+  fantasma que digui on caurà: la màquina no en tenia.
 
 ## L'Atletisme: com es dibuixa
 
