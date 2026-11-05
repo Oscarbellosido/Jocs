@@ -157,6 +157,30 @@ pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
 pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
 
+## Els dibuixos dels jocs
+
+En Carles va trobar que l'Atletisme es veia molt millor redibuixat i va
+demanar el mateix per a tots els que es poguessin millorar. **Només es toca
+el dibuix**: les mides de tot el que et pot tocar, les regles i els punts
+són els mateixos. Els que tenen aquest aspecte a posta no es toquen: les
+Raquetes i el Trencamaons són ratlles blanques com a la màquina, i els de
+vectors (Roques de l'Espai, els Tancs, el Túnel, l'Allunatge) són línies de
+colors perquè les màquines eren així.
+
+- **El Totterreny**: el paisatge va per capes (`capes`, pintades un sol cop
+  en llenços de 960 px): la Terra al cel, una base amb cúpules, dues
+  serralades i el terra de la lluna. Clots foscos amb vora, roques amb
+  cares, mines que fan pampallugues, plat volador amb cúpula, i un cotxe
+  lunar amb sis rodes que boten (`drawRover`, que també dibuixa l'enemic).
+- **L'Amunt**: del prat (turons i núvols) a l'espai; el cel es fa de posta i
+  de nit segons l'alçada. Plataformes de gespa, de metall amb motoret i de
+  fusta esquerdada, i un ninot rodó amb antena que s'estira i s'aixafa.
+- **El Goril·la**: bigues de ferro amb gelosia (`dibuixaBiga`), barrils de
+  fusta amb cèrcols que giren, flames amb resplendor i una ciutat de nit
+  apagada al fons. **Els personatges són nostres**: un obrer amb casc groc i
+  armilla, i no el de la gorra vermella i la granota blava, que és d'una
+  empresa viva; i una noia de verd que diu AJUDA!
+
 ## L'Atletisme: com es dibuixa
 
 En Carles va preguntar si se'n podien millorar els gràfics: era un ninot de

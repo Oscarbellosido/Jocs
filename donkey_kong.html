@@ -521,18 +521,37 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
+// Els personatges són nostres: un obrer amb casc i armilla (no el de la
+// màquina, que té amo), un goril·la de pèl fosc i una noia que demana
+// ajuda. Les bigues són de ferro amb els reblons i les creus de la
+// gelosia, i els barrils són de fusta amb cèrcols i giren en rodolar.
 function dibuixaMario(){
-  const m=mario,px=Math.round(m.x),py=Math.round(m.y);
-  const pas=Math.floor(m.anim/140)%2;
-  x.fillStyle='#e02020';x.fillRect(px-7,py-18,14,4);           // gorra
-  x.fillStyle='#f0b080';x.fillRect(px-6,py-14,12,5);           // cara
-  x.fillStyle='#000';x.fillRect(px+(m.dir>0?2:-4),py-13,2,2);
-  x.fillStyle='#3050e0';x.fillRect(px-7,py-9,14,6);            // granota
-  x.fillStyle='#e02020';x.fillRect(px-7,py-9,4,3);x.fillRect(px+3,py-9,4,3);
-  x.fillStyle='#3050e0';
-  if(m.estat==='salt'){x.fillRect(px-8,py-3,5,3);x.fillRect(px+3,py-3,5,3)}
-  else if(pas){x.fillRect(px-7,py-3,5,3);x.fillRect(px+2,py-3,5,3)}
-  else{x.fillRect(px-3,py-3,6,3)}
+  const m=mario,px=Math.round(m.x),py=Math.round(m.y),d=m.dir>0?1:-1;
+  const pas=Math.floor(m.anim/140)%2,salt=m.estat==='salt',esc=m.estat==='escala';
+  // cames (texans) i botes
+  x.fillStyle='#2a4a9a';
+  if(esc){x.fillRect(px-5,py-8+(pas?-2:0),4,7);x.fillRect(px+1,py-8+(pas?0:-2),4,7)}
+  else if(salt){x.fillRect(px-7,py-7,4,5);x.fillRect(px+3,py-7,4,5)}
+  else if(pas){x.fillRect(px-6,py-8,4,7);x.fillRect(px+2,py-8,4,6)}
+  else{x.fillRect(px-4,py-8,4,7);x.fillRect(px,py-8,4,7)}
+  x.fillStyle='#4a2a10';
+  if(salt){x.fillRect(px-8,py-3,5,3);x.fillRect(px+3,py-3,5,3)}
+  else if(pas&&!esc){x.fillRect(px-7,py-2,5,2);x.fillRect(px+2,py-2,5,2)}
+  else{x.fillRect(px-5,py-2,5,2);x.fillRect(px+1,py-2,5,2)}
+  // el cos: armilla taronja amb les franges que brillen
+  x.fillStyle='#ff7a10';x.fillRect(px-6,py-16,12,9);
+  x.fillStyle='#f4f4c0';x.fillRect(px-6,py-12,12,2);
+  // els braços
+  x.fillStyle='#e8a878';
+  if(esc){x.fillRect(px-8,py-20+(pas?0:3),3,6);x.fillRect(px+5,py-20+(pas?3:0),3,6)}
+  else if(salt){x.fillRect(px-9,py-19,3,5);x.fillRect(px+6,py-19,3,5)}
+  else{x.fillRect(px+d*6-(d>0?0:3),py-15,3,6)}
+  // el cap i el casc groc
+  x.fillStyle='#e8a878';x.fillRect(px-4,py-22,8,6);
+  x.fillStyle='#1a1a1a';if(!esc)x.fillRect(px+d*2-(d>0?0:1),py-20,2,2);
+  x.fillStyle='#ffd020';x.fillRect(px-6,py-25,12,4);x.fillRect(px-4,py-27,8,2);
+  x.fillRect(d>0?px+4:px-8,py-23,4,2);                          // la visera
+  x.fillStyle='#fff6a0';x.fillRect(px-3,py-27,3,1);
   if(m.martell>0){
     // Els dos ultims segons el martell parpelleja, com a la maquina, i a sobre
     // del cap hi ha la barreta del temps que li queda: si no, se t'acaba sense
@@ -540,9 +559,9 @@ function dibuixaMario(){
     const acabant=m.martell<2000;
     if(!acabant||Math.floor(animT/90)%2){
       const alt=Math.floor(m.anim/120)%2;
-      x.fillStyle='#a0a0a0';
-      x.fillRect(px+m.dir*10-4,py-(alt?30:14),8,7);
       x.fillStyle='#8a5a2a';x.fillRect(px+m.dir*10-1,py-(alt?24:12),2,8);
+      x.fillStyle='#b8b8c0';x.fillRect(px+m.dir*10-5,py-(alt?31:15),10,7);
+      x.fillStyle='#e8e8f0';x.fillRect(px+m.dir*10-5,py-(alt?31:15),10,2);
     }
     x.fillStyle='#402000';x.fillRect(px-13,py-40,26,4);
     x.fillStyle=acabant?'#ff5020':'#ffd000';
@@ -550,32 +569,62 @@ function dibuixaMario(){
   }
 }
 function dibuixaGorila(){
-  const px=dk.x,py=dk.y,b=Math.floor(animT/300)%2;
-  x.fillStyle='#8a5a2a';
-  x.fillRect(px-2,py-4,44,34);                       // cos
-  x.fillRect(px+4,py-20,32,18);                      // cap
-  x.fillStyle='#c89a6a';x.fillRect(px+10,py-12,20,9);x.fillRect(px+8,py+8,28,16);
-  x.fillStyle='#fff';x.fillRect(px+12,py-17,6,5);x.fillRect(px+22,py-17,6,5);
-  x.fillStyle='#000';x.fillRect(px+14,py-16,3,3);x.fillRect(px+24,py-16,3,3);
-  x.fillStyle='#8a5a2a';
-  x.fillRect(px-10,py+(b?0:6),12,20);x.fillRect(px+38,py+(b?6:0),12,20);   // braços
+  const px=dk.x,py=dk.y,b=Math.floor(animT/300)%2,cx=px+20;
+  const PEL='#5a3418',PEL2='#7a4a24',PELL='#d8a878';
+  // les cames
+  x.fillStyle=PEL;x.fillRect(px+2,py+20,12,12);x.fillRect(px+26,py+20,12,12);
+  // el cos, gros i arrodonit, amb el pit més clar
+  x.fillStyle=PEL;x.beginPath();x.ellipse(cx,py+10,22,18,0,0,7);x.fill();
+  x.fillStyle=PEL2;x.beginPath();x.ellipse(cx,py+12,13,12,0,0,7);x.fill();
+  x.fillStyle='rgba(0,0,0,.18)';x.fillRect(cx-1,py+3,2,16);
+  // els braços: es colpeja el pit, un i l'altre
+  x.fillStyle=PEL;
+  x.beginPath();x.ellipse(px-4,py+(b?6:-2),7,14,b?.3:-.6,0,7);x.fill();
+  x.beginPath();x.ellipse(px+44,py+(b?-2:6),7,14,b?.6:-.3,0,7);x.fill();
+  x.fillStyle=PELL;x.beginPath();x.arc(px-4,py+(b?18:-14),5,0,7);x.fill();x.beginPath();x.arc(px+44,py+(b?-14:18),5,0,7);x.fill();
+  // el cap
+  x.fillStyle=PEL;x.beginPath();x.arc(cx,py-12,13,0,7);x.fill();
+  x.fillStyle=PELL;x.beginPath();x.ellipse(cx,py-7,9,7,0,0,7);x.fill();
+  x.fillStyle=PELL;x.fillRect(cx-9,py-19,18,6);
+  x.fillStyle='#fff';x.fillRect(cx-7,py-18,5,4);x.fillRect(cx+2,py-18,5,4);
+  x.fillStyle='#000';x.fillRect(cx-5,py-17,2,3);x.fillRect(cx+4,py-17,2,3);
+  x.fillStyle='#3a1a08';x.fillRect(cx-9,py-20,18,2);                       // les celles, enfadat
+  x.fillStyle='#2a1208';x.fillRect(cx-3,py-10,2,2);x.fillRect(cx+1,py-10,2,2);
+  x.fillStyle='#fff';x.fillRect(cx-5,py-5,10,3);x.fillStyle='#000';x.fillRect(cx-5,py-4,10,1);
+}
+// una biga de ferro: el perfil de dalt i de baix i la gelosia entremig
+function dibuixaBiga(b){
+  const col=b.cinta?['#9a9aa4','#6a6a74','#c8c8d0']:b.puja?['#e0b000','#8a6a00','#ffe060']:['#d8402a','#8a2010','#ff7a50'];
+  const x1=b.x1,y1=b.y1,x2=b.x2,y2=b.y2,dx=x2-x1,len=Math.hypot(dx,y2-y1)||1,pend=(y2-y1)/dx||0;
+  x.save();x.translate(x1,y1);x.transform(1,pend,0,1,0,0);
+  const w=dx;
+  x.beginPath();x.rect(Math.min(0,w),0,Math.abs(w),8);x.clip();
+  x.fillStyle=col[1];x.fillRect(Math.min(0,w),0,Math.abs(w),8);
+  x.fillStyle=col[0];x.fillRect(Math.min(0,w),0,Math.abs(w),2);x.fillRect(Math.min(0,w),6,Math.abs(w),2);
+  x.strokeStyle=col[0];x.lineWidth=1.3;x.beginPath();
+  for(let k=Math.min(0,w);k<Math.max(0,w)-1;k+=8){x.moveTo(k,2);x.lineTo(k+4,6);x.lineTo(k+8,2)}x.stroke();
+  x.fillStyle=col[2];x.fillRect(Math.min(0,w),0,Math.abs(w),1);
+  x.restore();
 }
 function draw(){
-  x.fillStyle='#000';x.fillRect(0,0,W,H);
-  // bigues: les taronges son de sempre, les grises son cintes i les grogues
+  // el fons: fosc, amb una ciutat de nit molt apagada darrere
+  const gf=x.createLinearGradient(0,0,0,H);gf.addColorStop(0,'#04040c');gf.addColorStop(1,'#0c0a1c');
+  x.fillStyle=gf;x.fillRect(0,0,W,H);
+  x.fillStyle='#10101e';
+  for(let i=0;i<12;i++){const bw=28+(i*13)%22,bh=60+(i*37)%140,bx=i*40-6;x.fillRect(bx,H-bh,bw,bh)}
+  x.fillStyle='rgba(255,220,120,.10)';
+  for(let i=0;i<60;i++){const wx=(i*53)%W,wy=H-20-(i*31)%170;x.fillRect(wx,wy,3,4)}
+  // bigues: les vermelles son de sempre, les grises son cintes i les grogues
   // son els ascensors
-  x.lineWidth=7;x.lineCap='butt';
   for(const b of BIGUES){
-    x.strokeStyle=b.cinta?'#b4b4bc':b.puja?'#ffd000':'#e05a2a';
-    x.beginPath();x.moveTo(b.x1,b.y1+3);x.lineTo(b.x2,b.y2+3);x.stroke();
+    dibuixaBiga(b);
     if(b.cinta){
       // les ratlletes es mouen cap on va la cinta, perque es vegi el sentit
       const d=b.cinta*cintaDir,off=((animT*0.05*d)%22+22)%22;
-      x.strokeStyle='#4a4a52';x.lineWidth=3;
+      x.strokeStyle='#3a3a42';x.lineWidth=3;
       for(let px=Math.min(b.x1,b.x2)+off;px<Math.max(b.x1,b.x2);px+=22){
         x.beginPath();x.moveTo(px,b.y1+1);x.lineTo(px+d*8,b.y1+5);x.stroke();
       }
-      x.lineWidth=7;
     }
     if(b.puja){
       x.fillStyle='#8a6a00';
@@ -585,9 +634,11 @@ function draw(){
   // escales
   for(const e of ESCALES){
     const dalt=bigaY(e.g+1,e.x),baix=bigaY(e.g,e.x);
-    x.strokeStyle='#4ad8ff';x.lineWidth=2;
     const fi=e.trencada?baix-38:dalt;
+    x.strokeStyle='#1a7a9a';x.lineWidth=3;
     x.beginPath();x.moveTo(e.x-6,baix);x.lineTo(e.x-6,fi);x.moveTo(e.x+6,baix);x.lineTo(e.x+6,fi);x.stroke();
+    x.strokeStyle='#4ad8ff';x.lineWidth=2;
+    x.beginPath();x.moveTo(e.x-6.5,baix);x.lineTo(e.x-6.5,fi);x.moveTo(e.x+5.5,baix);x.lineTo(e.x+5.5,fi);x.stroke();
     for(let y=baix-6;y>fi;y-=9){x.beginPath();x.moveTo(e.x-6,y);x.lineTo(e.x+6,y);x.stroke()}
     if(e.trencada){
       x.beginPath();x.moveTo(e.x-6,dalt);x.lineTo(e.x-6,dalt+14);x.moveTo(e.x+6,dalt);x.lineTo(e.x+6,dalt+14);x.stroke();
@@ -596,14 +647,19 @@ function draw(){
   // reblons
   if(reblons)for(const r of reblons){
     if(r.tret)continue;
-    x.fillStyle='#ffd000';x.beginPath();x.arc(r.x,bigaY(r.g,r.x)+3,4,0,7);x.fill();
+    const ry=bigaY(r.g,r.x)+3;
+    x.fillStyle='#8a6a00';x.beginPath();x.arc(r.x,ry+1,5,0,7);x.fill();
+    x.fillStyle='#ffd000';x.beginPath();x.arc(r.x,ry,4,0,7);x.fill();
+    x.fillStyle='#fff6a0';x.fillRect(r.x-2,ry-2,2,2);
   }
   // pastissos
   for(const pt of pastissos){
+    x.fillStyle='#d8d8e0';x.beginPath();x.ellipse(pt.x,pt.y+2,12,4,0,0,7);x.fill();
     x.fillStyle='#f0d060';
     x.beginPath();x.ellipse(pt.x,pt.y,11,6,0,0,7);x.fill();
     x.fillStyle='#c05020';
     x.beginPath();x.ellipse(pt.x,pt.y-3,9,4,0,0,7);x.fill();
+    x.fillStyle='#fff';x.fillRect(pt.x-6,pt.y-4,2,1);x.fillRect(pt.x+3,pt.y-3,2,1);
     const t=Math.floor(animT/110)%2;
     x.fillStyle=t?'#ffd000':'#ff6000';
     x.beginPath();x.moveTo(pt.x,pt.y-14);x.lineTo(pt.x+5,pt.y-6);x.lineTo(pt.x-5,pt.y-6);x.closePath();x.fill();
@@ -620,35 +676,53 @@ function draw(){
   }
   // martells
   for(const h of martells)if(!h.agafat){
-    x.fillStyle='#a0a0a0';x.fillRect(h.x-6,h.y,12,8);
     x.fillStyle='#8a5a2a';x.fillRect(h.x-1,h.y+8,2,10);
+    x.fillStyle='#b8b8c0';x.fillRect(h.x-6,h.y,12,8);
+    x.fillStyle='#e8e8f0';x.fillRect(h.x-6,h.y,12,2);
   }
-  // barril de foc i escala del gorila
   dibuixaGorila();
-  // Pauline
-  x.fillStyle='#ff5ce0';x.fillRect(pauline.x-6,pauline.y,12,16);
-  x.fillStyle='#f0d000';x.fillRect(pauline.x-6,pauline.y-8,12,8);
-  x.fillStyle='#fff';x.font='11px monospace';x.textAlign='center';
-  if(Math.floor(animT/500)%2)x.fillText('HELP!',pauline.x+2,pauline.y-14);
-  // botes
+  // la noia que espera a dalt de tot: vestit verd i cabells foscos
+  {const px=pauline.x,py=pauline.y,on=Math.floor(animT/500)%2;
+    x.fillStyle='#2a9a5a';x.beginPath();x.moveTo(px-7,py+16);x.lineTo(px+7,py+16);x.lineTo(px+4,py+2);x.lineTo(px-4,py+2);x.fill();
+    x.fillStyle='#e8a878';x.fillRect(px-3,py-7,7,7);x.fillRect(px-2,py+16,2,2);x.fillRect(px+1,py+16,2,2);
+    x.fillStyle='#3a1a0a';x.fillRect(px-4,py-9,9,3);x.fillRect(px-5,py-7,3,9);
+    x.fillStyle='#e8a878';x.fillRect(px+4,py+(on?-6:2),2,6);                // el braç que saluda
+    x.fillStyle='#fff';x.font='bold 11px monospace';x.textAlign='center';
+    if(on)x.fillText('AJUDA!',px+2,py-14);}
+  // botes: de fusta, amb cèrcols, que giren rodolant
   for(const b of botes){
-    x.fillStyle=b.foc?'#ff8020':'#c88a3a';
-    x.beginPath();x.ellipse(b.x,b.y,9,7,b.estat==='escala'?1.57:0,0,7);x.fill();
-    x.strokeStyle='#6a3a10';x.lineWidth=1.5;
-    x.beginPath();x.ellipse(b.x,b.y,9,7,b.estat==='escala'?1.57:0,0,7);x.stroke();
+    const dret=b.estat==='escala';
+    x.save();x.translate(b.x,b.y);
+    if(dret){
+      x.fillStyle=b.foc?'#4a7ad8':'#a0602a';x.beginPath();x.ellipse(0,0,9,7,0,0,7);x.fill();
+      x.strokeStyle=b.foc?'#2a4a9a':'#5a2a0a';x.lineWidth=1.5;x.beginPath();x.ellipse(0,0,9,7,0,0,7);x.stroke();
+      x.beginPath();x.ellipse(0,0,5,4,0,0,7);x.stroke();
+    }else{
+      x.fillStyle=b.foc?'#4a7ad8':'#b8742e';x.beginPath();x.ellipse(0,0,9,7,0,0,7);x.fill();
+      // les dogues giren segons cap on rodola
+      const a=(b.x*.25*(b.dir||1))%(Math.PI*2);x.strokeStyle=b.foc?'#2a4a9a':'#6a3a10';x.lineWidth=1.2;
+      for(let k=0;k<3;k++){const xx=Math.sin(a+k*2.09)*8;if(Math.cos(a+k*2.09)>0){x.beginPath();x.moveTo(xx,-6);x.lineTo(xx,6);x.stroke()}}
+      x.strokeStyle='#3a3a3a';x.lineWidth=2;x.beginPath();x.moveTo(-8,-3);x.lineTo(8,-3);x.moveTo(-8,3);x.lineTo(8,3);x.stroke();
+      x.strokeStyle=b.foc?'#2a4a9a':'#5a2a0a';x.lineWidth=1.5;x.beginPath();x.ellipse(0,0,9,7,0,0,7);x.stroke();
+    }
+    x.restore();
   }
-  // focs
+  // focs: una flama amb ulls i resplendor
   for(const f of focs){
     const t=Math.floor(animT/120)%2;
-    x.fillStyle=t?'#ffd000':'#ff6000';
-    x.beginPath();x.moveTo(f.x,f.y-18);x.lineTo(f.x+7,f.y-4);x.lineTo(f.x-7,f.y-4);x.closePath();x.fill();
+    x.fillStyle='rgba(255,140,0,.25)';x.beginPath();x.arc(f.x,f.y-9,12,0,7);x.fill();
+    x.fillStyle=t?'#ff6000':'#ff8a00';
+    x.beginPath();x.moveTo(f.x,f.y-(t?20:18));x.quadraticCurveTo(f.x+9,f.y-8,f.x+5,f.y-2);x.lineTo(f.x-5,f.y-2);x.quadraticCurveTo(f.x-9,f.y-8,f.x,f.y-(t?20:18));x.fill();
+    x.fillStyle='#ffe040';x.beginPath();x.ellipse(f.x,f.y-7,4,5,0,0,7);x.fill();
     x.fillStyle='#fff';x.fillRect(f.x-4,f.y-11,3,3);x.fillRect(f.x+1,f.y-11,3,3);
+    x.fillStyle='#000';x.fillRect(f.x-3,f.y-10,1.5,1.5);x.fillRect(f.x+2,f.y-10,1.5,1.5);
   }
   if(state!=='mor')dibuixaMario();
   else{
+    // el casc que roda i l'obrer estirat
     const px=mario.x,py=mario.y;
-    x.fillStyle='#e02020';x.save();x.translate(px,py-8);x.rotate(animT/120);
-    x.fillRect(-7,-8,14,16);x.restore();
+    x.fillStyle='#ff7a10';x.fillRect(px-9,py-6,16,6);x.fillStyle='#e8a878';x.fillRect(px+7,py-6,5,5);
+    x.save();x.translate(px-12,py-14);x.rotate(animT/120);x.fillStyle='#ffd020';x.fillRect(-6,-3,12,5);x.restore();
   }
   // alçada, com a la maquina
   x.fillStyle='#4ad8ff';x.font='12px monospace';x.textAlign='left';
