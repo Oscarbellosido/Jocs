@@ -123,9 +123,11 @@ la prova i el codi que recorda l'últim joc obert els compten.
 s'avisi d'alguna manera. La fitxa porta `data-nou="<data>"` (el dia que es
 va posar) i, mentre no l'hagis obert en aquest mòbil i no faci tres setmanes
 (`pintaNous`), hi surt un rètol vermell **NOU** i, a dalt de tot, abans
-d'ELS JOCS D'AVUI, un avís per anar-hi (`#novetats`, enllaços `a.nou-joc`,
-que no són `a.btn`). I el bot de Telegram ho diu al grup (`anunciaNous`, a
-sota). La prova de la portada ho mira amb el rellotge del navegador avançat.
+d'ELS JOCS D'AVUI, un avís que diu **JOC NOU!** i el nom, per anar-hi
+(`#novetats`, enllaços `a.nou-joc`, que no són `a.btn`). **A MÉS JUGATS
+van al davant de tot**: sense cap vegada, quedaven a sota de tot i no es
+veien (ho va dir en Carles). I el bot de Telegram ho diu al grup
+(`anunciaNous`, a sota). La prova de la portada ho mira amb el rellotge del navegador avançat.
 
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola

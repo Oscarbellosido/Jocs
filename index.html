@@ -164,8 +164,8 @@
   .novetats { width: calc(100% - 1.6rem); max-width: 430px; display: flex; flex-direction: column; gap: 0.35rem; }
   a.nou-joc {
     display: block; padding: 0.5rem 0.8rem; border: 1px solid #e0302a; border-radius: 10px;
-    background: #2a0c0a; color: #ffd0c8; font: bold 0.74rem monospace; letter-spacing: 0.05em;
-    text-decoration: none; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: #2a0c0a; color: #ffd0c8; font: bold 0.74rem monospace; letter-spacing: 0.02em;
+    text-decoration: none; text-align: left;
   }
   a.nou-joc b { color: #fff; background: #e0302a; border-radius: 3px; padding: 0 5px; margin-right: 0.4rem; }
   a.btn em .rec {
@@ -355,7 +355,7 @@ function pintaNous(){
     if(nou&&!r){r=document.createElement('i');r.className='nou';r.textContent='NOU';a.appendChild(r)}
     if(!nou&&r)r.remove();
     if(nou){const l=document.createElement('a');l.className='nou-joc';l.href=href;
-      l.innerHTML='<b>NOU</b>'+a.querySelector('span').textContent+' ▸';caixa.appendChild(l)}
+      l.innerHTML='<b>JOC NOU!</b>'+a.querySelector('span').textContent+' ▸';caixa.appendChild(l)}
   });
   caixa.hidden=!caixa.children.length;
 }
@@ -528,9 +528,12 @@ posaLiders();
     fitxes.forEach(a=>{const v=a.querySelector('.cops');if(v)v.remove()});
     if(ordre==='jugats'){
       const c=cops();
-      // els mes jugats primer
-      // (en empat, el que has obert mes recentment; i si no, per any)
-      fitxes.map((a,i)=>[a,c[idDe(a)].n,i,c[idDe(a)].t]).sort((x,y)=>y[1]-x[1]||y[3]-x[3]||x[2]-y[2]).forEach(([a,n])=>{
+      // els nous que encara no has obert, al davant de tot: si no, sense
+      // cap vegada, quedaven a sota de tot i no es veien (ho va dir en Carles);
+      // després els mes jugats (en empat, el que has obert mes recentment;
+      // i si no, per any)
+      const nou=a=>a.querySelector('.nou')?1:0;
+      fitxes.map((a,i)=>[a,c[idDe(a)].n,i,c[idDe(a)].t,nou(a)]).sort((x,y)=>y[4]-x[4]||y[1]-x[1]||y[3]-x[3]||x[2]-y[2]).forEach(([a,n])=>{
         caixa.appendChild(a);
         if(n){const v=document.createElement('i');v.className='cops';v.textContent=n+'×';a.querySelector('em').prepend(v)}
       });

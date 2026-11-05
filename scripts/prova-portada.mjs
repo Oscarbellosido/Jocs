@@ -188,6 +188,8 @@ for (const [w, h] of MIDES) {
     localStorage.clear();
     // el compte del primer dia (de la portada), un record d'abans i dos dies de trencaclosques desats
     localStorage.setItem('jocs-jugats', JSON.stringify({ colles: 3, pong: 1 }));
+    // els jocs nous, com si ja s'haguessin obert (si no, van al davant: es prova a part)
+    localStorage.setItem('jocs-obertes', JSON.stringify({ 'sopa.html': { n: 0, t: 0 }, 'tresor.html': { n: 0, t: 0 } }));
     localStorage.setItem('best_galaga', '3000'); localStorage.setItem('best_breakout', '50');
     localStorage.setItem('trencaclosques-2026-10-30', '{}'); localStorage.setItem('trencaclosques-2026-10-31', '{}');
   });
@@ -238,9 +240,16 @@ for (const [w, h] of MIDES) {
     scroll: document.documentElement.scrollWidth > innerWidth + 1, fitxes: document.querySelectorAll('a.btn').length,
   }));
   let m = await mira();
-  let be = m.nous === 'sopa.html,tresor.html' && m.avis === 'sopa.html,tresor.html' && m.dalt && !m.scroll && m.fitxes === ORDRE.length + MODERNS.length;
+  let be = m.nous === 'sopa.html,tresor.html' && m.avis === 'sopa.html,tresor.html' && m.dalt && !m.scroll && m.fitxes === ORDRE.length + MODERNS.length
+    && await p.evaluate(() => [...document.querySelectorAll('#novetats a.nou-joc')].every(a => /^JOC NOU!/.test(a.textContent) && a.scrollWidth <= a.clientWidth + 1));
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} JOCS NOUS: els dos d'avui porten el rètol NOU i surten a l'avís de dalt (${m.nous} / ${m.avis})`);
+  console.log(`${be ? '✓' : '✗'} JOCS NOUS: els dos d'avui porten el rètol NOU i a dalt de tot diu JOC NOU! (${m.nous} / ${m.avis})`);
+  await p.click('#ordre button[data-ordre="jugats"]');
+  const primers = await p.evaluate(() => [...document.querySelectorAll('#jugats a.btn')].slice(0, 2).map(a => a.getAttribute('href')).sort().join());
+  await p.click('#ordre button[data-ordre="any"]');
+  be = primers === 'sopa.html,tresor.html';
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} a MÉS JUGATS, els nous que no has obert van al davant de tot (${primers})`);
   await p.goto('file://' + resolve(ARREL, 'tresor.html')); await p.waitForTimeout(150);
   await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(200);
   m = await mira();
