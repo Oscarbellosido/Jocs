@@ -254,57 +254,106 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
+// Pujes del prat al cel i del cel a l'espai: a baix hi ha turons i núvols,
+// el cel es va tornant de posta i després de nit, i amunt de tot surten les
+// estrelles i algun planeta. Les plataformes són de gespa (les normals), de
+// metall amb un motoret (les que es mouen) i de fusta esquerdada (les que es
+// trenquen). Abans eren rectangles d'un color sobre un blau llis.
+const NUVOLS=Array.from({length:14},(_,i)=>({x:(i*137)%W,y:-i*260+120,r:16+(i*7)%14,v:.2+(i%3)*.12}));
+function nuvol(cx,cy,r,a){x.fillStyle='rgba(255,255,255,'+a+')';
+  for(const[dx,dy,k]of[[-r,4,.7],[0,0,1],[r,4,.75],[-r*.4,-r*.4,.7],[r*.5,-r*.3,.6]]){x.beginPath();x.arc(cx+dx,cy+dy,r*k,0,7);x.fill()}}
 function dibuixaPlat(p){
   if(p.trencada)return;         // ja no aguanta: no s'ha de veure
   const py=p.y-camera;
   if(py<-20||py>H+20)return;
-  let col='#4a9e4a', vora='#2f7030';
-  if(p.tipus===MOU){col='#4a86d0';vora='#2a5a96'}
-  if(p.tipus===TRENCA){col='#b06a3a';vora='#7a4520'}
-  const ample=p.ample||PLAT_W;
-  x.fillStyle=vora;x.fillRect(p.x,py,ample,PLAT_H);
-  x.fillStyle=col;x.fillRect(p.x,py,ample,PLAT_H-3);
-  if(p.tipus===TRENCA){
-    x.strokeStyle=vora;x.lineWidth=2;
-    x.beginPath();x.moveTo(p.x+ample/2,py);x.lineTo(p.x+ample/2-4,py+PLAT_H);x.stroke();
+  const ample=p.ample||PLAT_W,px=p.x;
+  if(p.tipus===NORMAL){
+    // un tros de prat: gespa a sobre i terra a sota, arrodonit
+    x.fillStyle='#7a4a2a';x.beginPath();x.moveTo(px+2,py+4);x.lineTo(px+ample-2,py+4);x.lineTo(px+ample-8,py+PLAT_H+4);x.lineTo(px+8,py+PLAT_H+4);x.fill();
+    x.fillStyle='#5a3418';x.fillRect(px+10,py+PLAT_H,ample-20,3);
+    x.fillStyle='#4ab84a';x.beginPath();x.roundRect(px,py,ample,7,4);x.fill();
+    x.fillStyle='#7ae07a';x.fillRect(px+3,py+1,ample-6,2);
+    x.fillStyle='#2e8a30';for(let i=4;i<ample-4;i+=7)x.fillRect(px+i,py+6,2,2+(i%3));
+  }else if(p.tipus===MOU){
+    // de metall, amb un motoret a sota que deixa una flama blava
+    x.fillStyle='#3a6ab0';x.beginPath();x.roundRect(px,py,ample,PLAT_H-2,3);x.fill();
+    x.fillStyle='#8ac0ff';x.fillRect(px+3,py+2,ample-6,2);
+    x.fillStyle='#24467a';for(let i=8;i<ample-6;i+=12)x.fillRect(px+i,py+5,2,2);
+    x.fillStyle='#555';x.fillRect(px+ample/2-6,py+PLAT_H-2,12,4);
+    const f=3+Math.sin(performance.now()/60+p.id)*2;
+    x.fillStyle='rgba(120,200,255,.8)';x.beginPath();x.moveTo(px+ample/2-4,py+PLAT_H+2);x.lineTo(px+ample/2,py+PLAT_H+6+f);x.lineTo(px+ample/2+4,py+PLAT_H+2);x.fill();
+  }else{
+    // fusta esquerdada: ja es veu que no aguantarà
+    x.fillStyle='#a0682e';x.fillRect(px,py,ample,PLAT_H-3);
+    x.fillStyle='#c08848';x.fillRect(px,py,ample,2);
+    x.fillStyle='#6a4018';for(let i=14;i<ample;i+=16)x.fillRect(px+i,py,1.5,PLAT_H-3);
+    x.strokeStyle='#3a2008';x.lineWidth=1.5;
+    x.beginPath();x.moveTo(px+ample/2+2,py);x.lineTo(px+ample/2-3,py+4);x.lineTo(px+ample/2+1,py+PLAT_H-3);x.stroke();
   }
   if(p.molla){
-    x.fillStyle='#ffd000';
-    x.fillRect(p.x+ample/2-7,py-8,14,8);
-    x.fillStyle='#8a6a00';
-    x.fillRect(p.x+ample/2-6,py-6,12,2);
-    x.fillRect(p.x+ample/2-6,py-3,12,2);
+    // una molla de debò
+    const mx=px+ample/2;
+    x.fillStyle='#888';x.fillRect(mx-8,py-2,16,3);
+    x.strokeStyle='#d8d8e0';x.lineWidth=2;x.beginPath();
+    for(let k=0;k<=4;k++){const yy=py-3-k*2.2;x.lineTo(mx+(k%2?6:-6),yy)}x.stroke();
+    x.fillStyle='#ff4040';x.fillRect(mx-8,py-14,16,3);
   }
 }
 function dibuixaJugador(){
-  const px=jug.x, py=jug.y-camera;
-  // cos
-  x.fillStyle='#ffd45e';
-  x.fillRect(px+3,py+6,JUG_W-6,JUG_H-10);
-  x.fillStyle='#ffe9a8';
-  x.fillRect(px+5,py+8,JUG_W-10,6);
-  // potes, plegades si puja
-  x.fillStyle='#e0a020';
-  if(jug.vy<0){x.fillRect(px+4,py+JUG_H-5,7,4);x.fillRect(px+JUG_W-11,py+JUG_H-5,7,4)}
-  else{x.fillRect(px+3,py+JUG_H-4,7,5);x.fillRect(px+JUG_W-10,py+JUG_H-4,7,5)}
-  // ulls, mirant cap on vas
-  x.fillStyle='#000';
-  const o=jug.mirant>0?3:-3;
-  x.fillRect(px+7+o,py+9,3,4);
-  x.fillRect(px+JUG_W-11+o,py+9,3,4);
+  const px=jug.x+JUG_W/2, py=jug.y-camera+JUG_H;
+  // s'estira quan puja de pressa i s'aixafa quan cau
+  const e=Math.max(-.18,Math.min(.18,-jug.vy*.016));
+  const ample=JUG_W*(1-e*.6),alt=JUG_H*(1+e);
+  const cy=py-alt/2-3,o=jug.mirant>0?1:-1;
+  // les potes
+  x.fillStyle='#e07a20';
+  if(jug.vy<0){x.fillRect(px-8,py-6,6,5);x.fillRect(px+2,py-6,6,5)}
+  else{x.fillRect(px-9,py-5,7,5);x.fillRect(px+2,py-5,7,5)}
+  // el cos, rodó, amb una panxa més clara
+  x.fillStyle='#ffc23a';x.beginPath();x.ellipse(px,cy,ample/2,alt/2-1,0,0,7);x.fill();
+  x.fillStyle='#ffe28a';x.beginPath();x.ellipse(px+o*2,cy+4,ample/3.2,alt/4,0,0,7);x.fill();
+  // l'antena
+  x.strokeStyle='#e07a20';x.lineWidth=2;x.beginPath();x.moveTo(px,cy-alt/2+1);x.quadraticCurveTo(px-o*4,cy-alt/2-6,px-o*2,cy-alt/2-10);x.stroke();
+  x.fillStyle='#ff4a6a';x.beginPath();x.arc(px-o*2,cy-alt/2-10,3,0,7);x.fill();
+  // els ulls, mirant cap on vas
+  for(const k of[-1,1]){const ex=px+k*5+o*2,ey=cy-4;
+    x.fillStyle='#fff';x.beginPath();x.ellipse(ex,ey,4,5,0,0,7);x.fill();
+    x.fillStyle='#1a1a2a';x.beginPath();x.arc(ex+o*1.5,ey+(jug.vy>0?1.5:-1),2.2,0,7);x.fill()}
+  // la boca: contenta pujant, un o quan cau
+  x.fillStyle='#8a3a10';
+  if(jug.vy<0){x.beginPath();x.arc(px+o*2,cy+5,3,0,Math.PI);x.fill()}
+  else{x.beginPath();x.arc(px+o*2,cy+6,2,0,7);x.fill()}
 }
 function draw(){
-  // cel, més fosc com més amunt
-  const alt=Math.min(1,score/2500);
+  // el cel: de dia a baix, de posta més amunt, i de nit a dalt de tot
+  const alt=Math.min(1,score/2500),ara=performance.now();
+  const mix=(a,b,k)=>a.map((v,i)=>Math.round(v+(b[i]-v)*k));
+  const DIA=[[90,170,240],[180,225,255]],POSTA=[[60,60,140],[255,150,110]],NIT=[[5,8,31],[30,30,80]];
+  const fase=alt<.5?alt/.5:(alt-.5)/.5,[a0,a1]=alt<.5?[DIA,POSTA]:[POSTA,NIT];
+  const dalt=mix(a0[0],a1[0],fase),baix=mix(a0[1],a1[1],fase);
   const g=x.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#05081f');
-  g.addColorStop(1,`rgb(${Math.round(20+40*(1-alt))},${Math.round(30+50*(1-alt))},${Math.round(70+60*(1-alt))})`);
+  g.addColorStop(0,'rgb('+dalt+')');g.addColorStop(1,'rgb('+baix+')');
   x.fillStyle=g;x.fillRect(0,0,W,H);
-  // estrelles, lligades a l'alçada perquè sembli que puges
-  x.fillStyle='rgba(255,255,255,.55)';
-  for(let i=0;i<40;i++){
-    const ex=(i*97)%W, ey=((i*163)-camera*0.25)%H;
-    x.fillRect(ex,(ey+H)%H,2,2);
+  // les estrelles van sortint a mesura que es fa fosc
+  if(alt>.35){x.fillStyle='rgba(255,255,255,'+Math.min(.8,(alt-.35)*1.6)+')';
+    for(let i=0;i<60;i++){const ex=(i*97)%W, ey=((i*163)-camera*0.25)%H;x.fillRect(ex,(ey+H)%H,i%5?1:2,i%5?1:2)}}
+  // un planeta amb anell, molt amunt
+  if(alt>.7){const pa=(alt-.7)/.3,py=((-camera*.05)%900+900)%900-150;
+    x.globalAlpha=pa;x.fillStyle='#c87a5a';x.beginPath();x.arc(270,py,26,0,7);x.fill();
+    x.fillStyle='#e8a07a';x.beginPath();x.arc(262,py-6,12,0,7);x.fill();
+    x.strokeStyle='#f0d0a0';x.lineWidth=3;x.beginPath();x.ellipse(270,py,44,9,-.3,0,7);x.stroke();x.globalAlpha=1}
+  // els núvols, que es van fent transparents quan s'enfosqueix
+  if(alt<.8)for(const n of NUVOLS){const ny=((n.y-camera*n.v)%1400+1400)%1400-200;const nx=((n.x+ara*.004*n.r)%(W+80)+W+80)%(W+80)-40;
+    nuvol(nx,ny,n.r,.75*(1-alt/.8))}
+  // els turons d'on surts, que queden avall
+  const terra=H-50-camera*.6;
+  if(terra<H+60){
+    x.fillStyle='#3a8a4a';x.beginPath();x.moveTo(0,H);
+    for(let i=0;i<=12;i++)x.lineTo(i*W/12,terra+Math.sin(i*1.3)*14);
+    x.lineTo(W,H);x.fill();
+    x.fillStyle='#2a6a3a';x.beginPath();x.moveTo(0,H);
+    for(let i=0;i<=12;i++)x.lineTo(i*W/12,terra+30+Math.cos(i*1.7)*10);
+    x.lineTo(W,H);x.fill();
   }
 
   for(const p of plats)dibuixaPlat(p);
@@ -313,15 +362,16 @@ function draw(){
     if(m.agafada)continue;
     const py=m.y-camera;
     if(py<-20||py>H+20)continue;
-    x.fillStyle='#ffd000';
-    x.beginPath();x.arc(m.x,py,8,0,6.2832);x.fill();
-    x.fillStyle='#a88400';
-    x.beginPath();x.arc(m.x,py,4,0,6.2832);x.fill();
+    // la moneda gira
+    const gir=Math.abs(Math.cos(ara/220+m.x));
+    x.fillStyle='#c89000';x.beginPath();x.ellipse(m.x,py,8*gir+1,8,0,0,7);x.fill();
+    x.fillStyle='#ffd84a';x.beginPath();x.ellipse(m.x,py,6.5*gir+.5,6.5,0,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.7)';x.fillRect(m.x-2*gir,py-4,1.5,3);
   }
 
   for(const b of bocins){
     x.globalAlpha=Math.max(0,b.t);
-    x.fillStyle='#b06a3a';x.fillRect(b.x,b.y-camera,6,4);
+    x.fillStyle='#a0682e';x.fillRect(b.x,b.y-camera,6,4);
   }
   x.globalAlpha=1;
 
@@ -331,10 +381,10 @@ function draw(){
   if(bestScore>0&&score<bestScore){
     const py=(H-60-JUG_H)-bestScore*10-camera;
     if(py>0&&py<H){
-      x.strokeStyle='rgba(255,208,0,.55)';x.lineWidth=1;x.setLineDash([6,6]);
+      x.strokeStyle='rgba(255,208,0,.75)';x.lineWidth=1;x.setLineDash([6,6]);
       x.beginPath();x.moveTo(0,py);x.lineTo(W,py);x.stroke();x.setLineDash([]);
-      x.fillStyle='#ffd000';x.font='10px monospace';
-      x.fillText('el teu rècord: '+bestScore,8,py-4);
+      x.font='10px monospace';x.fillStyle='rgba(0,0,0,.6)';x.fillText('el teu rècord: '+bestScore,9,py-3);
+      x.fillStyle='#ffd000';x.fillText('el teu rècord: '+bestScore,8,py-4);
     }
   }
 
