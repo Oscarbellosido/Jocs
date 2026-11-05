@@ -188,6 +188,10 @@ colors perquè les màquines eren així.
 - **El Cuc**: les parets són tubs que s'enganxen amb les del costat, d'un
   color per laberint (`COLORS_LAB`); el menjar batega; i la serp és un cos
   seguit que s'aprima cap a la cua, amb ulls, llengua i taques.
+- **Els Míssils**: de nit amb estrelles, turons sota les bateries
+  (`TURONS`), ciutats amb gratacels i finestres (i fum quan cauen), coets en
+  piràmide a les sitges, estels enemics que s'esvaeixen per darrere i
+  explosions que fan llum. Els coets surten d'on sortien (`GROUND-8`).
 
 ## L'Atletisme: com es dibuixa
 
