@@ -185,6 +185,9 @@ colors perquè les màquines eren així.
   asfalt amb ratlles grogues i vehicles amb vidres, rodes i llums
   (`drawVehicle`, que mira cap on va el carril). La granota mira cap on
   salta (`frog.ang`) i estira les potes.
+- **El Cuc**: les parets són tubs que s'enganxen amb les del costat, d'un
+  color per laberint (`COLORS_LAB`); el menjar batega; i la serp és un cos
+  seguit que s'aprima cap a la cua, amb ulls, llengua i taques.
 
 ## L'Atletisme: com es dibuixa
 

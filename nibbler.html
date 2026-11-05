@@ -320,8 +320,16 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
+// Les parets són tubs que s'uneixen amb les del costat, d'un color diferent a
+// cada laberint; el menjar fa llum; i la serp és un cos seguit que s'aprima
+// cap a la cua, amb ulls que miren cap on va i una llengua que surt i entra.
+// Abans eren quadrats separats.
+const COLORS_LAB=[['#1b3a8a','#3a6ae0'],['#6a1a7a','#c04ae0'],['#0a6a5a','#2ad0a8'],['#8a3a10','#f08a30'],['#7a1a2a','#f04a6a']];
 function draw(){
-  x.fillStyle='#000';x.fillRect(0,0,W,H);
+  const ara=performance.now(),[fosc,clar]=COLORS_LAB[(nivell-1)%COLORS_LAB.length];
+  x.fillStyle='#04050c';x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(255,255,255,.025)';
+  for(let f=0;f<FILES;f++)for(let co=(f%2);co<COLS;co+=2)x.fillRect(co*CELA,DALT+f*CELA,CELA,CELA);
 
   // la franja de dalt
   x.fillStyle='#ffd000';x.font='bold 12px monospace';x.textAlign='left';
@@ -330,45 +338,65 @@ function draw(){
   x.fillStyle=bonus<400?'#ff5050':'#8fd0ff';
   x.fillText('BONUS '+Math.round(bonus),W-8,16);
   x.textAlign='left';
-  // les vides que et queden, dibuixades
+  // les vides que et queden, dibuixades com caps de serp
   for(let i=0;i<vides;i++){
-    x.fillStyle='#6fe36f';
-    x.fillRect(8+i*14,24,10,10);
-    x.fillStyle='#000';x.fillRect(12+i*14,26,2,2);
+    x.fillStyle='#6fe36f';x.beginPath();x.arc(13+i*14,29,5,0,7);x.fill();
+    x.fillStyle='#000';x.fillRect(14+i*14,26,2,2);
   }
 
-  // el laberint
+  // el laberint: cada paret s'enganxa amb les del costat
+  const es=(f,co)=>mapa[f]&&mapa[f][co]==='#';
+  const M=4;
   for(let f=0;f<FILES;f++){
     for(let co=0;co<COLS;co++){
       const ce=mapa[f]&&mapa[f][co];
       const px=co*CELA, py=DALT+f*CELA;
       if(ce==='#'){
-        x.fillStyle='#1b3a8a';x.fillRect(px+1,py+1,CELA-2,CELA-2);
-        x.fillStyle='#2f55bb';x.fillRect(px+1,py+1,CELA-2,3);
+        for(const[col,m]of[[fosc,M],[clar,M+3]]){
+          x.fillStyle=col;
+          x.fillRect(px+m,py+m,CELA-2*m,CELA-2*m);
+          if(es(f,co-1))x.fillRect(px,py+m,m+1,CELA-2*m);
+          if(es(f,co+1))x.fillRect(px+CELA-m-1,py+m,m+1,CELA-2*m);
+          if(es(f-1,co))x.fillRect(px+m,py,CELA-2*m,m+1);
+          if(es(f+1,co))x.fillRect(px+m,py+CELA-m-1,CELA-2*m,m+1);
+        }
       } else if(ce==='.'){
-        x.fillStyle='#ffd000';
-        x.fillRect(px+CELA/2-2,py+CELA/2-2,4,4);
+        // el menjar: una perla que batega
+        const b=1+Math.sin(ara/250+co+f)*.25,cx=px+CELA/2,cy=py+CELA/2;
+        x.fillStyle='rgba(255,210,0,.18)';x.beginPath();x.arc(cx,cy,6*b,0,7);x.fill();
+        x.fillStyle='#ffd000';x.beginPath();x.arc(cx,cy,2.6*b,0,7);x.fill();
+        x.fillStyle='#fff8c0';x.fillRect(cx-1.5,cy-1.5,1.5,1.5);
       }
     }
   }
 
-  // la serp
-  for(let i=serp.length-1;i>=0;i--){
-    const s=serp[i];
-    const px=s.x*CELA, py=DALT+s.y*CELA;
-    if(i===0){
-      x.fillStyle=state==='mort'?'#ff5050':'#9dff6a';
-      x.fillRect(px+1,py+1,CELA-2,CELA-2);
-      // els ulls, mirant cap on va
-      x.fillStyle='#000';
-      const ex=dir.x*4, ey=dir.y*4;
-      x.fillRect(px+CELA/2-4+ex-1,py+CELA/2-4+ey,3,3);
-      x.fillRect(px+CELA/2+2+ex-1,py+CELA/2+2+ey,3,3);
-    } else {
-      // el cos, a bandes, que es vegi com de llarga s'ha fet
-      x.fillStyle=i%2?'#3fa83f':'#57c957';
-      x.fillRect(px+2,py+2,CELA-4,CELA-4);
-    }
+  // la serp: un cos seguit que s'aprima cap a la cua
+  const mort=state==='mort',n=serp.length;
+  const centre=s=>[s.x*CELA+CELA/2,DALT+s.y*CELA+CELA/2];
+  x.lineCap='round';x.lineJoin='round';
+  for(let i=n-1;i>0;i--){
+    const[a,b]=[centre(serp[i]),centre(serp[i-1])];
+    if(Math.abs(a[0]-b[0])>CELA*1.5||Math.abs(a[1]-b[1])>CELA*1.5)continue;      // per si dona la volta
+    const w=8+8*(1-i/Math.max(1,n));
+    x.strokeStyle=mort?'#8a3030':'#2a8a2a';x.lineWidth=w+3;x.beginPath();x.moveTo(...a);x.lineTo(...b);x.stroke();
+    x.strokeStyle=mort?'#c05050':(i%3===0?'#7ae04a':'#57c957');x.lineWidth=w;x.beginPath();x.moveTo(...a);x.lineTo(...b);x.stroke();
+  }
+  // les taques del llom
+  for(let i=1;i<n;i+=2){const[cx,cy]=centre(serp[i]);x.fillStyle=mort?'#a04040':'#3a9a2a';x.beginPath();x.arc(cx,cy,2,0,7);x.fill()}
+  // el cap
+  if(n){
+    const[hx,hy]=centre(serp[0]);
+    // la llengua, que surt i entra
+    if(!mort&&Math.floor(ara/180)%3===0){x.strokeStyle='#ff3050';x.lineWidth=1.5;x.beginPath();x.moveTo(hx+dir.x*8,hy+dir.y*8);x.lineTo(hx+dir.x*14,hy+dir.y*14);
+      x.lineTo(hx+dir.x*16+dir.y*3,hy+dir.y*16+dir.x*3);x.moveTo(hx+dir.x*14,hy+dir.y*14);x.lineTo(hx+dir.x*16-dir.y*3,hy+dir.y*16-dir.x*3);x.stroke()}
+    x.fillStyle=mort?'#ff5050':'#9dff6a';x.beginPath();x.arc(hx,hy,CELA/2-.5,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.3)';x.beginPath();x.arc(hx-3,hy-3,3,0,7);x.fill();
+    // els ulls, mirant cap on va
+    const px=-dir.y,py=dir.x;
+    for(const s of[-1,1]){const ex=hx+dir.x*3+px*s*4,ey=hy+dir.y*3+py*s*4;
+      x.fillStyle='#fff';x.beginPath();x.arc(ex,ey,3,0,7);x.fill();
+      x.fillStyle='#000';x.beginPath();x.arc(ex+dir.x*1.2,ey+dir.y*1.2,1.6,0,7);x.fill()}
+    if(mort){x.strokeStyle='#000';x.lineWidth=1.5;for(const s of[-1,1]){const ex=hx+px*s*4,ey=hy+py*s*4;x.beginPath();x.moveTo(ex-2,ey-2);x.lineTo(ex+2,ey+2);x.moveTo(ex+2,ey-2);x.lineTo(ex-2,ey+2);x.stroke()}}
   }
 
   if(titolT>0&&state==='play'){
