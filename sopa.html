@@ -422,7 +422,7 @@ function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';brut=tru
 document.addEventListener('visibilitychange',()=>{if(document.hidden){desaP();if(jugant())posaPausa(true)}});
 addEventListener('pagehide',desaP);
 document.addEventListener('contextmenu',e=>e.preventDefault());
-document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}});
+document.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;aInit();if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}});
 $('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
 $('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
 

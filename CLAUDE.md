@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i divuit que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i dinou que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,7 +53,7 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I divuit que no són de saló
+### I dinou que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -75,6 +75,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `colles.html` | Les Quatre Colles (de l'estil del *Connections*) | 2026 |
 | `trencaclosques.html` | El Trencaclosques (el de tota la vida, també amb les teves fotos) | 2026 |
 | `poble.html` | El Poble del Dia (de l'estil del *Worldle*, amb els municipis) | 2026 |
+| `tresor.html` | El Tresor dels Templers (aventura de trencaclosques per Catalunya) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -877,6 +878,45 @@ no repeteixi paraules, i que es jugui tocant: encertar, fallar, passar, el
 rellotge, la pausa, desar i continuar, i les dues taules. I el mateix amb la
 difícil: les seves definicions, el compte de lletres, que es reprengui on
 era i que vagi a la seva taula.
+
+## El Tresor dels Templers: deu proves per Catalunya
+
+En Carles en va fer un de jove, amb el nom d'una pel·lícula d'aventures,
+que anava de passar pantalla **sense res d'acció**: a cada pantalla havies
+de descobrir o fer alguna cosa. Va demanar la mateixa idea, i que fos
+**de Catalunya**. És nostre: la llegenda diu que els templers van amagar un
+tresor quan el rei els va fer fora del castell de Miravet (1308), i l'avi
+Ramon, excursionista, el va buscar tota la vida.
+
+- **Deu proves, deu llocs** (`SALES`): Montserrat (tres rodes, i els
+  dibuixos amagats darrere l'heura), l'Ebre (corda + garfi per estirar la
+  barca del pas), el refugi del Pirineu (el diari diu la combinació del
+  cofre: ocells, ampolles i estrelles, 3-2-5), la cova de les pintures (a
+  les fosques, amb la llum de la llàntia; palanques per ordre de punts), el
+  mercat de Vic (la balança: la llonganissa pesa 7 i hi ha un pes d'1
+  soldat), Poblet (miralls que porten el raig de sol al disc), el campanar
+  (la cotorra, si li dones una nespra, canta la cançó de les campanes),
+  Tàrraco (VII + VIII en números romans: XV), la casa modernista (només les
+  rajoles de la rosa aguanten) i el castell de Miravet (el segell dels
+  templers, en quatre trossos que s'han de posar i girar).
+- **Tot es fa tocant.** Tocar una cosa la mira o l'agafa. A la **motxilla**
+  (sis caselles a sota), un toc agafa l'objecte i el següent toc a l'escena
+  el fa servir; tocant-lo dues vegades es mira (o es llegeix: el diari i el
+  pergamí); tocant-ne un i després un altre, s'ajunten (`COMBINA`).
+- **Els quatre trossos del segell surten en resoldre** la cova, Poblet,
+  Tàrraco i les rajoles: mai no cal tornar enrere a buscar res.
+- **Cap prova no es pot quedar sense sortida**: tot el que s'equivoca torna
+  a començar (les palanques pugen, el número s'esborra, la rajola et torna
+  a l'entrada), i res no es gasta abans d'hora.
+- **💡 PISTA**: tres per prova, cada vegada més clares (l'última diu la
+  solució). Cada una nova treu 30 punts dels 100 de la prova (com a mínim
+  en queden 10). En acabar, fins a 600 punts més pel temps (600 menys els
+  segons partits per 6): màxim 1.600. Taula `tresor`.
+- El rellotge només corre jugant. **Es desa a cada toc** (`tresor-partida`),
+  i el menú ofereix CONTINUA. Tornar a començar és petit i pregunta.
+- Les coses que es poden tocar són rectangles (`obj`, o una funció quan es
+  mouen, com els pesos de la balança). Les proves fan servir els mateixos
+  rectangles: `scripts/prova-tresor.mjs` la juga sencera tocant la pantalla.
 
 ## La Sopa de Lletres: deu paraules amagades
 
@@ -1956,6 +1996,10 @@ comproven el comportament.
   igual per a tothom, que mai no surti la mateixa escena dos dies seguits,
   que les peces encaixin, i que es jugui arrossegant amb
   el dit: safata, taula, vores, desar, acabar-lo i fer-ne un amb una foto.
+- `node scripts/prova-tresor.mjs` — que El Tresor dels Templers es pugui
+  jugar sencer amb el dit, que cap prova es passi abans d'hora ni amb
+  equivocacions, la motxilla, les pistes, desar i continuar, els punts a la
+  taula i que hi capiga a 320 px.
 - `node scripts/prova-sopa.mjs` — que totes les sopes de tots els temes
   surtin amb deu paraules i cadascuna una sola vegada, que la del dia sigui
   igual per a tothom i no repeteixi tema, i que es jugui amb el dit: lliscant,

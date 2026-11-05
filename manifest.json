@@ -1,7 +1,7 @@
 {
   "name": "Jocs Clàssics",
   "short_name": "Jocs",
-  "description": "Vint-i-tres jocs dels salons recreatius: les Raquetes, el Trencamaons, els Invasors, l'Allunatge, l'Esquadra, les Roques de l'Espai, el Comecocos, els Míssils, l'Escalador, els Tancs, l'Escorta, el Centpeus, la Granota, el Goril·la, l'Eixam, el Túnel, l'Excavador, el Totterreny, el Cuc, la Cursa, la Piràmide, l'Atletisme i els Blocs. I divuit de fora dels salons: la Botifarra, la Sopa de Lletres, el Xifres, El Temple, l'Amunt, les Boles, el Síndria, la Balança, el Ram, el Garbuix, La Gofra, La Impremta, La Rotllana, L'Abecedari, La Conquesta, Les Quatre Colles, El Trencaclosques i El Poble del Dia",
+  "description": "Vint-i-tres jocs dels salons recreatius: les Raquetes, el Trencamaons, els Invasors, l'Allunatge, l'Esquadra, les Roques de l'Espai, el Comecocos, els Míssils, l'Escalador, els Tancs, l'Escorta, el Centpeus, la Granota, el Goril·la, l'Eixam, el Túnel, l'Excavador, el Totterreny, el Cuc, la Cursa, la Piràmide, l'Atletisme i els Blocs. I dinou de fora dels salons: la Botifarra, la Sopa de Lletres, el Xifres, El Temple, l'Amunt, les Boles, el Síndria, la Balança, el Ram, el Garbuix, La Gofra, La Impremta, La Rotllana, L'Abecedari, La Conquesta, Les Quatre Colles, El Trencaclosques, El Poble del Dia i El Tresor dels Templers",
   "start_url": "/Jocs/",
   "display": "standalone",
   "background_color": "#0b0e1a",

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>El Tresor dels Templers</title>
+<style>
+html,body{margin:0;height:100%;background:#10160f;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#sala{flex:none;font:bold 14px monospace;letter-spacing:.12em;color:#f0c860;padding:1px 0 4px;text-align:center;max-width:96%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen{flex:1 1 0;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#c{touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+#text{flex:none;width:94%;height:calc(5.2em + 12px);overflow-y:auto;font-size:12px;line-height:1.3;color:#ece4c8;background:#1b2418;border:1px solid #34432c;border-radius:8px;padding:6px 8px;box-sizing:border-box;margin-top:5px}
+#text b{color:#f0c860}
+#inv{flex:none;margin-top:5px;touch-action:none;user-select:none;-webkit-user-select:none}
+#controls{flex:none;display:flex;gap:8px;margin-top:5px;width:94%;justify-content:space-between}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:40px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#menu{width:30%;font-size:12px;color:#b8d0a8;border-color:#34432c;background:#18221a}
+#pista{width:46%;color:#f0c860;background:#2e2408;border-color:#7a5c18}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.45;display:none;background:rgba(14,20,12,.97);border:1px solid #4a5a3a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:270px}
+#msg .paper{background:#e9dcb4;color:#3a2a12;font:italic 15px/1.5 Georgia,serif;text-align:left;padding:14px 16px;border-radius:4px;box-shadow:inset 0 0 30px rgba(120,80,20,.35)}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(16,22,15,.96);font-size:22px;letter-spacing:.2em;color:#e8f0e0;z-index:3}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PROVA <b id="nsala">1/10</b></span><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="sala"></div>
+  <div id="screen"><canvas id="c"></canvas><div id="pausa">PAUSA</div></div>
+  <div id="text"></div>
+  <canvas id="inv"></canvas>
+  <div id="controls"><button id="menu">MENÚ</button><button id="pista">💡 PISTA (−30)</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Passa les deu proves i troba el tresor dels templers.</b> toca les coses per mirar-les i agafar-les; toca un objecte de la motxilla i després on el vols fer servir · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+// EL TRESOR DELS TEMPLERS: deu llocs de Catalunya, de Montserrat al castell
+// de Miravet. Cap no es passa corrent ni saltant: a cada un hi ha alguna
+// cosa per descobrir o un enigma per resoldre. Tot es fa tocant: les coses de l'escena, i els objectes de la
+// motxilla (un toc l'agafa, un altre toc on el vols fer servir).
+
+const W=360,H=270,JOC='tresor',CLAU='tresor-partida';
+const $=id=>document.getElementById(id);
+const CV=$('c'),IV=$('inv'),gc=CV.getContext('2d'),gi=IV.getContext('2d');
+let g=gc,K=1,DPR=1,IS=44;
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}
+}
+function tone(f,d,type='sine',vol=.2,slide=0,del=0){
+  if(!AC)return;const t=AC.currentTime+del,o=AC.createOscillator(),gg=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  gg.gain.setValueAtTime(vol,t);gg.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(gg);gg.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+function soroll(d,vol,fc){
+  if(!AC)return;const n=Math.floor(AC.sampleRate*d),b=AC.createBuffer(1,n,AC.sampleRate),x=b.getChannelData(0);
+  for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);
+  const s=AC.createBufferSource();s.buffer=b;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=fc;
+  const gg=AC.createGain();gg.gain.value=vol;s.connect(f);f.connect(gg);gg.connect(MG);s.start();
+}
+const NOTES=[262,330,392,523];
+const so={
+  toc(){aInit();tone(520,.05,'triangle',.08)},
+  agafa(){aInit();tone(660,.08,'triangle',.15);tone(990,.14,'triangle',.15,0,.08)},
+  no(){aInit();tone(160,.2,'square',.08,-50)},
+  roda(){aInit();tone(140,.08,'square',.05,40);soroll(.12,.15,700)},
+  obre(){aInit();soroll(1.3,.4,320);tone(70,1.1,'sawtooth',.08,-20)},
+  campana(k){aInit();const f=NOTES[k];tone(f,1.5,'sine',.22);tone(f*2.76,.6,'sine',.05);tone(f*5.4,.3,'sine',.03)},
+  xiula(k){aInit();const f=NOTES[k]*2;tone(f,.3,'sine',.14,f*.06)},
+  pista(){aInit();tone(523,.2,'sine',.15,260)},
+  crac(){aInit();soroll(.45,.45,900);tone(90,.4,'sawtooth',.1,-40)},
+  fi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>tone(f,.32,'triangle',.2,0,i*.12))},
+};
+
+// ===== EINES DE DIBUIX =====
+const PI=Math.PI;
+const rr=i=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)};
+function R(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h)}
+function C(x,y,r,c){g.fillStyle=c;g.beginPath();g.arc(x,y,Math.max(0,r),0,PI*2);g.fill()}
+function E(x,y,rx,ry,c,a=0){g.fillStyle=c;g.beginPath();g.ellipse(x,y,Math.max(0,rx),Math.max(0,ry),a,0,PI*2);g.fill()}
+function P(c,...p){g.fillStyle=c;g.beginPath();g.moveTo(p[0],p[1]);for(let i=2;i<p.length;i+=2)g.lineTo(p[i],p[i+1]);g.closePath();g.fill()}
+function Ln(c,w,...p){g.strokeStyle=c;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';g.beginPath();g.moveTo(p[0],p[1]);for(let i=2;i<p.length;i+=2)g.lineTo(p[i],p[i+1]);g.stroke()}
+function RR(x,y,w,h,r,c){g.fillStyle=c;g.beginPath();if(g.roundRect)g.roundRect(x,y,w,h,r);else g.rect(x,y,w,h);g.fill()}
+function lg(x0,y0,x1,y1,...st){const gr=g.createLinearGradient(x0,y0,x1,y1);for(let i=0;i<st.length;i+=2)gr.addColorStop(st[i],st[i+1]);return gr}
+function cel(a,b,h=H){g.fillStyle=lg(0,0,0,h,0,a,1,b);g.fillRect(0,0,W,h)}
+function txt(t,x,y,size,c,al='center'){g.fillStyle=c;g.font='bold '+size+'px monospace';g.textAlign=al;g.textBaseline='middle';g.fillText(t,x,y)}
+// una paret de carreus
+function pedres(x,y,w,h,base,linia,bh=16,bw=30){
+  g.save();g.beginPath();g.rect(x,y,w,h);g.clip();R(x,y,w,h,base);
+  let i=0;
+  for(let yy=y,row=0;yy<y+h;yy+=bh,row++){
+    const off=(row%2)*bw/2;
+    for(let xx=x-off;xx<x+w;xx+=bw,i++){
+      g.fillStyle='rgba(0,0,0,'+(rr(i+row*7)*.14)+')';g.fillRect(xx+1,yy+1,bw-2,bh-2);
+      g.fillStyle='rgba(255,255,255,.07)';g.fillRect(xx+1,yy+1,bw-2,2);
+      g.fillStyle=linia;g.fillRect(xx,yy,1.5,bh);
+    }
+    g.fillStyle=linia;g.fillRect(x,yy,w,1.5);
+  }
+  g.restore();
+}
+function fulla(x,y,l,a,c){g.save();g.translate(x,y);g.rotate(a);g.fillStyle=c;g.beginPath();g.ellipse(l/2,0,l/2,l/5,0,0,PI*2);g.fill();
+  g.strokeStyle='rgba(0,0,0,.2)';g.lineWidth=.8;g.beginPath();g.moveTo(0,0);g.lineTo(l,0);g.stroke();g.restore()}
+function mata(x,y,r,s,cols=['#2f6b34','#3f8a42','#245a2a','#4d9a4a']){
+  for(let k=0;k<16;k++){const a=rr(s*31+k)*PI*2,d=rr(s*17+k*3)*r*.55;fulla(x+Math.cos(a)*d,y+Math.sin(a)*d*.8,r*.7,a,cols[k%cols.length])}
+}
+function lianes(x,y,w,h,t){
+  for(let i=0;i<11;i++){
+    const lx=x+i*w/10,ll=h*(.7+.3*rr(i+50)),sw=Math.sin(t*.8+i)*2;
+    g.strokeStyle=i%2?'#2e5a26':'#3d7030';g.lineWidth=2.4;g.beginPath();g.moveTo(lx,y);
+    for(let k=1;k<=10;k++)g.lineTo(lx+Math.sin(k*.9+i)*5+sw*k/10,y+ll*k/10);g.stroke();
+    for(let k=1;k<9;k++)fulla(lx+Math.sin(k*.9+i)*5+sw*k/10,y+ll*k/9,11,k%2?.6:PI-.6,k%3?'#3f8a42':'#2f6b34');
+  }
+}
+function herba(y,c='#4f7a30'){for(let i=0;i<46;i++){const x=i*8+rr(i)*6;Ln(c,1.4,x,y+4,x-2+rr(i+5)*4,y-4-rr(i+9)*6)}}
+// els dibuixos gravats: 0 sol, 1 lluna, 2 estrella, 3 ones, 4 calavera
+function simbol(k,x,y,s,c,lw=2,forat='rgba(0,0,0,.55)'){
+  const r=s/2;g.strokeStyle=c;g.fillStyle=c;g.lineWidth=lw;g.lineCap='round';
+  if(k===0){g.beginPath();g.arc(x,y,r*.42,0,PI*2);g.fill();
+    for(let i=0;i<8;i++){const a=i*PI/4;g.beginPath();g.moveTo(x+Math.cos(a)*r*.62,y+Math.sin(a)*r*.62);g.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);g.stroke()}}
+  else if(k===1){const rr2=r*.85,d=r*.5,R2=Math.hypot(rr2,d);g.beginPath();g.arc(x,y,rr2,-PI/2,PI/2,true);
+    g.arc(x+d,y,R2,Math.atan2(rr2,-d),Math.atan2(-rr2,-d),false);g.fill()}
+  else if(k===2){g.beginPath();for(let i=0;i<10;i++){const a=-PI/2+i*PI/5,rad=i%2?r*.42:r;g.lineTo(x+Math.cos(a)*rad,y+Math.sin(a)*rad)}g.closePath();g.fill()}
+  else if(k===3){for(const dy of[-r*.32,r*.28]){g.beginPath();for(let i=0;i<=16;i++)g.lineTo(x-r+i*r/8,y+dy+Math.sin(i/16*PI*3)*r*.2);g.stroke()}}
+  else if(k===4){g.beginPath();g.arc(x,y-r*.12,r*.6,0,PI*2);g.fill();g.fillRect(x-r*.34,y+r*.25,r*.68,r*.4);
+    C(x-r*.24,y-r*.12,r*.17,forat);C(x+r*.24,y-r*.12,r*.17,forat);
+    for(let i=-1;i<=1;i++)R(x+i*r*.18-.5,y+r*.38,1,r*.25,forat)}
+  else if(k===5){Ln('#3a7a3a',1.6,x,y+r*.2,x,y+r);fulla(x,y+r*.65,r*.55,-.5,'#3a7a3a');fulla(x,y+r*.75,r*.5,PI+.5,'#3a7a3a');
+    for(let i=0;i<6;i++){const a=i*PI/3;C(x+Math.cos(a)*r*.28,y-r*.1+Math.sin(a)*r*.28,r*.26,'#c03030')}C(x,y-r*.1,r*.2,'#8a1a1a')}
+}
+// un pes de ferro de cansaladeria, amb els punts que pesa
+function pes(x,y,r,p){E(x,y+r*.65,r,r*.3,'rgba(0,0,0,.3)');P('#3a3a40',x-r,y+r*.6,x+r,y+r*.6,x+r*.72,y-r*.5,x-r*.72,y-r*.5);
+  C(x,y-r*.62,r*.26,'#3a3a40');R(x-r*.6,y-r*.45,r*1.2,r*.15,'rgba(255,255,255,.15)');
+  const D={1:[[0,0]],2:[[-1,0],[1,0]],3:[[-1,0],[0,0],[1,0]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]]};
+  for(const[a,b]of D[p])C(x+a*r*.42,y+.1*r+b*r*.27,Math.max(1.5,r*.12),'#e8dcc0')}
+function armadura(x,y){
+  RR(x-16,y-6,32,8,2,'#5a5048');
+  for(const d of[-1,1]){RR(x+d*6-4,y-42,8,36,3,'#9aa0a8');R(x+d*6-5,y-10,10,5,'#7a8088')}
+  RR(x-14,y-82,28,42,6,'#a8b0b8');Ln('#7a8088',1.5,x,y-80,x,y-44);E(x,y-70,10,6,'rgba(255,255,255,.18)');
+  for(const d of[-1,1]){C(x+d*16,y-76,6,'#9aa0a8');RR(x+d*17-4,y-74,8,30,3,'#9aa0a8')}
+  RR(x-10,y-104,20,24,8,'#a8b0b8');R(x-8,y-94,16,3,'#2a2a2a');P('#c03030',x-2,y-104,x+2,y-104,x+6,y-116,x-6,y-116);
+  RR(x+14,y-46,10,8,3,'#8a9098');
+}
+// el tresor: un cofre ple de monedes i el calze d'or
+function tresor(x,y,t){
+  E(x,y,70,40,'rgba(255,210,90,.15)');
+  RR(x-34,y-24,68,30,3,'#6b4422');R(x-34,y-14,68,3,'#3a2a18');P('#7a5028',x-34,y-24,x-30,y-46,x+30,y-46,x+34,y-24);
+  for(let i=0;i<14;i++)C(x-26+rr(i)*52,y-26-rr(i+7)*6,4,i%2?'#f0c040':'#d8a020');
+  g.fillStyle=lg(x-10,0,x+10,0,0,'#c89020',.5,'#ffe890',1,'#b07a10');
+  g.beginPath();g.moveTo(x-12,y-66);g.quadraticCurveTo(x-12,y-48,x-2,y-46);g.lineTo(x-2,y-34);g.lineTo(x-9,y-30);g.lineTo(x+9,y-30);g.lineTo(x+2,y-34);g.lineTo(x+2,y-46);g.quadraticCurveTo(x+12,y-48,x+12,y-66);g.closePath();g.fill();
+  C(x,y-56,2.5,'#c03030');const s=2+Math.sin(t*4)*1.5;Ln('rgba(255,255,255,.9)',1.2,x+8-s,y-62,x+8+s,y-62);Ln('rgba(255,255,255,.9)',1.2,x+8,y-62-s,x+8,y-62+s);
+}
+// els numeros romans
+function valRoma(s){const V={I:1,V:5,X:10};let n=0;for(let i=0;i<s.length;i++){const a=V[s[i]],b=V[s[i+1]]||0;n+=a<b?-a:a}return n}
+function romana(n){let t='';for(const[v,l]of[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']])while(n>=v){t+=l;n-=v}return t}
+// els animals pintats: 0 serp, 1 ocell, 2 peix
+function animal(k,x,y,s,c){
+  g.strokeStyle=c;g.fillStyle=c;g.lineWidth=Math.max(2,s/9);g.lineCap='round';g.lineJoin='round';
+  if(k===0){g.beginPath();for(let i=0;i<=20;i++){const u=i/20;g.lineTo(x-s/2+u*s,y+Math.sin(u*PI*2.4)*s*.18)}g.stroke();C(x+s/2+2,y+Math.sin(PI*2.4)*s*.18,s*.1,c)}
+  else if(k===1){E(x,y,s*.28,s*.16,c);C(x+s*.28,y-s*.12,s*.12,c);P(c,x+s*.38,y-s*.14,x+s*.52,y-s*.08,x+s*.38,y-s*.06);
+    Ln(c,g.lineWidth,x-s*.05,y-s*.05,x-s*.25,y-s*.42,x+s*.12,y-s*.12);P(c,x-s*.25,y,x-s*.5,y-s*.12,x-s*.48,y+s*.1)}
+  else{E(x,y,s*.34,s*.17,c);P(c,x-s*.3,y,x-s*.52,y-s*.17,x-s*.52,y+s*.17);C(x+s*.18,y-s*.04,s*.04,'rgba(0,0,0,.5)')}
+}
+function puntets(n,x,y,c,r=2.6,sp=8){for(let i=0;i<n;i++)C(x-(n-1)*sp/2+i*sp,y,r,c)}
+// un numero a la manera antiga: punts a sobre, ratlles a sota
+function nombre(n,x,y,u,c){
+  const b=Math.floor(n/5),d=n%5;let yy=y-(b*u*.9+(d?u:0))/2;
+  if(d){puntets(d,x,yy+u*.35,c,u*.32,u*.9);yy+=u}
+  for(let i=0;i<b;i++){RR(x-u*1.8,yy,u*3.6,u*.6,u*.2,c);yy+=u*.9}
+}
+function flama(x,y,s,t){const f=Math.sin(t*12+x)*.15+Math.sin(t*7.3+y)*.1;
+  E(x,y-s*.3,s*1.6,s*1.6,'rgba(255,170,60,.12)');
+  P('#ff8a20',x-s*.45,y,x+f*s,y-s*1.5,x+s*.45,y);P('#ffd060',x-s*.22,y,x+f*s*.6,y-s*.9,x+s*.22,y)}
+function torxa(x,y,t){R(x-2,y,4,22,'#4a3420');R(x-4,y-3,8,5,'#2a1e14');flama(x,y-3,8,t)}
+
+// ===== ELS OBJECTES DE LA MOTXILLA =====
+function icona(id,cx,cy,s){
+  g.save();g.translate(cx,cy);g.scale(s/40,s/40);
+  if(id==='corda'||id==='cordagarfi'){for(let i=0;i<3;i++){g.strokeStyle=i%2?'#9a7440':'#b88a4c';g.lineWidth=3.2;g.beginPath();g.ellipse(-2,3,14-i*3.5,9-i*2.2,0,0,PI*2);g.stroke()}
+    Ln('#b88a4c',3,10,4,16,-8);if(id==='cordagarfi'){Ln('#9aa0a8',3,16,-8,16,-16);for(const a of[-1,0,1])Ln('#9aa0a8',2.4,16,-14,16+a*7,-18+Math.abs(a)*2,16+a*9,-12)}}
+  else if(id==='garfi'){Ln('#9aa0a8',3.5,0,14,0,-10);for(const a of[-1,0,1]){g.strokeStyle='#b8bec6';g.lineWidth=3;g.beginPath();g.moveTo(0,-8);g.quadraticCurveTo(a*14,-4,a*12+(a?0:0),-16+(a?0:-4));g.stroke()}C(0,15,3,'#7a8088')}
+  else if(id==='diari'){RR(-13,-16,26,32,3,'#6b3e1e');R(-13,-16,5,32,'#4e2c14');R(-6,-16,2,32,'#c9b48a');R(-8,-2,21,4,'#a8742c');RR(-4,-12,14,8,1,'rgba(255,230,180,.2)')}
+  else if(id==='llantia'){E(0,6,15,8,'#c8a040');E(0,3,11,4,'#e8c860');P('#c8a040',12,4,22,-2,22,2,13,9);Ln('#a07a28',2.5,-14,5,-20,0,-17,-6);flama(21,-2,5,performance.now()/1000)}
+  else if(id==='fruita'){E(0,4,12,14,'#f0c030',.3);E(-4,-1,4,6,'rgba(255,255,220,.45)',.3);Ln('#5a3a18',2,1,-10,3,-15);fulla(3,-14,12,-.5,'#3f8a42')}
+  else if(id==='pergami'){RR(-14,-11,28,22,2,'#e2d2a2');E(-14,0,4,11,'#c9b47e');E(14,0,4,11,'#c9b47e');Ln('#8a7040',1.2,-8,-5,8,-5);Ln('#8a7040',1.2,-8,0,6,0);Ln('#8a7040',1.2,-8,5,8,5)}
+  else if(id==='peca'){g.fillStyle=lg(-14,-14,14,14,0,'#ffe080',1,'#b8861c');g.beginPath();g.moveTo(-12,14);g.arc(-12,14,28,-PI/2,0);g.closePath();g.fill();
+    Ln('#8a6010',1.5,-12,-14,-12,14,16,14);P('#c02020',-12,-14,-4,-14,-6,14,-12,14);P('#c02020',-12,6,16,10,16,14,-12,14);txt('×'+(Z?Z.peces:0),8,-8,13,'#fff')}
+  g.restore();
+}
+const ITEMS={
+  corda:{nom:'la corda',desc:"Una corda llarga i forta. Sola, no s'enganxarà enlloc."},
+  garfi:{nom:'el garfi',desc:'Un garfi de ferro amb tres puntes.'},
+  cordagarfi:{nom:'la corda amb garfi',desc:"Una corda amb un garfi a la punta: per llançar-la i que s'enganxi."},
+  diari:{nom:"el diari de l'avi",llegir:true},
+  llantia:{nom:'la llàntia',desc:"Una llàntia d'oli, encesa. Fa una bona llum."},
+  fruita:{nom:'la nespra',desc:'Una nespra groga i dolça. Fa molt bona olor.'},
+  pergami:{nom:'el pergamí',llegir:true},
+  peca:{nom:'els trossos del segell',desc:()=>"Trossos del segell d'or dels templers: en tens "+Z.peces+' de 4.'},
+};
+const COMBINA={'corda+garfi':['cordagarfi','Lligo la corda al garfi. Ara tinc una corda amb garfi!']};
+const LLEGIR={
+  diari:'<b>12 de març del 1931.</b> Ja ho tinc: el tresor dels templers és al castell de Miravet, darrere la porta del segell. Però el segell està partit en quatre trossos, amagats per tot el país.<br><br>Per si de cas, ho he desat tot al cofre. La combinació és fàcil de recordar: primer, els <b>ocells</b> que dormen a l\'arbre; després, les <b>ampolles</b> que m\'he buidat; i al final, les <b>estrelles</b> que veig des de la tenda.',
+  pergami:'Un pergamí vell, amb una rosa dibuixada. A sota, en lletra de l\'avi:<br><br><b>«Només la rosa de Sant Jordi aguanta el pes.<br>El sol, la lluna i les estrelles cauen.»</b>',
+};
+
+// ===== LA PARTIDA =====
+let Z=null,sel=null,zoom=null,paused=false,focus={x:150,y:140},anim={},fadeT=0,dt=0,T=0;
+function prog(k,dur){const s=anim[k];if(s===undefined)return Z.f[k]?1:0;return Math.min(1,(performance.now()-s)/dur)}
+function anima(k){anim[k]=performance.now()}
+function llum(k,dur){const s=anim[k];if(s===undefined)return 0;const p=(performance.now()-s)/dur;return p<1?1-p:0}
+const te=id=>Z.inv.includes(id);
+function afegeix(id){if(!te(id))Z.inv.push(id);so.agafa();pintaInv()}
+function treu(id){Z.inv=Z.inv.filter(x=>x!==id);if(sel===id)sel=null;pintaInv()}
+function peca(){Z.peces++;afegeix('peca');return " I aquí brilla un tros del segell d'or dels templers ("+Z.peces+' de 4). El guardo a la motxilla!'}
+function passa(){
+  const s=Z.sala;Z.pt[s]=Math.max(10,100-30*Z.pis[s]);
+  Z.sala++;so.toc();desa();entra();return null;
+}
+
+// ===== LES DEU SALES =====
+// Cada sala: el nom, el que diu en entrar, tres pistes, el dibuix, les
+// coses que es poden tocar (rectangles) i què passa quan les toques.
+const NOM_SIMBOL=['un sol','una lluna','una estrella','unes ones','una calavera','una rosa'];
+const NOM_ANIMAL=['de la serp',"de l'ocell",'del peix'];
+const STARS=[[150,22],[198,46],[238,16],[112,58],[268,44]];
+const TILES=[[0,5,1,0,2],[2,5,5,1,0],[1,0,5,2,5],[0,2,5,5,0]];
+const MIR=[[1,0],[1,2],[3,2],[3,0],[2,1]],PIL=[[2,0],[0,2]],GX=70,GY=50,CS=55;
+const MEL=[2,0,3,1,2],BX=[146,192,236,276],BS=[24,21,18,15];
+const MX=180,MY=112,MR=62;
+let camp=[],cancoT=-1,cancoN=-1,ang=0,crac=null;
+
+function feix(){
+  let c=0,r=0,dx=1,dy=0,encert=false;const pts=[[GX-12,GY+CS/2]];
+  for(let n=0;n<40;n++){
+    if(c<0||r<0||c>3||r>2){const ex=GX+(c+.5)*CS-dx*CS/2,ey=GY+(r+.5)*CS-dy*CS/2;pts.push([ex+dx*6,ey+dy*6]);encert=c===4&&r===0;break}
+    if(PIL.some(([a,b])=>a===c&&b===r)){pts.push([GX+(c+.5)*CS-dx*CS*.3,GY+(r+.5)*CS-dy*CS*.3]);break}
+    const k=MIR.findIndex(([a,b])=>a===c&&b===r);
+    if(k>=0){pts.push([GX+(c+.5)*CS,GY+(r+.5)*CS]);if(Z.f.m[k]===1)[dx,dy]=[-dy,-dx];else[dx,dy]=[dy,dx]}
+    c+=dx;r+=dy;
+  }
+  return {pts,encert};
+}
+function roda(x,y,r,k){C(x,y,r+4,'#5f533b');C(x,y,r,'#b6a57e');g.strokeStyle='#8a7a58';g.lineWidth=2;g.beginPath();g.arc(x,y,r-4,0,PI*2);g.stroke();
+  simbol(k,x,y,r*1.25,'#4a3f2a',2.4);P('#5f533b',x-4,y-r-5,x+4,y-r-5,x,y-r+2)}
+function ocellDorm(x,y){E(x,y,9,7,'#151b30');C(x+7,y-6,5,'#151b30');P('#151b30',x-7,y,x-16,y+4,x-8,y+4);Ln('#8090c0',1,x+6,y-7,x+9,y-7);P('#c8a040',x+11,y-7,x+15,y-5,x+11,y-4)}
+function pedra(x,y,r,p){E(x,y+r*.55,r,r*.3,'rgba(0,0,0,.3)');E(x,y,r,r*.85,'#8c877a');E(x-r*.2,y-r*.25,r*.6,r*.4,'rgba(255,255,255,.12)');
+  const D={1:[[0,0]],2:[[-1,-1],[1,1]],3:[[-1,-1],[0,0],[1,1]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]]};
+  for(const[a,b]of D[p])C(x+a*r*.4,y+b*r*.38,Math.max(1.6,r*.13),'#2a2620')}
+function lloro(x,y,canta){
+  P('#3a9a3a',x+2,y+12,x+12,y+42,x-3,y+15);E(x,y,11,17,'#5cc04a');E(x-4,y-2,7,11,'#c8d4c0');E(x+5,y+3,6,13,'#2a8a3a',.25);
+  C(x-2,y-17,10,'#64c852');E(x-6,y-15,5,6,'#c8d4c0');C(x-7,y-19,2,'#111');
+  P('#e8a060',x-11,y-20,x-19,y-14,x-11,y-13);if(canta)P('#e8a060',x-11,y-11,x-16,y-6,x-11,y-8);
+}
+function explorador(x,y){E(x,y,9,3,'rgba(0,0,0,.35)');R(x-5,y-12,4,12,'#5a4630');R(x+1,y-12,4,12,'#5a4630');RR(x-7,y-25,14,15,3,'#b89a5e');
+  R(x-7,y-17,14,2,'#6b4a26');C(x,y-30,5,'#e0b48a');E(x,y-33,10,3,'#6b4a26');RR(x-5,y-40,10,7,2,'#6b4a26')}
+function medallo(cx,cy,r){
+  g.fillStyle=lg(cx-r,cy-r,cx+r,cy+r,0,'#ffe896',.5,'#e0a828',1,'#9a6a10');g.beginPath();g.arc(cx,cy,r,0,PI*2);g.fill();
+  g.strokeStyle='#8a5a0c';g.lineWidth=2;g.beginPath();g.arc(cx,cy,r-5,0,PI*2);g.stroke();
+  for(let i=0;i<28;i++){const a=i*PI*2/28;C(cx+Math.cos(a)*r*.86,cy+Math.sin(a)*r*.86,1.6,'#9a6a10')}
+  g.strokeStyle='#8a5a0c';g.lineWidth=1.5;g.beginPath();g.arc(cx,cy,r*.76,0,PI*2);g.stroke();
+  for(let k=0;k<4;k++){g.save();g.translate(cx,cy);g.rotate(k*PI/2);
+    P('#c02020',-r*.07,-r*.06,r*.07,-r*.06,r*.26,-r*.7,-r*.26,-r*.7);P('#e04040',-r*.04,-r*.1,r*.02,-r*.1,r*.1,-r*.6,-r*.12,-r*.6);g.restore()}
+  R(cx-r*.08,cy-r*.08,r*.16,r*.16,'#c02020');
+}
+function mascara(x,y,s){
+  E(x,y,s*1.5,s*1.4,'rgba(255,210,90,.18)');
+  P('#d8a020',x-s*.95,y-s*.75,x-s*.62,y-s*1.15,x-s*.4,y-s*.6,x+s*.4,y-s*.6,x+s*.62,y-s*1.15,x+s*.95,y-s*.75,x+s*.8,y+s*.4,x,y+s*.95,x-s*.8,y+s*.4);
+  E(x,y-s*.05,s*.75,s*.7,'#f0c040');
+  for(let i=0;i<9;i++)C(x+(rr(i)-.5)*s*1.1,y+(rr(i+30)-.6)*s*.9,s*.05,'#b07a14');
+  P('#1a1206',x-s*.5,y-s*.2,x-s*.15,y-s*.32,x-s*.12,y-s*.12);P('#1a1206',x+s*.5,y-s*.2,x+s*.15,y-s*.32,x+s*.12,y-s*.12);
+  C(x-s*.25,y-s*.22,s*.06,'#30e080');C(x+s*.25,y-s*.22,s*.06,'#30e080');
+  P('#7a4a10',x-s*.12,y+s*.05,x+s*.12,y+s*.05,x,y+s*.2);
+  R(x-s*.3,y+s*.35,s*.6,s*.1,'#5a3008');P('#fff8e0',x-s*.25,y+s*.36,x-s*.18,y+s*.52,x-s*.12,y+s*.36);P('#fff8e0',x+s*.25,y+s*.36,x+s*.18,y+s*.52,x+s*.12,y+s*.36);
+}
+
+const SALES=[
+// ---------- 1 ----------
+{nom:'MONTSERRAT',ini:{rodes:[1,2,0],lianes:0,obert0:0},
+ entra:"El camí comença a Montserrat, entre les agulles de roca. L'ermita on l'avi va trobar la primera pista té la porta tancada amb tres rodes de pedra.",
+ pistes:["Les rodes de pedra giren quan les toques. Però quins dibuixos hi han d'anar?","La roca de l'esquerra amaga alguna cosa: mira què hi ha darrere l'heura.","Sol, ones i lluna, d'esquerra a dreta."],
+ dibuixa(t){
+  cel('#8ec2ea','#e4eef0',210);
+  for(let i=0;i<14;i++){const x=i*28-4+rr(i)*10,h=60+rr(i+4)*90,w=20+rr(i+8)*12;
+    g.fillStyle=lg(x-w/2,0,x+w/2,0,0,'#e0c4b2',1,'#a88676');g.beginPath();g.moveTo(x-w/2,210);g.lineTo(x-w/2,210-h+w/2);g.arc(x,210-h+w/2,w/2,PI,0);g.lineTo(x+w/2,210);g.fill();
+    Ln('rgba(120,90,80,.35)',1,x-w*.15,214-h+w,x-w*.1,206)}
+  for(let i=0;i<10;i++)C(i*40+rr(i+12)*14,204+rr(i+2)*10,20,'#6e8a50');
+  P('#9a5a3a',104,46,235,12,366,46);P('#7a4228',235,12,366,46,358,46,235,20);
+  RR(222,0,26,24,2,'#c8b898');g.fillStyle='#2a2018';g.beginPath();g.moveTo(229,20);g.lineTo(229,10);g.arc(235,10,6,PI,0);g.lineTo(241,20);g.fill();
+  P('#b08a3a',231,10,239,10,241,17,229,17);
+  pedres(116,44,238,192,'#c8b898','#8e7e62',18,34);
+  for(let k=0;k<3;k++)roda(172+48*k,80,20,Z.f.rodes[k]);
+  const o=prog('obert0',1600);
+  R(184,112,72,124,'#120d07');
+  if(o>0){g.fillStyle=lg(0,112,0,236,0,'rgba(255,170,60,.22)',1,'rgba(0,0,0,0)');g.fillRect(186,114,68,122);torxa(220,170,t)}
+  if(o<1){g.save();g.beginPath();g.rect(186,114,68,122);g.clip();pedres(186,114+o*122,68,122,'#a8987a','#6a5e48',20,34);g.restore()}
+  R(178,106,8,130,'#8e7e62');R(254,106,8,130,'#8e7e62');R(176,100,88,9,'#8e7e62');
+  P('#a88676',6,236,10,96,34,66,84,60,108,96,112,236);P('#c4a494',16,232,20,104,40,78,82,72,100,104,104,232);
+  for(let i=0;i<40;i++)C(20+rr(i)*82,90+rr(i+40)*138,1.5+rr(i+80)*2.5,'rgba(110,80,70,.35)');
+  [0,3,1].forEach((k,i)=>simbol(k,34+i*26,152,19,'#4a3a32',2.2));
+  if(!Z.f.lianes)lianes(4,52,112,188,t);
+  g.fillStyle=lg(0,232,0,270,0,'#b09070',1,'#7a6048');g.fillRect(0,232,W,38);
+  for(let i=0;i<14;i++)E(rr(i+60)*W,244+rr(i+70)*20,4+rr(i)*5,2,'rgba(80,60,40,.35)');
+  mata(354,252,30,3,['#5a7a48','#6e8a50','#4a6a3a','#7a9a5a']);
+ },
+ obj:[{id:'temple',x:104,y:0,w:256,h:236},{id:'roca',x:4,y:52,w:112,h:184},{id:'porta',x:178,y:100,w:84,h:136},
+      {id:'r0',x:148,y:56,w:48,h:48},{id:'r1',x:196,y:56,w:48,h:48},{id:'r2',x:244,y:56,w:48,h:48}],
+ toca(id,it){
+  if(it)return;
+  if(id==='temple')return "Una ermita antiga, arrecerada sota les agulles de Montserrat. Damunt la porta hi ha tres rodes amb dibuixos.";
+  if(id==='roca'){if(!Z.f.lianes){Z.f.lianes=1;so.agafa();return "Aparto l'heura... A la roca hi ha tres dibuixos gravats: un sol, unes ones i una lluna."}
+    return 'Tres dibuixos gravats a la roca: un sol, unes ones i una lluna.'}
+  if(id==='porta')return Z.f.obert0?passa():'Una llosa de pedra enorme. No es pot moure a mà.';
+  const k=+id[1];if(Z.f.obert0)return 'Les rodes ja no giren: la porta és oberta.';
+  Z.f.rodes[k]=(Z.f.rodes[k]+1)%4;so.roda();
+  if(Z.f.rodes.join()==='0,3,1'){Z.f.obert0=1;anima('obert0');so.obre();return "Clac! Les rodes encaixen i la llosa de la porta s'enfonsa a terra. Toca la porta per entrar."}
+  return 'La roda gira i ara hi ha '+NOM_SIMBOL[Z.f.rodes[k]]+'.';
+ }},
+// ---------- 2 ----------
+{nom:"L'EBRE",ini:{corda:0,garfi:0,lligada:0},
+ entra:"L'Ebre baixa ample i tranquil. Per passar a l'altra banda hi ha un pas de barca, però la barca és a l'altra riba i no hi ha ningú.",
+ pistes:["Busca bé a la riba: entre les canyes i a la sorra.","Toca la corda a la motxilla i després el garfi: es poden ajuntar.","Toca la corda amb garfi a la motxilla i després la barca de l'altra riba, per estirar-la."],
+ bx(){return 240-112*prog('lligada',1800)},
+ dibuixa(t){
+  cel('#a8d0ec','#e8f0e8',120);
+  for(let i=0;i<10;i++)C(i*30+rr(i+3)*10,90+rr(i+6)*10,16,'#8a9a60');
+  P('#b89a72',236,122,250,70,286,50,360,52,360,122);P('#a08460',300,122,320,64,360,60,360,122);
+  P('#d4bc96',270,54,270,26,280,26,280,34,292,34,292,20,310,20,310,34,322,34,322,26,334,26,334,54);
+  for(let i=0;i<9;i++)R(272+i*7,22,4,5,'#d4bc96');R(298,40,6,10,'#4a3c2c');
+  R(0,95,W,175,'#8aa860');
+  P('#dcc893',0,270,0,212,46,198,96,206,104,270);P('#c8b07a',260,270,262,140,300,130,360,136,360,270);
+  g.fillStyle=lg(0,95,0,270,0,'#6a9a98',1,'#3a6e72');g.beginPath();g.moveTo(120,95);g.lineTo(250,95);g.lineTo(274,270);g.lineTo(98,270);g.closePath();g.fill();
+  for(let i=0;i<12;i++){const yy=96+((i*37+t*18)%172),xx=118+rr(i)*120+(yy-95)*.02;Ln('rgba(255,255,255,.3)',1.4,xx,yy,xx+10,yy)}
+  const sy=214+Math.sin(t*1.1)*1.5;E(186,sy,16,5,'#4a3a2a');C(198,sy-1,1.6,'#e0d070');
+  for(const d of[-1,1])Ln('#3a2a1a',1,200,sy+1,212,sy+d*5+2);
+  R(58,104,4,100,'#5a4630');R(298,98,4,40,'#5a4630');Ln('#3a3020',1.5,60,106,300,100);
+  const bx=this.bx(),cy=106-(bx-60)*6/240;
+  Ln('#3a3020',1,bx,cy,bx,160);
+  P('#6a4628',bx-28,164,bx+28,164,bx+22,180,bx-22,180);R(bx-30,160,60,6,'#8a6038');R(bx-4,148,8,14,'#5a3a20');
+  if(Z.f.lligada&&prog('lligada',1800)<1)Ln('#b88a4c',2,96,206,bx-28,168);
+  for(let i=0;i<16;i++){const x=16+i*5+rr(i)*4,h=60+rr(i+30)*40,sw=Math.sin(t*1.2+i)*3;
+    Ln(i%2?'#8a9a50':'#a0a860',2,x,236,x+sw,236-h);fulla(x+sw*.6,236-h*.6,14,i%2?-2.2:-.9,'#7a9048')}
+  if(!Z.f.corda){g.strokeStyle='#b88a4c';g.lineWidth=2.5;g.beginPath();g.ellipse(70,222,8,4,0,0,PI*2);g.stroke()}
+  if(!Z.f.garfi){Ln('#9aa0a8',2,92,244,98,238);const s=3+Math.sin(t*5)*1.6;Ln('rgba(255,255,255,.9)',1.2,98-s,236,98+s,236);Ln('rgba(255,255,255,.9)',1.2,98,236-s,98,236+s)}
+ },
+ obj(){const bx=this.bx();return [{id:'riu',x:98,y:95,w:176,h:175},{id:'castell',x:236,y:0,w:124,h:122},
+      {id:'canyes',x:10,y:150,w:90,h:90},{id:'sorra',x:78,y:222,w:40,h:36,vis:()=>!Z.f.garfi},{id:'barca',x:bx-34,y:142,w:68,h:44}]},
+ toca(id,it){
+  if(id==='barca'){
+    if(it==='cordagarfi'){Z.f.lligada=1;anima('lligada');treu('cordagarfi');so.agafa();return "Llanço la corda... el garfi s'enganxa a la barca! L'estiro fins a aquesta riba. Toca la barca per pujar-hi."}
+    if(it==='corda')return "Sense res a la punta, la corda no s'agafarà a la barca.";
+    if(it==='garfi')return 'El garfi sol no arribarà tan lluny. Li falta una corda.';
+    if(!it)return Z.f.lligada?passa():"La barca del pas és a l'altra riba, penjada del cable. Si la pogués enganxar amb alguna cosa, l'estiraria fins aquí.";
+  }
+  if(it)return;
+  if(id==='canyes'){if(!Z.f.corda){Z.f.corda=1;afegeix('corda');return 'Entre les canyes hi ha una corda llarga! La guardo a la motxilla.'}return 'Un canyar espès. Ja no hi queda res.'}
+  if(id==='sorra'){Z.f.garfi=1;afegeix('garfi');return 'Alguna cosa brillava a la sorra: un garfi de ferro! El guardo a la motxilla.'}
+  if(id==='riu')return "Un silur enorme treu el morro. Diuen que a l'Ebre n'hi ha de dos metres. Nedant, no.";
+  if(id==='castell')return "Dalt del turó, el castell de Miravet, el dels templers. L'avi deia que el tresor hi és, però que abans cal trobar els quatre trossos del segell.";
+ }},
+// ---------- 3 ----------
+{nom:'EL REFUGI DEL PIRINEU',ini:{diari:0,xifres:[0,0,0],cofre:0,llantia:0},
+ entra:"Ja és de nit, al Pirineu. Al peu de les muntanyes hi ha el campament on dormia l'avi, abandonat fa molts anys: una tenda, una taula i un cofre tancat.",
+ pistes:["El llibre de la taula és el diari de l'avi. Agafa'l i llegeix-lo (toca'l dues vegades a la motxilla).","El diari diu que la combinació són els ocells de l'arbre, les ampolles de la taula i les estrelles del cel. Compta'ls!","Tres ocells, dues ampolles i cinc estrelles: 3, 2, 5."],
+ dibuixa(t){
+  cel('#0a1230','#28345e',170);
+  STARS.forEach(([x,y],i)=>simbol(2,x,y,10+Math.sin(t*2+i*2)*1.4,'#fff6c8'));
+  C(320,38,24,'rgba(255,250,210,.07)');simbol(1,320,38,32,'#f4ecc0');
+  P('#1a2244',0,160,30,104,60,126,110,78,150,110,200,70,250,112,290,84,330,118,360,96,360,175,0,175);
+  for(const[x,y]of[[30,104],[110,78],[200,70],[290,84],[360,96]])P('#c8d0e8',x-12,y+12,x,y,x+12,y+12,x+5,y+9,x,y+13,x-5,y+9);
+  P('#2c2a35',222,192,238,128,280,110,330,120,356,192);
+  g.fillStyle='#050507';g.beginPath();g.ellipse(283,172,22,28,0,PI,0);g.lineTo(305,180);g.lineTo(261,180);g.fill();
+  g.fillStyle=lg(0,170,0,270,0,'#2c3a26',1,'#141c0e');g.fillRect(0,174,W,96);
+  P('#2a1f18',6,252,10,40,22,40,28,252);Ln('#2a1f18',5,22,72,96,64);Ln('#2a1f18',4,22,108,90,104);
+  ocellDorm(50,58);ocellDorm(80,56);ocellDorm(66,98);
+  P('#7a6a48',38,218,88,122,138,218);P('#5e5136',88,122,138,218,112,218);P('#1c160c',78,218,88,166,100,218);Ln('#3a3020',1.5,88,122,88,112);
+  R(148,182,82,6,'#6b4a2a');R(152,188,4,30,'#4e3420');R(222,188,4,30,'#4e3420');
+  for(const bx of[164,180]){RR(bx-5,162,10,20,3,'#2e6a3a');R(bx-2,154,4,9,'#2e6a3a');R(bx-3,163,2,14,'rgba(255,255,255,.25)')}
+  if(!Z.f.diari){R(198,176,26,7,'#6b3e1e');R(199,174,24,3,'#e8dcb4');R(198,173,26,2,'#6b3e1e')}
+  for(let i=0;i<7;i++){const a=i/7*PI*2;E(130+Math.cos(a)*14,246+Math.sin(a)*5,4,3,'#5a5650')}
+  Ln('#3a2818',4,120,248,140,242);Ln('#3a2818',4,122,242,140,249);C(130,246,3+Math.sin(t*3),'rgba(255,90,30,.5)');
+  const o=prog('cofre',600);
+  E(286,254,40,5,'rgba(0,0,0,.4)');RR(250,214,72,40,4,'#6b4422');R(250,226,72,4,'#3a2a18');R(262,214,4,40,'#3a2a18');R(306,214,4,40,'#3a2a18');
+  if(o<1){P('#7a5028',250,216,252,200,320,200,322,216);R(280,214,12,12,'#d0a840');R(284,218,4,5,'#3a2a18')}
+  else{R(254,216,64,8,'#1a1006');P('#7a5028',252,214,256,184,316,184,320,214);E(286,216,30,8,'rgba(255,220,120,.25)');if(!Z.f.llantia)icona('llantia',286,206,30)}
+ },
+ obj:[{id:'cel',x:0,y:0,w:360,h:110},{id:'arbre',x:0,y:36,w:100,h:80},{id:'tenda',x:36,y:116,w:104,h:104},{id:'cova',x:250,y:134,w:66,h:46},
+      {id:'taula',x:144,y:178,w:90,h:44},{id:'ampolles',x:154,y:148,w:38,h:36},{id:'diari',x:194,y:164,w:36,h:24,vis:()=>!Z.f.diari},
+      {id:'cofre',x:246,y:194,w:80,h:62},{id:'llantia',x:262,y:186,w:50,h:34,vis:()=>Z.f.cofre&&!Z.f.llantia}],
+ zooms:{cadenat:{
+  dibuixa(){
+   R(0,0,W,H,'rgba(5,8,15,.88)');g.strokeStyle='#a8a8a8';g.lineWidth=14;g.beginPath();g.arc(180,92,52,PI,0);g.stroke();
+   RR(92,88,176,124,14,lg(92,88,268,212,0,'#e8c060',1,'#9a7020'));
+   for(let k=0;k<3;k++){RR(112+k*48,112,40,66,6,'#2a2210');txt(String(Z.f.xifres[k]),132+k*48,146,34,'#f0e0b0');P('rgba(240,224,176,.4)',126+k*48,108,138+k*48,108,132+k*48,102)}
+   txt('toca els números per girar-los',180,228,11,'#d8c8a0');RR(10,236,92,28,8,'#2a3a2a');txt('◀ TORNA',56,250,12,'#cfe0c0');
+  },
+  obj:[{id:'fora',x:0,y:0,w:W,h:H},{id:'d0',x:106,y:96,w:48,h:92},{id:'d1',x:154,y:96,w:48,h:92},{id:'d2',x:202,y:96,w:48,h:92},{id:'enrere',x:6,y:228,w:104,h:42}],
+  toca(id,it){
+   if(id==='fora'||id==='enrere'){zoom=null;return 'Deixo estar el cadenat.'}
+   const k=+id[1];Z.f.xifres[k]=(Z.f.xifres[k]+1)%10;so.toc();
+   if(Z.f.xifres.join('')==='325'){Z.f.cofre=1;zoom=null;anima('cofre');so.obre();return "Clic! El cadenat s'obre. Dins del cofre hi ha una llàntia d'oli."}
+   return null;
+  }}},
+ toca(id,it){
+  if(it)return;
+  if(id==='cel')return 'Una nit clara: es veuen les estrelles i una lluna prima.';
+  if(id==='arbre')return "Hi ha uns quants ocells dormint a les branques de l'arbre.";
+  if(id==='tenda')return "La tenda de l'avi, estripada pel vent. A dins no hi ha res.";
+  if(id==='taula')return 'Una taula plegable, mig podrida.';
+  if(id==='ampolles')return "Ampolles buides. L'avi no hi passava set, aquí.";
+  if(id==='diari'){Z.f.diari=1;afegeix('diari');return "El diari de l'avi! Toca'l dues vegades a la motxilla per llegir-lo."}
+  if(id==='cofre'){if(!Z.f.cofre){zoom='cadenat';return 'Un cofre tancat amb un cadenat de tres números.'}return Z.f.llantia?'El cofre és buit.':"Dins del cofre hi ha una llàntia d'oli."}
+  if(id==='llantia'){Z.f.llantia=1;afegeix('llantia');return "Agafo la llàntia d'oli i l'encenc. Amb això podré veure-hi a les fosques."}
+  if(id==='cova'){if(te('llantia'))return passa();return 'La boca d\'una cova, negra com la gola d\'un llop. Sense llum no hi entro.'}
+ }},
+// ---------- 4 ----------
+{nom:'LA COVA DE LES PINTURES',fosc:true,ini:{seq:[],obert3:0},
+ entra:"Una cova fosca, amb pintures antigues com les de la Roca dels Moros, al Cogul. Llisca el dit per la pantalla per moure la llum de la llàntia.",
+ pistes:["Passeja la llum per la cova: a la paret de dalt a l'esquerra hi ha dibuixos, i a baix a la dreta, tres palanques.","Els animals pintats tenen punts a sota: un, dos i tres. Les palanques s'han d'estirar en aquest ordre.","Primer la palanca de la serp, després la de l'ocell i al final la del peix."],
+ dibuixa(t){
+  g.fillStyle=lg(0,0,0,H,0,'#4a3e30',1,'#261e16');g.fillRect(0,0,W,H);
+  for(let i=0;i<60;i++)E(rr(i)*W,rr(i+100)*H,10+rr(i+3)*25,6+rr(i+7)*14,i%3?'rgba(0,0,0,.2)':'rgba(255,230,190,.06)',rr(i+9));
+  P('#2e251c',0,270,0,226,90,216,200,224,300,214,360,222,360,270);
+  [[2,3],[0,1],[1,2]].forEach(([a,n],i)=>{const x=52+i*52;animal(a,x,62,32,'#c0603a');puntets(n,x,92,'#c0603a',3,9)});
+  for(const[hx,hy]of[[176,52],[24,104]]){C(hx,hy,6,'rgba(200,100,60,.5)');for(let f=0;f<5;f++)Ln('rgba(200,100,60,.5)',2.5,hx,hy,hx+Math.cos(-PI/2+(f-2)*.4)*12,hy+Math.sin(-PI/2+(f-2)*.4)*12)}
+  [1,2,0].forEach((a,i)=>{const x=205+i*45,avall=Z.f.seq.includes(i)||Z.f.obert3;
+    RR(x-15,138,30,24,3,'#5a4c3a');animal(a,x,150,20,'#e0d0b0');
+    R(x-7,200,14,18,'#2a221a');Ln('#7a6a50',5,x,206,x+(avall?10:-8),avall?236:172);C(x+(avall?10:-8),avall?236:172,6,'#a0522d')});
+  const o=prog('obert3',1500);
+  R(318,70,40,152,'#0c0906');if(o>0){E(338,150,16,50,'rgba(255,200,120,'+(.12*o)+')')}
+  if(o<1){g.save();g.beginPath();g.rect(318,70,40,152);g.clip();pedres(318,70-o*150,40,152,'#5a4c3a','#2a2018',19,22);g.restore()}
+  for(const[a,b,c2,d]of[[28,238,48,232],[40,244,60,246],[30,230,34,246]])Ln('#c8c0a8',3,a,b,c2,d);C(52,236,6,'#c8c0a8');C(50,236,1.5,'#2a221a');C(55,236,1.5,'#2a221a');
+  const fx=focus.x,fy=focus.y,rad=78+Math.sin(t*9)*2+Math.sin(t*13)*1.5;
+  const gr=g.createRadialGradient(fx,fy,rad*.2,fx,fy,rad);gr.addColorStop(0,'rgba(255,190,90,.12)');gr.addColorStop(.55,'rgba(8,5,2,.35)');gr.addColorStop(1,'rgba(4,3,1,.985)');
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+ },
+ obj:[{id:'paret',x:0,y:0,w:W,h:H},{id:'pintures',x:20,y:36,w:172,h:72},{id:'ossos',x:18,y:222,w:52,h:32},
+      {id:'p0',x:186,y:134,w:40,h:108},{id:'p1',x:231,y:134,w:40,h:108},{id:'p2',x:276,y:134,w:40,h:108},{id:'sortida',x:314,y:66,w:46,h:160,vis:()=>Z.f.obert3}],
+ toca(id,it){
+  if(it)return;
+  if(id==='paret')return null;
+  if(id==='pintures')return "Pintures de fa milers d'anys, d'ocre vermell, com les del Cogul: un peix, una serp i un ocell. A sota de cada animal hi ha uns punts.";
+  if(id==='ossos')return 'Ossos vells. Algú no va trobar la sortida.';
+  if(id==='sortida')return passa();
+  const i=+id[1],a=[1,2,0][i];
+  if(Z.f.obert3)return 'Les palanques ja han fet la seva feina.';
+  if(Z.f.seq.includes(i))return 'Aquesta palanca ja està avall.';
+  Z.f.seq.push(i);so.roda();
+  const ORDRE=[2,0,1];
+  if(Z.f.seq.some((v,k)=>v!==ORDRE[k])){Z.f.seq=[];so.no();return "Les palanques tornen a pujar soles, amb un soroll de pedres. Aquest no era l'ordre."}
+  if(Z.f.seq.length===3){Z.f.obert3=1;anima('obert3');so.obre();return 'Un gran soroll de pedres: la paret de la dreta s\'aixeca!'+peca()}
+  return 'Estiro la palanca '+NOM_ANIMAL[a]+'. Fa clec i es queda avall.';
+ }},
+// ---------- 5 ----------
+{nom:'EL MERCAT DE VIC',ini:{plat:[],obert4:0},
+ entra:"Al mercat de la plaça Major de Vic, la cansaladeria té una balança antiga. Damunt la porta hi diu: «Només hi entra qui sap pesar».",
+ pistes:["La porta s'obre quan la balança queda plana: el mateix pes als dos plats.","Compta els punts: la llonganissa en té 7, i al plat de la dreta ja hi ha un pes d'1 que no es mou.","Posa al plat el pes de 2 punts i el de 4."],
+ pedres:[{p:2,x:30,y:238},{p:3,x:72,y:242},{p:4,x:116,y:238},{p:5,x:154,y:244}],
+ extrems(){const c=Math.cos(ang),s=Math.sin(ang);return {lx:180-90*c,ly:76-90*s,rx:180+90*c,ry:76+90*s}},
+ posPlat(){const e=this.extrems(),py=e.ry+54,n=Z.f.plat.length+1;return [...Array(n)].map((_,k)=>[e.rx-(n-1)*10+k*20,py-10])},
+ dibuixa(t){
+  cel('#a8d0ec','#e8f0f0',50);
+  R(0,40,W,186,'#dcc8a4');R(0,40,W,6,'#b8a07c');
+  for(let i=0;i<12;i++){R(8+i*30,52,12,18,'#6a4a32');R(6+i*30,50,16,3,'#a8906c')}
+  for(let i=0;i<8;i++){const x=4+i*46;g.fillStyle='#4a3a2c';g.beginPath();g.moveTo(x,150);g.lineTo(x,108);g.arc(x+18,108,18,PI,0);g.lineTo(x+36,150);g.fill()}
+  R(0,150,W,76,'#cdb894');
+  g.fillStyle=lg(0,224,0,270,0,'#a89070',1,'#7a6448');g.fillRect(0,224,W,46);
+  for(let i=0;i<30;i++)E(rr(i)*W,232+rr(i+5)*34,6,2.5,'rgba(60,40,20,.25)');
+  const S=this.pedres,tot=1+Z.f.plat.reduce((a,i)=>a+S[i].p,0),target=Math.max(-.3,Math.min(.3,(tot-7)*.05));
+  ang+=(target-ang)*Math.min(1,dt*3);
+  const o=prog('obert4',1500);
+  R(306,86,48,140,'#120d07');if(o>0)E(330,160,18,50,'rgba(255,190,100,'+(.15*o)+')');
+  if(o<1){g.save();g.beginPath();g.rect(306,86,48,140);g.clip();g.fillStyle=lg(306,0,354,0,0,'#5a3820',.5,'#7a5030',1,'#4a2c18');g.fillRect(306,86-o*140,48,140);
+    for(let k=0;k<5;k++)R(306,92+k*28-o*140,48,2,'#3a2414');g.restore()}
+  for(let k=0;k<6;k++)P(k%2?'#f4f0e8':'#c03030',300+k*10,70,310+k*10,70,312+k*10,84,302+k*10,84);
+  R(298,66,62,5,'#8a2020');
+  P('#6e6248',168,226,174,76,186,76,192,226);R(160,220,40,8,'#5e533b');
+  const e=this.extrems();
+  Ln('#5a4a30',6,e.lx,e.ly,e.rx,e.ry);C(180,76,5,'#3a3020');
+  for(const[x,y]of[[e.lx,e.ly],[e.rx,e.ry]]){Ln('#3a3020',1.5,x,y,x-28,y+54);Ln('#3a3020',1.5,x,y,x+28,y+54);E(x,y+56,30,6,'#8a6a30');E(x,y+54,30,5,'#c09a54')}
+  const sx=e.lx,sy=e.ly+52;
+  g.strokeStyle='#7a2a20';g.lineWidth=10;g.lineCap='round';g.beginPath();g.moveTo(sx-20,sy-6);g.quadraticCurveTo(sx,sy-16,sx+20,sy-6);g.stroke();
+  for(let i=0;i<7;i++)C(sx-16+i*5.5,sy-9-Math.sin(i/6*PI)*4,1.2,'#f0d8c8');
+  Ln('#e8e0d0',1,sx+20,sy-6,sx+22,sy-20);RR(sx+12,sy-34,22,14,2,'#f4f0e4');
+  for(let i=0;i<4;i++)C(sx+15+i*5,sy-30,1.4,'#222');for(let i=0;i<3;i++)C(sx+17.5+i*5,sy-25,1.4,'#222');
+  const pp=this.posPlat();pes(pp[0][0],pp[0][1],9,1);
+  Z.f.plat.forEach((i,k)=>pes(pp[k+1][0],pp[k+1][1]-3,9+S[i].p*1.1,S[i].p));
+  S.forEach((s,i)=>{if(!Z.f.plat.includes(i))pes(s.x,s.y,10+s.p*1.6,s.p)});
+ },
+ obj(){
+  const S=this.pedres,e=this.extrems(),pp=this.posPlat(),o=[{id:'sala',x:0,y:0,w:W,h:H},{id:'balanca',x:156,y:60,w:48,h:170},{id:'porta',x:302,y:62,w:58,h:166},
+   {id:'estatua',x:e.lx-32,y:e.ly+6,w:64,h:56},{id:'s1',x:pp[0][0]-13,y:pp[0][1]-14,w:26,h:28}];
+  S.forEach((s,i)=>{const k=Z.f.plat.indexOf(i);if(k<0)o.push({id:'s'+(i+2),x:s.x-20,y:s.y-20,w:40,h:40});else o.push({id:'s'+(i+2),x:pp[k+1][0]-12,y:pp[k+1][1]-18,w:24,h:30})});
+  return o;
+ },
+ toca(id,it){
+  if(it)return;
+  if(id==='sala')return 'La plaça Major de Vic, amb els porxos i les parades del mercat.';
+  if(id==='balanca')return 'Una balança antiga de cansaladeria, de dos plats.';
+  if(id==='estatua')return "Una llonganissa de Vic, al plat de l'esquerra. L'etiqueta té set punts: pesa set.";
+  if(id==='porta')return Z.f.obert4?passa():'La porta de la cansaladeria, tancada. Damunt hi diu: «Només hi entra qui sap pesar».';
+  if(id==='s1')return "Aquest pes d'1 punt està soldat al plat. No hi ha manera de treure'l.";
+  const S=this.pedres,i=+id.slice(1)-2,k=Z.f.plat.indexOf(i);so.toc();
+  let t;if(k>=0){Z.f.plat.splice(k,1);t='Trec el pes de '+S[i].p+' punts del plat.'}else{Z.f.plat.push(i);t='Poso el pes de '+S[i].p+' punts al plat de la dreta.'}
+  const tot=1+Z.f.plat.reduce((a,j)=>a+S[j].p,0);
+  if(tot===7&&!Z.f.obert4){Z.f.obert4=1;anima('obert4');so.obre();return t+" La balança queda plana del tot... i la porta de la cansaladeria s'obre!"}
+  return t;
+ }},
+// ---------- 6 ----------
+{nom:'EL MONESTIR DE POBLET',ini:{m:[1,1,0,0,1],obert5:0},
+ entra:"Al monestir de Poblet, per una finestreta entra un raig de sol. A la sala hi ha miralls, i a l'altra punta, un disc amb un sol gravat.",
+ pistes:["Toca els miralls per girar-los: el raig de llum ha d'arribar al disc del sol, a la paret de la dreta.","La llum ha de baixar pel segon carril, passar per baix de tot cap a la dreta i tornar a pujar per l'última columna.","Els dos miralls de l'esquerra han de quedar així: \\ . Els dos de la dreta, així: / . El del mig no fa res."],
+ dibuixa(t){
+  R(0,0,W,H,'#a89670');
+  for(let r=0;r<3;r++)for(let c=0;c<4;c++)R(GX+c*CS+1,GY+r*CS+1,CS-2,CS-2,(r+c)%2?'#c4b088':'#b8a47c');
+  pedres(0,0,W,44,'#8a7a5a','#5e533b',14,30);pedres(0,44,GX-8,H-44,'#8a7a5a','#5e533b',18,30);pedres(GX+4*CS+8,44,W-GX-4*CS-8,H-44,'#8a7a5a','#5e533b',18,30);
+  pedres(GX-8,GY+3*CS+6,4*CS+16,H-GY-3*CS-6,'#8a7a5a','#5e533b',14,30);
+  C(GX-10,GY+CS/2,8,'#fff4c0');
+  const o=prog('obert5',1500);
+  R(300,128,48,96,'#120d07');if(o>0)E(324,176,18,40,'rgba(255,210,120,'+(.15*o)+')');
+  if(o<1){g.save();g.beginPath();g.rect(300,128,48,96);g.clip();pedres(300,128+o*96,48,96,'#7a6c52','#4a4030',16,24);g.restore()}
+  const f=feix(),enc=f.encert;
+  C(312,GY+CS/2,16,enc?'rgba(255,230,120,.35)':'rgba(0,0,0,.15)');simbol(0,312,GY+CS/2,26,enc?'#fff2a0':'#a07a28',2.5);
+  PIL.forEach(([c,r])=>{const x=GX+(c+.5)*CS,y=GY+(r+.5)*CS;E(x,y+16,16,6,'rgba(0,0,0,.25)');RR(x-13,y-20,26,38,3,'#8a7a5a');R(x-15,y-22,30,6,'#6e6248');R(x-15,y+14,30,6,'#6e6248')});
+  g.save();g.globalCompositeOperation='lighter';
+  g.strokeStyle='rgba(255,220,120,.35)';g.lineWidth=9;g.lineJoin='round';g.beginPath();f.pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke();
+  g.strokeStyle='rgba(255,250,210,.95)';g.lineWidth=2.5;g.stroke();g.restore();
+  MIR.forEach(([c,r],k)=>{const x=GX+(c+.5)*CS,y=GY+(r+.5)*CS,m=Z.f.m[k];E(x,y+3,14,6,'rgba(0,0,0,.25)');C(x,y,6,'#6a5a3a');
+    const a=m===1?-PI/4:PI/4,dx=Math.cos(a)*19,dy=Math.sin(a)*19;Ln('#8a6a2a',8,x-dx,y-dy,x+dx,y+dy);Ln('#e8f0f8',4,x-dx,y-dy,x+dx,y+dy);Ln('rgba(255,255,255,.9)',1.2,x-dx*.6,y-dy*.6,x,y)});
+ },
+ obj:[{id:'sala',x:0,y:0,w:W,h:H},{id:'forat',x:46,y:56,w:28,h:44},{id:'sol',x:292,y:58,w:40,h:40},{id:'porta',x:296,y:124,w:56,h:104},
+      ...MIR.map(([c,r],k)=>({id:'m'+k,x:GX+c*CS,y:GY+r*CS,w:CS,h:CS})),...PIL.map(([c,r],k)=>({id:'pilar',x:GX+c*CS,y:GY+r*CS,w:CS,h:CS}))],
+ toca(id,it){
+  if(it)return;
+  if(id==='sala')return null;
+  if(id==='forat')return 'Una finestreta gòtica per on entra el sol.';
+  if(id==='sol')return 'Un disc de pedra amb un sol gravat, a la paret de la dreta.';
+  if(id==='pilar')return 'Una columna de pedra. La llum no la travessa.';
+  if(id==='porta')return Z.f.obert5?passa():"Una porta tancada, a sota del disc del sol.";
+  const k=+id[1];if(Z.f.obert5)return 'La porta ja és oberta.';
+  Z.f.m[k]=1-Z.f.m[k];so.toc();
+  if(feix().encert){Z.f.obert5=1;anima('obert5');so.obre();return "La llum toca el disc del sol, que s'encén... i la porta s'obre!"+peca()}
+  return null;
+ }},
+// ---------- 7 ----------
+{nom:'EL CAMPANAR',ini:{fruita:0,menjat:0,obert6:0},
+ entra:"Dalt del campanar d'una església de Barcelona hi ha quatre campanes. En un racó, una cotorra verda et mira de reüll, i en un test hi ha un nesprer.",
+ pistes:["La cotorra sembla que té gana. Al nesprer del test hi ha nespres.","Dona-li la nespra (toca-la a la motxilla i després la cotorra): et cantarà una cançó. Toca les campanes igual que ella.","La cançó és: tercera campana, primera, quarta, segona i tercera (comptant d'esquerra a dreta)."],
+ dibuixa(t){
+  pedres(0,0,W,226,'#7a6c58','#4e4434',18,34);
+  g.fillStyle=lg(0,224,0,270,0,'#4e4434',1,'#2e2820');g.fillRect(0,224,W,46);
+  torxa(110,120,t);
+  R(124,26,170,8,'#5a3e22');
+  const now=performance.now();let canta=-1;
+  if(cancoT>=0){const ni=Math.floor((now-cancoT)/480);if(ni<MEL.length){canta=MEL[ni];if(ni!==cancoN){cancoN=ni;so.xiula(MEL[ni])}}else cancoT=-1}
+  BX.forEach((x,k)=>{const s=BS[k],gl=Math.max(llum('b'+k,900),canta===k?.6:0),sw=Math.sin(t*14)*llum('b'+k,900)*.18;
+    g.save();g.translate(x,34);g.rotate(sw);Ln('#3a2a18',2,0,0,0,14);
+    if(gl)E(0,14+s*1.2,s*1.6,s*1.6,'rgba(255,220,120,'+(.3*gl)+')');
+    g.fillStyle=lg(-s,0,s,0,0,'#7a5a20',.4,gl?'#ffe090':'#d8a848',1,'#6a4a18');g.beginPath();g.moveTo(-s*.45,14);g.quadraticCurveTo(-s*.6,14+s*1.6,-s*1.05,14+s*2.1);g.lineTo(s*1.05,14+s*2.1);g.quadraticCurveTo(s*.6,14+s*1.6,s*.45,14);g.closePath();g.fill();
+    R(-s*1.05,12+s*2.1,s*2.1,3,'#5a3a10');C(0,17+s*2.1,s*.18,'#3a2a10');g.restore()});
+  Ln('#5a3e22',4,14,108,100,108);R(54,108,5,118,'#4a3420');
+  lloro(56,88,canta>=0);
+  if(canta>=0){const ni=Math.floor((now-cancoT)/480);txt('♪',30-ni*2,60-((now-cancoT)%480)/30,14,'#fff4c0')}
+  RR(186,214,44,14,3,'#7a4a2a');R(190,226,36,6,'#5a3420');R(205,160,6,56,'#4a3420');mata(208,160,38,11);
+  if(!Z.f.fruita){for(const[fx,fy]of[[196,152],[222,166]])icona('fruita',fx,fy,18)}
+  const o=prog('obert6',1500);
+  R(310,96,44,130,'#120d07');if(o>0)E(332,160,18,50,'rgba(255,190,100,'+(.15*o)+')');
+  if(o<1){g.save();g.beginPath();g.rect(310,96,44,130);g.clip();g.fillStyle=lg(310,0,354,0,0,'#7a5a20',.5,'#c89a40',1,'#6a4a18');g.fillRect(310,96-o*130,44,130);
+    for(let k=0;k<4;k++){const y=112+k*28-o*130;C(332,y,6,'#5a3a10')}g.restore()}
+ },
+ obj:[{id:'sala',x:0,y:0,w:W,h:H},{id:'lloro',x:20,y:50,w:70,h:90},{id:'arbre',x:166,y:118,w:84,h:114},{id:'porta',x:306,y:92,w:54,h:136},
+      ...BX.map((x,k)=>({id:'c'+k,x:x-BS[k]-6,y:28,w:BS[k]*2+12,h:BS[k]*2.2+24}))],
+ toca(id,it){
+  if(id==='lloro'&&it==='fruita'){treu('fruita');Z.f.menjat=1;cancoT=performance.now()+300;cancoN=-1;camp=[];return 'La cotorra es menja la nespra amb ganes... i es posa a xiular una cançó! Les campanes hi ressonen.'}
+  if(it)return;
+  if(id==='sala')return null;
+  if(id==='arbre'){if(!Z.f.fruita){Z.f.fruita=1;afegeix('fruita');return 'Agafo una nespra ben madura.'}return "No n'hi queda cap més de madura."}
+  if(id==='lloro'){if(Z.f.menjat){cancoT=performance.now();cancoN=-1;camp=[];return 'La cotorra torna a xiular la cançó.'}return 'Una cotorra verda, de les que viuen pels parcs de Barcelona. Et mira amb el cap de costat. Sembla que té gana.'}
+  if(id==='porta')return Z.f.obert6?passa():'Una porta de bronze, tancada. No té pany ni maneta.';
+  const k=+id[1];so.campana(k);anima('b'+k);if(Z.f.obert6)return null;
+  camp.push(k);
+  if(camp.some((v,i)=>v!==MEL[i])){camp=[];if(!Z.f.menjat)return 'Dong! Les campanes sonen molt boniques, però la porta no es mou.';setTimeout(()=>so.no(),350);return 'No sona com la cançó de la cotorra. Torna-hi des del principi.'}
+  if(camp.length===MEL.length){Z.f.obert6=1;anima('obert6');setTimeout(()=>so.obre(),600);camp=[];return 'La cançó sencera! La cotorra pica de peus... i la porta de bronze puja.'}
+  return null;
+ }},
+// ---------- 8 ----------
+{nom:'TÀRRACO',ini:{net:0,rom:'',obert7:0},
+ entra:"A Tàrraco, la ciutat dels romans. La porta de la muralla té una suma gravada en números romans, i a l'esquerra hi ha una tauleta plena de pols.",
+ pistes:["La tauleta de l'esquerra està bruta: neteja-la i sabràs què val cada lletra.","VII és 7 i VIII és 8. Escriu el resultat en números romans amb les pedres de la dreta i toca l'ara, la pedra de la mà.","7 + 8 = 15, que en números romans és XV. Toca la X, després la V i després l'ara."],
+ dibuixa(t){
+  cel('#8cc4e8','#d8ecf0',40);R(0,30,W,12,'#3a7ab0');
+  pedres(0,40,W,192,'#dcc8a0','#a8946c',18,34);
+  g.fillStyle=lg(0,230,0,270,0,'#b8a07c',1,'#8a7458');g.fillRect(0,230,W,40);
+  RR(14,58,94,118,4,'#e8dcc0');R(14,58,94,4,'#fff4dc');
+  if(Z.f.net){txt('I  = 1',61,84,15,'#4a3e2a');txt('V  = 5',61,116,15,'#4a3e2a');txt('X  = 10',61,148,15,'#4a3e2a')}
+  else for(let i=0;i<70;i++)E(18+rr(i)*86,62+rr(i+70)*110,3+rr(i+5)*6,2+rr(i+2)*3,'rgba(120,100,70,.55)',rr(i));
+  R(124,18,132,56,'#c8b48c');R(124,18,132,3,'#f0e4c4');R(124,71,132,3,'#8a7a5a');
+  txt('VII+VIII=?',190,46,17,'#3a2e1c');
+  const o=prog('obert7',1500);
+  R(134,76,112,156,'#120d07');if(o>0)E(190,160,30,60,'rgba(255,190,100,'+(.15*o)+')');
+  if(o<1){g.save();g.beginPath();g.rect(134,76,112,156);g.clip();g.translate(0,-o*156);pedres(134,76,112,156,'#c8b48c','#8a7a5a',20,28);
+    RR(150,132,80,50,6,'#8a7a5a');RR(154,136,72,42,4,'#3a3022');txt(Z.f.rom||'·',190,158,Z.f.rom.length>4?16:22,'#f0d890');g.restore()}
+  for(const x of[126,246])R(x-6,76,12,156,'#b8a47c');
+  [['I',272,48],['V',314,48],['X',272,94],['e',314,94]].forEach(([k,x,y])=>{RR(x,y,40,40,6,'#a8946c');RR(x+2,y+2,36,36,5,'#d8c49c');
+    if(k==='e'){g.strokeStyle='#3a2e1c';g.lineWidth=3;g.beginPath();g.arc(x+20,y+21,9,-.3*PI,1.5*PI);g.stroke();P('#3a2e1c',x+20,y+8,x+26,y+12,x+19,y+16)}
+    else txt(k,x+20,y+21,22,'#3a2e1c')});
+  RR(270,184,82,46,4,'#a8946c');RR(274,180,74,8,3,'#c8b48c');
+  C(311,206,7,'#5a4a32');for(let f=0;f<5;f++)Ln('#5a4a32',3,311,206,311+Math.cos(-PI/2+(f-2)*.35)*14,206+Math.sin(-PI/2+(f-2)*.35)*14);
+ },
+ obj:[{id:'sala',x:0,y:0,w:W,h:H},{id:'tauleta',x:10,y:54,w:102,h:126},{id:'numeros',x:122,y:16,w:136,h:60},{id:'porta',x:130,y:76,w:120,h:156},
+      {id:'bI',x:268,y:44,w:46,h:48},{id:'bV',x:312,y:44,w:46,h:48},{id:'bX',x:268,y:90,w:46,h:48},{id:'be',x:312,y:90,w:46,h:48},{id:'altar',x:266,y:176,w:90,h:58}],
+ toca(id,it){
+  if(it)return;
+  if(id==='sala')return 'La muralla romana de Tàrraco. Al fons es veu el mar.';
+  if(id==='tauleta'){if(!Z.f.net){Z.f.net=1;so.agafa();return 'Bufo la pols de la tauleta... Hi ha gravat que la I val 1, la V val 5 i la X val 10.'}return 'La tauleta diu: la I val 1, la V val 5 i la X val 10.'}
+  if(id==='numeros')return 'Damunt la porta hi ha una suma en números romans: VII més VIII... i un interrogant.';
+  if(id==='porta')return Z.f.obert7?passa():'La porta de la muralla té una pedra al mig on s\'escriu un número amb les lletres de la dreta.';
+  if(Z.f.obert7)return 'La porta ja és oberta.';
+  so.toc();
+  if(id==='be'){Z.f.rom='';return 'Esborro el número de la porta.'}
+  if(id[0]==='b'){if(Z.f.rom.length>=6)return 'Ja no hi cap res més.';Z.f.rom+=id[1];return null}
+  if(id==='altar'){if(Z.f.rom==='XV'){Z.f.obert7=1;anima('obert7');so.obre();return "Poso la mà a l'ara... La porta de la muralla puja!"+peca()}
+    const ben=Z.f.rom&&romana(valRoma(Z.f.rom))===Z.f.rom;Z.f.rom='';so.no();
+    return "Poso la mà a l'ara... La porta no es mou, i el número s'esborra. "+(ben?'No era aquest.':'A més, aquest número no està ben escrit en romà.')}
+ }},
+// ---------- 9 ----------
+{nom:'LA CASA MODERNISTA',ini:{pergami:0,pc:2,pr:4,peca8:0},
+ entra:"Una casa modernista de l'Eixample, amb el terra de rajoles de colors. A l'entrada, una armadura antiga vigila el passadís.",
+ pistes:["L'armadura de l'esquerra té alguna cosa a la mà.","Llegeix el pergamí (toca'l dues vegades a la motxilla): només hi ha un dibuix que aguanta el pes.","Només les roses. Des de l'entrada: amunt, amunt, amunt, a l'esquerra i amunt."],
+ dibuixa(t){
+  R(0,0,W,H,'#2e3a34');
+  for(let i=0;i<24;i++){const x=i*15;P(['#3a7a6a','#c8a040','#a84a3a','#4a6aa0'][i%4],x,0,x+15,0,x+15,12,x,16)}
+  R(0,14,W,40,'#e0d0b0');for(let i=0;i<12;i++){const x=10+i*30;E(x,34,8,12,'rgba(180,150,90,.35)')}
+  P('#3e6a5a',0,54,86,56,86,240,0,270);P('#3e6a5a',W,54,274,56,274,240,W,270);
+  for(let i=0;i<26;i++){const yy=60+rr(i)*180,s=rr(i+4)>.5;const x=s?6+rr(i+9)*70:284+rr(i+9)*70;P(['#c8a040','#e0e0d0','#a84a3a','#5a8ac0'][i%4],x,yy,x+6+rr(i+2)*6,yy+2,x+3,yy+7)}
+  R(126,14,36,42,'#5a3420');g.fillStyle='#3a2010';g.beginPath();g.moveTo(130,56);g.lineTo(130,28);g.quadraticCurveTo(144,14,158,28);g.lineTo(158,56);g.fill();
+  if(Z.f.pr===0&&Z.f.pc===1)E(144,40,14,16,'rgba(255,200,120,.2)');
+  for(let r=0;r<4;r++)for(let c=0;c<5;c++){const x=90+c*36,y=56+r*36,cr=crac&&crac.c===c&&crac.r===r?llum('crac',900):0;
+    RR(x+1,y+1,34,34,2,'#e4d8bc');g.strokeStyle='#b8a888';g.lineWidth=1;g.strokeRect(x+4,y+4,28,28);
+    for(const[a,b]of[[4,4],[32,4],[4,32],[32,32]])C(x+a,y+b,2,'#a84a3a');
+    if(cr)R(x+3,y+3,30,30,'rgba(0,0,0,'+cr+')');else simbol(TILES[r][c],x+18,y+18,20,['#c08020','#3a5a9a','#2a7a6a'][TILES[r][c]]||'#a03030',2)}
+  RR(163,201,34,34,2,'#c8b898');
+  armadura(48,236);
+  if(!Z.f.pergami)icona('pergami',70,188,20);
+  const ex=Z.f.pr===4?180:108+Z.f.pc*36,ey=Z.f.pr===4?230:56+Z.f.pr*36+31;explorador(ex,ey);
+ },
+ obj(){const o=[{id:'sala',x:0,y:0,w:W,h:H},{id:'esquelet',x:20,y:120,w:66,h:120},{id:'porta',x:120,y:8,w:48,h:50}];
+  for(let r=0;r<4;r++)for(let c=0;c<5;c++)o.push({id:'t'+r+c,x:90+c*36,y:56+r*36,w:36,h:36});
+  o.push({id:'entrada',x:160,y:200,w:40,h:38});return o},
+ toca(id,it){
+  if(it)return;
+  if(id==='sala')return null;
+  if(id==='esquelet'){if(!Z.f.pergami){Z.f.pergami=1;afegeix('pergami');return "L'armadura té un pergamí a la mà de ferro. L'agafo amb compte."}return 'Una armadura vella i rovellada. Ja no té res més.'}
+  if(id==='porta'){if(Z.f.pr===0&&Z.f.pc===1)return passa();return "La porta és a l'altra punta del passadís, passat totes les rajoles."}
+  let r,c;if(id==='entrada'){r=4;c=2}else{r=+id[1];c=+id[2]}
+  if(r===Z.f.pr&&c===Z.f.pc)return null;
+  const vei=(r===4)?(Z.f.pr===3&&Z.f.pc===2):(Z.f.pr===4?(r===3&&c===2):Math.abs(r-Z.f.pr)+Math.abs(c-Z.f.pc)===1);
+  if(!vei)return 'Massa lluny: només puc fer una passa, a una rajola del costat.';
+  if(r===4||TILES[r][c]===5){Z.f.pr=r;Z.f.pc=c;so.toc();
+    if(r===0&&c===1&&!Z.f.peca8){Z.f.peca8=1;return 'Arribo a la porta del fons.'+peca()}
+    return null}
+  crac={r,c};anima('crac');so.crac();Z.f.pr=4;Z.f.pc=2;
+  return 'Crac! La rajola amb '+NOM_SIMBOL[TILES[r][c]]+" s'enfonsa, i torno a l'entrada d'un salt.";
+ }},
+// ---------- 10 ----------
+{nom:'EL CASTELL DE MIRAVET',ini:{pos:0,rot:[1,2,3,2],obert9:0},
+ entra:"Dins del castell de Miravet, davant la porta de la sala dels templers. Al mig té un forat rodó partit en quatre: hi falta el segell.",
+ pistes:["Posa els quatre trossos del segell al forat de la porta: toca'ls a la motxilla i després el forat.","Toca cada tros, un cop posat, per girar-lo fins que el dibuix quedi sencer.","El dibuix és la creu vermella dels templers: els quatre braços s'han de tocar al mig, i les puntes amples van cap a fora."],
+ porta(){
+  pedres(92,18,176,218,'#6e5e44','#3e3426',20,30);R(92,18,176,4,'#c89a30');R(92,232,176,4,'#c89a30');R(92,18,4,218,'#c89a30');R(264,18,4,218,'#c89a30');R(178,18,4,218,'#3e3426');
+  C(MX,MY,MR+5,'#c89a30');C(MX,MY,MR+2,'#1a140c');
+  for(let q=0;q<4;q++){const x0=MX-MR+(q%2)*MR,y0=MY-MR+(q>>1)*MR;
+    if(q<Z.f.pos){g.save();g.beginPath();g.rect(x0,y0,MR,MR);g.clip();const cx=x0+MR/2,cy=y0+MR/2;g.translate(cx,cy);g.rotate(Z.f.rot[q]*PI/2);g.translate(-cx,-cy);medallo(MX,MY,MR);g.restore()}
+  }
+  Ln('#1a140c',1.5,MX-MR,MY,MX+MR,MY);Ln('#1a140c',1.5,MX,MY-MR,MX,MY+MR);
+ },
+ dibuixa(t){
+  R(0,0,W,H,'#2a2218');pedres(0,0,W,H,'#5a4c3a','#2a2218',20,34);
+  torxa(50,120,t);torxa(310,120,t);
+  for(const x of[20,340]){R(x-10,30,20,60,'#e8e0d0');P('#c02020',x-3,34,x+3,34,x+3,54,x+8,54,x+8,60,x+3,60,x+3,84,x-3,84,x-3,60,x-8,60,x-8,54,x-3,54)}
+  g.fillStyle=lg(0,236,0,270,0,'#3a3022',1,'#1e180f');g.fillRect(0,236,W,34);
+  const o=prog('obert9',2200);
+  if(o>0){R(92,18,176,218,'#1a1208');E(180,150,80,90,'rgba(255,200,80,'+(.25*o)+')');RR(150,184,60,52,3,'#6e5e44');R(144,180,72,8,'#8a7a5a');
+    if(!Z.f.mascara)tresor(180,176+Math.sin(t*2)*1,t)}
+  if(o<1){for(const s of[-1,1]){g.save();g.beginPath();g.rect(s<0?0:180,0,180,H);g.clip();g.translate(s*o*92,0);this.porta();g.restore()}}
+ },
+ obj:[{id:'sala',x:0,y:0,w:W,h:H},{id:'porta',x:92,y:18,w:176,h:218},
+      ...[0,1,2,3].map(q=>({id:'q'+q,x:MX-MR+(q%2)*MR,y:MY-MR+(q>>1)*MR,w:MR,h:MR,vis:()=>!Z.f.obert9})),
+      {id:'mascara',x:136,y:110,w:88,h:80,vis:()=>Z.f.obert9&&prog('obert9',2200)>=1&&!Z.f.mascara}],
+ toca(id,it){
+  if(id[0]==='q'&&it==='peca'){
+    if(Z.f.pos>=4)return 'Ja hi ha els quatre trossos.';
+    Z.f.pos++;Z.peces--;if(Z.peces<=0)treu('peca');else pintaInv();so.roda();
+    return Z.f.pos<4?'Encaixo un tros del segell al forat. Encara n\'hi falten '+(4-Z.f.pos)+'.':"Encaixo l'últim tros. Ara el dibuix ha de quedar sencer: toca els trossos per girar-los."}
+  if(it)return;
+  if(id==='sala')return 'La sala dels templers. Les banderes tenen la seva creu vermella.';
+  if(id==='porta')return Z.f.obert9?'La porta és oberta del tot.':'Una porta enorme amb un forat rodó al mig, partit en quatre.';
+  if(id==='mascara')return acaba();
+  const q=+id[1];
+  if(q>=Z.f.pos)return Z.peces?"Aquí hi falta un tros del segell. Toca'n un a la motxilla i després el forat.":'Aquí hi falta un tros del segell.';
+  Z.f.rot[q]=(Z.f.rot[q]+1)%4;so.roda();
+  if(Z.f.pos===4&&Z.f.rot.every(v=>v===0)){Z.f.obert9=1;anima('obert9');so.obre();return "El segell queda sencer: la creu vermella dels templers. La porta tremola... i es parteix en dues! Al fons brilla el tresor."}
+  return null;
+ }},
+];
+
+// ===== TOCAR =====
+function objs(s){const z=zoom&&s.zooms?s.zooms[zoom]:null,o=z?z.obj:s.obj;return typeof o==='function'?o.call(s):o}
+function diu(t){if(t===null||t===undefined)return;$('text').innerHTML=t;$('text').scrollTop=0}
+function tocaEscena(x,y){
+  const s=SALES[Z.sala],z=zoom&&s.zooms?s.zooms[zoom]:null;
+  const o=[...objs(s)].reverse().find(o=>(!o.vis||o.vis())&&x>=o.x&&x<o.x+o.w&&y>=o.y&&y<o.y+o.h);
+  if(!o){if(sel){sel=null;pintaInv()}return}
+  const it=sel;
+  let r=(z||s).toca.call(s,o.id,it);
+  if(r===undefined)r=it?'Fer servir '+ITEMS[it].nom+' aquí? No, no serveix de res.':null;
+  if(it){sel=null;pintaInv()}
+  diu(r);desa();pintaHud();
+}
+function tocaInv(i){
+  const id=Z.inv[i];
+  if(!id){if(sel){sel=null;pintaInv()}return}
+  if(sel===id){sel=null;mira(id)}
+  else if(sel){const k=[sel,id].sort().join('+');if(COMBINA[k]){const[nou,t]=COMBINA[k];treu(sel);treu(id);afegeix(nou);diu(t)}else{so.no();diu("Això no s'hi pot ajuntar.")}sel=null}
+  else{sel=id;so.toc();diu('Tens '+ITEMS[id].nom+' a la mà. Toca on el vols fer servir, o torna-hi a tocar per mirar-ho.')}
+  pintaInv();desa();
+}
+function mira(id){
+  const it=ITEMS[id];
+  if(it.llegir){msg('<div class="paper">'+LLEGIR[id]+'</div><small style="color:#9fb890">toca per tancar</small>');potTancar=true;return}
+  diu(typeof it.desc==='function'?it.desc():it.desc);
+}
+
+// ===== EL FINAL =====
+function acaba(){
+  Z.f.mascara=1;Z.pt[Z.sala]=Math.max(10,100-30*Z.pis[Z.sala]);
+  const sales=Z.pt.reduce((a,b)=>a+b,0);Z.bonus=Math.max(0,Math.round(600-Z.temps/6));Z.total=sales+Z.bonus;
+  Z.fi=true;Z.nou=true;desa();so.fi();pintaHud();
+  setTimeout(finalPartida,800);
+  return "El calze d'or dels templers i un cofre ple de monedes! L'avi tenia raó.";
+}
+const mmss=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=String(s%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+ss:m+':'+ss};
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!Z||!Z.fi){msg('<div style="color:#f0c860">EL TRESOR DELS TEMPLERS</div><small>encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!(Z&&Z.comencada);return}
+    const pis=Z.pis.reduce((a,b)=>a+b,0),sales=Z.total-Z.bonus;
+    msg('<div style="color:#7dff9b">HAS TROBAT EL TRESOR DELS TEMPLERS!</div>'+
+      '<div style="font-size:34px;font-weight:bold;color:#f0c860">'+Z.total+'</div>'+
+      '<small style="color:#b8d0a8">'+sales+' de les deu proves'+(pis?' ('+pis+(pis===1?' pista':' pistes')+')':', sense cap pista')+'<br>i '+Z.bonus+' pel temps ('+mmss(Z.temps)+')</small>'+
+      '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>'+
+      '<a href="#" class="bt" id="f-nova" style="color:#1a1200;background:#f0c860">TORNA A COMENÇAR</a>'+Records.peuFinal('o toca per tancar'));
+    potTancar=true;enllac('f-nova',comenca);
+    let r;
+    if(Z.nou){r=await Records.fiPartida(JOC,Z.total);Z.nou=false;desa()}
+    else r={html:Records.taulaHTML(await Records.llista(JOC),null,JOC),posicio:0};
+    const el=$('taula');if(el)el.innerHTML=r.html+(r.posicio===1?'<div style="color:#ff0;font-size:13px">ETS EL NÚMERO 1!</div>':r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+'!</div>':'');
+    Records.pintaMillor(JOC,$('best'));
+  }finally{enFinal=false}
+}
+
+// ===== MENÚ =====
+let potTancar=false;
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+function menu(){
+  desa();
+  const mig=Z&&Z.comencada&&!Z.fi;
+  msg('<div style="color:#f0c860;letter-spacing:.12em">EL TRESOR DELS TEMPLERS</div>'+
+    '<small style="color:#d8d0b0">L\'any 1308, quan el rei els va fer fora del castell de Miravet, els templers hi van amagar el seu tresor. L\'avi Ramon, excursionista, el va buscar tota la vida, i el seu diari diu que el camí comença a Montserrat.</small>'+
+    '<small style="color:#9fb890">Són deu proves per Catalunya, i a cada una hi ha alguna cosa per descobrir. Toca-ho tot per mirar-ho i agafar-ho, i fes servir el que portes a la motxilla.</small>'+
+    (mig?'<a href="#" class="bt" id="m-cont" style="color:#1a1200;background:#f0c860">CONTINUA ▸</a><small style="color:#b8d0a8;margin-top:2px">prova '+(Z.sala+1)+' de 10 · '+SALES[Z.sala].nom.toLowerCase()+'</small>'+
+         '<a href="#" id="m-nova" style="display:block;margin-top:14px;font:12px monospace;color:#7a9070">començar de nou des de Montserrat</a>'
+       :'<a href="#" class="bt" id="m-nova" style="color:#1a1200;background:#f0c860">'+(Z&&Z.fi?'TORNA A COMENÇAR':'COMENÇA A MONTSERRAT')+' ▸</a>')+
+    '<small style="color:#6a8060;margin-top:12px">Cada pista treu 30 punts de la prova on ets.</small>');
+  enllac('m-cont',continua);
+  enllac('m-nova',()=>{if(mig)segur();else comenca()});
+}
+function segur(){
+  msg('<div style="color:#ffb070">SEGUR?</div><small style="color:#d8d0b0">Perdries la partida que portes, a la prova '+(Z.sala+1)+'.</small>'+
+    '<a href="#" class="bt" id="s-no" style="color:#1a1200;background:#f0c860">NO, TORNA ENRERE</a>'+
+    '<a href="#" id="s-si" style="display:block;margin-top:14px;font:12px monospace;color:#c08060">sí, comença de nou</a>');
+  enllac('s-no',menu);enllac('s-si',comenca);
+}
+function comenca(){Z=nova();Z.comencada=true;anim={};desa();hideMsg();entra()}
+function continua(){hideMsg();entra()}
+function nova(){const f={};SALES.forEach(s=>Object.assign(f,JSON.parse(JSON.stringify(s.ini||{}))));
+  return {v:1,sala:0,inv:[],peces:0,f,pis:Array(SALES.length).fill(0),pt:Array(SALES.length).fill(0),temps:0,fi:false,total:0,bonus:0,comencada:false}}
+function entra(){
+  sel=null;zoom=null;focus={x:150,y:140};camp=[];cancoT=-1;crac=null;ang=0;fadeT=performance.now();
+  diu(SALES[Z.sala].entra);pintaHud();pintaInv();
+}
+function desa(){if(Z&&Z.comencada)try{localStorage.setItem(CLAU,JSON.stringify(Z))}catch(e){}}
+function carrega(){try{const d=JSON.parse(localStorage.getItem(CLAU)||'null');if(d&&d.v===1&&d.f&&d.sala>=0&&d.sala<SALES.length)return d}catch(e){}return null}
+const jugant=()=>Z&&Z.comencada&&!Z.fi&&!paused&&$('msg').style.display!=='block';
+
+// ===== PANTALLA =====
+function pintaHud(){
+  if(!Z)return;
+  $('nsala').textContent=(Z.sala+1)+'/'+SALES.length;$('sala').textContent=SALES[Z.sala].nom;
+  const p=Z.fi?Z.total:Z.pt.reduce((a,b)=>a+b,0);$('score').textContent=p;Records.marcador(JOC,$('best'),p);
+}
+function pintaInv(){
+  const n=6,gp=6,s=IS,w=n*s+(n-1)*gp;
+  IV.style.width=w+'px';IV.style.height=s+'px';IV.width=Math.round(w*DPR);IV.height=Math.round(s*DPR);
+  g=gi;g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,w,s);
+  for(let i=0;i<n;i++){const x=i*(s+gp),id=Z&&Z.inv[i];
+    RR(x,0,s,s,7,sel&&sel===id?'#5a4810':'#1f2a1c');g.strokeStyle=sel&&sel===id?'#f0c860':'#3a4a32';g.lineWidth=sel&&sel===id?2.5:1;
+    g.beginPath();if(g.roundRect)g.roundRect(x+1,1,s-2,s-2,6);else g.rect(x+1,1,s-2,s-2);g.stroke();
+    if(id)icona(id,x+s/2,s/2,s*.82)}
+  g=gc;
+}
+function mesura(){
+  const sc=$('screen').getBoundingClientRect();
+  K=Math.max(.4,Math.min(sc.width/W,sc.height/H));DPR=Math.min(3,window.devicePixelRatio||1);
+  CV.style.width=Math.floor(W*K)+'px';CV.style.height=Math.floor(H*K)+'px';
+  CV.width=Math.round(W*K*DPR);CV.height=Math.round(H*K*DPR);
+  IS=Math.max(34,Math.min(50,Math.floor((Math.min($('wrap').clientWidth*.94,Math.max(W*K,280))-30)/6)));
+  pintaInv();
+}
+addEventListener('resize',mesura);
+try{new ResizeObserver(()=>mesura()).observe($('screen'))}catch(e){}
+function dibuixa(now){
+  g=gc;g.setTransform(K*DPR,0,0,K*DPR,0,0);
+  const s=SALES[Z.sala];
+  g.save();s.dibuixa(T);g.restore();
+  if(zoom&&s.zooms){g.save();s.zooms[zoom].dibuixa(T);g.restore()}
+  if(fadeT){const a=1-(now-fadeT)/700;if(a>0){g.fillStyle='rgba(0,0,0,'+a+')';g.fillRect(0,0,W,H)}else fadeT=0}
+  if(paused){g.fillStyle='rgba(16,22,15,.97)';g.fillRect(0,0,W,H)}
+}
+
+// ===== TOCS =====
+let dit=false;
+function lloc(ev){const r=CV.getBoundingClientRect();return {x:(ev.clientX-r.left)/K,y:(ev.clientY-r.top)/K}}
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const p=lloc(ev);dit=true;try{CV.setPointerCapture(ev.pointerId)}catch(e){}
+  if(SALES[Z.sala].fosc&&!zoom)focus=p;
+  tocaEscena(p.x,p.y);
+});
+CV.addEventListener('pointermove',ev=>{if(!dit||!Z||!SALES[Z.sala].fosc)return;ev.preventDefault();focus=lloc(ev)});
+CV.addEventListener('pointerup',()=>dit=false);CV.addEventListener('pointercancel',()=>dit=false);
+IV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const r=IV.getBoundingClientRect(),i=Math.floor((ev.clientX-r.left)/(IS+6));if(i>=0&&i<6)tocaInv(i);
+});
+$('pista').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const s=SALES[Z.sala];if(Z.pis[Z.sala]<3){Z.pis[Z.sala]++;so.pista()}
+  const n=Z.pis[Z.sala];diu('💡 <b>Pista '+n+' de 3</b>: '+s.pistes[n-1]);desa();pintaHud();
+});
+$('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();menu()});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+
+// ===== RELLOTGE =====
+let last=performance.now(),desT=0;
+function loop(now){
+  dt=Math.min(.1,(now-last)/1000);last=now;T=now/1000;
+  if(jugant()&&!document.hidden){Z.temps+=dt;desT+=dt;if(desT>3){desT=0;desa()}}
+  if(Z)dibuixa(now);
+  requestAnimationFrame(loop);
+}
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';if(paused)desa()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){desa();if(jugant())posaPausa(true)}});
+addEventListener('pagehide',desa);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;aInit();if(e.code==='KeyP'||e.key==='Escape')posaPausa(!paused)});
+
+Z=carrega()||nova();
+mesura();pintaHud();Records.pintaMillor(JOC,$('best'));
+if(Z.comencada&&!Z.fi)diu(SALES[Z.sala].entra);
+menu();
+requestAnimationFrame(loop);
+
+// En entrar, la taula de rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

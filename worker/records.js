@@ -71,6 +71,7 @@ const JOCS = {
   colles:            99999,   // les colles trobades, acumulades de totes les partides del dia
   botifarra:         99999,   // les partides lliures guanyades, acumulades
   poble:             99999,   // els pobles del dia endevinats, acumulats
+  tresor:             1600,   // 100 per prova (30 menys per pista) i fins a 600 pel temps
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
@@ -141,6 +142,7 @@ const FITXA = {
   colles:          ['Les Quatre Colles', 'a les Quatre Colles', 'colles.html'],
   botifarra:       ['La Botifarra',    'a la Botifarra',     'botifarra.html'],
   poble:           ['El Poble del Dia', 'al Poble del Dia',  'poble.html'],
+  tresor:          ['El Tresor dels Templers', 'al Tresor dels Templers', 'tresor.html'],
 };
 
 const cors = {
