@@ -120,16 +120,16 @@ function hideMsg(){document.getElementById('msg').style.display='none'}
 
 // ===== PALETES: cada control de pas canvia una mica el paisatge =====
 const PALETES=[
-  {sky:'#05041a',hill:'#241a3a',ground:'#3a2a1a'},
-  {sky:'#0a0326',hill:'#2a1440',ground:'#332018'},
-  {sky:'#000814',hill:'#152840',ground:'#28241a'},
-  {sky:'#140314',hill:'#3a1838',ground:'#301c22'},
+  {sky:'#05041a',horitzo:'#2a1e4a',hill:'#2e2450',hillLlum:'#3e3466',hill2:'#4a3a5a',hill2Llum:'#62527a',base:'#1e1a34',ground:'#7a6a5a',groundFosc:'#3a2e26',vora:'#b0a090'},
+  {sky:'#0a0326',horitzo:'#3a1a4a',hill:'#3a1a50',hillLlum:'#4e2a68',hill2:'#5a2a5a',hill2Llum:'#7a4278',base:'#22143a',ground:'#806058',groundFosc:'#3a2622',vora:'#c09888'},
+  {sky:'#000814',horitzo:'#123050',hill:'#183450',hillLlum:'#24486a',hill2:'#2a4a5a',hill2Llum:'#3e6478',base:'#10223a',ground:'#6a6e70',groundFosc:'#2a2e30',vora:'#a8b0b0'},
+  {sky:'#140314',horitzo:'#4a1a2a',hill:'#4a1a3a',hillLlum:'#622a50',hill2:'#6a2a3a',hill2Llum:'#8a4252',base:'#2a1022',ground:'#8a6050',groundFosc:'#3e2420',vora:'#c89880'},
 ];
 function paleta(){return PALETES[checkpoint%PALETES.length]}
 
 function makeStars(){
   stars=[];
-  for(let i=0;i<50;i++)stars.push({x:Math.random()*W,y:Math.random()*(GROUND_Y-40),tw:Math.random()*2000});
+  for(let i=0;i<90;i++)stars.push({x:Math.random()*W,y:Math.random()*(GROUND_Y-40),tw:Math.random()*2000});
 }
 
 // ===== TERRENY =====
@@ -359,31 +359,97 @@ function drawRecorregut(){
   x.fillStyle='#777';x.fillText('CURSA '+cursa,W-6,H-6);
   x.textAlign='left';
 }
-function drawBuggy(alt){
-  const gx=BUGGY_X,gy=GROUND_Y-alt;
-  x.fillStyle=invulnT>0&&Math.floor(invulnT/110)%2===0?'#844':'#e02020';
-  x.fillRect(gx,gy-16,34,10);
-  x.fillRect(gx+6,gy-24,18,10);
-  x.fillStyle='#8cf';x.fillRect(gx+8,gy-22,10,7);
-  x.fillStyle='#111';
-  x.beginPath();x.arc(gx+6,gy-4,6,0,7);x.fill();
-  x.beginPath();x.arc(gx+28,gy-4,6,0,7);x.fill();
+// ===== DIBUIX =====
+// El paisatge va per capes que es mouen a velocitats diferents (com més
+// lluny, més a poc a poc): la Terra al cel, una base amb cúpules a
+// l'horitzó, dues serralades i el terra de la lluna. Les capes de lluny es
+// pinten un sol cop en llenços de 960 px i després només s'enganxen.
+// Abans hi havia uns triangles llisos i un cotxe fet de dos rectangles.
+function capa(alt,fes){const c=document.createElement('canvas');c.width=960;c.height=alt;fes(c.getContext('2d'));return c}
+function serralada(g,alt,base,pics,col,llum,llavor){
+  let s=llavor;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const pts=[];for(let i=0;i<=pics;i++)pts.push([i*960/pics,alt-base-r()*(alt-base-6)]);
+  pts[pics][1]=pts[0][1];                                     // que enganxi amb la del costat
+  g.fillStyle=col;g.beginPath();g.moveTo(0,alt);
+  for(const[px,py]of pts)g.lineTo(px,py);
+  g.lineTo(960,alt);g.fill();
+  // la cara il·luminada de cada pic
+  g.fillStyle=llum;
+  for(let i=0;i<pics;i++){const[a,b]=pts[i],[c,d]=pts[i+1];if(d>b){g.beginPath();g.moveTo(a,b);g.lineTo(c,d);g.lineTo(a+(c-a)*.35,Math.max(b,d));g.fill()}}
 }
+const CAPES={};
+function capes(pal){
+  const k=pal.sky;if(CAPES[k])return CAPES[k];
+  return CAPES[k]={
+    base:capa(40,g=>{                                         // la base lunar, molt lluny
+      for(let i=0;i<8;i++){const bx=40+i*120,r=10+(i*7)%12;
+        g.fillStyle=pal.base;g.beginPath();g.arc(bx,40,r,Math.PI,0);g.fill();g.fillRect(bx+r,28,22,12);g.fillRect(bx+r+8,14,3,26);
+        g.fillStyle='#ffe890';for(let j=0;j<3;j++)g.fillRect(bx-r/2+j*5,36-r/3,2,2);g.fillRect(bx+r+4,32,2,2);
+        g.fillStyle='#ff4040';g.fillRect(bx+r+8,12,3,2)}
+    }),
+    lluny:capa(90,g=>serralada(g,90,10,14,pal.hill,pal.hillLlum,7)),
+    prop:capa(60,g=>serralada(g,60,4,9,pal.hill2,pal.hill2Llum,31)),
+  };
+}
+function enganxa(img,despl,y){const o=-((despl%960)+960)%960;x.drawImage(img,Math.round(o),y);x.drawImage(img,Math.round(o)+960,y)}
+
+// el cotxe lunar: sis rodes (tres de cada costat, se'n veuen tres), cada una
+// amb la seva suspensió, la cabina de vidre i el canó a dalt
+function drawRover(gx,gy,cos,vidre,t,mirant=1,pampalluga=false){
+  x.save();x.translate(gx+17,0);x.scale(mirant,1);x.translate(-(gx+17),0);
+  const rodes=[4,17,30];
+  // les rodes, que boten cadascuna pel seu compte
+  const bot=rodes.map((r,i)=>t?Math.max(0,Math.sin(t*.025+i*2.1))*1.6:0);
+  x.strokeStyle='#6a6a78';x.lineWidth=2;
+  rodes.forEach((r,i)=>{x.beginPath();x.moveTo(gx+r,gy-6-bot[i]);x.lineTo(gx+r,gy-12);x.stroke()});
+  x.fillStyle=pampalluga?'#844':cos;
+  x.beginPath();x.moveTo(gx-3,gy-11);x.lineTo(gx+37,gy-11);x.lineTo(gx+35,gy-18);x.lineTo(gx+1,gy-19);x.closePath();x.fill();
+  x.fillStyle='rgba(0,0,0,.25)';x.fillRect(gx-3,gy-13,40,2);
+  // la cabina
+  x.fillStyle=pampalluga?'#a66':cos;x.fillRect(gx+8,gy-27,16,9);
+  x.fillStyle=vidre;x.beginPath();x.moveTo(gx+12,gy-26);x.lineTo(gx+23,gy-26);x.lineTo(gx+26,gy-19);x.lineTo(gx+12,gy-19);x.fill();
+  x.fillStyle='rgba(255,255,255,.6)';x.fillRect(gx+14,gy-25,4,1.5);
+  // el canó i l'antena
+  x.fillStyle='#ddd';x.fillRect(gx+2,gy-24,7,3);x.fillRect(gx+5,gy-29,2,6);
+  x.strokeStyle='#bbb';x.lineWidth=1;x.beginPath();x.moveTo(gx+20,gy-27);x.lineTo(gx+18,gy-36);x.stroke();
+  x.fillStyle=Math.floor(performance.now()/300)%2?'#ff4040':'#ffd040';x.fillRect(gx+17,gy-38,3,3);
+  // les rodes
+  rodes.forEach((r,i)=>{const ry=gy-5-bot[i];
+    x.fillStyle='#1a1a20';x.beginPath();x.arc(gx+r,ry,5.5,0,7);x.fill();
+    x.fillStyle='#8a8a98';x.beginPath();x.arc(gx+r,ry,2.4,0,7);x.fill();
+    const a=t*.04;x.fillStyle='#3a3a44';for(let k=0;k<4;k++)x.fillRect(gx+r+Math.cos(a+k*1.57)*4-1,ry+Math.sin(a+k*1.57)*4-1,2,2)});
+  x.restore();
+}
+function drawBuggy(alt){
+  drawRover(BUGGY_X,GROUND_Y-alt,'#e8e8f0','#5ac8ff',alt?0:playerZ,1,invulnT>0&&Math.floor(invulnT/110)%2===0);
+}
+let polsMP=[];
 function draw(){
-  const pal=paleta();
-  x.fillStyle=pal.sky;x.fillRect(0,0,W,H);
+  const pal=paleta(),ara=performance.now(),C=capes(pal);
+  // el cel
+  const gc=x.createLinearGradient(0,0,0,GROUND_Y);gc.addColorStop(0,pal.sky);gc.addColorStop(1,pal.horitzo);
+  x.fillStyle=gc;x.fillRect(0,0,W,GROUND_Y);
   for(const s of stars){
-    if(Math.sin((performance.now()+s.tw)/420)>-.3){x.fillStyle='#fff';x.fillRect(s.x|0,s.y|0,2,2)}
+    if(Math.sin((ara+s.tw)/420)>-.3){x.fillStyle=s.tw>1500?'#fff':'#9ab';x.fillRect(s.x|0,s.y|0,s.tw>1800?2:1,s.tw>1800?2:1)}
   }
-  // muntanyes de fons, es mouen mes a poc a poc (paral.laxi)
-  x.fillStyle=pal.hill;
-  const px=-(playerZ*0.25)%160;
-  for(let i=-1;i<5;i++){
-    x.beginPath();x.moveTo(px+i*160,GROUND_Y);x.lineTo(px+i*160+70,GROUND_Y-70);x.lineTo(px+i*160+160,GROUND_Y);x.fill();
-  }
-  // terra
-  x.fillStyle=pal.ground;x.fillRect(0,GROUND_Y,W,H-GROUND_Y);
-  x.strokeStyle='#666';x.beginPath();x.moveTo(0,GROUND_Y);x.lineTo(W,GROUND_Y);x.stroke();
+  // la Terra, mig il·luminada, que no es mou
+  {const ex=370,ey=62,r=22;
+    x.fillStyle='#1a4a9a';x.beginPath();x.arc(ex,ey,r,0,7);x.fill();
+    x.fillStyle='#3a9a4a';x.beginPath();x.ellipse(ex-6,ey-4,9,6,.5,0,7);x.fill();x.beginPath();x.ellipse(ex+8,ey+8,6,4,-.3,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.55)';x.beginPath();x.ellipse(ex+2,ey-12,10,2.5,.2,0,7);x.fill();
+    x.fillStyle='rgba(0,0,10,.55)';x.beginPath();x.arc(ex+9,ey,r,Math.PI*.5,Math.PI*1.5,true);x.ellipse(ex+9,ey,r*.55,r,0,Math.PI*1.5,Math.PI*.5,true);x.fill();
+    x.strokeStyle='rgba(120,180,255,.35)';x.lineWidth=2;x.beginPath();x.arc(ex,ey,r+1.5,0,7);x.stroke()}
+  // les capes, de lluny a prop
+  enganxa(C.base,playerZ*.06,GROUND_Y-128);
+  enganxa(C.lluny,playerZ*.15,GROUND_Y-110);
+  enganxa(C.prop,playerZ*.35,GROUND_Y-60);
+  // el terra de la lluna, amb pedretes i cràters petits que passen
+  const gt=x.createLinearGradient(0,GROUND_Y,0,H);gt.addColorStop(0,pal.ground);gt.addColorStop(1,pal.groundFosc);
+  x.fillStyle=gt;x.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+  x.fillStyle=pal.vora;x.fillRect(0,GROUND_Y,W,2);
+  for(let i=0;i<40;i++){const tx=((i*97-playerZ)%(W+40)+W+40)%(W+40)-20,ty=GROUND_Y+6+(i*29)%(H-GROUND_Y-10);
+    x.fillStyle='rgba(0,0,0,.22)';x.beginPath();x.ellipse(tx,ty,2+(i%4)*2,1+(i%3),0,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.08)';x.fillRect(tx-1,ty-2,3,1)}
   drawRecorregut();
 
   for(const o of obstacles){
@@ -391,43 +457,63 @@ function draw(){
     const sx=o.x-playerZ;
     if(sx<-40||sx>W+20)continue;
     if(o.tipus==='crater'){
-      x.fillStyle=pal.sky;x.fillRect(sx,GROUND_Y,o.w,H-GROUND_Y);
+      // un clot de debò: fosc a dins, amb la vora aixecada
+      const gg=x.createLinearGradient(0,GROUND_Y,0,H);gg.addColorStop(0,'#0a0810');gg.addColorStop(1,'#000');
+      x.fillStyle=gg;x.beginPath();x.moveTo(sx,GROUND_Y);x.lineTo(sx+6,H);x.lineTo(sx+o.w-6,H);x.lineTo(sx+o.w,GROUND_Y);x.fill();
+      x.fillStyle=pal.vora;x.beginPath();x.moveTo(sx-6,GROUND_Y);x.lineTo(sx,GROUND_Y-4);x.lineTo(sx+3,GROUND_Y);x.fill();
+      x.beginPath();x.moveTo(sx+o.w-3,GROUND_Y);x.lineTo(sx+o.w,GROUND_Y-4);x.lineTo(sx+o.w+6,GROUND_Y);x.fill();
+      x.fillStyle='rgba(255,255,255,.07)';x.fillRect(sx+3,GROUND_Y+4,2,H-GROUND_Y-4);
     } else if(o.tipus==='rock'){
-      x.fillStyle='#999';
-      x.beginPath();x.moveTo(sx,GROUND_Y);x.lineTo(sx+o.w/2,GROUND_Y-26);x.lineTo(sx+o.w,GROUND_Y);x.fill();
+      // una roca amb cares: una de clara, una de fosca
+      x.fillStyle='#7a7480';x.beginPath();x.moveTo(sx,GROUND_Y);x.lineTo(sx+3,GROUND_Y-14);x.lineTo(sx+9,GROUND_Y-25);x.lineTo(sx+17,GROUND_Y-20);x.lineTo(sx+o.w,GROUND_Y);x.fill();
+      x.fillStyle='#a8a2b0';x.beginPath();x.moveTo(sx+3,GROUND_Y-14);x.lineTo(sx+9,GROUND_Y-25);x.lineTo(sx+11,GROUND_Y-8);x.fill();
+      x.fillStyle='#4a4450';x.beginPath();x.moveTo(sx+17,GROUND_Y-20);x.lineTo(sx+o.w,GROUND_Y);x.lineTo(sx+12,GROUND_Y);x.fill();
     } else if(o.tipus==='mine'){
-      x.fillStyle='#ff5030';
-      x.beginPath();x.arc(sx+o.w/2,GROUND_Y-8,9,0,7);x.fill();
+      // la mina: una cúpula amb un llum que fa pampallugues
+      const cx=sx+o.w/2;
+      x.fillStyle='#4a4a54';x.beginPath();x.arc(cx,GROUND_Y,10,Math.PI,0);x.fill();
+      x.fillStyle='#6a6a78';x.beginPath();x.arc(cx-3,GROUND_Y-4,4,Math.PI,0);x.fill();
+      x.fillStyle='#333';for(let k=-1;k<=1;k++)x.fillRect(cx+k*6-1,GROUND_Y-12-(k?0:2),2,4);
+      const on=Math.floor((ara+o.x)/250)%2;x.fillStyle=on?'#ff3020':'#601010';x.beginPath();x.arc(cx,GROUND_Y-12,3,0,7);x.fill();
+      if(on){x.fillStyle='rgba(255,60,30,.25)';x.beginPath();x.arc(cx,GROUND_Y-12,8,0,7);x.fill()}
     } else if(o.tipus==='buggy'){
-      x.fillStyle='#40c0ff';x.fillRect(sx,GROUND_Y-14,o.w,10);
-      x.fillStyle='#111';x.beginPath();x.arc(sx+5,GROUND_Y-3,5,0,7);x.fill();
-      x.beginPath();x.arc(sx+o.w-5,GROUND_Y-3,5,0,7);x.fill();
+      drawRover(sx-4,GROUND_Y,'#c03838','#ffb040',o.x,-1);
     }
   }
   for(const e of skyEnemies){
     if(!e.viu)continue;
     const sx=e.x-playerZ;
     if(sx<-30||sx>W+20)continue;
-    x.fillStyle='#c0ff40';
-    x.beginPath();x.ellipse(sx,e.y,16,7,0,0,7);x.fill();
-    x.fillStyle='#7a0';x.beginPath();x.arc(sx,e.y-5,6,0,7);x.fill();
+    // el plat volador, amb la cúpula i els llums que corren
+    x.fillStyle='rgba(160,255,120,.18)';x.beginPath();x.ellipse(sx,e.y+3,20,9,0,0,7);x.fill();
+    x.fillStyle='#8a9aa8';x.beginPath();x.ellipse(sx,e.y,17,6,0,0,7);x.fill();
+    x.fillStyle='#c8d4e0';x.beginPath();x.ellipse(sx,e.y-2,17,3,0,0,7);x.fill();
+    x.fillStyle='#7aff60';x.beginPath();x.arc(sx,e.y-4,7,Math.PI,0);x.fill();
+    x.fillStyle='rgba(255,255,255,.6)';x.fillRect(sx-3,e.y-9,3,2);
+    for(let k=0;k<5;k++){const on=(Math.floor(ara/120)+k)%5===0;x.fillStyle=on?'#ffff60':'#806020';x.fillRect(sx-12+k*6,e.y+1,2,2)}
   }
-  x.fillStyle='#ff4040';
-  for(const b of bombs)if(!b.tocat)x.fillRect(b.x-playerZ-2,b.y-4,4,8);
-  x.fillStyle='#ffe060';
-  for(const b of eBullets)x.fillRect(b.x-playerZ-3,GROUND_Y-8,6,3);
-  x.fillStyle='#fff';
-  for(const b of bullets)x.fillRect(b.x-playerZ,b.y,8,3);
-  x.fillStyle='#ff0';
-  for(const b of diagBullets)x.fillRect(b.x-playerZ,b.y,4,4);
+  // bombes, trets enemics i els teus trets, amb una mica de resplendor
+  for(const b of bombs)if(!b.tocat){const bx=b.x-playerZ;x.fillStyle='#ff4040';x.beginPath();x.ellipse(bx,b.y,3,5,0,0,7);x.fill();x.fillStyle='#ffd0a0';x.fillRect(bx-1,b.y-3,2,2)}
+  for(const b of eBullets){const bx=b.x-playerZ;x.fillStyle='rgba(255,220,80,.35)';x.fillRect(bx-5,GROUND_Y-10,10,7);x.fillStyle='#ffe060';x.fillRect(bx-3,GROUND_Y-8,6,3)}
+  for(const b of bullets){const bx=b.x-playerZ;x.fillStyle='rgba(255,255,255,.3)';x.fillRect(bx-6,b.y,8,3);x.fillStyle='#fff';x.fillRect(bx,b.y,8,3)}
+  for(const b of diagBullets){const bx=b.x-playerZ;x.fillStyle='rgba(255,255,0,.35)';x.fillRect(bx-1,b.y-1,6,6);x.fillStyle='#ff0';x.fillRect(bx,b.y,4,4)}
 
-  drawBuggy(alcadaSalt());
+  // la pols que aixequen les rodes
+  const alt=alcadaSalt();
+  if(state==='play'&&!alt&&Math.random()<speed/600)polsMP.push({x:BUGGY_X-2,y:GROUND_Y-2,vx:-40-Math.random()*60,vy:-20-Math.random()*30,t:.6});
+  for(const p of polsMP){p.x+=p.vx/60;p.y+=p.vy/60;p.vy+=1.5;p.t-=1/60;x.globalAlpha=Math.max(0,p.t);x.fillStyle=pal.vora;x.fillRect(p.x,p.y,2,2)}
+  x.globalAlpha=1;polsMP=polsMP.filter(p=>p.t>0);
+  // l'ombra del cotxe quan salta
+  if(alt){x.fillStyle='rgba(0,0,0,.35)';x.beginPath();x.ellipse(BUGGY_X+17,GROUND_Y+1,18*(1-alt/JUMP_H*.5),2.5,0,0,7);x.fill()}
+  drawBuggy(alt);
 
+  // les explosions: una bola de foc que s'apaga i espurnes
   for(const b of booms){
     const k=b.t/400,r=(b.big?26:14)*(0.4+k);
-    x.strokeStyle=['#fff','#ffd000','#ff5000'][Math.floor(b.t/70)%3];
-    x.lineWidth=2;x.globalAlpha=1-k;
-    x.beginPath();x.arc(b.x,b.y,r,0,7);x.stroke();
+    x.globalAlpha=Math.max(0,1-k);
+    const gb=x.createRadialGradient(b.x,b.y,0,b.x,b.y,r);gb.addColorStop(0,'#fff8c0');gb.addColorStop(.4,'#ffb020');gb.addColorStop(1,'rgba(255,60,0,0)');
+    x.fillStyle=gb;x.beginPath();x.arc(b.x,b.y,r,0,7);x.fill();
+    x.fillStyle='#ffd040';for(let i=0;i<8;i++){const a=i*.785+b.x,d=r*1.2;x.fillRect(b.x+Math.cos(a)*d,b.y+Math.sin(a)*d,2,2)}
     x.globalAlpha=1;
   }
   booms.forEach(b=>b.t+=16.7);
