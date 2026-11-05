@@ -119,6 +119,14 @@ hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
+**Els jocs nous s'avisen.** En Carles va demanar que, quan surti un joc nou,
+s'avisi d'alguna manera. La fitxa porta `data-nou="<data>"` (el dia que es
+va posar) i, mentre no l'hagis obert en aquest mòbil i no faci tres setmanes
+(`pintaNous`), hi surt un rètol vermell **NOU** i, a dalt de tot, abans
+d'ELS JOCS D'AVUI, un avís per anar-hi (`#novetats`, enllaços `a.nou-joc`,
+que no són `a.btn`). I el bot de Telegram ho diu al grup (`anunciaNous`, a
+sota). La prova de la portada ho mira amb el rellotge del navegador avançat.
+
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
@@ -1789,6 +1797,14 @@ primera pàgina arriba amb `#tgWebAppData` a l'adreça, i ho apunta a
 `sessionStorage` per quan passes a un joc. Fora de Telegram no es carrega res
 de nou. És l'únic codi de fora que carrega la col·lecció.
 
+**Els jocs nous**: quan es torna a enganxar el Worker amb un joc nou a
+`FITXA` o a `ANUNCIA_DIARI`, la primera visita fa que el bot ho digui al
+grup («🆕 Hi ha un joc nou a la col·lecció: ...», amb un botó per jugar-hi)
+(`anunciaNous`). Compara els fitxers amb els ja anunciats
+(`telegram:jocs-anunciats`) i ho apunta abans d'enviar. La primera vegada no
+hi ha llista i es fa amb tots menys `ESTRENES` (la Sopa de Lletres i el
+Tresor, que van sortir abans que el bot sabés fer-ho). Sense grup, s'espera.
+
 **La lliga de la setmana** suma totes les partides del dia de dilluns a
 diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
 2, 1, 1, 1 (`PUNTS_LLIGA`), i qui hi ha jugat sense entrar als 10 millors, 1
@@ -2068,7 +2084,8 @@ comproven el comportament.
   `sw.js` (el fitxer i la miniatura), a la descripció del `manifest.json`, a les
   llistes `JOCS` i `FITXA` de `worker/records.js`, a la taula d'aquí dalt i a la
   llista del `scripts/prova-portada.mjs`. I posar-li la línia d'ajuda
-  començant per l'objectiu. I **tornar a desplegar el
+  començant per l'objectiu, i a la fitxa de la portada `data-nou` amb la
+  data d'avui, perquè surti com a NOU (el bot l'anuncia sol en desplegar). I **tornar a desplegar el
   Worker**, que això no va sol.
 - **Miniatures**: es generen obrint cada joc i capturant el canvas. Compte: el
   Tetris té tres canvas a la pàgina, cal agafar **el més gran** (el tauler). Si

@@ -319,6 +319,37 @@ async function anunciaAhir(env) {
   }
 }
 
+// ===== ELS JOCS NOUS =====
+// En Carles va demanar que, quan surti un joc nou, s'avisi. Quan es torna a
+// enganxar el Worker amb un joc nou a les llistes, la primera visita fa que
+// el bot ho digui al grup, amb un botó per anar-hi. Es compara amb els
+// fitxers ja anunciats (telegram:jocs-anunciats). La primera vegada encara
+// no hi ha aquesta llista: llavors es fa amb tots menys ESTRENES, que són els
+// que van sortir abans que el bot sabés fer-ho i encara no s'han anunciat.
+const ESTRENES = ['sopa.html', 'tresor.html'];
+function totsElsJocs() {
+  const m = new Map();
+  for (const [nom, , fitxer] of Object.values(FITXA)) if (fitxer) m.set(fitxer, nom);
+  for (const [nom, fitxer] of Object.values(ANUNCIA_DIARI)) if (!m.has(fitxer)) m.set(fitxer, nom);
+  return m;
+}
+async function anunciaNous(env) {
+  if (!env.TELEGRAM_TOKEN) return;
+  const xat = await env.RECORDS.get('telegram:xat');
+  if (!xat) return;                       // sense grup, s'espera: ja ho dirà quan n'hi hagi
+  const tots = totsElsJocs(), vell = await env.RECORDS.get('telegram:jocs-anunciats');
+  const fets = vell ? JSON.parse(vell) : [...tots.keys()].filter(f => !ESTRENES.includes(f));
+  const nous = [...tots.keys()].filter(f => !fets.includes(f));
+  if (!nous.length) { if (!vell) await env.RECORDS.put('telegram:jocs-anunciats', JSON.stringify(fets)); return; }
+  // s'apunta abans d'enviar, que dues visites alhora no l'anunciïn dues vegades
+  await env.RECORDS.put('telegram:jocs-anunciats', JSON.stringify([...fets, ...nous]));
+  const noms = nous.map(f => '<b>' + esc(tots.get(f)) + '</b>');
+  const llista = noms.length === 1 ? noms[0] : noms.slice(0, -1).join(', ') + ' i ' + noms[noms.length - 1];
+  const text = '🆕 ' + (nous.length === 1 ? 'Hi ha un <b>joc nou</b>' : 'Hi ha <b>jocs nous</b>') + ' a la col·lecció: ' + llista + '. Ja s\'hi pot jugar!';
+  await telegram(env, 'sendMessage', { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: nous.map(f => [{ text: '🎮 ' + tots.get(f), url: WEB + f }]) } });
+}
+
 // ===== LA LLIGA DE LA SETMANA =====
 // Cada partida del dia dona punts de lliga: el primer d'aquell dia en treu
 // 10, el segon 8, i aixi fins a 1; qui l'ha jugada i no ha entrat als 10
@@ -550,11 +581,12 @@ export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-    // el podi d'ahir, si encara no s'ha avisat (despres de respondre)
+    // el podi d'ahir, si encara no s'ha avisat (despres de respondre), els jocs nous
     // i, els dilluns, la setmana passada al palmares (amb bot o sense)
     {
       const a = tancaSetmana(env).catch(() => {}).then(() => env.TELEGRAM_TOKEN &&
-        anunciaAhir(env).catch(() => {}).then(() => anunciaLliga(env))).catch(() => {});
+        anunciaAhir(env).catch(() => {}).then(() => anunciaLliga(env)).catch(() => {})
+          .then(() => anunciaNous(env))).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(a); else await a;
     }
 

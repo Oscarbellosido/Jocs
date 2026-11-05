@@ -220,6 +220,42 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
+// ELS JOCS NOUS: el rètol NOU a la fitxa i l'avís de dalt, fins que l'obres
+// o fins que fa tres setmanes que hi és
+{
+  const ctx = await b.newContext({ viewport: { width: 320, height: 568 } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  await p.clock.setFixedTime(new Date('2026-11-06T12:00:00'));
+  await p.goto('file://' + resolve(ARREL, 'index.html'));
+  await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(200);
+  const mira = () => p.evaluate(() => ({
+    nous: [...document.querySelectorAll('a.btn .nou')].map(r => r.closest('a').getAttribute('href')).sort().join(),
+    avis: document.getElementById('novetats').hidden ? '' : [...document.querySelectorAll('#novetats a.nou-joc')].map(a => a.getAttribute('href')).sort().join(),
+    dalt: (() => { const n = document.getElementById('novetats'); return n.hidden || n.getBoundingClientRect().bottom <= document.getElementById('avui').getBoundingClientRect().top; })(),
+    scroll: document.documentElement.scrollWidth > innerWidth + 1, fitxes: document.querySelectorAll('a.btn').length,
+  }));
+  let m = await mira();
+  let be = m.nous === 'sopa.html,tresor.html' && m.avis === 'sopa.html,tresor.html' && m.dalt && !m.scroll && m.fitxes === ORDRE.length + MODERNS.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} JOCS NOUS: els dos d'avui porten el rètol NOU i surten a l'avís de dalt (${m.nous} / ${m.avis})`);
+  await p.goto('file://' + resolve(ARREL, 'tresor.html')); await p.waitForTimeout(150);
+  await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(200);
+  m = await mira();
+  be = m.nous === 'sopa.html' && m.avis === 'sopa.html';
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} un cop obert, ja no és nou (${m.nous} / ${m.avis})`);
+  await p.clock.setFixedTime(new Date('2026-11-27T12:00:00'));
+  await p.reload(); await p.waitForTimeout(200);
+  m = await mira();
+  be = m.nous === '' && m.avis === '' && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} al cap de tres setmanes, ja no és nou encara que no l'hagis obert` + (errors.length ? ' ' + errors[0] : ''));
+  await ctx.close();
+}
+
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);
 await b.close();
 process.exit(malament ? 1 : 0);

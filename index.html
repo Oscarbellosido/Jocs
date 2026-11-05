@@ -152,6 +152,22 @@
     text-overflow: ellipsis;
   }
   a.tg:active { background: #12384f; }
+  /* ELS JOCS NOUS: un rètol NOU a la fitxa i un avís a dalt, fins que l'obres
+     (o fins que fa tres setmanes que hi és). Tampoc no són "a.btn". */
+  a.btn { position: relative; }
+  a.btn .nou {
+    position: absolute; top: 0.55rem; left: 0.55rem;
+    background: #e0302a; color: #fff; font: bold 0.7rem monospace;
+    letter-spacing: 0.08em; padding: 2px 7px; border-radius: 4px;
+    box-shadow: 0 1px 5px #000c;
+  }
+  .novetats { width: calc(100% - 1.6rem); max-width: 430px; display: flex; flex-direction: column; gap: 0.35rem; }
+  a.nou-joc {
+    display: block; padding: 0.5rem 0.8rem; border: 1px solid #e0302a; border-radius: 10px;
+    background: #2a0c0a; color: #ffd0c8; font: bold 0.74rem monospace; letter-spacing: 0.05em;
+    text-decoration: none; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  a.nou-joc b { color: #fff; background: #e0302a; border-radius: 3px; padding: 0 5px; margin-right: 0.4rem; }
   a.btn em .rec {
     min-width: 0;
     overflow: hidden;
@@ -245,6 +261,7 @@
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
   <a class="tg" id="tg" href="https://t.me/jocs_carles_bot" target="_blank" rel="noopener" hidden>🏆 RÈCORDS AL MOMENT A TELEGRAM</a>
+  <div class="novetats" id="novetats" hidden></div>
   <details class="avui" id="avui" open>
     <summary>ELS JOCS D'AVUI <span class="fets" id="avui-fets"></span></summary>
     <ul id="avui-llista"></ul>
@@ -282,7 +299,7 @@
   <h2 class="seccio">FORA DELS SALONS <i>del cafè, la tele, l'ordinador i el mòbil</i></h2>
   <div class="games" id="moderns">
     <a class="btn" href="botifarra.html"><img src="thumbs/botifarra.png" alt="LA BOTIFARRA" width="240" height="240"><span>LA BOTIFARRA</span><em><i class="any" data-any="1850">S. XIX</i><b class="rec" data-joc="botifarra"></b></em></a>
-    <a class="btn" href="sopa.html"><img src="thumbs/sopa.png" alt="LA SOPA DE LLETRES" width="240" height="240"><span>LA SOPA DE LLETRES</span><em><i class="any">1968</i><b class="rec" data-joc="sopa"></b></em></a>
+    <a class="btn" href="sopa.html" data-nou="2026-11-05"><img src="thumbs/sopa.png" alt="LA SOPA DE LLETRES" width="240" height="240"><span>LA SOPA DE LLETRES</span><em><i class="any">1968</i><b class="rec" data-joc="sopa"></b></em></a>
     <a class="btn" href="xifres.html"><img src="thumbs/xifres.png" alt="XIFRES" width="240" height="240"><span>XIFRES</span><em><i class="any">1972</i><b class="rec" data-joc="xifres"></b></em></a>
     <a class="btn" href="temple.html"><img src="thumbs/temple.png" alt="EL TEMPLE" width="240" height="240"><span>EL TEMPLE</span><em><i class="any">1989</i><b class="rec" data-joc="temple"></b></em></a>
     <a class="btn" href="amunt.html"><img src="thumbs/amunt.png" alt="AMUNT" width="240" height="240"><span>AMUNT</span><em><i class="any">2009</i><b class="rec" data-joc="amunt"></b></em></a>
@@ -299,7 +316,7 @@
     <a class="btn" href="colles.html"><img src="thumbs/colles.png" alt="LES QUATRE COLLES" width="240" height="240"><span>LES QUATRE COLLES</span><em><i class="any">2026</i><b class="rec" data-joc="colles"></b></em></a>
     <a class="btn" href="trencaclosques.html"><img src="thumbs/trencaclosques.png" alt="EL TRENCACLOSQUES" width="240" height="240"><span>EL TRENCACLOSQUES</span><em><i class="any">2026</i><b class="rec" data-joc="trencaclosques"></b></em></a>
     <a class="btn" href="poble.html"><img src="thumbs/poble.png" alt="EL POBLE DEL DIA" width="240" height="240"><span>EL POBLE DEL DIA</span><em><i class="any">2026</i><b class="rec" data-joc="poble"></b></em></a>
-    <a class="btn" href="tresor.html"><img src="thumbs/tresor.png" alt="EL TRESOR DELS TEMPLERS" width="240" height="240"><span>EL TRESOR DELS TEMPLERS</span><em><i class="any">2026</i><b class="rec" data-joc="tresor"></b></em></a>
+    <a class="btn" href="tresor.html" data-nou="2026-11-05"><img src="thumbs/tresor.png" alt="EL TRESOR DELS TEMPLERS" width="240" height="240"><span>EL TRESOR DELS TEMPLERS</span><em><i class="any">2026</i><b class="rec" data-joc="tresor"></b></em></a>
   </div>
 <script src="records.js"></script>
 <script>
@@ -320,6 +337,31 @@ try{
 // altre cop. Ara es recorda quin has obert i la portada s'hi posa.
 // Es guarda a sessionStorage (mentre l'app estigui oberta), no al disc:
 // obrint l'aplicacio de nou vols començar per dalt.
+// ELS JOCS NOUS: les fitxes amb data-nou (el dia que es van posar) porten
+// el rètol NOU, i a dalt de tot hi ha un avís per anar-hi, fins que l'obres
+// en aquest mòbil o fins que fa tres setmanes que hi és. En Carles va
+// demanar que quan sortís un joc nou s'avisés d'alguna manera: el bot de
+// Telegram també ho diu al grup.
+function pintaNous(){
+  const DIES=21,avui=Date.now(),caixa=document.getElementById('novetats');
+  let oberts={},vells={};
+  try{oberts=JSON.parse(localStorage.getItem('jocs-obertes')||'{}')}catch(e){}
+  try{vells=JSON.parse(localStorage.getItem('jocs-jugats')||'{}')}catch(e){}
+  caixa.innerHTML='';
+  document.querySelectorAll('a.btn[data-nou]').forEach(a=>{
+    const href=a.getAttribute('href'),id=a.querySelector('.rec').dataset.joc;
+    const nou=(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
+    let r=a.querySelector('.nou');
+    if(nou&&!r){r=document.createElement('i');r.className='nou';r.textContent='NOU';a.appendChild(r)}
+    if(!nou&&r)r.remove();
+    if(nou){const l=document.createElement('a');l.className='nou-joc';l.href=href;
+      l.innerHTML='<b>NOU</b>'+a.querySelector('span').textContent+' ▸';caixa.appendChild(l)}
+  });
+  caixa.hidden=!caixa.children.length;
+}
+pintaNous();
+addEventListener('pageshow',e=>{if(e.persisted)pintaNous()});
+
 (function(){
   const CLAU='jocs-ultim';
   const enllacos=[...document.querySelectorAll('a.btn')];

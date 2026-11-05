@@ -114,6 +114,11 @@ const crida = async (e, method, path, body, capcaleres = {}) => {
   return { status: r.status, data, text };
 };
 const missatges = () => enviats.filter(x => x.metode === 'sendMessage');
+// els jocs ja anunciats: tots, que l'avís dels jocs nous (es prova a part,
+// al final) no es fiqui pel mig de les altres proves
+const fsTots = await import('fs');
+const totsHtml = fsTots.readdirSync(new URL('..', import.meta.url)).filter(f => f.endsWith('.html'));
+store.set('telegram:jocs-anunciats', JSON.stringify(totsHtml));
 
 // sense clau no s'envia res, i tot va com abans
 r = await crida(env, 'POST', '/records/ram', { nom: 'ZZZ', punts: 10 });
@@ -450,6 +455,38 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await call('GET', '/records/tetris');
   pal = JSON.parse(store.get('lliga:palmares'));
   ok(pal.length === 3 && pal[2].s === passada && pal[2].podi[0].n === 'GUA', 'i quan ja és al dia, ja no n\'hi afegeix cap més');
+  store.delete('telegram:xat');
+}
+
+// ===== ELS JOCS NOUS =====
+{
+  const nous = () => missatges().filter(x => /🆕/.test(x.cos.text));
+  store.set('telegram:xat', '-1001');
+  store.delete('telegram:jocs-anunciats');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  let m = nous()[0];
+  ok(nous().length === 1 && /jocs nous/.test(m.cos.text) && /La Sopa de Lletres/.test(m.cos.text) && /El Tresor dels Templers/.test(m.cos.text)
+     && m.cos.reply_markup.inline_keyboard.length === 2 && m.cos.reply_markup.inline_keyboard.some(b => /tresor\.html$/.test(b[0].url)),
+     'la primera vegada, el bot anuncia els dos jocs que encara no havia anunciat, amb un botó per a cada un');
+  ok(!/Els Blocs|Comecocos/.test(m.cos.text), 'i no anuncia els de sempre');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  ok(nous().length === 0, 'la visita següent ja no torna a avisar');
+  const ll = JSON.parse(store.get('telegram:jocs-anunciats'));
+  store.set('telegram:jocs-anunciats', JSON.stringify(ll.filter(f => f !== 'tresor.html')));
+  store.delete('telegram:xat');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  ok(nous().length === 0 && !JSON.parse(store.get('telegram:jocs-anunciats')).includes('tresor.html'), 'sense grup no avisa ningú, i el joc nou s\'espera');
+  store.set('telegram:xat', '-1001');
+  await crida(envTg, 'GET', '/records/tetris');
+  m = nous()[0];
+  ok(nous().length === 1 && /Hi ha un <b>joc nou<\/b>/.test(m.cos.text) && /El Tresor dels Templers/.test(m.cos.text), 'quan hi ha grup, anuncia el joc nou: «Hi ha un joc nou a la col·lecció»');
+  enviats.length = 0;
+  store.delete('telegram:jocs-anunciats');
+  await crida(env, 'GET', '/records/tetris');
+  ok(enviats.length === 0, 'sense la clau del bot, no s\'envia res');
   store.delete('telegram:xat');
 }
 
