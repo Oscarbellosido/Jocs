@@ -321,64 +321,96 @@ function update(dt){
 }
 
 // ===== DIBUIX =====
+// Un jardí de nit: bolets amb barret i peu (que es van menjant a cada tret),
+// un centpeus de boles amb potetes que caminen i un cap amb antenes,
+// una aranya peluda de vuit potes, la puça i l'escorpí amb la cua enlaire,
+// i el canó és un gnom amb barret que dispara. Abans eren rectangles.
+const fosqueja=(h,k)=>{const n=parseInt(h.slice(1),16),r=n>>16,g=n>>8&255,b=n&255;return 'rgb('+Math.round(r*k)+','+Math.round(g*k)+','+Math.round(b*k)+')'};
 function drawMush(r,cc){
   const h=mh[r][cc];if(!h)return;
-  const px=cx(cc),py=cy(r);
-  x.fillStyle=mp[r][cc]?'#c040ff':pal[1];
-  const w=[0,4,6,7,7][h];
-  x.fillRect(px-w,py-6,w*2,5);
-  if(h>=3)x.fillRect(px-w+1,py-1,w*2-2,3);
-  if(h>=2)x.fillRect(px-2,py+2,4,4);
-  if(h===4){x.fillStyle='#000';x.fillRect(px-4,py-5,2,2);x.fillRect(px+2,py-5,2,2)}
+  const px=cx(cc),py=cy(r),col=mp[r][cc]?'#c040ff':pal[1];
+  // el peu
+  x.fillStyle='#e8dcc0';x.fillRect(px-2.5,py-1,5,7);
+  x.fillStyle='#b8a888';x.fillRect(px+1,py-1,1.5,7);
+  // el barret: com més tocat, més petit i mossegat
+  const w=[0,3.5,5.5,7,7.5][h];
+  x.fillStyle=fosqueja(col,.6);x.beginPath();x.ellipse(px,py-1,w,3,0,0,Math.PI);x.fill();
+  x.fillStyle=col;x.beginPath();x.ellipse(px,py-1,w,5.5,0,Math.PI,0);x.fill();
+  if(h<4){x.fillStyle='#05080a';x.beginPath();x.arc(px+w-1,py-4,2.5,0,7);x.fill()}
+  if(h<3){x.beginPath();x.arc(px-w+1,py-3,2.5,0,7);x.fill()}
+  // les clapes
+  if(h>=3){x.fillStyle='rgba(255,255,255,.75)';x.beginPath();x.arc(px-3,py-4,1.3,0,7);x.arc(px+2,py-5,1.1,0,7);x.fill()}
 }
 function draw(){
-  x.fillStyle='#000';x.fillRect(0,0,W,H);
-  // línia de la zona del canó
-  x.fillStyle='#222';x.fillRect(0,cy(PTOP)-CELL/2,W,1);
+  const ara=performance.now();
+  x.fillStyle='#04080a';x.fillRect(0,0,W,H);
+  // l'herba del fons, molt apagada
+  x.fillStyle='rgba(60,120,60,.10)';for(let i=0;i<120;i++){const gx=(i*41)%W,gy=(i*67)%H;x.fillRect(gx,gy,1,4);x.fillRect(gx+2,gy+1,1,3)}
+  // la zona del canó, una mica més clara
+  x.fillStyle='rgba(80,120,80,.08)';x.fillRect(0,cy(PTOP)-CELL/2,W,H);
+  x.fillStyle='rgba(120,180,120,.25)';x.fillRect(0,cy(PTOP)-CELL/2,W,1);
   for(let r=0;r<ROWS;r++)for(let cc=0;cc<COLS;cc++)drawMush(r,cc);
-  // centpeu
+  // el centpeus: boles amb potetes que caminen; el cap, amb ulls i antenes
   for(const ch of chains)ch.segs.forEach((s,i)=>{
-    const px=cx(s.c),py=cy(s.r);
-    x.fillStyle=i===0?'#fff':pal[0];
-    x.beginPath();x.arc(px,py,6.5,0,6.283);x.fill();
-    x.fillStyle=pal[0];
-    x.fillRect(px-8,py-1,3,2);x.fillRect(px+5,py-1,3,2);
-    if(i===0){x.fillStyle='#000';x.fillRect(px-3,py-3,2,2);x.fillRect(px+1,py-3,2,2)}
+    const px=cx(s.c),py=cy(s.r),cap=i===0,p=Math.sin(ara/70+i*1.3)*1.5;
+    x.strokeStyle=fosqueja(pal[0],.55);x.lineWidth=1.5;
+    x.beginPath();x.moveTo(px-3,py+3);x.lineTo(px-6+p,py+7);x.moveTo(px+3,py+3);x.lineTo(px+6-p,py+7);
+    x.moveTo(px-3,py-3);x.lineTo(px-6-p,py-7);x.moveTo(px+3,py-3);x.lineTo(px+6+p,py-7);x.stroke();
+    x.fillStyle=fosqueja(pal[0],.6);x.beginPath();x.arc(px,py+.8,7,0,7);x.fill();
+    x.fillStyle=cap?'#ffe8a0':pal[0];x.beginPath();x.arc(px,py,6.5,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.35)';x.beginPath();x.arc(px-2,py-2.5,2.2,0,7);x.fill();
+    if(cap){
+      x.fillStyle='#fff';x.beginPath();x.arc(px-2.5,py-1,2.2,0,7);x.arc(px+2.5,py-1,2.2,0,7);x.fill();
+      x.fillStyle='#000';x.fillRect(px-3,py-1,1.5,1.5);x.fillRect(px+2,py-1,1.5,1.5);
+      x.strokeStyle='#ffe8a0';x.lineWidth=1.2;x.beginPath();x.moveTo(px-2,py-6);x.lineTo(px-5,py-10);x.moveTo(px+2,py-6);x.lineTo(px+5,py-10);x.stroke();
+    }
   });
   if(scorpion){
-    x.fillStyle='#40ff40';
-    x.fillRect(scorpion.x-12,scorpion.y-3,24,6);
-    x.fillRect(scorpion.x+(scorpion.vx>0?10:-14),scorpion.y-8,4,6);
-    for(let i=-2;i<=2;i++)x.fillRect(scorpion.x+i*5,scorpion.y+3,2,4);
+    const sx=scorpion.x,sy=scorpion.y,d=scorpion.vx>0?1:-1;
+    x.fillStyle='#40d040';x.beginPath();x.ellipse(sx,sy,10,4,0,0,7);x.fill();
+    x.strokeStyle='#40d040';x.lineWidth=3;x.beginPath();x.moveTo(sx-d*8,sy);x.quadraticCurveTo(sx-d*16,sy-12,sx-d*6,sy-12);x.stroke();
+    x.fillStyle='#ff4040';x.beginPath();x.arc(sx-d*5,sy-12,2,0,7);x.fill();
+    x.strokeStyle='#2a9a2a';x.lineWidth=1.5;for(let i=-2;i<=2;i++){x.beginPath();x.moveTo(sx+i*4,sy+2);x.lineTo(sx+i*4+2,sy+6);x.stroke()}
+    x.fillStyle='#40d040';x.fillRect(sx+d*9-2,sy-4,4,3);x.fillRect(sx+d*9-2,sy+1,4,3);
   }
   if(spider){
-    x.fillStyle='#c060ff';
-    x.beginPath();x.ellipse(spider.x,spider.y,8,6,0,0,6.283);x.fill();
-    for(let i=0;i<4;i++){
-      const o=(i-1.5)*4;
-      x.fillRect(spider.x+o,spider.y-11,2,6);x.fillRect(spider.x+o,spider.y+5,2,6);
-    }
+    const sx=spider.x,sy=spider.y,p=Math.sin(ara/50)*2;
+    x.strokeStyle='#a050e0';x.lineWidth=1.5;
+    for(const s of[-1,1])for(let k=0;k<4;k++){const a=-.9+k*.6;x.beginPath();x.moveTo(sx+s*5,sy);
+      x.lineTo(sx+s*(10+k),sy-6+k*4+(k%2?p:-p));x.lineTo(sx+s*(14+k*.5),sy-2+k*5+(k%2?-p:p));x.stroke()}
+    x.fillStyle='#7a30b0';x.beginPath();x.ellipse(sx,sy,8,6,0,0,7);x.fill();
+    x.fillStyle='#c060ff';x.beginPath();x.ellipse(sx,sy-2,6,4,0,0,7);x.fill();
+    x.fillStyle='#ff3030';x.fillRect(sx-3,sy-3,2,2);x.fillRect(sx+1,sy-3,2,2);
   }
   if(flea){
-    x.fillStyle='#ff8040';
-    x.fillRect(flea.x-5,flea.y-6,10,12);x.fillRect(flea.x-7,flea.y-2,14,5);
+    const fx=flea.x,fy=flea.y;
+    x.fillStyle='#c05020';x.beginPath();x.ellipse(fx,fy,5,7,0,0,7);x.fill();
+    x.fillStyle='#ff9050';x.beginPath();x.ellipse(fx-1,fy-1,3,4,0,0,7);x.fill();
+    x.strokeStyle='#c05020';x.lineWidth=1.5;x.beginPath();x.moveTo(fx-4,fy+3);x.lineTo(fx-8,fy-4);x.moveTo(fx+4,fy+3);x.lineTo(fx+8,fy-4);x.stroke();
+    x.fillStyle='rgba(255,255,255,.4)';x.fillRect(fx-1,fy-14,2,6);
   }
   if(state!=='over'&&state!=='dying'){
-    x.fillStyle='#fff';
-    x.fillRect(player.x-7,player.y+2,14,5);
-    x.fillRect(player.x-3,player.y-4,6,7);
-    x.fillRect(player.x-1,player.y-8,2,5);
+    // el gnom: barret vermell, barba blanca i el canó a les mans
+    const px=player.x,py=player.y;
+    x.fillStyle='#3a6ad8';x.fillRect(px-5,py,10,6);
+    x.fillStyle='#f4f4f4';x.beginPath();x.moveTo(px-4,py);x.lineTo(px+4,py);x.lineTo(px,py+5);x.fill();
+    x.fillStyle='#f0c098';x.fillRect(px-3,py-3,6,3);
+    x.fillStyle='#e03030';x.beginPath();x.moveTo(px-5,py-3);x.lineTo(px+5,py-3);x.lineTo(px,py-11);x.fill();
+    x.fillStyle='#ffe060';x.fillRect(px-1,py-10,2,8);
+    x.fillStyle='#4a2a10';x.fillRect(px-6,py+5,4,2);x.fillRect(px+2,py+5,4,2);
   }
-  if(bullet){x.fillStyle='#fff';x.fillRect(bullet.x-1,bullet.y-6,2,8)}
+  if(bullet){x.fillStyle='rgba(255,240,120,.35)';x.fillRect(bullet.x-2.5,bullet.y-8,5,12);x.fillStyle='#fff';x.fillRect(bullet.x-1,bullet.y-6,2,8)}
   for(const b of booms){
     const k=b.t/260;
-    x.strokeStyle=b.col;x.globalAlpha=1-k;x.lineWidth=2;
-    x.beginPath();x.arc(b.x,b.y,4+k*14,0,6.283);x.stroke();
+    x.globalAlpha=1-k;
+    x.fillStyle=b.col;for(let i=0;i<8;i++){const a=i*.785,d=3+k*14;x.fillRect(b.x+Math.cos(a)*d-1,b.y+Math.sin(a)*d-1,2.5,2.5)}
+    x.strokeStyle=b.col;x.lineWidth=2;x.beginPath();x.arc(b.x,b.y,3+k*8,0,6.283);x.stroke();
     x.globalAlpha=1;
   }
-  // vides
-  x.fillStyle='#fff';
-  for(let i=0;i<Math.min(lives-1,6);i++){x.fillRect(8+i*14,H-9,10,4);x.fillRect(11+i*14,H-13,4,4)}
+  // vides: gnoms petits
+  for(let i=0;i<Math.min(lives-1,6);i++){const vx=12+i*14,vy=H-6;
+    x.fillStyle='#e03030';x.beginPath();x.moveTo(vx-4,vy-3);x.lineTo(vx+4,vy-3);x.lineTo(vx,vy-10);x.fill();
+    x.fillStyle='#f4f4f4';x.fillRect(vx-3,vy-3,6,4)}
 }
 let last=performance.now();
 function loop(t){const dt=Math.min(40,t-last);last=t;update(dt);draw();requestAnimationFrame(loop)}

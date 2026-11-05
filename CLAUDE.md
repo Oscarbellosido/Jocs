@@ -192,6 +192,11 @@ colors perquè les màquines eren així.
   (`TURONS`), ciutats amb gratacels i finestres (i fum quan cauen), coets en
   piràmide a les sitges, estels enemics que s'esvaeixen per darrere i
   explosions que fan llum. Els coets surten d'on sortien (`GROUND-8`).
+- **El Centpeus**: un jardí de nit amb bolets de barret i peu que es van
+  menjant a cada tret, un centpeus de boles amb potetes i un cap amb
+  antenes, l'aranya de vuit potes, la puça i l'escorpí amb la cua enlaire.
+  El canó és un gnom amb barret (el de la màquina era un cap, i no cal
+  copiar-lo).
 
 ## L'Atletisme: com es dibuixa
 
