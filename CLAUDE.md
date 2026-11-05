@@ -961,6 +961,12 @@ Coses que no s'han de desfer sense entendre-les:
 - **A la sopa van sense accents, sense ç i sense punt volat** (`pla`: la ç és
   una C i la l·l són dues L), però a la llista de sota surten ben escrites.
   Cap paraula no pot fer més de 10 lletres.
+- **Cada sopa barreja les direccions** (`PLA`): 4 paraules de costat (una
+  del revés), 3 de dalt a baix (una del revés) i 3 en diagonal, repartides
+  a l'atzar; si no hi caben així, es torna a provar. Abans cada paraula
+  triava la direcció a l'atzar i en Carles va fer la #1 amb les deu en
+  vertical. La #1 es va quedar com era, que ja s'estava jugant (`gen` 1, i
+  les pràctiques desades d'abans també); des de la #2, `gen` 2.
 - **El farciment té la freqüència de les lletres del català** (`FARCIT`): amb
   lletres a l'atzar, les rares (K, W, Y) cridarien i les paraules es veurien
   de seguida.

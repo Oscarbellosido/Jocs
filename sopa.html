@@ -127,12 +127,19 @@ function vegades(g,w){
 // llarga a la més curta) en direccions a l'atzar, i omple la resta. Cada
 // paraula ha de sortir UNA sola vegada: si el farciment en fa sortir una
 // altra (SOL, MAR...), es torna a omplir.
-function fesSopa(llavor,tema){
-  for(let intent=0;intent<40;intent++){
+// Les direccions de cada sopa (des de la #2). Abans cada paraula en triava
+// una a l'atzar, i en Carles va fer la #1 amb les deu en vertical: ara n'hi
+// ha 4 de costat (una del revés), 3 de dalt a baix (una del revés) i 3 en
+// diagonal, repartides a l'atzar entre les paraules.
+const PLA=[[1,0],[1,0],[1,0],[-1,0],[0,1],[0,1],[0,-1],[1,1],[1,-1],[1,1]];
+const tipus=([dx,dy])=>dy===0?'H':dx===0?'V':'D';
+// gen 1: com es feien fins a la #1 (que ja s'estava jugant); gen 2: barrejades
+function fesSopa(llavor,tema,gen=2){
+  for(let intent=0;intent<(gen===1?40:200);intent++){
     const r=mulberry(hashText('SOPA-'+llavor+'-'+intent));
     const totes=barreja(r,TEMES[tema][1].split(' ')).filter(w=>{const p=pla(w);return p.length>=3&&p.length<=N});
     const g=Array.from({length:N},()=>Array(N).fill(''));
-    const posades=[];
+    const posades=[],plans=gen===1?null:barreja(r,PLA);
     for(const w of totes.slice().sort((a,b)=>pla(b).length-pla(a).length)){
       if(posades.length>=PARAULES)break;
       const p=pla(w);let ok=false;
@@ -141,7 +148,7 @@ function fesSopa(llavor,tema){
       const rev=t=>[...t].reverse().join('');
       if(posades.some(q=>q.p.includes(p)||q.p.includes(rev(p))||q.p===p))continue;
       for(let t=0;t<300&&!ok;t++){
-        const[dx,dy]=DIRS[Math.floor(r()*8)],x0=Math.floor(r()*N),y0=Math.floor(r()*N);
+        const[dx,dy]=plans?plans[posades.length]:DIRS[Math.floor(r()*8)],x0=Math.floor(r()*N),y0=Math.floor(r()*N);
         const xf=x0+dx*(p.length-1),yf=y0+dy*(p.length-1);
         if(xf<0||yf<0||xf>=N||yf>=N)continue;
         let cap=true;for(let k=0;k<p.length;k++){const c=g[y0+dy*k][x0+dx*k];if(c&&c!==p[k]){cap=false;break}}
@@ -151,6 +158,7 @@ function fesSopa(llavor,tema){
       }
     }
     if(posades.length<PARAULES)continue;
+    if(plans){const c={H:0,V:0,D:0};posades.forEach(q=>c[tipus([q.dx,q.dy])]++);if(c.H<3||c.V<2||c.D<2)continue}
     for(let f=0;f<30;f++){
       const h=g.map(row=>row.map(c=>c||FARCIT[Math.floor(r()*FARCIT.length)]));
       if(posades.every(q=>vegades(h,q.p)===1)){
@@ -189,16 +197,16 @@ function temaDe(n){
   if(tanda>0&&o[0]===ordre(tanda-1)[L-1]){if(k===0)return o[1];if(k===1)return o[0]}
   return o[k];
 }
-const sopaDia=n=>fesSopa('DIA-'+n,temaDe(n));
+const sopaDia=n=>fesSopa('DIA-'+n,temaDe(n),n<=1?1:2);
 
 // ===== LA PARTIDA =====
 let S=null,P=null,mode='dia',dia='',numero=0,paused=false,brut=true;
 // P: el que es desa (quines has trobat, el temps, les pistes); S: la sopa,
 // que es torna a fer igual a partir de la llavor
-function novaP(m,llavor,tema){return {v:1,mode:m,dia,n:numero,llavor,tema,temps:0,trobades:[],pistes:0,fi:false,comencada:false}}
+function novaP(m,llavor,tema){return {v:1,gen:2,mode:m,dia,n:numero,llavor,tema,temps:0,trobades:[],pistes:0,fi:false,comencada:false}}
 const clau=()=>mode==='dia'?'sopa-'+P.dia:'sopa-practica';
 function desaP(){if(P)desa(clau(),P)}
-function carregaS(){S=P.mode==='dia'?sopaDia(P.n):fesSopa(P.llavor,P.tema);sel=null;inici=null;pistaVis=null;pintaParaules();mesura();brut=true}
+function carregaS(){S=P.mode==='dia'?sopaDia(P.n):fesSopa(P.llavor,P.tema,P.gen||1);sel=null;inici=null;pistaVis=null;pintaParaules();mesura();brut=true}
 function obreDia(){
   mode='dia';dia=diaAvui();numero=numeroDe(dia);
   const d=llegeix('sopa-'+dia,null);

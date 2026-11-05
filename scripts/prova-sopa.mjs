@@ -71,6 +71,14 @@ diu(g.nmal === 0, `25 sopes de cada un dels ${g.L} temes surten bé, amb cada pa
 diu(g.iguals, 'la del dia surt igual cada vegada (igual per a tothom)');
 diu(g.seguits === 0 && g.temes === g.L, `cap tema dos dies seguits, i tots surten abans de repetir-ne cap (${g.temes} de ${g.L})`);
 diu(g.u === 1, 'la #1 és la del 5 de novembre del 2026');
+const dirs = await p.evaluate(() => {
+  let mal = 0;
+  for (let n = 2; n <= 120; n++) { const c = { H: 0, V: 0, D: 0 }; sopaDia(n).paraules.forEach(q => c[tipus([q.dx, q.dy])]++); if (c.H < 3 || c.V < 2 || c.D < 2) mal++; }
+  const u = sopaDia(1);
+  return { mal, u: u.paraules.map(q => q.p + ':' + q.dx + ',' + q.dy).join(' ') };
+});
+diu(dirs.mal === 0, 'des de la #2, cada sopa té paraules de costat, de dalt a baix i en diagonal (la #1 eren totes verticals)');
+diu(dirs.u === 'CARTERA:0,-1 CLASSE:0,1 DEURES:0,-1 ESTOIG:0,1 LLAPIS:0,-1 LLIBRETA:0,-1 MESTRE:0,-1 MOTXILLA:0,-1 PISSARRA:0,1 TISORES:0,1', 'la #1, que ja s\'estava jugant, és la mateixa d\'abans');
 
 // ---------- 2. jugar la d'avui ----------
 await p.click('#m-dia'); await p.waitForTimeout(150);
