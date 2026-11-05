@@ -157,6 +157,27 @@ pastissos, els ascensors i els reblons— i amb el martell a la mà no pots ni
 pujar escales ni saltar). Quan calgui
 decidir alguna cosa, tirar cap a com era l'original.
 
+## L'Atletisme: com es dibuixa
+
+En Carles va preguntar si se'n podien millorar els gràfics: era un ninot de
+pals sobre un fons llis. Ara és un estadi de nit (`draw` i `dibuixaAtleta`):
+focus, graderia plena (es pinta un sol cop en dos llenços, `GRADA`, la gent
+asseguda i la gent dreta, i s'aixeca quan vas de pressa), tanques de
+publicitat amb noms inventats, la pista de tartan amb carrils, el fossar de
+sorra del salt, la gespa de la javelina amb els metres, tanques de debò i la
+meta escacada. L'atleta té cos (samarreta groga amb dorsal: la vermella no
+es veia sobre el tartan), corre amb les cames i els braços al ritme dels
+metres que fa, i té una postura per a cada cosa (a les marques, amb la
+llança, enlaire al salt, per sobre de la tanca, assegut a la sorra).
+
+- **Els carrils de més enllà van darrere l'atleta**: la pista comença 46 px
+  per sobre de `TERRA`, que és on té els peus. Així el cos es veu sobre el
+  tartan i no sobre la gent.
+- **Quan el salt o la llança cauen, la càmera s'hi queda** mentre surt el
+  resultat (`final`). Abans tornava de cop a la ratlla.
+- Les regles, les velocitats i les puntuacions no s'han tocat: només el
+  dibuix. Dibuixar-ho tot costa 0,1 mil·lèsimes per fotograma.
+
 ## El Lunar Lander: el combustible és la partida
 
 Atari, agost del 1979: abans que el Galaxian (octubre) i que l'Asteroids

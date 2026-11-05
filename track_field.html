@@ -163,7 +163,7 @@ function novaProva(){
 }
 function preparaIntent(){
   const p=PROVES[prova];
-  pos=0;vel=0;temps=0;angle=0;carregant=false;ultimBoto=0;passes=0;vol=null;resultat=null;
+  pos=0;vel=0;temps=0;angle=0;carregant=false;ultimBoto=0;passes=0;vol=null;resultat=null;final=null;polsPista=[];
   tanques=[];
   if(p.tipus==='tanques'){
     // deu tanques, la primera als 13,7 m i les altres cada 9,1 m, com les de debo
@@ -361,126 +361,328 @@ function update(dt){
     vol.d+=(vol.tipus==='javelina'?vol.total/1.8:Math.max(3,vel)*1.6)*s;
     const k=Math.min(1,vol.d/vol.total);
     vol.h=Math.sin(k*Math.PI)*(vol.total*(vol.tipus==='javelina'?0.10:0.35));
-    if(k>=1){acaba(Math.max(0,vol.total-vol.perdut),false);vol=null}
+    if(k>=1){
+      // on cau, perquè la càmera s'hi quedi mentre surt el resultat
+      final={tipus:vol.tipus,m:vol.sortida+vol.total,sortida:vol.sortida};
+      if(vol.tipus==='salt')polsA((final.m*PX_M-camera()),TERRA,22,'#e8c878',70);
+      acaba(Math.max(0,vol.total-vol.perdut),false);vol=null}
   }
 }
 function enLaire(){return !!(vol&&vol.tipus==='tanca')}
 
 // ===== DIBUIX =====
+// Un estadi de debò: cel de vespre amb els focus, la graderia plena de gent
+// que s'aixeca quan vas de pressa, les tanques de publicitat, la pista de
+// tartan amb els carrils, i un atleta amb samarreta i dorsal que corre, salta
+// i llança amb el cos sencer. Abans era un ninot de pals sobre un fons llis.
+const COL_PELL='#e0a878',COL_SAMARRETA='#ffd23a',COL_PANTALO='#1e3a9a',COL_SABATA='#f4f4f4',COL_CABELL='#3a2414';
+// la graderia es pinta un sol cop en dos llenços (la gent asseguda i la gent
+// dreta, aplaudint) i després només s'enganxa: són centenars de caps
+const GRADA_W=480,GRADA_H=64;
+function fesGrada(dreta){
+  const cv=document.createElement('canvas');cv.width=GRADA_W;cv.height=GRADA_H;const g=cv.getContext('2d');
+  let s=1234567;const rnd=()=>(s=(s*1103515245+12345)>>>0)/4294967296;
+  // els graons
+  for(let f=0;f<5;f++){const y=f*12;g.fillStyle=f%2?'#2a2e44':'#33384f';g.fillRect(0,y,GRADA_W,12)}
+  const roba=['#e83a3a','#f0c030','#3a8ae8','#f4f4f4','#40b860','#e870b0','#ff8a30','#8a5ae8','#202020'];
+  const pells=['#f0c8a0','#e0a878','#c08058','#8a5a3a','#f8d8b8'];
+  for(let f=0;f<5;f++)for(let i=0;i<GRADA_W/8;i++){
+    if(rnd()<.08)continue;                                  // algun seient buit
+    const px=i*8+3+(f%2)*4,py=f*12+11,alca=dreta&&rnd()<.55?3:0;
+    g.fillStyle=roba[Math.floor(rnd()*roba.length)];g.fillRect(px-3,py-6-alca,7,6+alca);
+    g.fillStyle=pells[Math.floor(rnd()*pells.length)];g.fillRect(px-2,py-10-alca,5,4);
+    if(alca){g.fillStyle=g.fillStyle;g.fillRect(px-4,py-14,2,4);g.fillRect(px+3,py-14,2,4)}   // braços enlaire
+  }
+  // de nit i sota els focus, la gent queda més fosca que la pista
+  g.fillStyle='rgba(8,12,34,.38)';g.fillRect(0,0,GRADA_W,GRADA_H);
+  // la barana de davant
+  g.fillStyle='#22263a';g.fillRect(0,GRADA_H-4,GRADA_W,4);
+  return cv;
+}
+const GRADA=[fesGrada(false),fesGrada(true)];
+// les tanques de publicitat: noms inventats, que no són de ningú
+const ANUNCIS=[['#1e5ac8','#fff','JOCS'],['#f0c030','#1a1a1a','ATLETISME'],['#2a9a50','#fff','1983'],['#d8282c','#fff','★ ★ ★'],
+  ['#f4f4f4','#d8282c','RÈCORDS'],['#8a3ac8','#fff','CORRE!']];
+const ANUNCI_W=96;
+let polsPista=[],ultimDibuix=performance.now(),final=null;
+
 function camera(){
-  // la camera segueix l'atleta, pero a la javelina mira on va la llança
-  const m=fase==='volant'&&vol&&vol.tipus==='javelina'?vol.sortida+vol.d:pos;
-  return m*PX_M-ATLETA_X;
+  // la camera segueix l'atleta; a la javelina mira on va la llança, i quan
+  // el salt o la llança ja han caigut, s'hi queda mentre surt el resultat
+  if(fase==='volant'&&vol&&vol.tipus==='javelina')return (vol.sortida+vol.d)*PX_M-ATLETA_X*1.6;
+  if(final&&fase==='resultat')return final.m*PX_M-(final.tipus==='javelina'?ATLETA_X*1.6:ATLETA_X);
+  return pos*PX_M-ATLETA_X;
 }
-function dibuixaAtleta(px,py,corrent){
-  x.strokeStyle='#fff';x.lineWidth=2;x.lineCap='round';
-  const f=Math.sin(passes*1.3+(corrent?performance.now()/70:0))*0.9;
-  x.beginPath();
-  x.arc(px,py-26,5,0,7);x.stroke();                      // cap
-  x.beginPath();
-  x.moveTo(px,py-21);x.lineTo(px,py-10);                 // cos
-  x.moveTo(px,py-10);x.lineTo(px-6*f,py);                // cames
-  x.moveTo(px,py-10);x.lineTo(px+6*f,py);
-  x.moveTo(px,py-18);x.lineTo(px+7,py-14-4*f);           // braços
-  x.moveTo(px,py-18);x.lineTo(px-7,py-14+4*f);
-  x.stroke();
+// un segment del cos, gruixut i amb les puntes rodones
+function os(ax,ay,bx,by,col,w){x.strokeStyle=col;x.lineWidth=w;x.lineCap='round';x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke()}
+const punt=(ax,ay,ang,l)=>[ax+Math.sin(ang)*l,ay+Math.cos(ang)*l];
+// L'atleta, mirant a la dreta. Els angles són des de la vertical (cap avall),
+// positius endavant. pose: 'llest', 'corre', 'salt', 'tanca', 'assegut', 'llança'
+const ESCALA=1.35;
+function dibuixaAtleta(px,py,pose,o={}){
+  // l'ombra a terra, i després el cos, una mica més gros que la mida de pista
+  x.fillStyle='rgba(0,0,0,.3)';x.beginPath();x.ellipse(px,o.terra??py,12,3,0,0,7);x.fill();
+  x.save();x.translate(px,py);x.scale(ESCALA,ESCALA);x.translate(-px,-py);
+  const r=dibuixaCos(px,py,pose,o);x.restore();return r;
 }
+function dibuixaCos(px,py,pose,o){
+  const fi=o.fi||0,v=o.v||0;
+  let hip=16,lean=0.12+v/V_MAX*0.22;
+  // cames: [cuixa, canyella] de la de davant i la de darrere
+  let ca,cb,ba,bb;
+  if(pose==='corre'||pose==='llança'){
+    const fl=k=>.25+1.15*Math.max(0,Math.sin(k-1.9));
+    ca=[.8*Math.sin(fi),0];ca[1]=ca[0]-fl(fi);
+    cb=[.8*Math.sin(fi+Math.PI),0];cb[1]=cb[0]-fl(fi+Math.PI);
+    // els braços, al revés que les cames
+    ba=[-.9*Math.sin(fi),0];ba[1]=ba[0]+1.5;
+    bb=[-.9*Math.sin(fi+Math.PI),0];bb[1]=bb[0]+1.5;
+    hip=16-Math.abs(Math.cos(fi))*1.2*Math.min(1,v/4);
+  }else if(pose==='llest'){
+    // a les marques: ajupit, amb les mans a terra
+    lean=1.15;hip=12;ca=[1.3,-.6];cb=[.4,-1.4];ba=[1.0,.9];bb=[.9,.8];
+  }else if(pose==='salt'){
+    // enlaire: les cames endavant per arribar més lluny, els braços amunt
+    const k=o.k||0;lean=.15-k*.35;
+    ca=[1.2+k*.4,1.0+k*.6];cb=[.9+k*.7,.3+k*1.2];ba=[2.6-k*1.2,2.9-k*1.2];bb=[2.3-k*1.0,2.6-k*1.1];
+  }else if(pose==='tanca'){
+    // la cama de davant estirada per sobre de la tanca, la de darrere plegada de costat
+    lean=.5;ca=[1.45,1.45];cb=[-.7,.6];ba=[1.6,1.6];bb=[-.8,-.3];
+  }else if(pose==='assegut'){
+    // caigut a la sorra, amb les cames endavant
+    lean=.1;hip=4;ca=[1.5,1.4];cb=[1.4,1.6];ba=[1.2,1.8];bb=[.6,.5];
+  }else{ // dret
+    lean=.04;ca=[.08,.04];cb=[-.08,-.1];ba=[.15,.4];bb=[-.15,.2];
+  }
+  const hx=px,hy=py-hip;
+  const [sx,sy]=punt(hx,hy,Math.PI-lean,11);              // espatlla
+  const cama=(c,col)=>{const[kx,ky]=punt(hx,hy,c[0],8),[fx,fy]=punt(kx,ky,c[1],8);
+    os(hx,hy,kx,ky,COL_PELL,3.4);os(kx,ky,fx,fy,COL_PELL,3);
+    x.fillStyle=col;x.save();x.translate(fx,fy);x.rotate(-c[1]+Math.PI/2*0);x.fillRect(-1.5,-1.5,5,3);x.restore()};
+  const brac=(b,col)=>{const[ex,ey]=punt(sx,sy,b[0],6.5),[mx,my]=punt(ex,ey,b[1],6);os(sx,sy,ex,ey,col,3);os(ex,ey,mx,my,COL_PELL,2.6);return[mx,my]};
+  // la cama i el braç de darrere, més foscos
+  x.globalAlpha=.75;cama(cb,'#bbb');const mb=brac(bb,'#c8a020');x.globalAlpha=1;
+  // el pantaló
+  os(hx-1,hy-1,hx+1,hy+2,COL_PANTALO,6);
+  cama(ca,COL_SABATA);
+  // el cos: samarreta amb dorsal
+  os(hx,hy-2,sx,sy,COL_SAMARRETA,7);
+  const[dx,dy]=punt(hx,hy,Math.PI-lean,6);x.fillStyle='#fff';x.fillRect(dx-2.5,dy-2,5,4);
+  x.fillStyle='#111';x.fillRect(dx-.5,dy-1.2,1,2.4);
+  // el cap, amb cabells
+  const[cx,cy]=punt(sx,sy,Math.PI-lean,5);
+  x.fillStyle=COL_PELL;x.beginPath();x.arc(cx,cy,4,0,7);x.fill();
+  x.fillStyle=COL_CABELL;x.beginPath();x.arc(cx-.8,cy-1,4,Math.PI*.95,Math.PI*1.95);x.fill();
+  x.fillStyle='#222';x.fillRect(cx+1.6,cy-.8,1.2,1.2);
+  const ma=brac(ba,COL_SAMARRETA);
+  // la llança a la mà, per sobre de l'espatlla
+  if(pose==='llança'){
+    const lx=sx-2,ly=sy-5;
+    os(lx-16,ly+3,lx+16,ly-3,'#e8e0c8',1.6);os(lx+13,ly-2.4,lx+17,ly-3.2,'#666',1.6);
+    os(sx,sy,lx+2,ly,COL_PELL,2.6);
+  }
+  return {ma,mb,cap:[cx,cy]};
+}
+function polsA(px,py,n,col,v){for(let i=0;i<n;i++)polsPista.push({x:px+(Math.random()-.5)*6,y:py-1,vx:(Math.random()-.7)*v,vy:-Math.random()*v*.8,t:.5+Math.random()*.4,col})}
 // On s'ha de comencar a mantenir el boto: exactament els metres que
 // recorres mentre la barra puja fins als 45 graus, a la velocitat que portes
 // ara. Amb una franja fixa de 4 m, qui corria a 8 m/s premia massa aviat,
 // saltava un metre i mig abans de la ratlla i perdia aquell metre i mig.
 function zonaImpuls(){return Math.max(1.2,Math.min(8,vel*45/ANGLE_VEL))}
+function textOmbra(t,tx,ty,col){x.fillStyle='rgba(0,0,0,.75)';x.fillText(t,tx+1,ty+1);x.fillStyle=col;x.fillText(t,tx,ty)}
 function draw(){
+  const ara=performance.now(),dt=Math.min(.05,(ara-ultimDibuix)/1000);ultimDibuix=ara;
   const p=PROVES[prova];
   const cam=camera();
-  // cel i grades
-  x.fillStyle='#0b1430';x.fillRect(0,0,W,TERRA-46);
-  x.fillStyle='#1b2550';
-  for(let i=0;i<14;i++){
-    const gx=((i*60-cam*0.25)%(W+60)+W+60)%(W+60)-60;
-    x.fillRect(gx,TERRA-78,52,32);
-  }
-  x.fillStyle='#2a3468';x.fillRect(0,TERRA-46,W,46);
-  // pista
-  x.fillStyle=p.tipus==='llanca'?'#2f6a35':'#8a3a2a';
-  x.fillRect(0,TERRA,W,H-TERRA);
-  x.fillStyle='#fff';x.fillRect(0,TERRA,W,2);
+  const camp=p.tipus==='llanca';
+  const PISTA=TERRA-46;                      // on comença el tartan: els carrils de més enllà queden darrere l'atleta
 
-  // marques cada 10 m i numeros
+  // el cel de vespre
+  const gc=x.createLinearGradient(0,0,0,TERRA-126);
+  gc.addColorStop(0,'#0a1230');gc.addColorStop(.7,'#24305e');gc.addColorStop(1,'#5a4a78');
+  x.fillStyle=gc;x.fillRect(0,0,W,TERRA-126);
+  // els focus de l'estadi, molt lluny
+  for(let i=0;i<4;i++){
+    const fx=((i*170-cam*.08)%(W+170)+W+170)%(W+170)-85;
+    x.fillStyle='#1a1f38';x.fillRect(fx-1,26,3,TERRA-160);
+    x.fillStyle='#2a3050';x.fillRect(fx-12,18,26,10);
+    for(let j=0;j<4;j++){x.fillStyle='#fff8d0';x.fillRect(fx-10+j*6,20,4,3)}
+    const gl=x.createRadialGradient(fx+1,22,2,fx+1,22,40);gl.addColorStop(0,'rgba(255,250,210,.35)');gl.addColorStop(1,'rgba(255,250,210,0)');
+    x.fillStyle=gl;x.fillRect(fx-40,0,82,64);
+  }
+  // la teulada i la graderia plena de gent, que s'aixeca quan vas de pressa
+  x.fillStyle='#161a2e';x.fillRect(0,TERRA-134,W,8);
+  const dret=(fase==='corrent'&&vel>7.5)||(fase==='volant')||(resultat&&resultat.passa);
+  const fr=dret&&Math.floor(ara/180)%2?1:0;
+  const gx0=((-cam*.3)%GRADA_W+GRADA_W)%GRADA_W;
+  for(let gx=gx0-GRADA_W;gx<W;gx+=GRADA_W)x.drawImage(GRADA[fr],Math.round(gx),TERRA-126);
+  // les tanques de publicitat
+  const yAn=TERRA-62,aw=ANUNCI_W,ax0=((-cam*.9)%(aw*ANUNCIS.length)+aw*ANUNCIS.length)%(aw*ANUNCIS.length);
+  x.font='bold 10px monospace';x.textAlign='center';
+  for(let k=-1,ax=ax0-aw*ANUNCIS.length;ax<W;ax+=aw,k++){
+    const a=ANUNCIS[((k%ANUNCIS.length)+ANUNCIS.length)%ANUNCIS.length];
+    x.fillStyle=a[0];x.fillRect(Math.round(ax)+1,yAn,aw-2,14);
+    x.fillStyle=a[1];x.fillText(a[2],Math.round(ax)+aw/2,yAn+11);
+  }
+  x.fillStyle='#14182a';x.fillRect(0,yAn+14,W,PISTA-yAn-14);
+
+  // la pista: tartan vermell amb els carrils; a la javelina, gespa després de la ratlla
+  x.fillStyle='#b4483a';x.fillRect(0,PISTA,W,H-PISTA);
+  // una textura suau perquè es vegi que passa
+  x.fillStyle='rgba(0,0,0,.07)';
+  for(let i=0;i<24;i++){const tx=((i*23-cam)%W+W)%W;x.fillRect(tx,PISTA+((i*37)%(H-PISTA)),12,1)}
+  if(camp){
+    const gx=p.taula*PX_M-cam;
+    if(gx<W){
+      x.fillStyle='#3e8a3a';x.fillRect(Math.max(0,gx),PISTA,W,H-PISTA);
+      // franges de gespa tallada
+      x.fillStyle='#46963f';
+      for(let m=p.taula;m<p.taula+140;m+=4){const sx=m*PX_M-cam;if(sx>W)break;if(sx+2*PX_M<0)continue;x.fillRect(Math.max(gx,sx),PISTA,2*PX_M,H-PISTA)}
+      // les ratlles del sector i les dels metres
+      x.fillStyle='rgba(255,255,255,.75)';x.fillRect(gx,PISTA,W,1.5);
+      for(let m=10;m<=100;m+=10){const sx=(p.taula+m)*PX_M-cam;if(sx<-30||sx>W+30)continue;
+        x.fillStyle='rgba(255,255,255,.6)';x.fillRect(sx,PISTA,1.5,H-PISTA);
+        x.fillStyle='#fff';x.font='bold 10px monospace';x.textAlign='center';x.fillText(m+'',sx,H-8)}
+    }
+  }
+  // els carrils
+  const CARRILS=[PISTA,TERRA-30,TERRA-14,TERRA+12,TERRA+40,TERRA+68];
+  for(const cy of CARRILS){
+    x.fillStyle='#f4f0e8';
+    const fins=camp?Math.min(W,p.taula*PX_M-cam):W;
+    if(fins>0)x.fillRect(0,cy,fins,cy===PISTA?2:1.5);
+  }
+  // el carril on corres, una mica més clar
+  x.fillStyle='rgba(255,255,255,.06)';x.fillRect(0,TERRA-12,camp?Math.max(0,Math.min(W,p.taula*PX_M-cam)):W,24);
+  // els metres: una ratlleta al carril i el número al carril del costat
   x.font='9px monospace';x.textAlign='center';
   for(let m=0;m<=140;m+=10){
+    if(camp&&m>p.taula)break;
+    if(p.tipus==='salt'&&m>p.taula&&m<=p.taula+11)continue;   // al costat del fossar ja hi ha els seus metres
     const sx=m*PX_M-cam;
     if(sx<-30||sx>W+30)continue;
-    x.fillStyle='#fff';x.fillRect(sx,TERRA,1,8);
-    x.fillStyle='#ddd';x.fillText(m+'m',sx,TERRA+20);
+    x.fillStyle='rgba(255,255,255,.55)';x.fillRect(sx,TERRA+3,1,8);
+    x.fillStyle='#f4e8d8';x.fillText(m+'m',sx,TERRA+29);
   }
-  // meta o ratlla de sortida
+  // les sortides: els tacs de sortida
+  {const sx=-cam;if(sx>-30&&sx<W+30){x.fillStyle='#fff';x.fillRect(sx,TERRA-13,2,25);
+    if(p.tipus==='cursa'||p.tipus==='tanques'){x.fillStyle='#555';x.fillRect(sx-12,TERRA-3,4,3);x.fillRect(sx-6,TERRA-4,4,4)}}}
+
+  // la meta: escacada, amb els pals i la cinta
   if(p.tipus==='cursa'||p.tipus==='tanques'){
     const sx=p.metres*PX_M-cam;
-    if(sx>-20&&sx<W+20){x.fillStyle='#ff0';x.fillRect(sx,TERRA-60,3,60)}
+    if(sx>-30&&sx<W+30){
+      for(let i=0;i<(H-PISTA)/4;i++){x.fillStyle=i%2?'#111':'#fff';x.fillRect(sx,PISTA+i*4,3,4);x.fillStyle=i%2?'#fff':'#111';x.fillRect(sx+3,PISTA+i*4,3,4)}
+      // els pals de la meta, un a cada costat del carril, i la cinta
+      x.fillStyle='#ddd';x.fillRect(sx+5,TERRA-62,2,48);x.fillRect(sx-1,TERRA-52,2,64);
+      if(!(fase==='resultat'||pos>=p.metres)){x.fillStyle='#ffe040';x.fillRect(sx-1,TERRA-30,8,1.5)}
+      x.font='bold 9px monospace';x.textAlign='center';textOmbra('META',sx+3,TERRA-66,'#ff0');
+    }
   } else {
     // La franja verda: es on s'ha de comencar a mantenir el boto
     const ZONA=zonaImpuls();
     const zx=(p.taula-ZONA)*PX_M-cam, za=ZONA*PX_M, sx=p.taula*PX_M-cam;
     if(zx<W+20&&zx+za>-20){
-      x.fillStyle='rgba(60,200,90,.28)';x.fillRect(zx,TERRA,za,H-TERRA);
-      x.fillStyle='#80ff90';x.font='9px monospace';x.textAlign='center';
-      if(za>78&&!carregant)x.fillText('MANTÉN EL BOTÓ',zx+za/2,TERRA+34);
+      x.fillStyle='rgba(60,220,90,.38)';x.fillRect(zx,TERRA-12,za,24);
+      x.font='bold 9px monospace';x.textAlign='center';
+      if(za>78&&!carregant)textOmbra('MANTÉN EL BOTÓ',zx+za/2,TERRA+52,'#80ff90');
+    }
+    // el fossar de sorra del salt, després de la ratlla
+    if(p.tipus==='salt'){
+      const s0=(p.taula+1)*PX_M-cam,s1=(p.taula+11)*PX_M-cam;
+      if(s0<W&&s1>0){
+        x.fillStyle='#8a6a3a';x.fillRect(s0-2,TERRA-14,s1-s0+4,28);
+        x.fillStyle='#e8c878';x.fillRect(s0,TERRA-12,s1-s0,24);
+        x.fillStyle='rgba(255,255,255,.2)';for(let i=0;i<30;i++)x.fillRect(s0+((i*53)%Math.max(1,s1-s0)),TERRA-10+(i*7)%20,3,1);
+        // els metres al costat del fossar
+        x.font='9px monospace';x.textAlign='center';
+        for(let m=2;m<=10;m+=2){const mx=(p.taula+m)*PX_M-cam;if(mx<s0||mx>s1)continue;x.fillStyle='rgba(90,60,20,.6)';x.fillRect(mx,TERRA+8,1,4);textOmbra(m+' m',mx,TERRA+29,'#fff')}
+      }
     }
     if(sx>-20&&sx<W+20){
-      x.fillStyle='#fff';x.fillRect(sx,TERRA-4,4,8);
-      x.fillStyle='#ff5050';x.fillRect(sx,TERRA-30,2,26);
-      x.font='9px monospace';x.textAlign='center';
-      x.fillText('RATLLA',sx,TERRA-34);
+      // la post d'impuls (o la ratlla de la javelina), blanca amb la vora de plastilina
+      x.fillStyle='#fff';x.fillRect(sx-8,TERRA-2,10,5);
+      x.fillStyle='#d8282c';x.fillRect(sx+2,TERRA-2,2,5);
+      x.fillStyle='#ff5050';x.fillRect(sx+2,TERRA-40,2,38);
+      x.font='bold 9px monospace';x.textAlign='center';
+      textOmbra('RATLLA',sx+2,TERRA-43,'#ff7070');
     }
   }
   x.textAlign='left';
-  // tanques
+  // les tanques: dues potes, la barra a ratlles i els peus
   for(const t of tanques){
     const sx=t.m*PX_M-cam;
     if(sx<-20||sx>W+20)continue;
-    x.strokeStyle=t.tocada?'#775':'#fff';x.lineWidth=2;
-    x.beginPath();
-    if(t.tocada){x.moveTo(sx-6,TERRA);x.lineTo(sx+8,TERRA-6)}
-    else{x.moveTo(sx,TERRA);x.lineTo(sx,TERRA-20);x.moveTo(sx-7,TERRA-20);x.lineTo(sx+7,TERRA-20)}
-    x.stroke();
+    if(t.tocada){
+      x.save();x.translate(sx+4,TERRA);x.rotate(1.25);
+      x.fillStyle='#ccc';x.fillRect(-1,-20,2,20);x.fillStyle='#fff';x.fillRect(-2,-22,4,5);x.fillStyle='#d8282c';x.fillRect(-2,-20,4,1.5);
+      x.restore();x.fillStyle='#333';x.fillRect(sx-4,TERRA-1,10,2);
+    }else{
+      x.fillStyle='#333';x.fillRect(sx-4,TERRA-1,10,2);
+      x.fillStyle='#ccc';x.fillRect(sx,TERRA-20,2,19);x.fillRect(sx+5,TERRA-23,1.5,8);
+      x.fillStyle='#fff';x.fillRect(sx-3,TERRA-25,12,5);
+      x.fillStyle='#d8282c';x.fillRect(sx-3,TERRA-25,3,5);x.fillRect(sx+3,TERRA-25,3,5);
+      x.fillStyle='rgba(0,0,0,.25)';x.fillRect(sx-3,TERRA-20,12,1);
+    }
   }
 
-  // atleta
-  let ax=ATLETA_X, ay=TERRA;
+  // l'atleta
+  let ax=pos*PX_M-cam, ay=TERRA, pose='dret', op={v:vel,fi:pos*1.45,terra:TERRA};
+  if(fase==='preparats'&&(p.tipus==='cursa'||p.tipus==='tanques'))pose='llest';
+  else if(fase==='corrent')pose=p.tipus==='llanca'&&!carregant?'llança':'corre';
+  if(fase==='corrent'&&p.tipus==='llanca'&&carregant)pose='llança';
   if(fase==='volant'&&vol&&vol.tipus==='salt'){
-    ax=(vol.sortida+vol.d)*PX_M-cam;ay=TERRA-vol.h*PX_M;
+    ax=(vol.sortida+vol.d)*PX_M-cam;ay=TERRA-vol.h*PX_M;pose='salt';op.k=Math.min(1,vol.d/vol.total);
   } else if(fase==='volant'&&vol&&vol.tipus==='javelina'){
-    ax=vol.sortida*PX_M-cam;
+    ax=vol.sortida*PX_M-cam;pose='dret';
   } else if(vol&&vol.tipus==='tanca'){
-    ax=pos*PX_M-cam;ay=TERRA-vol.h*PX_M;
-  } else {
-    ax=pos*PX_M-cam;
+    ay=TERRA-vol.h*PX_M;pose='tanca';
   }
-  dibuixaAtleta(ax,ay,fase==='corrent');
+  if(fase==='resultat'&&final&&final.tipus==='salt'){ax=final.m*PX_M-cam;pose='assegut'}
+  if(fase==='resultat'&&final&&final.tipus==='javelina'){ax=final.sortida*PX_M-cam;pose='dret'}
+  // la pols de les sabatilles quan vas de pressa
+  if(fase==='corrent'&&vel>5&&!enLaire()&&Math.random()<vel/40)polsA(ax-3,TERRA,1,'rgba(230,170,150,.7)',30);
+  for(const q of polsPista){q.vy+=200*dt;q.x+=q.vx*dt;q.y=Math.min(q.y+q.vy*dt,TERRA+6);q.t-=dt;
+    x.globalAlpha=Math.max(0,Math.min(1,q.t*2));x.fillStyle=q.col;x.fillRect(q.x,q.y,2,2)}
+  x.globalAlpha=1;polsPista=polsPista.filter(q=>q.t>0);
+  if(ax>-40&&ax<W+40)dibuixaAtleta(ax,ay,pose,op);
 
-  // la javelina volant
+  // la javelina volant: apunta cap on va, i quan cau es queda clavada
+  const javelina=(jx,jy,ang)=>{const c=Math.cos(ang),s=Math.sin(ang);
+    os(jx-c*19,jy-s*19,jx+c*20,jy+s*20,'rgba(0,0,0,.7)',4);         // vora fosca: sobre la gent es perdia
+    os(jx-c*18,jy-s*18,jx+c*14,jy+s*14,'#fff4d0',2);os(jx+c*14,jy+s*14,jx+c*19,jy+s*19,'#777',1.8);
+    os(jx-c*2,jy-s*2,jx+c*2,jy+s*2,'#5a3a2a',2.4)};
   if(fase==='volant'&&vol&&vol.tipus==='javelina'){
-    const jx=(vol.sortida+vol.d)*PX_M-cam, jy=TERRA-vol.h*PX_M;
-    x.strokeStyle='#ffd000';x.lineWidth=2;
-    x.beginPath();x.moveTo(jx-10,jy+4);x.lineTo(jx+10,jy-4);x.stroke();
+    const k=Math.min(1,vol.d/vol.total),jx=(vol.sortida+vol.d)*PX_M-cam, jy=TERRA-24-vol.h*PX_M*(1-k*.15);
+    // una estela darrere, perquè es vegi per on va
+    for(let i=1;i<=6;i++){const kk=Math.max(0,k-i*.012),tx=(vol.sortida+kk*vol.total)*PX_M-cam,ty=TERRA-24-Math.sin(kk*Math.PI)*vol.total*.10*PX_M*(1-kk*.15);
+      x.fillStyle='rgba(255,240,200,'+(.5-i*.07)+')';x.fillRect(tx-1,ty-1,2,2)}
+    javelina(jx,jy,-Math.atan(2*Math.PI*.10*Math.cos(k*Math.PI)));
+  }
+  if(fase==='resultat'&&final&&final.tipus==='javelina'){
+    const jx=final.m*PX_M-cam;javelina(jx-10,TERRA-10,.7);
+    x.fillStyle='#ff0';x.fillRect(jx-1,TERRA-1,3,3);
   }
 
-  // marcadors de dalt
+  // marcadors de dalt, damunt d'una franja fosca perquè es llegeixin
+  x.fillStyle='rgba(0,0,0,.45)';x.fillRect(0,0,W,40);
   x.textAlign='left';x.font='bold 12px monospace';
   x.fillStyle='#fff';
   if(p.tipus==='cursa'||p.tipus==='tanques'){
-    x.fillText('TEMPS '+temps.toFixed(2)+' s',10,18);
-    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,34);
+    x.fillText('TEMPS '+temps.toFixed(2)+' s',10,17);
+    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,33);
   } else {
     const d=fase==='volant'&&vol?vol.total:0;
-    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,18);
-    if(d)x.fillText('MARCA '+d.toFixed(2)+' m',10,34);
+    x.fillText('VEL '+vel.toFixed(1)+' m/s',10,17);
+    if(d)x.fillText('MARCA '+d.toFixed(2)+' m',10,33);
   }
+  // la velocitat també en una barreta, que d'una ullada es veu si vas a tope
+  x.fillStyle='#333';x.fillRect(130,8,60,8);
+  x.fillStyle=vel>9?'#80ff90':vel>6?'#ffd000':'#ff7050';x.fillRect(130,8,60*vel/V_MAX,8);
   x.textAlign='right';
   x.fillStyle='#ffd000';x.fillText('MÍNIM '+minim(p,volta).toFixed(2)+
-    (p.tipus==='cursa'||p.tipus==='tanques'?' s':' m'),W-10,18);
-  if(millor)x.fillText('MILLOR '+millor.toFixed(2),W-10,34);
+    (p.tipus==='cursa'||p.tipus==='tanques'?' s':' m'),W-10,17);
+  if(millor)x.fillText('MILLOR '+millor.toFixed(2),W-10,33);
   x.textAlign='left';
 
   // Avis mentre corres cap a la ratlla: quants metres queden. Abans no hi
@@ -489,8 +691,7 @@ function draw(){
     const queden=p.taula-pos;
     if(queden<14){
       x.font='bold 13px monospace';x.textAlign='center';
-      x.fillStyle=queden<zonaImpuls()?'#80ff90':'#fff';
-      x.fillText(queden<zonaImpuls()?'MANTÉN EL BOTÓ VERD!':'RATLLA A '+queden.toFixed(0)+' m',W/2,H-44);
+      textOmbra(queden<zonaImpuls()?'MANTÉN EL BOTÓ VERD!':'RATLLA A '+queden.toFixed(0)+' m',W/2,H-44,queden<zonaImpuls()?'#80ff90':'#fff');
       x.textAlign='left';
     }
   }
@@ -500,8 +701,7 @@ function draw(){
     const t=tanques.find(t=>!t.tocada&&t.m>pos);
     if(t&&t.m-pos<2.2){
       x.font='bold 13px monospace';x.textAlign='center';
-      x.fillStyle=t.m-pos<1.5?'#80ff90':'#fff';
-      x.fillText('SALTA!',W/2,H-44);
+      textOmbra('SALTA!',W/2,H-44,t.m-pos<1.5?'#80ff90':'#fff');
       x.textAlign='left';
     }
   }
@@ -529,8 +729,8 @@ function draw(){
     x.textAlign='left';
   }
   if(fase==='preparats'&&cronoSortida>0){
-    x.fillStyle='#fff';x.font='bold 20px monospace';x.textAlign='center';
-    x.fillText(cronoSortida>0.7?'A LES MARQUES':'LLESTOS...',W/2,70);
+    x.font='bold 20px monospace';x.textAlign='center';
+    textOmbra(cronoSortida>0.7?'A LES MARQUES':'LLESTOS...',W/2,70,'#fff');
     x.textAlign='left';
   }
 }
