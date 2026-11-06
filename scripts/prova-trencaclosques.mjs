@@ -183,7 +183,33 @@ await p.waitForTimeout(1300);
 diu(await p.evaluate(() => mode === 'foto' && G.fi && /no compten/.test(document.getElementById('msg').textContent)) && !enviats.length, 'acabant la foto, no s\'apunta a cap taula');
 await ctx.close();
 
-// ---------- 6. que hi càpiga ----------
+// ---------- 5b. els dies de foto ----------
+// Del #14 (7 de novembre del 2026) al #23 surten les fotos d'en Carles, una
+// cada dia, en un trencaclosques apaïsat de 7 × 4; abans i després, els dibuixats.
+{
+  const ctx2 = await b.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true });
+  await ctx2.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', e => errors.push(String(e)));
+  await p2.clock.setFixedTime(new Date('2026-11-07T10:00:00+01:00'));
+  await p2.goto(URL_JOC);
+  await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); }); await p2.reload(); await p2.waitForTimeout(500);
+  await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
+  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], darrer: fotoDe(23)[0], despres: fotoDe(24), menu: document.getElementById('msg').textContent }));
+  diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'nuria' && !dies.despres, 'les deu fotos surten del #14 al #23, i abans i després els paisatges dibuixats');
+  diu(/Montserrat/.test(dies.menu) && /28 peces/.test(dies.menu) && /feta amb IA/.test(dies.menu), 'el menú del #14 diu Montserrat, 28 peces i que la imatge és feta amb IA');
+  await p2.click('#m-dia'); await p2.waitForTimeout(800);
+  const f = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n, que: document.getElementById('que').textContent,
+    marc: L.fx >= 0 && L.fx + L.fw <= L.W && L.fy + L.fh <= L.sy, pw: Math.round(L.pw), ph: Math.round(L.ph) }));
+  diu(f.n === 14 && f.cols === 7 && f.files === 4 && f.w === 980 && f.h === 560 && /Montserrat/.test(f.que), `el #14 és la foto de Montserrat, de 7 × 4 peces (${f.w} × ${f.h})`);
+  diu(f.marc && f.pw >= 40 && Math.abs(f.pw - f.ph) <= 1, `a 320 px hi cap, amb peces quadrades de ${f.pw} px`);
+  await p2.reload(); await p2.waitForTimeout(500);
+  await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
+  await p2.click('#m-dia'); await p2.waitForTimeout(800);
+  diu(await p2.evaluate(() => G.cols === 7 && G.files === 4 && IMG.width === 980), 'continuant-lo, torna a sortir la foto amb les mateixes peces');
+  await ctx2.close();
+}
+
 for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
   ({ ctx, p } = await obre(w, h));
   await p.click('#m-dia'); await p.waitForTimeout(300);

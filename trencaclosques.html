@@ -197,6 +197,32 @@ function escenaDe(n){
   if(t[0]===abans)[t[0],t[1]]=[t[1],t[0]];
   return ESCENES[t[(n-7)%6]];
 }
+// ===== LES FOTOS DEL DIA =====
+// En Carles va fer aquestes deu imatges amb una app d'IA (Gemini) i les va
+// pujar. Surten una cada dia a partir del #14 (7 de novembre del 2026), en
+// aquest ordre, i després tornen els paisatges dibuixats. Són apaïsades: el
+// trencaclosques d'aquells dies fa 7 × 4 peces, quadrades. Van a fotos/,
+// retallades a 7 per 4 (la marca de l'app queda fora) i reduïdes a 980 × 560.
+// Per afegir-ne: posar-les al final de FOTOS, que les que ja han sortit no
+// canviïn de dia.
+const FOTOS=[['montserrat','Montserrat'],['delta',"el delta de l'Ebre"],['pedraforca','el Pedraforca'],['cap-de-creus','el cap de Creus'],
+  ['fageda',"la Fageda d'en Jordà"],['mont-rebei','el congost de Mont-rebei'],['penedes','les vinyes del Penedès'],
+  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria']];
+const FOTO_DES_DE=14,COLS_FOTO=7,FILES_FOTO=4;
+const fotoDe=n=>n>=FOTO_DES_DE&&n<FOTO_DES_DE+FOTOS.length?FOTOS[n-FOTO_DES_DE]:null;
+const nomDelDia=n=>{const f=fotoDe(n);return f?f[1]:NOM_ESCENA[escenaDe(n)]};
+const pecesDelDia=n=>fotoDe(n)?COLS_FOTO*FILES_FOTO:COLS_DIA*FILES_DIA;
+// la imatge del dia: la foto (s'ha de baixar) o el paisatge dibuixat
+function imatgeDia(n){
+  const f=fotoDe(n);if(!f)return Promise.resolve(paisatge(n));
+  return new Promise((ok,ko)=>{const im=new Image();
+    im.onload=()=>{const cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext('2d').drawImage(im,0,0);ok(cv)};
+    im.onerror=()=>ko(new Error('foto'));im.src='fotos/'+f[0]+'.jpg'});
+}
+function senseFoto(){
+  msg('<div style="color:#ffb3a8">NO HE POGUT BAIXAR LA FOTO D\'AVUI</div><small>Cal connexió per baixar-la el primer cop. Torna-ho a provar d\'aquí a una estona.</small><a href="#" class="bt" id="m-tornar" style="color:#1a1200;background:#e8c27a">D\'ACORD</a>');
+  enllac('m-tornar',menu);
+}
 function paisatge(n){
   const e=escenaDe(n);
   if(n<=6||e==='poble')return paisatgePoble(n);
@@ -521,19 +547,19 @@ function menu(){
   msg('<div style="color:#e8c27a;letter-spacing:.12em">EL TRENCACLOSQUES</div>'+
     '<small>Arrossega cada peça de la safata al seu lloc: quan hi és a prop, hi encaixa sola.</small>'+
     (d&&d.fi?bt('m-dia','☀ EL D\'AVUI: FET EN '+mmss(d.temps),'color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+numero+' · demà n\'hi haurà un altre')
-      :bt('m-dia',d&&d.comencat?'☀ CONTINUA EL D\'AVUI':'☀ EL D\'AVUI ▸','color:#1a1200;background:#e8c27a','#'+numero+' · '+NOM_ESCENA[escenaDe(numero)]+' · '+nomDia(dia)+' · '+COLS_DIA*FILES_DIA+' peces · igual per a tothom'))+
+      :bt('m-dia',d&&d.comencat?'☀ CONTINUA EL D\'AVUI':'☀ EL D\'AVUI ▸','color:#1a1200;background:#e8c27a','#'+numero+' · '+nomDelDia(numero)+' · '+nomDia(dia)+' · '+pecesDelDia(numero)+' peces · igual per a tothom'+(fotoDe(numero)?' · imatge feta amb IA':'')))+
     (teFoto?bt('m-cont','📷 CONTINUA LA TEVA FOTO','color:#e8dcc4;background:#2a2016;border:1px solid #6a5a3a',f.cols*f.files+' peces · '+mmss(f.temps)):'')+
     bt('m-foto','📷 AMB UNA FOTO TEVA','color:#e8dcc4;background:#2a2016;border:1px solid #6a5a3a','la foto no surt del mòbil: es talla aquí mateix')+
     '<small style="color:#776a52;margin-top:12px">La del dia compta per a la taula; les teves fotos, no.</small>');
-  enllac('m-dia',()=>{if(d&&d.fi){G=d;mode='dia';IMG=paisatge(d.n);prepara();finalPartida()}else obreDia()});
+  enllac('m-dia',()=>{if(d&&d.fi){imatgeDia(d.n).then(im=>{G=d;mode='dia';IMG=im;prepara();finalPartida()},senseFoto)}else obreDia()});
   enllac('m-cont',continuaFoto);
   enllac('m-foto',()=>$('fitxer').click());
 }
 function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
-function obreDia(){
+async function obreDia(){
   mode='dia';dia=diaAvui();numero=numeroDe(dia);
-  IMG=paisatge(numero);
-  G=recupera('trencaclosques-'+dia)||novaPartida('dia',COLS_DIA,FILES_DIA,'TRENCA-'+numero);
+  try{IMG=await imatgeDia(numero)}catch(e){senseFoto();return}
+  G=recupera('trencaclosques-'+dia)||(fotoDe(numero)?novaPartida('dia',COLS_FOTO,FILES_FOTO,'TRENCA-'+numero):novaPartida('dia',COLS_DIA,FILES_DIA,'TRENCA-'+numero));
   G.comencat=true;hideMsg();prepara();desaPartida();pintaLider();
   if(G.fi)finalPartida();
 }
@@ -655,7 +681,7 @@ function pintaEstat(){
   if(!G)return;
   const fetes=G.peces.filter(p=>p.e==='l').length;
   $('peces').textContent=fetes+' de '+G.peces.length;
-  if(!avisant)$('que').textContent=G.fi?'Fet!':mode==='dia'?'#'+G.n+', '+NOM_ESCENA[escenaDe(G.n)]:'La teva foto';
+  if(!avisant)$('que').textContent=G.fi?'Fet!':mode==='dia'?'#'+G.n+', '+nomDelDia(G.n):'La teva foto';
   $('model').classList.toggle('on',model);
 }
 let avisT=null,avisant=false;

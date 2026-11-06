@@ -1268,6 +1268,17 @@ trencaclosques. N'hi ha dos:
   tornava a sortir el d'ahir. Els sis primers (#1 a #6) es van quedar com
   eren, que el #6 ja s'estava jugant. El nom de l'escena surt al menú i a
   dalt del joc.
+- **Les fotos d'en Carles** (`FOTOS`, a `fotos/`): deu imatges que va fer
+  amb una app d'IA (Gemini) i va pujar al repositori. Surten una cada dia del
+  #14 (7 de novembre del 2026) al #23, i després tornen els dibuixats. Són
+  apaïsades, i aquells dies el trencaclosques fa **7 × 4 peces** quadrades
+  (`COLS_FOTO`, `FILES_FOTO`). Es van retallar a 7 per 4 (així la marca de
+  l'app, a baix a la dreta, queda fora) i reduir a 980 × 560 en JPEG: de 2 MB
+  a uns 130 KB cada una. Es baixen el dia que toca (`imatgeDia`, que per als
+  dibuixats torna el `paisatge`) i el `sw.js` les desa; sense connexió i sense
+  haver-la baixat, ho diu (`senseFoto`). El menú diu que és feta amb IA.
+  **Per afegir-ne**, al final de `FOTOS`, que les que ja han sortit no canviïn
+  de dia (i allargar el tram, que ara acaba al #23).
 - **Amb una foto teva**: es tria de la galeria o es fa amb la càmera (un
   `<input type=file>`). **La foto no surt mai del mòbil**: es llegeix, es
   redueix a 1.200 px i es talla allà mateix; per poder continuar, es desa
