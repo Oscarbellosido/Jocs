@@ -234,14 +234,14 @@ for (const [w, h] of MIDES) {
   await p.goto('file://' + resolve(ARREL, 'index.html'));
   await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(200);
   const mira = () => p.evaluate(() => ({
-    nous: [...document.querySelectorAll('a.btn .nou')].map(r => r.closest('a').getAttribute('href')).sort().join(),
-    avis: document.getElementById('novetats').hidden ? '' : [...document.querySelectorAll('#novetats a.nou-joc')].map(a => a.getAttribute('href')).sort().join(),
+    nous: [...document.querySelectorAll('a.btn .nou:not(.nova)')].map(r => r.closest('a').getAttribute('href')).sort().join(),
+    avis: document.getElementById('novetats').hidden ? '' : [...document.querySelectorAll('#novetats a.nou-joc:not(.nova)')].map(a => a.getAttribute('href')).sort().join(),
     dalt: (() => { const n = document.getElementById('novetats'); return n.hidden || n.getBoundingClientRect().bottom <= document.getElementById('avui').getBoundingClientRect().top; })(),
     scroll: document.documentElement.scrollWidth > innerWidth + 1, fitxes: document.querySelectorAll('a.btn').length,
   }));
   let m = await mira();
   let be = m.nous === 'sopa.html,tresor.html' && m.avis === 'sopa.html,tresor.html' && m.dalt && !m.scroll && m.fitxes === ORDRE.length + MODERNS.length
-    && await p.evaluate(() => [...document.querySelectorAll('#novetats a.nou-joc')].every(a => /^JOC NOU!/.test(a.textContent) && a.scrollWidth <= a.clientWidth + 1));
+    && await p.evaluate(() => [...document.querySelectorAll('#novetats a.nou-joc:not(.nova)')].every(a => /^JOC NOU!/.test(a.textContent) && a.scrollWidth <= a.clientWidth + 1));
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} JOCS NOUS: els dos d'avui porten el rètol NOU i a dalt de tot diu JOC NOU! (${m.nous} / ${m.avis})`);
   await p.click('#ordre button[data-ordre="jugats"]');
@@ -291,18 +291,19 @@ for (const [w, h] of MIDES) {
       && document.documentElement.scrollWidth <= innerWidth + 1,
     text: [...document.querySelectorAll('#novetats a.nou-joc.nova')].every(a => /^NOVA VERSIÓ/.test(a.textContent)),
   }));
+  const TOTS = ['track_field', 'moon_patrol', 'amunt', 'donkey_kong', 'frogger', 'nibbler', 'missile_command', 'centipede', 'tetris', 'sopa'].map(x => x + '.html');
   let m = await mira();
-  let be = m.noves === 'sopa.html,tetris.html' && m.avis === 'sopa.html,tetris.html' && m.nous === 'tresor.html' && !m.mes && m.cap && m.text;
+  let be = m.noves === [...TOTS].sort().join() && m.avis === 'sopa.html,tetris.html,centipede.html' && /^i 7 jocs més/.test(m.mes)
+    && m.nous === 'tresor.html' && m.cap && m.text;
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} NOVA VERSIÓ: rètol verd i avís als que han canviat després de jugar-hi, i no als altres (${m.noves} / ${m.avis})`);
-  await p.evaluate(o => { const c = JSON.parse(localStorage.getItem('jocs-obertes')); Object.assign(c, o); localStorage.setItem('jocs-obertes', JSON.stringify(c)) }, {
-    'track_field.html': { n: 1, t: t('2026-11-01T10:00Z') }, 'amunt.html': { n: 1, t: t('2026-11-01T10:00Z') }, 'frogger.html': { n: 1, t: t('2026-11-01T10:00Z') },
-  });
+  console.log(`${be ? '✓' : '✗'} NOVA VERSIÓ: rètol verd als que han canviat i no has obert des de llavors (també si no hi havies jugat), i a dalt els tres més nous (${m.avis} · ${m.mes})`);
+  await p.evaluate(o => { const c = JSON.parse(localStorage.getItem('jocs-obertes')); Object.assign(c, o); localStorage.setItem('jocs-obertes', JSON.stringify(c)) },
+    Object.fromEntries(TOTS.slice(0, 8).map(f => [f, { n: 1, t: t('2026-11-06T11:30Z') }])));
   await p.reload(); await p.waitForTimeout(200);
   m = await mira();
-  be = m.avis === 'sopa.html,tetris.html,frogger.html' && /^i 2 jocs més/.test(m.mes) && m.noves.split(',').length === 5 && m.cap;
+  be = m.noves === 'sopa.html,tetris.html' && m.avis === 'sopa.html,tetris.html' && !m.mes && m.cap;
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} a dalt, com a molt tres i de la més nova a la més vella (${m.avis} · ${m.mes})`);
+  console.log(`${be ? '✓' : '✗'} els que ja has obert després del canvi ja no ho diuen (${m.noves})`);
   await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);
   const toast = await p.evaluate(() => { const r = document.getElementById('nova-versio'); return r && { t: r.textContent, cap: r.getBoundingClientRect().right <= innerWidth && r.getBoundingClientRect().left >= 0 }; });
   await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);

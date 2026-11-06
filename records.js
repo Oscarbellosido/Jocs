@@ -18,9 +18,11 @@ const Records = (() => {
   // En Carles va demanar que, quan s'arregla o es millora un joc, surti un
   // avís. Cada canvi que es nota s'apunta aquí: el fitxer, quan es va pujar
   // (hora de Greenwich) i què ha canviat, en poques paraules. Qui ja hi havia
-  // jugat abans d'aquella hora veu NOVA VERSIÓ a la portada i, en obrir el
+  // obert des d'aquella hora veu NOVA VERSIÓ a la portada i, en obrir el
   // joc, un rètol amb el que ha canviat, una sola vegada. Als 14 dies (DIES_NOVETAT)
   // ja no surt. Els jocs que encara són NOU no ho diuen: tot és nou.
+  // Al principi només ho deia a qui ja hi havia jugat en aquest mòbil, i en
+  // Carles no ho veia: a l'ordinador mai no havia obert el Trencaclosques.
   const NOVETATS = {
     'track_field.html':   ['2026-11-05T12:31Z', 'un estadi de nit i un atleta amb cos'],
     'moon_patrol.html':   ['2026-11-05T13:18Z', 'paisatge de debò i un cotxe lunar de sis rodes'],
@@ -35,12 +37,12 @@ const Records = (() => {
     'trencaclosques.html': ['2026-11-06T10:13Z', 'del 7 al 26 de novembre, cada dia una foto de Catalunya'],
   };
   const DIES_NOVETAT = 14;
-  // Torna [data, text] si el joc té una novetat que qui l'havia obert (a
-  // l'hora 'ultima') encara no ha vist. Sense haver-hi jugat mai, no.
+  // Torna [data, text] si el joc té una novetat que encara no has vist: no
+  // l'has obert des del canvi ('ultima' és l'última vegada que el vas obrir).
   function novetat(f, ultima, ara) {
     const n = NOVETATS[f]; if (!n) return null;
     const d = Date.parse(n[0]); ara = ara || Date.now();
-    if (!(ara - d < DIES_NOVETAT * 864e5) || !ultima || ultima >= d) return null;
+    if (!(ara - d < DIES_NOVETAT * 864e5) || ara < d || (ultima && ultima >= d)) return null;
     return n;
   }
   function avisNovetat(text) {

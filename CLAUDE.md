@@ -132,14 +132,16 @@ veien (ho va dir en Carles). I el bot de Telegram ho diu al grup
 **Els jocs que canvien també s'avisen: NOVA VERSIÓ.** En Carles va demanar
 que, quan s'arregla o es millora un joc, surti un avís. Cada canvi que es nota
 s'apunta a `NOVETATS`, al `records.js` (el fitxer, l'hora de Greenwich en què es
-va pujar i què ha canviat en poques paraules: «peces amb relleu»). Si ja hi
-havies jugat abans d'aquella hora (`jocs-obertes`, que té l'hora de l'última
-vegada) i encara no l'has tornat a obrir, la fitxa porta un rètol **verd**
+va pujar i què ha canviat en poques paraules: «peces amb relleu»). Si no l'has
+obert des d'aquella hora (`jocs-obertes`, que té l'hora de l'última vegada), la fitxa porta un rètol **verd**
 NOVA VERSIÓ i a dalt surt l'avís amb el que ha canviat (com a molt tres, de la
 més nova a la més vella; la resta, «i N jocs més»). En obrir el joc, un rètol
 verd a dalt ho torna a dir uns segons, **una sola vegada** (`avisNovetat`, que
-no tapa res: no es pot tocar). Als 14 dies (`DIES_NOVETAT`) ja no surt. A qui
-no hi ha jugat mai no li diu res, i els jocs que encara són NOU tampoc. A MÉS
+no tapa res: no es pot tocar). Als 14 dies (`DIES_NOVETAT`) ja no surt. Els jocs
+que encara són NOU no ho diuen. Al principi només sortia a qui ja hi havia
+jugat en aquell mòbil, i en Carles no el veia al Trencaclosques: a
+l'ordinador no l'havia obert mai. Ara surt a tothom que no l'ha obert des del
+canvi. A MÉS
 JUGATS no fa passar davant (`.nou:not(.nova)`).
 
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
