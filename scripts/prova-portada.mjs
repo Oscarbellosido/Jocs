@@ -265,6 +265,62 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
+// NOVA VERSIÓ: un joc on ja havies jugat i que ha canviat porta el rètol
+// verd i surt a dalt (com a molt tres); en obrir-lo, un rètol diu què ha
+// canviat, una sola vegada
+{
+  const ctx = await b.newContext({ viewport: { width: 320, height: 568 } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  await p.clock.setFixedTime(new Date('2026-11-06T12:00:00Z'));
+  await p.goto('file://' + resolve(ARREL, 'index.html'));
+  const t = s => Date.parse(s);
+  await p.evaluate(o => { localStorage.clear(); localStorage.setItem('jocs-obertes', JSON.stringify(o)) }, {
+    'sopa.html': { n: 2, t: t('2026-11-05T10:00Z') }, 'tetris.html': { n: 9, t: t('2026-11-01T10:00Z') },
+    'trencaclosques.html': { n: 3, t: t('2026-11-06T11:00Z') }, 'pong.html': { n: 1, t: t('2026-11-01T10:00Z') },
+  });
+  await p.reload(); await p.waitForTimeout(200);
+  const mira = () => p.evaluate(() => ({
+    noves: [...document.querySelectorAll('a.btn .nou.nova')].map(r => r.closest('a').getAttribute('href')).sort().join(),
+    nous: [...document.querySelectorAll('a.btn .nou:not(.nova)')].map(r => r.closest('a').getAttribute('href')).sort().join(),
+    avis: [...document.querySelectorAll('#novetats a.nou-joc.nova')].map(a => a.getAttribute('href')).join(),
+    mes: (document.querySelector('#novetats .nou-mes') || {}).textContent || '',
+    cap: [...document.querySelectorAll('#novetats a.nou-joc, a.btn .nou')].every(a => a.scrollWidth <= a.clientWidth + 1)
+      && document.documentElement.scrollWidth <= innerWidth + 1,
+    text: [...document.querySelectorAll('#novetats a.nou-joc.nova')].every(a => /^NOVA VERSIÓ/.test(a.textContent)),
+  }));
+  let m = await mira();
+  let be = m.noves === 'sopa.html,tetris.html' && m.avis === 'sopa.html,tetris.html' && m.nous === 'tresor.html' && !m.mes && m.cap && m.text;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} NOVA VERSIÓ: rètol verd i avís als que han canviat després de jugar-hi, i no als altres (${m.noves} / ${m.avis})`);
+  await p.evaluate(o => { const c = JSON.parse(localStorage.getItem('jocs-obertes')); Object.assign(c, o); localStorage.setItem('jocs-obertes', JSON.stringify(c)) }, {
+    'track_field.html': { n: 1, t: t('2026-11-01T10:00Z') }, 'amunt.html': { n: 1, t: t('2026-11-01T10:00Z') }, 'frogger.html': { n: 1, t: t('2026-11-01T10:00Z') },
+  });
+  await p.reload(); await p.waitForTimeout(200);
+  m = await mira();
+  be = m.avis === 'sopa.html,tetris.html,frogger.html' && /^i 2 jocs més/.test(m.mes) && m.noves.split(',').length === 5 && m.cap;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} a dalt, com a molt tres i de la més nova a la més vella (${m.avis} · ${m.mes})`);
+  await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);
+  const toast = await p.evaluate(() => { const r = document.getElementById('nova-versio'); return r && { t: r.textContent, cap: r.getBoundingClientRect().right <= innerWidth && r.getBoundingClientRect().left >= 0 }; });
+  await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);
+  const toast2 = await p.evaluate(() => !!document.getElementById('nova-versio'));
+  await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(200);
+  m = await mira();
+  be = toast && /^NOVA VERSIÓ.*diagonal/.test(toast.t) && toast.cap && !toast2 && !m.noves.includes('sopa') && !m.avis.includes('sopa') && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} en obrir-lo, el rètol diu què ha canviat, i només la primera vegada (${toast && toast.t})` + (errors.length ? ' ' + errors[0] : ''));
+  await p.clock.setFixedTime(new Date('2026-11-21T12:00:00Z'));
+  await p.reload(); await p.waitForTimeout(200);
+  m = await mira();
+  be = m.noves === '' && m.avis === '';
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} al cap de dues setmanes, ja no diu NOVA VERSIÓ`);
+  await ctx.close();
+}
+
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);
 await b.close();
 process.exit(malament ? 1 : 0);

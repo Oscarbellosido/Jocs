@@ -129,6 +129,19 @@ van al davant de tot**: sense cap vegada, quedaven a sota de tot i no es
 veien (ho va dir en Carles). I el bot de Telegram ho diu al grup
 (`anunciaNous`, a sota). La prova de la portada ho mira amb el rellotge del navegador avançat.
 
+**Els jocs que canvien també s'avisen: NOVA VERSIÓ.** En Carles va demanar
+que, quan s'arregla o es millora un joc, surti un avís. Cada canvi que es nota
+s'apunta a `NOVETATS`, al `records.js` (el fitxer, l'hora de Greenwich en què es
+va pujar i què ha canviat en poques paraules: «peces amb relleu»). Si ja hi
+havies jugat abans d'aquella hora (`jocs-obertes`, que té l'hora de l'última
+vegada) i encara no l'has tornat a obrir, la fitxa porta un rètol **verd**
+NOVA VERSIÓ i a dalt surt l'avís amb el que ha canviat (com a molt tres, de la
+més nova a la més vella; la resta, «i N jocs més»). En obrir el joc, un rètol
+verd a dalt ho torna a dir uns segons, **una sola vegada** (`avisNovetat`, que
+no tapa res: no es pot tocar). Als 14 dies (`DIES_NOVETAT`) ja no surt. A qui
+no hi ha jugat mai no li diu res, i els jocs que encara són NOU tampoc. A MÉS
+JUGATS no fa passar davant (`.nou:not(.nova)`).
+
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
@@ -2101,6 +2114,9 @@ comproven el comportament.
 
 - **Cada canvi de fitxers: pujar la versió de la cache a `sw.js`** (`jocs-vN`).
   Si no, l'app instal·lada pot seguir servint la versió antiga.
+- **Cada canvi que es nota en un joc: apuntar-lo a `NOVETATS`** (`records.js`)
+  amb l'hora de pujar-lo i què ha canviat, perquè surti NOVA VERSIÓ. Els
+  arreglos que no es veuen (proves, notes) no.
 - **Cada joc nou**: afegir-lo a `index.html` (a l'apartat que li toqui), a
   `sw.js` (el fitxer i la miniatura), a la descripció del `manifest.json`, a les
   llistes `JOCS` i `FITXA` de `worker/records.js`, a la taula d'aquí dalt i a la

@@ -168,6 +168,12 @@
     text-decoration: none; text-align: left;
   }
   a.nou-joc b { color: #fff; background: #e0302a; border-radius: 3px; padding: 0 5px; margin-right: 0.4rem; }
+  /* NOVA VERSIÓ: el mateix, en verd, quan un joc on ja havies jugat ha canviat
+     (la llista és a records.js, NOVETATS). */
+  a.btn .nou.nova { background: #1f9d5c; font-size: 0.62rem; letter-spacing: 0.04em; }
+  a.nou-joc.nova { border-color: #1f9d5c; background: #0c2a1c; color: #c8f5dc; }
+  a.nou-joc.nova b { background: #1f9d5c; }
+  .nou-mes { font: 0.7rem monospace; color: #8fc9a8; text-align: center; }
   a.btn em .rec {
     min-width: 0;
     overflow: hidden;
@@ -343,20 +349,34 @@ try{
 // demanar que quan sortís un joc nou s'avisés d'alguna manera: el bot de
 // Telegram també ho diu al grup.
 function pintaNous(){
-  const DIES=21,avui=Date.now(),caixa=document.getElementById('novetats');
+  const DIES=21,MAX_NOVES=3,avui=Date.now(),caixa=document.getElementById('novetats');
   let oberts={},vells={};
   try{oberts=JSON.parse(localStorage.getItem('jocs-obertes')||'{}')}catch(e){}
   try{vells=JSON.parse(localStorage.getItem('jocs-jugats')||'{}')}catch(e){}
   caixa.innerHTML='';
-  document.querySelectorAll('a.btn[data-nou]').forEach(a=>{
-    const href=a.getAttribute('href'),id=a.querySelector('.rec').dataset.joc;
-    const nou=(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
+  const noves=[];
+  document.querySelectorAll('a.btn').forEach(a=>{
+    const href=a.getAttribute('href'),id=a.querySelector('.rec').dataset.joc,nom=a.querySelector('span').textContent;
+    const nou=!!a.dataset.nou&&(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
+    // NOVA VERSIÓ: si ja hi havies jugat abans del canvi i encara no l'has tornat a obrir.
+    let nv=null;
+    try{nv=!nou&&typeof Records!=='undefined'&&Records.novetat?Records.novetat(href,oberts[href]&&oberts[href].t,avui):null}catch(e){}
     let r=a.querySelector('.nou');
-    if(nou&&!r){r=document.createElement('i');r.className='nou';r.textContent='NOU';a.appendChild(r)}
-    if(!nou&&r)r.remove();
+    const vol=nou?'NOU':nv?'NOVA VERSIÓ':'';
+    if(r&&r.textContent!==vol){r.remove();r=null}
+    if(vol&&!r){r=document.createElement('i');r.className='nou'+(nou?'':' nova');r.textContent=vol;a.appendChild(r)}
     if(nou){const l=document.createElement('a');l.className='nou-joc';l.href=href;
-      l.innerHTML='<b>JOC NOU!</b>'+a.querySelector('span').textContent+' ▸';caixa.appendChild(l)}
+      l.innerHTML='<b>JOC NOU!</b>'+nom+' ▸';caixa.appendChild(l)}
+    if(nv)noves.push([Date.parse(nv[0]),href,nom,nv[1]]);
   });
+  // Les novetats, de la més nova a la més vella, i com a molt tres a dalt:
+  // les altres ja porten el rètol a la fitxa.
+  noves.sort((x,y)=>y[0]-x[0]);
+  noves.slice(0,MAX_NOVES).forEach(([,href,nom,text])=>{
+    const l=document.createElement('a');l.className='nou-joc nova';l.href=href;
+    l.innerHTML='<b>NOVA VERSIÓ</b>';l.append(nom+': '+text+' ▸');caixa.appendChild(l)});
+  if(noves.length>MAX_NOVES){const m=document.createElement('div');m.className='nou-mes';
+    const k=noves.length-MAX_NOVES;m.textContent=k===1?'i 1 joc més amb NOVA VERSIÓ (porta el rètol verd)':'i '+k+' jocs més amb NOVA VERSIÓ (porten el rètol verd)';caixa.appendChild(m)}
   caixa.hidden=!caixa.children.length;
 }
 pintaNous();
@@ -532,7 +552,7 @@ posaLiders();
       // cap vegada, quedaven a sota de tot i no es veien (ho va dir en Carles);
       // després els mes jugats (en empat, el que has obert mes recentment;
       // i si no, per any)
-      const nou=a=>a.querySelector('.nou')?1:0;
+      const nou=a=>a.querySelector('.nou:not(.nova)')?1:0;
       fitxes.map((a,i)=>[a,c[idDe(a)].n,i,c[idDe(a)].t,nou(a)]).sort((x,y)=>y[4]-x[4]||y[1]-x[1]||y[3]-x[3]||x[2]-y[2]).forEach(([a,n])=>{
         caixa.appendChild(a);
         if(n){const v=document.createElement('i');v.className='cops';v.textContent=n+'×';a.querySelector('em').prepend(v)}

@@ -14,12 +14,62 @@ const Records = (() => {
   // l'enllaç del bot, o quan l'app s'obria directament on eres, no comptava.
   // Tornar a carregar la pagina o tornar-hi enrere no compta. Es desa per nom
   // de fitxer (jocs-obertes), amb l'hora de l'ultima vegada.
+  // ---- NOVA VERSIÓ ----
+  // En Carles va demanar que, quan s'arregla o es millora un joc, surti un
+  // avís. Cada canvi que es nota s'apunta aquí: el fitxer, quan es va pujar
+  // (hora de Greenwich) i què ha canviat, en poques paraules. Qui ja hi havia
+  // jugat abans d'aquella hora veu NOVA VERSIÓ a la portada i, en obrir el
+  // joc, un rètol amb el que ha canviat, una sola vegada. Als 14 dies (DIES_NOVETAT)
+  // ja no surt. Els jocs que encara són NOU no ho diuen: tot és nou.
+  const NOVETATS = {
+    'track_field.html':   ['2026-11-05T12:31Z', 'un estadi de nit i un atleta amb cos'],
+    'moon_patrol.html':   ['2026-11-05T13:18Z', 'paisatge de debò i un cotxe lunar de sis rodes'],
+    'amunt.html':         ['2026-11-05T13:20Z', 'del prat a l\'espai, amb un ninot nou'],
+    'donkey_kong.html':   ['2026-11-05T13:23Z', 'bigues de ferro, barrils que giren i personatges nous'],
+    'frogger.html':       ['2026-11-05T13:25Z', 'un riu que es mou, tortugues amb closca i cotxes nous'],
+    'nibbler.html':       ['2026-11-05T13:27Z', 'parets noves i una serp de debò'],
+    'missile_command.html': ['2026-11-05T13:29Z', 'ciutats amb finestres i explosions de llum'],
+    'centipede.html':     ['2026-11-05T13:31Z', 'bolets de debò, un centpeus amb potes i un gnom'],
+    'tetris.html':        ['2026-11-05T13:32Z', 'peces amb relleu'],
+    'sopa.html':          ['2026-11-05T17:22Z', 'ara les paraules van de costat, de dalt a baix i en diagonal'],
+    'trencaclosques.html': ['2026-11-06T10:13Z', 'del 7 al 26 de novembre, cada dia una foto de Catalunya'],
+  };
+  const DIES_NOVETAT = 14;
+  // Torna [data, text] si el joc té una novetat que qui l'havia obert (a
+  // l'hora 'ultima') encara no ha vist. Sense haver-hi jugat mai, no.
+  function novetat(f, ultima, ara) {
+    const n = NOVETATS[f]; if (!n) return null;
+    const d = Date.parse(n[0]); ara = ara || Date.now();
+    if (!(ara - d < DIES_NOVETAT * 864e5) || !ultima || ultima >= d) return null;
+    return n;
+  }
+  function avisNovetat(text) {
+    const fes = () => {
+      const r = document.createElement('div');
+      r.id = 'nova-versio';
+      r.setAttribute('role', 'status');
+      r.style.cssText = 'position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 54px);' +
+        'transform:translateX(-50%);z-index:10000;pointer-events:none;width:max-content;max-width:90vw;' +
+        'box-sizing:border-box;padding:8px 12px;border:1px solid #2ec27e;border-radius:10px;' +
+        'background:#0c2a1c;color:#c8f5dc;font:bold 13px/1.35 monospace;text-align:center;' +
+        'box-shadow:0 3px 14px #000c;transition:opacity .6s';
+      r.innerHTML = '<b style="color:#fff;background:#1f9d5c;border-radius:3px;padding:0 5px;margin-right:6px">NOVA VERSIÓ</b>';
+      r.appendChild(document.createTextNode(text.charAt(0).toUpperCase() + text.slice(1) + '.'));
+      document.body.appendChild(r);
+      setTimeout(() => { r.style.opacity = '0'; }, 6500);
+      setTimeout(() => r.remove(), 7200);
+    };
+    if (document.body) setTimeout(fes, 300); else addEventListener('DOMContentLoaded', () => setTimeout(fes, 300));
+  }
+
   try {
     const f = location.pathname.split('/').pop() || '';
     const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
     if (/\.html$/.test(f) && f !== 'index.html' && !(nav && (nav.type === 'reload' || nav.type === 'back_forward'))) {
       const c = JSON.parse(localStorage.getItem('jocs-obertes') || '{}');
       const e = c[f] || (c[f] = { n: 0, t: 0 });
+      const nv = novetat(f, e.t);
+      if (nv) avisNovetat(nv[1]);
       e.n++; e.t = Date.now();
       localStorage.setItem('jocs-obertes', JSON.stringify(c));
     }
@@ -492,7 +542,7 @@ const Records = (() => {
   }
 
   return {
-    local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial,
+    novetats: NOVETATS, novetat, local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial,
 
     // Els 10 millors de tots els jocs de cop, per a la pagina principal.
     async tots() {
