@@ -198,7 +198,7 @@ function escenaDe(n){
   return ESCENES[t[(n-7)%6]];
 }
 // ===== LES FOTOS DEL DIA =====
-// En Carles va fer aquestes deu imatges amb una app d'IA (Gemini) i les va
+// En Carles va fer aquestes imatges amb una app d'IA (Gemini) i les va
 // pujar. Surten una cada dia a partir del #14 (7 de novembre del 2026), en
 // aquest ordre, i després tornen els paisatges dibuixats. Són apaïsades: el
 // trencaclosques d'aquells dies fa 7 × 4 peces, quadrades. Van a fotos/,
@@ -207,7 +207,11 @@ function escenaDe(n){
 // canviïn de dia.
 const FOTOS=[['montserrat','Montserrat'],['delta',"el delta de l'Ebre"],['pedraforca','el Pedraforca'],['cap-de-creus','el cap de Creus'],
   ['fageda',"la Fageda d'en Jordà"],['mont-rebei','el congost de Mont-rebei'],['penedes','les vinyes del Penedès'],
-  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria']];
+  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria'],
+  // les deu de la segona tanda (la de Girona era un cartell: es va retallar per dins del marc)
+  ['sagrada-familia','la Sagrada Família'],['cadaques','Cadaqués'],['besalu','el pont de Besalú'],['tossa','la vila vella de Tossa'],
+  ['taull','Sant Climent de Taüll'],['girona',"les cases de l'Onyar"],['siurana','Siurana'],['sitges','Sitges'],
+  ['rupit','el pont penjat de Rupit'],['park-guell','el park Güell']];
 const FOTO_DES_DE=14,COLS_FOTO=7,FILES_FOTO=4;
 const fotoDe=n=>n>=FOTO_DES_DE&&n<FOTO_DES_DE+FOTOS.length?FOTOS[n-FOTO_DES_DE]:null;
 const nomDelDia=n=>{const f=fotoDe(n);return f?f[1]:NOM_ESCENA[escenaDe(n)]};

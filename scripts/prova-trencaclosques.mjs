@@ -184,7 +184,7 @@ diu(await p.evaluate(() => mode === 'foto' && G.fi && /no compten/.test(document
 await ctx.close();
 
 // ---------- 5b. els dies de foto ----------
-// Del #14 (7 de novembre del 2026) al #23 surten les fotos d'en Carles, una
+// Del #14 (7 de novembre del 2026) al #33 surten les fotos d'en Carles, una
 // cada dia, en un trencaclosques apaïsat de 7 × 4; abans i després, els dibuixats.
 {
   const ctx2 = await b.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true });
@@ -195,8 +195,8 @@ await ctx.close();
   await p2.goto(URL_JOC);
   await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); }); await p2.reload(); await p2.waitForTimeout(500);
   await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
-  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], darrer: fotoDe(23)[0], despres: fotoDe(24), menu: document.getElementById('msg').textContent }));
-  diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'nuria' && !dies.despres, 'les deu fotos surten del #14 al #23, i abans i després els paisatges dibuixats');
+  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], darrer: fotoDe(33)[0], despres: fotoDe(34), menu: document.getElementById('msg').textContent }));
+  diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' && !dies.despres, 'les vint fotos surten del #14 al #33, i abans i després els paisatges dibuixats');
   diu(/Montserrat/.test(dies.menu) && /28 peces/.test(dies.menu) && /feta amb IA/.test(dies.menu), 'el menú del #14 diu Montserrat, 28 peces i que la imatge és feta amb IA');
   await p2.click('#m-dia'); await p2.waitForTimeout(800);
   const f = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n, que: document.getElementById('que').textContent,
