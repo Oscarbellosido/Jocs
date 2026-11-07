@@ -104,7 +104,7 @@ diu(vores.n > 0 && vores.primer && vores.pag === 0, `VORES PRIMER posa les ${vor
 await p.tap('#model');
 diu(await p.evaluate(() => model === true), 'MODEL ensenya la imatge, clareta, dins del marc');
 await p.tap('#model');
-// En Carles va acabar amb 33 de 35 i la safata buida: tocant dues peces
+// L'usuari va acabar amb 33 de 35 i la safata buida: tocant dues peces
 // alhora amb dos dits, la primera es quedava a l'aire i no era enlloc
 const enLloc = 'G.peces.every((q, i) => q.e === "l" || (q.e === "s" && G.safata.includes(i)) || (q.e === "t" && G.z.includes(i)))';
 const dosDits = await p.evaluate(enLloc => {
@@ -124,7 +124,7 @@ const aMig = await p.evaluate(() => {
 diu(aMig, 'si es desa mentre arrossegues una peça, la peça es desa a la safata');
 
 // ---------- 3. desar i continuar ----------
-// i una partida desada amb una peça perduda (com la d'en Carles) la recupera
+// i una partida desada amb una peça perduda (com la de l'usuari) la recupera
 await p.evaluate(() => { const k = 'trencaclosques-' + G.dia; desaPartida(); const q = JSON.parse(localStorage.getItem(k)); q.safata.shift(); localStorage.setItem(k, JSON.stringify(q)); G = null; });
 const desat = await p.evaluate(() => { const q = JSON.parse(localStorage.getItem('trencaclosques-' + diaAvui())); return { fetes: q.peces.filter(r => r.e === 'l').length, temps: q.temps, safata: q.safata.length }; });
 await p.reload(); await p.waitForTimeout(500);
@@ -184,7 +184,7 @@ diu(await p.evaluate(() => mode === 'foto' && G.fi && /no compten/.test(document
 await ctx.close();
 
 // ---------- 5b. els dies de foto ----------
-// Del #14 (7 de novembre del 2026) al #33 surten les fotos d'en Carles, una
+// Del #14 (7 de novembre del 2026) al #33 surten les fotos de l'usuari, una
 // cada dia, en un trencaclosques apaïsat de 7 × 4; abans i després, els dibuixats.
 {
   const ctx2 = await b.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true });

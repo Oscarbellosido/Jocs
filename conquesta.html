@@ -295,7 +295,7 @@ function desaPartida(){
 const desada=()=>{const q=llegeix('conquesta-partida',null);return q&&q.v===1&&q.S&&q.S.dueny&&q.S.dueny.length===N?q:null};
 
 // ===== COM ES JUGA =====
-// En Carles no va entendre com es jugava: no ho explicava enlloc. Ara surt
+// L'usuari no va entendre com es jugava: no ho explicava enlloc. Ara surt
 // sola el primer cop que comences una partida, i sempre amb el botó ? i des
 // del menú. Cada pàgina, una cosa, amb exemples.
 const cer=(col,n)=>'<span style="display:inline-block;min-width:22px;height:22px;line-height:22px;border-radius:11px;background:'+col+';color:#fff;font-weight:bold;text-align:center;border:2px solid #0d1b26">'+n+'</span>';
@@ -645,12 +645,12 @@ function avisa(t){avis=t;pintaInfo();clearTimeout(avisT);avisT=setTimeout(()=>{a
 // sota, cada dau davant del que li toca. El que perd la parella queda apagat
 // i amb un −1 (un soldat menys per a aquell costat), i el dau de mes que no
 // te parella surt ratllat: no compta.
-// En Carles no els veia (abans nomes sortien petits a la ratlla de sota), i
+// L'usuari no els veia (abans nomes sortien petits a la ratlla de sota), i
 // despres no els entenia: als torns dels altres cada tirada durava menys que
 // el que trigaven els daus a rodolar, i nomes se'n veien els numeros de
 // mentida de quan rodolen. Ara cada tirada s'atura i es queda una estona.
 const DAUS_RODA=6,DAUS_PAS=70;                 // rodolen 6 vegades, 70 mil·lèsimes cada una
-// En Carles no tenia temps de llegir-ho: ara cada tirada es queda mes, el
+// L'usuari no tenia temps de llegir-ho: ara cada tirada es queda mes, el
 // resultat dels teus atacs es queda fins que toques la pantalla (o 12 s), i
 // tocant on sigui el quadre marxa.
 const DAUS_QUIET=1500;                         // cada tirada, quieta, abans de la seguent (900 si n'hi ha mes de 4)
@@ -668,7 +668,7 @@ function ensenyaDaus(rs,ca,cd,o={}){
   const pa=o.tot?o.tot.pa:rs.reduce((x,r)=>x+r.pa,0),pd=o.tot?o.tot.pd:rs.reduce((x,r)=>x+r.pd,0);
   const nomCurt=c=>c===0?'TU':JUGADORS[c].nom;
   const cap='<b style="color:'+JUGADORS[ca].clar+'">'+nomA+'</b> ataca <b style="color:'+JUGADORS[cd].clar+'">'+nomD+'</b>';
-  // Per que cadascu tira els daus que tira. En Carles va veure 3 daus seus
+  // Per que cadascu tira els daus que tira. L'usuari va veure 3 daus seus
   // contra 1 dels grocs i no entenia com comptava.
   const subj=c=>c===0?'Tu':'Els '+JUGADORS[c].nom.toLowerCase(),tenir=c=>c===0?'tens':'tenen',tirar=c=>c===0?'tires':'tiren';
   const daus=k=>k+(k===1?' dau':' daus');

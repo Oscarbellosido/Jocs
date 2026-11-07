@@ -184,7 +184,7 @@ function paisatgePoble(n){
 }
 
 // Cada dia, una escena diferent. Els sis primers dies (#1 a #6) tots eren
-// el poble, i en Carles es pensava que li tornava a sortir el d'ahir: aquells
+// el poble, i l'usuari es pensava que li tornava a sortir el d'ahir: aquells
 // es queden com eren, i a partir del #7 les escenes van per tandes de sis,
 // barrejades, sense que mai en surti la mateixa dos dies seguits.
 const ESCENES=['poble','mar','neu','castell','tardor','girasols'];
@@ -198,7 +198,7 @@ function escenaDe(n){
   return ESCENES[t[(n-7)%6]];
 }
 // ===== LES FOTOS DEL DIA =====
-// En Carles va fer aquestes imatges amb una app d'IA (Gemini) i les va
+// L'usuari va fer aquestes imatges amb una app d'IA (Gemini) i les va
 // pujar. Surten una cada dia a partir del #14 (7 de novembre del 2026), en
 // aquest ordre, i després tornen els paisatges dibuixats. Són apaïsades: el
 // trencaclosques d'aquells dies fa 7 × 4 peces, quadrades. Van a fotos/,
@@ -525,8 +525,8 @@ function desaPartida(){
   // (la que portes amb el dit es desa a la safata, que si tanques ara no es perdi)
   desa(clauPartida(),repara({...G,V:undefined,safata:G.safata.slice(),z:G.z.slice(),peces:G.peces.map(p=>({c:p.c,f:p.f,e:p.e,u:p.u,w:p.w}))}));
 }
-// Cada peça que no és al seu lloc ha de ser a la safata o per la taula. En
-// Carles va acabar amb 33 de 35 i la safata buida: tocant dues peces alhora
+// Cada peça que no és al seu lloc ha de ser a la safata o per la taula. L'usuari
+// va acabar amb 33 de 35 i la safata buida: tocant dues peces alhora
 // amb dos dits, la primera quedava a l'aire i no era enlloc. La que no és
 // enlloc torna a la safata (aixi també es recuperen les partides desades
 // amb peces perdudes).

@@ -2,7 +2,7 @@
 // records amb un boto per tornar al menu, que es veu i que hi porta de debo.
 //
 // Abans no hi era: per anar al menu havies de comencar una partida nova i fer
-// enrere. En Carles ho va demanar despres de jugar al Defender.
+// enrere. L'usuari ho va demanar despres de jugar al Defender.
 //
 //   node scripts/prova-menu.mjs
 

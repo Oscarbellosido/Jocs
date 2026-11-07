@@ -38,7 +38,7 @@ mòbil, instal·lat com a aplicació.
 | `tetris.html` | Els Blocs | Tetris | 1984 |
 
 **Els noms de la web no són els de les màquines**, i no s'han de tornar a
-posar. En Carles va preguntar si feia alguna il·legalitat: les regles d'un joc
+posar. L'usuari va preguntar si feia alguna il·legalitat: les regles d'un joc
 no tenen drets, però els noms (Tetris, Donkey Kong, Space Invaders...) són
 marques registrades d'empreses vives, i els dibuixos i personatges tenen drets
 d'autor. Per això a la portada, als títols de les pàgines, a la descripció de
@@ -109,7 +109,7 @@ i la lliga venen del Worker (`/lliga`); sense connexió la llista surt igual,
 sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant
 d'un joc amb el botó d'enrere del mòbil**, el navegador ensenya la portada
 tal com era quan en vas sortir, sense tornar-la a llegir, i la partida que
-acabaves de fer seguia dient PER FER (ho va veure en Carles). Per això la
+acabaves de fer seguia dient PER FER (ho va veure l'usuari). Per això la
 llista es torna a pintar amb el `pageshow` que porta `persisted` (i en tornar
 a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
 navegador de les proves això no passa (allà la pàgina sempre es torna a
@@ -119,17 +119,17 @@ hi havia manera de saber d'una ullada quines et quedaven. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
-**Els jocs nous s'avisen.** En Carles va demanar que, quan surti un joc nou,
+**Els jocs nous s'avisen.** L'usuari va demanar que, quan surti un joc nou,
 s'avisi d'alguna manera. La fitxa porta `data-nou="<data>"` (el dia que es
 va posar) i, mentre no l'hagis obert en aquest mòbil i no faci tres setmanes
 (`pintaNous`), hi surt un rètol vermell **NOU** i, a dalt de tot, abans
 d'ELS JOCS D'AVUI, un avís que diu **JOC NOU!** i el nom, per anar-hi
 (`#novetats`, enllaços `a.nou-joc`, que no són `a.btn`). **A MÉS JUGATS
 van al davant de tot**: sense cap vegada, quedaven a sota de tot i no es
-veien (ho va dir en Carles). I el bot de Telegram ho diu al grup
+veien (ho va dir l'usuari). I el bot de Telegram ho diu al grup
 (`anunciaNous`, a sota). La prova de la portada ho mira amb el rellotge del navegador avançat.
 
-**Els jocs que canvien també s'avisen: NOVA VERSIÓ.** En Carles va demanar
+**Els jocs que canvien també s'avisen: NOVA VERSIÓ.** L'usuari va demanar
 que, quan s'arregla o es millora un joc, surti un avís. Cada canvi que es nota
 s'apunta a `NOVETATS`, al `records.js` (el fitxer, l'hora de Greenwich en què es
 va pujar i què ha canviat en poques paraules: «peces amb relleu»). Si no l'has
@@ -139,7 +139,7 @@ més nova a la més vella; la resta, «i N jocs més»). En obrir el joc, un rè
 verd a dalt ho torna a dir uns segons, **una sola vegada** (`avisNovetat`, que
 no tapa res: no es pot tocar). Als 14 dies (`DIES_NOVETAT`) ja no surt. Els jocs
 que encara són NOU no ho diuen. Al principi només sortia a qui ja hi havia
-jugat en aquell mòbil, i en Carles no el veia al Trencaclosques: a
+jugat en aquell mòbil, i l'usuari no el veia al Trencaclosques: a
 l'ordinador no l'havia obert mai. Ara surt a tothom que no l'ha obert des del
 canvi. A MÉS
 JUGATS no fa passar davant (`.nou:not(.nova)`).
@@ -147,11 +147,11 @@ JUGATS no fa passar davant (`.nou:not(.nova)`).
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
-amb quantes vegades (12×), i els altres darrere per any. En Carles ho va
+amb quantes vegades (12×), i els altres darrere per any. L'usuari ho va
 demanar. **Ho compta el joc mateix en obrir-se** (el `records.js`, a
 `jocs-obertes`, per nom de fitxer i amb l'hora de l'última vegada), i no si
 el tornes a carregar o hi tornes enrere. Al principi ho comptava la portada en
-tocar la fitxa (`jocs-jugats`, que es segueix sumant), però en Carles va fer
+tocar la fitxa (`jocs-jugats`, que es segueix sumant), però l'usuari va fer
 el Trencaclosques i hi deia 1×: el que obries des de l'enllaç del bot, o quan
 l'app s'obria directament al joc, no comptava. **De quan encara no es
 comptava**: els jocs del dia sumen els dies que hi ha partida desada en aquest
@@ -186,7 +186,7 @@ decidir alguna cosa, tirar cap a com era l'original.
 
 ## Els dibuixos dels jocs
 
-En Carles va trobar que l'Atletisme es veia molt millor redibuixat i va
+L'usuari va trobar que l'Atletisme es veia molt millor redibuixat i va
 demanar el mateix per a tots els que es poguessin millorar. **Només es toca
 el dibuix**: les mides de tot el que et pot tocar, les regles i els punts
 són els mateixos. Els que tenen aquest aspecte a posta no es toquen: les
@@ -230,7 +230,7 @@ colors perquè les màquines eren així.
 
 ## L'Atletisme: com es dibuixa
 
-En Carles va preguntar si se'n podien millorar els gràfics: era un ninot de
+L'usuari va preguntar si se'n podien millorar els gràfics: era un ninot de
 pals sobre un fons llis. Ara és un estadi de nit (`draw` i `dibuixaAtleta`):
 focus, graderia plena (es pinta un sol cop en dos llenços, `GRADA`, la gent
 asseguda i la gent dreta, i s'aixeca quan vas de pressa), tanques de
@@ -283,7 +283,7 @@ Coses on ens separem de la màquina, a posta:
 
 - **Comences amb dues monedes de combustible (1.500), no amb una (750).** A
   la màquina, quan se t'acabava, en podies posar més per seguir; aquí no hi ha
-  monedes, i amb 750 en Carles es quedava sense propulsió de seguida. El
+  monedes, i amb 750 l'usuari es quedava sense propulsió de seguida. El
   pilot automàtic que baixa ràpid i frena a l'últim moment feia 5 baixades;
   un de prudent, que baixa a poc a poc com fa una persona, 4. Ara en fan 10 i
   8. El consum i el premi no es van tocar: són els que fan que la partida
@@ -545,15 +545,15 @@ Coses que no s'han de desfer sense entendre-les:
   Fent paraules de tres lletres, com més va més en cauen que no pas en treus.
 - **Només es juga lliscant el dit, i a sota només hi ha SACSEJA.** Al
   principi també es podien tocar les lletres d'una en una i prémer D'ACORD, i hi
-  havia un botó d'ESBORRA. En Carles ho va veure jugant: en aixecar el dit la
+  havia un botó d'ESBORRA. L'usuari ho va veure jugant: en aixecar el dit la
   paraula ja s'envia sola, o sigui que cap dels dos botons no feia res. Tampoc
   no cal desfer: una paraula equivocada no costa res (les boles es queden on
   eren), i per treure lletres a mig dibuix es torna enrere pel mateix camí.
   SACSEJA primer va anar arraconat a la dreta i petit, perquè et fa caure tres
-  lletres més; però com que és l'únic botó i no en tapa cap altre, en Carles el
+  lletres més; però com que és l'únic botó i no en tapa cap altre, l'usuari el
   va voler **al mig i gros**.
 - **Es pot triar entre fosc i clar** (el botó petit de la dreta, al costat de
-  SACSEJA). En Carles el va demanar per jugar-hi de dia. Es recorda a
+  SACSEJA). L'usuari el va demanar per jugar-hi de dia. Es recorda a
   `localStorage` (`garbuix-tema`) i només canvia el fons, la caixa i els
   rètols (`TEMES`); les boles són les mateixes. SACSEJA segueix al mig de
   debò: la filera és una graella de tres columnes.
@@ -575,7 +575,7 @@ el diccionari.
 
 ## La Gofra: una sola regla i colors
 
-En Carles va trobar la Impremta massa complicada i va demanar un joc de
+L'usuari va trobar la Impremta massa complicada i va demanar un joc de
 paraules **més senzill**, amb lletres i colors. Mirant per què han triomfat el
 Wordle, el *Waffle*, el *Connections* o el *2048*, tots fan el mateix: **una
 sola regla que s'explica en una frase**, colors que diuen d'una ullada com
@@ -593,13 +593,13 @@ resultat que es pot enviar al grup sense desvetllar la solució. La Gofra és
 - **20 intercanvis, i amb 10 n'hi ha prou.** Cinc estrelles si l'acabes amb
   10 o menys, quatre amb 12, tres amb 14, dues amb 16 i una fins a 20
   (`TRAMS`). Al principi n'eren 15 i les estrelles eren els que et sobraven:
-  en Carles la trobava massa dura per començar, i qui s'equivocava uns
+  l'usuari la trobava massa dura per començar, i qui s'equivocava uns
   quants l'acabava amb zero estrelles, i llavors no sortia a cap taula. Ara
   qui l'acaba en treu almenys una, i les cinc segueixen costant el mateix.
   A sota del comptador hi diu les estrelles que encara pots treure i fins
   quants intercanvis.
   La regla també surt a la línia d'ajuda i, en acabar, el quadre ensenya la
-  taula sencera amb la teva fila ressaltada: en Carles va fer una gofra amb
+  taula sencera amb la teva fila ressaltada: l'usuari va fer una gofra amb
   19 intercanvis, en va treure una estrella i no entenia per què.
   El marcador de dalt (ESTRELLES) és el que porta acumulat **aquest mòbil**
   amb les del dia; la taula de sempre és la del Worker.
@@ -644,14 +644,14 @@ Coses que no s'han de desfer sense entendre-les:
   a res.
 
 **A la Gofra i a la Impremta es veuen sempre les dues taules**, cadascuna
-amb el seu títol, perquè en Carles deia que si no, no quedava clar quina era
+amb el seu títol, perquè l'usuari deia que si no, no quedava clar quina era
 quina ni qui guanyava la del dia: en entrar (`Records.pantallaInicial` amb el
 quart paràmetre, una llista de `[títol, taula]`), a la pantalla del joc (una
 filera amb qui mana a cadascuna) i al quadre del final.
 
 ## La Impremta: el Balatro amb paraules
 
-En Carles va demanar un joc de paraules que **enganxés**. Mirant què enganxa
+L'usuari va demanar un joc de paraules que **enganxés**. Mirant què enganxa
 avui, el fenomen del 2024 va ser el *Balatro* (un joc de cartes): fas una
 jugada, uns comodins la multipliquen, i entre ronda i ronda els compres i
 muntes una combinació teva. Ja n'han sortit versions amb paraules
@@ -666,13 +666,13 @@ de tipus de plom.
   prohibició (sense E, només paraules curtes, una impressió menys...).
 - **Els segells són els comodins** (`SEGELLS`): com a molt cinc. **A la
   botiga, un sol toc compra**, i la casella diu «✓ COMPRAT». Abans el primer
-  toc només el marcava i calia un segon toc: en Carles es pensava que ja el
+  toc només el marcava i calia un segon toc: l'usuari es pensava que ja el
   tenia i sortia de la botiga sense. Els manuals
   pugen el nivell d'una llargada, i els paquets afegeixen tipus a la caixa
   (n'hi ha de millorats i comodins), en milloren o en llimen.
 - **Mentre compons, el número blau ja suma les lletres**: «4 per ser de 2
   lletres + 7 de les lletres» i 11 × 1 («de base» no s'entenia). Abans només hi sortia la base (4 × 1) i
-  en Carles no entenia per què, amb QU (6) i E (1). Els segells i els tipus
+  l'usuari no entenia per què, amb QU (6) i E (1). Els segells i els tipus
   millorats s'hi afegeixen al recompte.
 - **El recompte es veu pas a pas**: cada lletra i cada segell que fa alguna
   cosa salta i suma davant teu, amb un so que puja. És la gràcia del joc;
@@ -683,7 +683,7 @@ de tipus de plom.
   a sota, de punta a punta, que dura tota la partida i no ocupa lloc de
   segell: una impressió més (10 rals, dues vegades), un descart més (8, dues),
   una lletra més a la mà (10, dues) o un sisè lloc de segell (12, una). Abans,
-  amb els cinc segells, no hi havia res en què gastar: en Carles en va
+  amb els cinc segells, no hi havia res en què gastar: l'usuari en va
   acumular 28, i l'interès s'atura als 25.
 
 Coses que no s'han de desfer sense entendre-les:
@@ -699,11 +699,11 @@ Coses que no s'han de desfer sense entendre-les:
     que la jugues (`localStorage` `impremta-dia`): si no, qui la repeteix ja
     sap quines lletres li tocaran. El Worker no hi deixa apuntar ningú a un
     dia passat, i cada taula s'esborra sola als 60 dies.
-    **Són dues competicions separades**, i així ho va voler en Carles: la
+    **Són dues competicions separades**, i així ho va voler l'usuari: la
     del dia només va a la taula d'avui, i les lliures i els reptes a la de
     sempre. Mentre jugues la del dia, el marcador de dalt diu qui guanya
     **avui** (`taula()`). Per un moment la del dia també anava a la de
-    sempre, i en Carles va dir que s'havien de distingir. La marca es posa
+    sempre, i l'usuari va dir que s'havien de distingir. La marca es posa
     en **començar**-la, no en acabar-la: si la tornes a obrir, ja és la
     repetida, i el botó ho diu (PARTIDA DEL DIA (JA JUGADA)).
   - **Cada matí el bot diu al grup qui va guanyar la d'ahir**, amb el podi
@@ -727,7 +727,7 @@ Coses que no s'han de desfer sense entendre-les:
   com el català escrit. Amb les proporcions de freqüència pura, sortien massa
   lletres rares i massa poques vocals.
 - **La mà sempre té almenys dues vocals i dues consonants** (`equilibra`).
-  Tot i el 40%, en Carles va rebre M G L R H N NY X i no es podia fer res: era
+  Tot i el 40%, l'usuari va rebre M G L R H N NY X i no es podia fer res: era
   perdre el torn per mala sort. Si en falten, la que sobra es canvia per la
   propera bona de la pila (i tornarà a sortir més endavant). Com que tot surt
   de la pila, la mateixa llavor segueix donant la mateixa partida. El comodí
@@ -735,7 +735,7 @@ Coses que no s'han de desfer sense entendre-les:
 
 - **La partida es desa sola** (`desaPartida`, a `localStorage`
   `impremta-partida`), cada segon i en sortir de la pàgina, i a la portada
-  del joc surt **CONTINUA LA PARTIDA**. En Carles va fer més punts que el
+  del joc surt **CONTINUA LA PARTIDA**. L'usuari va fer més punts que el
   rècord en una partida lliure, va tornar al menú a mig fer i es va perdre
   tot: els punts només s'apunten quan la partida s'acaba. Només es desa quan
   està quieta (mai a mig recompte), i cada tipus es desa un sol cop amb el seu
@@ -760,14 +760,14 @@ descart), `IMPRIMEIX` gros al mig i `BARREJA` (només remena la mà, per veure-h
 paraules) a la dreta. La trampa 3.
 
 **Quan no queden descarts, `DESCARTA` es torna `PLEGA`**, i pregunta abans
-(«NO, SEGUEIXO» / «SÍ, PLEGO»). En Carles s'hi va quedar encallat: sense
+(«NO, SEGUEIXO» / «SÍ, PLEGO»). L'usuari s'hi va quedar encallat: sense
 cap paraula a la mà i sense descarts, no hi havia manera d'acabar la
 partida. Plegar fa el mateix que quan la impremta tanca sola: els punts
 s'apunten a la taula.
 
 ## La Rotllana: el joc de paraules fàcil
 
-En Carles va demanar, després dels altres tres, un joc de paraules **fàcil,
+L'usuari va demanar, després dels altres tres, un joc de paraules **fàcil,
 intuïtiu i divertit**. Mirant què es juga: el Wordle és el primer del món
 (4.200 milions de partides el 2025 al New York Times), i el segon és el
 *Wordscapes* (uns 10 milions de jugadors cada dia, sobretot gent de 35 anys
@@ -815,14 +815,14 @@ Coses que no s'han de desfer sense entendre-les:
   de nou**: el gir mou les lletres i el dit les buscaria on ja no són.
 - **El nivell es recupera de la taula de rècords** (`recupera`). Es desa dins
   de cada navegador, i l'ordinador, el mòbil, l'app instal·lada i Telegram
-  per dins són llocs diferents: en Carles anava molt endavant i, obrint-la
+  per dins són llocs diferents: l'usuari anava molt endavant i, obrint-la
   des d'un altre lloc, va tornar al nivell 1. Ara, en entrar, si la taula diu
   que les teves inicials tenen més nivells fets, ofereix CONTINUA PEL N; i en
   un navegador nou (sense inicials, als tres primers nivells) les demana.
 
 ## L'Abecedari: una paraula per a cada lletra
 
-En Carles el va demanar «com El Rosco»: la prova final del concurs de la tele,
+L'usuari el va demanar «com El Rosco»: la prova final del concurs de la tele,
 una roda amb les lletres i una definició per a cadascuna. El format és d'una
 empresa viva (ve d'un concurs anglès), així que és **inspirat en**, amb nom
 nostre i sense dir mai el de l'original.
@@ -847,13 +847,13 @@ nostre i sense dir mai el de l'original.
 - **PRÀCTICA**: rodes a l'atzar, sense les paraules d'avui, que no compten.
 
 **La difícil d'avui** (◆, en lila) és una segona roda del dia, amb paraules
-difícils de la A a la Z. En Carles la va demanar per fer-la **a estones
+difícils de la A a la Z. L'usuari la va demanar per fer-la **a estones
 durant tot el dia**:
 
 - **Deu minuts** (`TEMPS_DIF`), però el rellotge **només corre mentre la tens
   oberta**: si surts de l'app es posa en pausa i es desa. Sense cap rellotge
   i amb tot el dia per davant, qualsevol les trobaria totes al diccionari, i
-  en Carles va triar això abans que no pas fer-la sense temps.
+  l'usuari va triar això abans que no pas fer-la sense temps.
 - **A cada definició diu quantes lletres té** (`lletresDe`: la l·l en són
   dues i la ç, una), i a sota del que escrius, quantes en portes (3/7). Per
   això aquí **cap paraula no té una altra resposta bona**: amb dues
@@ -880,7 +880,7 @@ Coses que no s'han de desfer sense entendre-les:
   i no es poden copiar. Les respostes són paraules del diccionari, escrites com
   toca, que és com s'ensenyen al final; si n'hi ha una altra de bona, va
   darrere d'una barra (`zoo/zoològic`).
-- **De fàcil a difícil dins de la roda**, que és el que va demanar en Carles:
+- **De fàcil a difícil dins de la roda**, que és el que va demanar l'usuari:
   de la A a la G paraules de tota la vida (abella, cadira, gat), de la H a la
   P una mica menys, i de la Q a la Z les difícils (quiròfan, sextant,
   xamfrà). Si s'hi afegeixen paraules, han d'anar a la llista de la seva
@@ -906,7 +906,7 @@ era i que vagi a la seva taula.
 
 ## El Tresor dels Templers: deu proves per Catalunya
 
-En Carles en va fer un de jove, amb el nom d'una pel·lícula d'aventures,
+L'usuari en va fer un de jove, amb el nom d'una pel·lícula d'aventures,
 que anava de passar pantalla **sense res d'acció**: a cada pantalla havies
 de descobrir o fer alguna cosa. Va demanar la mateixa idea, i que fos
 **de Catalunya**. És nostre: la llegenda diu que els templers van amagar un
@@ -945,7 +945,7 @@ Ramon, excursionista, el va buscar tota la vida.
 
 ## La Sopa de Lletres: deu paraules amagades
 
-En Carles la va demanar. És **el passatemps de tota la vida** (el primer que
+L'usuari la va demanar. És **el passatemps de tota la vida** (el primer que
 se sap que es va publicar és del 1968, en un diari d'Oklahoma), no el d'una
 empresa: va amb el seu nom.
 
@@ -981,7 +981,7 @@ Coses que no s'han de desfer sense entendre-les:
 - **Cada sopa barreja les direccions** (`PLA`): 4 paraules de costat (una
   del revés), 3 de dalt a baix (una del revés) i 3 en diagonal, repartides
   a l'atzar; si no hi caben així, es torna a provar. Abans cada paraula
-  triava la direcció a l'atzar i en Carles va fer la #1 amb les deu en
+  triava la direcció a l'atzar i l'usuari va fer la #1 amb les deu en
   vertical. La #1 es va quedar com era, que ja s'estava jugant (`gen` 1, i
   les pràctiques desades d'abans també); des de la #2, `gen` 2.
 - **El farciment té la freqüència de les lletres del català** (`FARCIT`): amb
@@ -995,7 +995,7 @@ Coses que no s'han de desfer sense entendre-les:
 
 ## La Botifarra: el joc de cartes de casa
 
-En Carles la va triar entre quatre idees de joc nou. És **el joc de tota la
+L'usuari la va triar entre quatre idees de joc nou. És **el joc de tota la
 vida**, no el d'una empresa: va amb el seu nom i les seves regles.
 
 - **Baralla espanyola de 48 cartes**, quatre jugadors per parelles: tu i en
@@ -1052,7 +1052,7 @@ Coses que no s'han de desfer sense entendre-les:
 
 ## La Conquesta: el joc de conquesta de taula, amb les comarques
 
-En Carles va demanar un joc de guerra. El problema de jugar contra la màquina
+L'usuari va demanar un joc de guerra. El problema de jugar contra la màquina
 es resol amb **la batalla del dia**: tothom juga el mateix mapa contra la
 mateixa màquina, i la taula diu qui ho ha fet millor. És **inspirat en** el
 *Risk* (d'una empresa viva), amb nom nostre.
@@ -1092,7 +1092,7 @@ Coses que no s'han de desfer sense entendre-les:
   només quan té 2 soldats més (`AGRESSIU`), va a completar vegueries i, si
   algú s'acosta a les 30, li va al darrere.
 - **Tu tens avantatge, a posta: 45 soldats contra 35 i 2 de propina cada
-  torn.** Al principi anaven tots tres igualats, i en Carles la trobava molt
+  torn.** Al principi anaven tots tres igualats, i l'usuari la trobava molt
   difícil. Era veritat: són dos contra tu, i jugant tan bé com la màquina en
   guanyaves 27 de 80; un jugador automàtic que en sap poc (reforça una
   frontera qualsevol, ataca a l'atzar quan en té més i no mou mai), 2 de 25.
@@ -1108,14 +1108,14 @@ Coses que no s'han de desfer sense entendre-les:
 - **L'explicació de com es juga** (`PAGINES`, sis pàgines curtes amb
   exemples de daus i de comarques) surt sola el primer cop que comences una
   partida, i sempre amb el botó **?** de sota (a la pàgina del pas on ets) i
-  des del menú. En Carles no va entendre com es jugava: el joc no ho
+  des del menú. L'usuari no va entendre com es jugava: el joc no ho
   explicava enlloc. Mentre és oberta, el joc queda aturat.
 - **Els daus surten grossos a dalt del mapa** (`ensenyaDaus`): els de qui
   ataca a dalt, els de qui defensa a sota, cada un davant del que li toca, i
   el que perd la parella queda apagat. Rodolen una mica (de mentida: el
-  resultat ja hi és) i se'n van sols. En Carles preguntava on eren els daus:
+  resultat ja hi és) i se'n van sols. L'usuari preguntava on eren els daus:
   abans només sortien petits a la ratlla de sota del mapa.
-- **Els daus s'han de poder seguir.** Després en Carles no els entenia:
+- **Els daus s'han de poder seguir.** Després l'usuari no els entenia:
   surten massa daus diferents i van massa de pressa. Era veritat. Als torns
   dels altres, cada tirada durava 0,18 s i els daus en trigaven 0,28 a
   rodolar, o sigui que **mai no s'arribaven a veure els de debò**, només els
@@ -1123,7 +1123,7 @@ Coses que no s'han de desfer sense entendre-les:
   - cada tirada **s'atura i es queda** (1,5 s; 0,9 s si n'hi ha més de 4),
     i **el resultat dels teus atacs es queda fins que toques la pantalla**
     (o 12 s). Tocant on sigui marxa; tocant el quadre mateix, aquell toc no
-    fa res més al mapa. En Carles no tenia temps de llegir-lo;
+    fa res més al mapa. L'usuari no tenia temps de llegir-lo;
   - **ATAC A FONS ensenya totes les tirades**, una darrere l'altra
     («tirada 2 de 5»), i al final el total;
   - als torns dels altres, **les tirades seguides contra la mateixa comarca
@@ -1134,14 +1134,14 @@ Coses que no s'han de desfer sense entendre-les:
     (no compta), cada filera diu de qui és (TU, VERMELLS...) i a sota hi ha
     la regla: el més alt contra el més alt, i si empaten guanya qui defensa.
   - **diu per què cadascú tira els daus que tira** («Tu tires 3 daus, el
-    màxim. Els grocs tiren 1 dau: només hi tenen 1 soldat.»). En Carles va
+    màxim. Els grocs tiren 1 dau: només hi tenen 1 soldat.»). L'usuari va
     veure 3 daus seus contra 1 i no entenia com comptava;
   - **si l'atac és al nord del mapa, el quadre va a baix** (`abaix`), que a
     dalt tapava justament les comarques que estaves tocant.
 
 ## Les Quatre Colles: setze paraules, quatre colles
 
-En Carles va demanar un joc «diferent i intel·ligent». És **inspirat en** el
+L'usuari va demanar un joc «diferent i intel·ligent». És **inspirat en** el
 *Connections* del New York Times (el segon joc de paraules més jugat del món
 després del Wordle), amb nom nostre: en català no n'hi havia cap.
 
@@ -1187,7 +1187,7 @@ la paraula més llarga hi càpiga a 320 px.
 
 ## El Poble del Dia: endevina el municipi
 
-En Carles el va triar entre quatre idees de millora. És **inspirat en** el
+L'usuari el va triar entre quatre idees de millora. És **inspirat en** el
 *Worldle* (endevinar un país per la silueta), amb els municipis de Catalunya
 i nom nostre.
 
@@ -1200,7 +1200,7 @@ i nom nostre.
   mapa s'il·lumina); al cap de 4, per quina lletra comença (sense l'article),
   i al cap de 5, **com es veu el nom**, amb la primera lletra de cada paraula
   (`esquelet`: «S___ C____ d__ V_____»). Al principi eren al cap de 3 i de 5,
-  i sense la del nom, i en Carles el trobava molt difícil: la silueta d'un
+  i sense la del nom, i l'usuari el trobava molt difícil: la silueta d'un
   poble no la coneix gaire ningú. Els tres primers dies (#1 a #3), que ja
   s'havien jugat, van amb les d'abans (`PISTES_ABANS`), que la taula del dia
   sigui justa.
@@ -1263,7 +1263,7 @@ Coses que no s'han de desfer sense entendre-les:
 
 ## El Trencaclosques: el del dia i el de les teves fotos
 
-En Carles va demanar poder pujar una foto i que el joc en fes un
+L'usuari va demanar poder pujar una foto i que el joc en fes un
 trencaclosques. N'hi ha dos:
 
 - **El d'avui**: un paisatge que **es pinta sol** a partir del número del
@@ -1279,11 +1279,11 @@ trencaclosques. N'hi ha dos:
   a la tardor (riu, pont de pedra, ermita, bolets) i la masia amb els
   gira-sols. Van per tandes de sis barrejades amb la seva llavor, i **mai no
   surt la mateixa dos dies seguits**. Al principi tots eren el poble i només
-  canviaven els colors i el lloc de les coses: en Carles es pensava que li
+  canviaven els colors i el lloc de les coses: l'usuari es pensava que li
   tornava a sortir el d'ahir. Els sis primers (#1 a #6) es van quedar com
   eren, que el #6 ja s'estava jugant. El nom de l'escena surt al menú i a
   dalt del joc.
-- **Les fotos d'en Carles** (`FOTOS`, a `fotos/`): vint imatges que va fer
+- **Les fotos de l'usuari** (`FOTOS`, a `fotos/`): vint imatges que va fer
   amb una app d'IA (Gemini) i va pujar al repositori, en dues tandes de deu.
   Surten una cada dia del #14 (7 de novembre del 2026) al #33 (26 de
   novembre), i després tornen els dibuixats. La de Girona era un cartell amb
@@ -1318,7 +1318,7 @@ Coses que no s'han de desfer sense entendre-les:
   ensenya la imatge clareta dins del marc, com la foto de la capsa.
 - **La peça que treus de la safata surt una mica per sobre del dit**, que si
   no el dit la tapa i no veus on la poses.
-- **Un sol dit alhora, i cap peça pot quedar enlloc** (`repara`). En Carles
+- **Un sol dit alhora, i cap peça pot quedar enlloc** (`repara`). L'usuari
   va acabar amb 33 de 35 i la safata buida: tocant una segona peça mentre en
   portava una altra (dos dits, o el palmell), la primera es quedava a l'aire,
   fora de la safata i de la taula, i no es veia mai més. Ara el segon dit no
@@ -1345,7 +1345,7 @@ foto, que no s'apunta enlloc.
 
 ## El Temple: aventura per caselles
 
-En Carles va demanar un joc d'aventura «de descobrir coses», com un Indiana
+L'usuari va demanar un joc d'aventura «de descobrir coses», com un Indiana
 Jones o el Prince of Persia. El Prince of Persia (1989, de l'Apple II) és el
 pare del gènere i el Temple n'és **inspirat**: sales que es veuen d'una en
 una, trampes, reixes que s'obren amb una placa, terra que cau, i un explorador
@@ -1394,14 +1394,14 @@ l'aire: l'ídol d'or al fons i el temple que s'ensorra quan l'agafes.
   TELEGRAM / PER WHATSAPP / COPIA L'ENLLAÇ, amb
   `#repte=1&n=INICIALS&p=PUNTS&s=1` (`s=1` si va sortir amb l'ídol). Com que
   el temple és el mateix per a tothom, no cal llavor: qui l'obre veu al menú a
-  qui ha de superar i, en acabar, qui ha guanyat. En Carles el va demanar.
+  qui ha de superar i, en acabar, qui ha guanyat. L'usuari el va demanar.
 - **El mapa de sota només ensenya les sales que ja has vist**, amb els
   tresors que hi queden. Les parets esquerdades hi surten com les altres: són
   secrets.
 
 **Set nivells** (`NIVELLS`), i en sortir de cada un es baixa al següent amb els
 punts, les vides i els cors que portes (la taula només rep els punts en
-acabar-ho tot o en morir). En Carles va demanar un nivell més complicat «i que
+acabar-ho tot o en morir). L'usuari va demanar un nivell més complicat «i que
 vagin sortint més coses». **Les Catacumbes** (20 sales, la màscara de jade,
 120 segons per sortir) en porten tres de noves:
 
@@ -1423,8 +1423,8 @@ de sobre és de terra que cau, de dues caselles: si cau, el forat encara es
 pot saltar, que si no reapareixeries a l'altra banda sense poder passar.
 
 **El Santuari**, el tercer (20 sales, la corona del sol, 100 segons per
-sortir, comences mirant a l'esquerra: `dir:-1`), en porta dues més, perquè en
-Carles el va voler «encara més difícil»:
+sortir, comences mirant a l'esquerra: `dir:-1`), en porta dues més, perquè l'usuari
+el va voler «encara més difícil»:
 
 - **Parets de fletxes** (`<` i `>`, fan de paret i disparen cap a on miren):
   cada 2,6 segons (`PERIODE_FLETXA`), cadascuna amb el seu ritme, i la boca
@@ -1442,7 +1442,7 @@ per sota (el pilot automàtic ho fa buscant una casella fora del camí de la
 roca).
 
 **No hi ha cap fletxa que digui on és la sortida.** N'hi va haver una
-(en Carles va tornar pel camí d'anada fins a una reixa que només s'obria de
+(l'usuari va tornar pel camí d'anada fins a una reixa que només s'obria de
 l'altra banda i es pensava que s'havia quedat tancat), però després la va
 voler treure: trobar la sortida forma part del joc. El que sí que s'hi va
 quedar: **les reixes amb temps tenen placa a totes dues bandes**, que davant
@@ -1462,7 +1462,7 @@ d'esperar a les aranyes, als ratpenats i a les fletxes de la torre), i per
 això el temps és més llarg que al tercer, no més curt.
 
 **El Volcà**, el cinquè (20 sales, el cor de foc, 90 segons per sortir,
-comences mirant a l'esquerra). En Carles va demanar el cinquè nivell, i en
+comences mirant a l'esquerra). L'usuari va demanar el cinquè nivell, i en
 porta tres coses noves:
 
 - **Lava** (`L`): no s'hi pot caminar (`mouCamina` s'hi para, i diu que la
@@ -1483,7 +1483,7 @@ El pilot automàtic, sota una estalactita que ja tremola, no espera res: hi
 passa de llarg. Hi necessita 14 segons per sortir amb el tresor.
 
 **La Cova de Gel**, el sisè (14 sales, la corona de gel, 100 segons per
-sortir). En Carles va demanar un nivell més quan anava pel Volcà, i va triar
+sortir). L'usuari va demanar un nivell més quan anava pel Volcà, i va triar
 aquest entre tres idees. En porta tres coses noves, i les tres demanen pensar:
 
 - **Gel** (`=`): **caminant-hi, llisques** fins que topes amb alguna cosa o
@@ -1525,7 +1525,7 @@ El camí de tornada és per sota: des de la corona baixes penjat (▼), corres
 cap a l'oest per un passadís nou, una placa obre la reixa des de dins i
 s'enfila per una torre fins a la porta. El pilot hi tarda uns 15-20 segons.
 
-**La cova era massa fàcil**, va dir en Carles quan el va acabar. Era el nivell
+**La cova era massa fàcil**, va dir l'usuari quan el va acabar. Era el nivell
 més curt (14 sales) i tenia poca cosa a més del gel. Sense tocar els blocs
 (que són el que fa que tingui sortida), s'hi va afegir: **80 segons per
 sortir en lloc de 100**; **punxes on s'acaba el gel**, de manera que
@@ -1536,7 +1536,7 @@ cursa sense res, ara té un esquelet, un fantasma, un ratpenat, punxes i una
 estalactita a la torre. El pilot hi tarda uns 22 segons.
 
 **La Tomba del Rei**, el setè (19 sales, el ceptre del rei, **60 segons per
-sortir**). En Carles va demanar un nivell més, i en porta dues coses noves:
+sortir**). L'usuari va demanar un nivell més, i en porta dues coses noves:
 
 - **Mòmies** (`M`): caminen com els esquelets, més a poc a poc, però **no
   es desfan mai**: un cop de FUET les tomba a terra uns segons
@@ -1565,7 +1565,7 @@ nivell queda sempre escrit a sota del mapa. I **cada nivell té els seus
 colors** (`colors` a `NIVELLS`, que es copien a `COL`): pedra de color sorra
 al temple, grisa i blavosa amb foc blau a les catacumbes, vermellosa de
 terracota al santuari, morada a les profunditats, i negra i cremada amb foc
-taronja al volcà. En Carles ho va demanar. El fons de cada sala es desa
+taronja al volcà. L'usuari ho va demanar. El fons de cada sala es desa
 per nivell (`fonsCache`), que si no es veurien els colors de l'anterior.
 
 **Tornar a començar és petit i pregunta.** Si tens una partida a mig fer (o
@@ -1573,7 +1573,7 @@ un punt de control), el menú no ensenya cap botó gros de COMENÇA DE NOU: el
 gros és CONTINUA (o TORNA A...), i a sota de tot hi ha un text petit,
 «començar des del primer nivell». Si hi ha partida a mig fer, abans pregunta
 (SEGUR?, amb el nivell i els punts que perdries, i NO, TORNA ENRERE com a
-botó gros). En Carles portava un parell de nivells i el podia tocar sense
+botó gros). L'usuari portava un parell de nivells i el podia tocar sense
 voler. Sense partida a mig fer no pregunta: no es perd res, el punt de
 control es queda.
 
@@ -1582,11 +1582,11 @@ el primer, es guarda quin és, amb els punts i els cors màxims que hi portes.
 Si hi perds totes les vides, el quadre del final ofereix TORNA A LES
 CATACUMBES, i el menú també (si no hi ha cap partida a mig fer): tornes a
 començar aquell nivell amb tres vides i **els punts d'entrar-hi, no els que
-tenies en caure**, que si no repetint-lo s'anirien sumant. En Carles ho va
+tenies en caure**, que si no repetint-lo s'anirien sumant. L'usuari ho va
 demanar: fallant al segon havia de refer el primer, i la idea és que n'hi
 hagi uns quants. Acabant-ho tot, el punt de control s'esborra.
 
-En Carles es trobava, de tant en tant, que en tornar a entrar començava pel
+L'usuari es trobava, de tant en tant, que en tornar a entrar començava pel
 primer nivell. Passaven dues coses:
 
 - **Tancar en acabar un nivell ho perdia tot.** Al quadre de BAIXA-HI la
@@ -1605,13 +1605,13 @@ i amb quants punts i cors vas entrar a cadascun. Al menú, **tria un nivell on
 ja has arribat** (`triaNivell`) els ensenya tots, i hi tornes amb tres vides i
 els punts d'entrar-hi (si tens una partida a mig fer, pregunta abans). Abans,
 en acabar-ho tot, el punt de control s'esborrava i no en quedava res: quan es
-va afegir el setè nivell, en Carles ja havia acabat la cova i hauria hagut de
+va afegir el setè nivell, l'usuari ja havia acabat la cova i hauria hagut de
 tornar a començar pel primer. Per als que ja l'havien acabat abans d'això, el
 joc mira el rècord (`PUNTS_COVA`, 35.000: cal haver passat cinc nivells) i,
 si hi arriba, posa el punt de control a la cova de gel amb 0 punts (no se sap
 amb quants hi havia entrat). Primer mira el d'aquest mòbil i, si no, **el de
 la taula de tothom amb les teves inicials** (`covaDeLaTaula`, cada vegada que
-surt el menú): en Carles tenia 54.730 punts a la taula però no li sortia res,
+surt el menú): l'usuari tenia 54.730 punts a la taula però no li sortia res,
 perquè l'app instal·lada i el navegador desen cadascun el seu rècord.
 
 Una altra cosa que pot fer el mateix i que el joc no pot evitar: la partida
@@ -1771,7 +1771,7 @@ Regles que no s'han de trencar:
   sense demanar les inicials. Ens va passar amb el Donkey Kong.
 - **A les partides del dia només compta la primera de cada inicials**, encara
   que la tornis a fer des d'un altre mòbil o des de l'ordinador (al mateix
-  mòbil ja no es podia). En Carles va veure que si no, una mateixa persona la
+  mòbil ja no es podia). L'usuari va veure que si no, una mateixa persona la
   podia fer dues vegades. El Worker apunta qui ja hi ha jugat a
   `jugat:<joc>_dia:<data>` (a part de la taula, que només té els 10 millors)
   i respon `repetida`; el `records.js` hi envia sempre la del dia, encara que
@@ -1847,7 +1847,7 @@ diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
 (surt de `jugat:<joc>_dia:<data>`). **Fer 0 també és haver-hi jugat**: la
 Gofra sense acabar, cap colla, cap encert, la Botifarra sense punts... Abans
 aquestes partides no s'enviaven i, a la lliga, era com si no hi haguessis
-jugat (en Carles ho va preguntar per la Gofra). Ara `Records.fiPartida` les
+jugat (l'usuari ho va preguntar per la Gofra). Ara `Records.fiPartida` les
 envia amb 0, sense demanar res, si ja hi ha inicials, i el Worker les apunta
 a `jugat:` però no a la taula. No es desa enlloc: es calcula cada vegada
 llegint les taules del dia (`lliga()`, 140 lectures del KV com a molt). En
@@ -1858,7 +1858,7 @@ passada amb el podi (`anunciaLliga`, marcat a `telegram:anunciat:lliga` abans
 d'enviar, com els de cada matí). És dilluns i no diumenge al vespre perquè el
 Worker no té rellotge: tot ho engega la primera visita del dia.
 
-**Quanta gent hi juga** (`/visites` al grup). En Carles ho va demanar. Cada
+**Quanta gent hi juga** (`/visites` al grup). L'usuari ho va demanar. Cada
 aparell té un número a l'atzar (`jocs-aparell`, al `records.js`) que no diu qui
 és, i el primer cop que obre cada joc (o la portada) en un dia ho envia al Worker
 (`POST /visita`, `{a, j}`), i només des de la web de debò, no des de les proves
@@ -1884,9 +1884,9 @@ que el bot ja va anunciar. Si dues peticions alhora tanquen la mateixa
 setmana, en llegir-ho només compta un cop (`llegirPalmares`). A la portada
 surten els cinc primers a sota de la lliga (i tu, si no hi ets), `/lliga` al
 grup també les ensenya i l'anunci del dilluns diu quantes copes porta qui
-guanya. En Carles ho va demanar.
+guanya. L'usuari ho va demanar.
 
-Per posar-lo en marxa (ho fa en Carles, una sola vegada):
+Per posar-lo en marxa (ho fa l'usuari, una sola vegada):
 
 1. Enganxar el `worker/records.js` nou a Cloudflare i **Implementar**.
 2. A Telegram, parlar amb **@BotFather**, `/newbot`, i copiar la clau que dona.
@@ -2090,7 +2090,7 @@ comproven el comportament.
 - Per als jocs: obrir la pàgina, forçar l'estat i comprovar. El **Worker es
   simula amb `page.route`**, perquè des de l'entorn de desenvolupament no s'hi
   arriba (el proxy bloqueja `workers.dev`): **la prova final sempre l'ha de fer
-  en Carles al mòbil.**
+  l'usuari al mòbil.**
 - Comprovar sempre: que la partida acabi bé, que el marcador quadri, que no surti
   res de pantalla i que **no salti cap error de JavaScript**.
 - **Si una cosa es mou més de pressa que el gruix del que ha de tocar, se
@@ -2150,7 +2150,12 @@ comproven el comportament.
   capturar amb el joc en pausa, que hi surt el rètol de PAUSA.
 - Commits en català, explicant **què passava** i no només què s'ha tocat.
 
-## Com treballa en Carles
+## Com treballa l'usuari
+
+**Aquí i al codi no s'escriu el seu nom**: es diu «l'usuari». El repositori és
+públic i no vol que tothom pugui veure què fa. Abans les notes i els comentaris
+el deien pel nom més de cent vegades. Tampoc no s'hi escriuen correus ni res
+personal.
 
 Fa servir el mòbil gairebé sempre, i no és programador: les explicacions han de
 dir què s'ha de tocar i per què, sense donar per suposat cap terme tècnic. Quan

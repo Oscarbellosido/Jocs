@@ -357,7 +357,7 @@ function sprite(t,triada){
 }
 
 // ===== EL TEMA: FOSC O CLAR =====
-// En Carles el va demanar per jugar-hi amb llum de dia. Es recorda a
+// L'usuari el va demanar per jugar-hi amb llum de dia. Es recorda a
 // localStorage i nomes canvia el fons, la caixa i els rotols: les boles son
 // les mateixes, que ja eren clares.
 const TEMES={
@@ -447,7 +447,7 @@ function draw(){
     x.fillText(avis,W/2,112);x.globalAlpha=1;
   }
   // Els rotols de dalt, grossos i de colors: al mobil, a 10 px i en marro
-  // sobre negre, en Carles gairebe no els veia.
+  // sobre negre, l'usuari gairebe no els veia.
   x.font='bold 15px monospace';x.textAlign='left';
   x.fillStyle=T.text;x.fillText('PARAULES ',12,24);
   x.fillStyle=T.groc;x.fillText(String(fetes),12+x.measureText('PARAULES ').width,24);

@@ -345,7 +345,7 @@ try{
 // obrint l'aplicacio de nou vols començar per dalt.
 // ELS JOCS NOUS: les fitxes amb data-nou (el dia que es van posar) porten
 // el rètol NOU, i a dalt de tot hi ha un avís per anar-hi, fins que l'obres
-// en aquest mòbil o fins que fa tres setmanes que hi és. En Carles va
+// en aquest mòbil o fins que fa tres setmanes que hi és. L'usuari va
 // demanar que quan sortís un joc nou s'avisés d'alguna manera: el bot de
 // Telegram també ho diu al grup.
 function pintaNous(){
@@ -510,7 +510,7 @@ posaLiders();
 })();
 
 // ===== L'ORDRE DELS JOCS =====
-// En Carles va demanar poder triar: tots per any (el museu, com sempre) o
+// L'usuari va demanar poder triar: tots per any (el museu, com sempre) o
 // primer els que mes jugues. Cada joc compta les vegades que s'obre
 // (jocs-obertes, ho fa el records.js), i a mes, de quan encara no es
 // comptava: els jocs del dia, els dies que hi ha partida desada en aquest
@@ -549,7 +549,7 @@ posaLiders();
     if(ordre==='jugats'){
       const c=cops();
       // els nous que encara no has obert, al davant de tot: si no, sense
-      // cap vegada, quedaven a sota de tot i no es veien (ho va dir en Carles);
+      // cap vegada, quedaven a sota de tot i no es veien (ho va dir l'usuari);
       // després els mes jugats (en empat, el que has obert mes recentment;
       // i si no, per any)
       const nou=a=>a.querySelector('.nou:not(.nova)')?1:0;

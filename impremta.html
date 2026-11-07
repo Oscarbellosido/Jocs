@@ -574,7 +574,7 @@ async function finalPartida(){
 
 // ===== LA PARTIDA DESADA =====
 // Una partida de La Impremta pot durar molta estona. Abans, si tornaves al
-// menu a mig fer, la perdies amb tots els punts: en Carles va fer mes punts
+// menu a mig fer, la perdies amb tots els punts: l'usuari va fer mes punts
 // que el record en una partida lliure i, en sortir, no es van apuntar
 // enlloc. Ara es desa sola, i en tornar-hi pots CONTINUAR on la vas deixar.
 // Els punts s'apunten a la taula quan s'acaba, com sempre.
@@ -806,7 +806,7 @@ function dibuixaPuntuacio(){
   if(state==='puntua'&&anim){p=anim.p;m=anim.m;etiq=anim.r.text.toUpperCase()}
   else if(P.comp.length>=2){
     // La base de la llargada i, a sobre, el que valen les lletres. Abans
-    // nomes hi sortia la base: en Carles posava QU (6) i E (1) i hi deia 4,
+    // nomes hi sortia la base: l'usuari posava QU (6) i E (1) i hi deia 4,
     // i no s'entenia d'on sortia. Els segells i els tipus millorats encara
     // s'hi sumen despres, en el recompte.
     const n=P.comp.length,[b,mb]=baseDe(n);
@@ -902,7 +902,7 @@ function dibuixaBotiga(){
     const cl=i%2,row=Math.floor(i/2),bx=16+cl*198,by=Y_FULL+18+row*106,bw=i===4?388:190,bh=i===4?54:100;
     if(!it){x.strokeStyle='#3a2e22';rrect(bx,by,bw,bh,10);x.stroke();return}
     // Un toc i es compra. Abans el primer toc nomes el marcava i el segon el
-    // comprava: en Carles tocava una vegada, li semblava que ja el tenia i
+    // comprava: l'usuari tocava una vegada, li semblava que ja el tenia i
     // sortia de la botiga sense.
     x.fillStyle=it.venut?'#12200f':'#241a12';rrect(bx,by,bw,bh,10);x.fill();
     x.strokeStyle=it.venut?'#4f8a3c':'#6b5235';x.lineWidth=it.venut?2:1.5;rrect(bx,by,bw,bh,10);x.stroke();

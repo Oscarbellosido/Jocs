@@ -546,7 +546,7 @@ function control(){
 }
 // ===== ELS NIVELLS ON HAS ARRIBAT =====
 // Abans, en acabar-ho tot, el punt de control s'esborrava i ja no quedava
-// enlloc fins on havies arribat. Quan es va afegir el setè nivell, en Carles
+// enlloc fins on havies arribat. Quan es va afegir el setè nivell, l'usuari
 // ja havia acabat la cova de gel i hauria hagut de començar pel primer. Ara
 // es guarda per sempre el nivell més avall on has arribat (max; si ho has
 // acabat tot, NIVELLS.length) i amb quants punts i cors hi vas entrar, i des
@@ -565,7 +565,7 @@ function apuntaNivell(n,acabat=false){
 // Qui ja havia acabat el temple quan n'eren sis (i, per tant, ja no tenia
 // punt de control) torna a la cova de gel. Se sap pel rècord: per arribar a
 // 35.000 punts cal haver passat cinc nivells. Primer el d'aquest mòbil i, si
-// no hi és, el de la taula de tothom amb les teves inicials: en Carles tenia
+// no hi és, el de la taula de tothom amb les teves inicials: l'usuari tenia
 // 54.730 punts a la taula, però l'app i el navegador desen cadascun el seu
 // rècord, i al lloc on jugava no hi era. No se sap amb quants punts hi vas
 // entrar: hi tornes amb 0.
@@ -1168,7 +1168,7 @@ function guanya(){
   // si encara queda un nivell, s'hi baixa amb els punts i les vides que portes
   if(nivell<NIVELLS.length-1){
     // Ja es guarda el punt de control del nivell de sota: si tanques aqui
-    // (en Carles ho feia), en tornar-hi no comences des del primer.
+    // (l'usuari ho feia), en tornar-hi no comences des del primer.
     estat='entre';esborraPartida();desaControl(nivell+1);
     const seg=NIVELLS[nivell+1];
     msg('<div style="color:#ffd75a">'+titol+'</div>'+compte+
@@ -1228,8 +1228,8 @@ function menu(){
     // refer els d'abans
     (ctl?bt('m-ctl','TORNA '+NIVELLS[ctl.nivell].a,'#7dff9b','#3a8a4a')+'<small style="color:#888;margin-top:2px">amb els '+xifra(ctl.punts)+' punts que hi portaves en entrar-hi</small>':'')+
     // Si no tens res a mig fer, el boto gros es entrar. Si en tens, el de
-    // tornar a comencar queda petit a sota de tot, i pregunta abans: en
-    // Carles portava un parell de nivells i el podia tocar sense voler.
+    // tornar a comencar queda petit a sota de tot, i pregunta abans: l'usuari
+    // portava un parell de nivells i el podia tocar sense voler.
     (q||ctl?'<a href="#" id="m-zero" style="display:block;margin-top:18px;font:12px monospace;color:#888;text-decoration:underline">començar des del primer nivell</a>'
       :bt('m-nova','ENTRA AL TEMPLE','#ffd75a','#a08a3a'))+
     (nivellsFets().max>0?'<a href="#" id="m-tria" style="display:block;margin-top:12px;font:12px monospace;color:#9fc8a0;text-decoration:underline">tria un nivell on ja has arribat</a>':''));

@@ -223,7 +223,7 @@ const despres = await p.evaluate(() => ({ N, monedes, obertes: [...obertes].sort
 diu(JSON.stringify(abans) === JSON.stringify(despres), `tancant i tornant, el nivell és com el vas deixar (nivell ${despres.N}, ${despres.monedes} monedes)`);
 
 // --- jugar en un altre lloc: el nivell es recupera de la taula ---
-// El nivell es desa dins de cada navegador. En Carles anava molt endavant i,
+// El nivell es desa dins de cada navegador. L'usuari anava molt endavant i,
 // obrint-la des d'un altre lloc, va tornar al 1.
 {
   const c2 = await b.newContext({ viewport: { width: 390, height: 844 } });

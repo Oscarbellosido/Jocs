@@ -15,14 +15,14 @@ const Records = (() => {
   // Tornar a carregar la pagina o tornar-hi enrere no compta. Es desa per nom
   // de fitxer (jocs-obertes), amb l'hora de l'ultima vegada.
   // ---- NOVA VERSIÓ ----
-  // En Carles va demanar que, quan s'arregla o es millora un joc, surti un
+  // L'usuari va demanar que, quan s'arregla o es millora un joc, surti un
   // avís. Cada canvi que es nota s'apunta aquí: el fitxer, quan es va pujar
   // (hora de Greenwich) i què ha canviat, en poques paraules. Qui ja hi havia
   // obert des d'aquella hora veu NOVA VERSIÓ a la portada i, en obrir el
   // joc, un rètol amb el que ha canviat, una sola vegada. Als 14 dies (DIES_NOVETAT)
   // ja no surt. Els jocs que encara són NOU no ho diuen: tot és nou.
-  // Al principi només ho deia a qui ja hi havia jugat en aquest mòbil, i en
-  // Carles no ho veia: a l'ordinador mai no havia obert el Trencaclosques.
+  // Al principi només ho deia a qui ja hi havia jugat en aquest mòbil, i l'usuari
+  // no ho veia: a l'ordinador mai no havia obert el Trencaclosques.
   const NOVETATS = {
     'track_field.html':   ['2026-11-05T12:31Z', 'un estadi de nit i un atleta amb cos'],
     'moon_patrol.html':   ['2026-11-05T13:18Z', 'paisatge de debò i un cotxe lunar de sis rodes'],

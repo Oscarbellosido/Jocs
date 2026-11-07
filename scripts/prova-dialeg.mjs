@@ -5,7 +5,7 @@
 // button{width:NNpx;height:NNpx} per als botons dels controls, i aquesta
 // regla tambe agafava el boto D'ACORD del quadre de records, que es crea des
 // del records.js i no tenia amplada propia. Als jocs amb botons estrets (el
-// Crazy Climber els te de 46 pixels) el text se'n sortia. En Carles ho va
+// Crazy Climber els te de 46 pixels) el text se'n sortia. L'usuari ho va
 // veure jugant al Defender.
 //
 //   node scripts/prova-dialeg.mjs

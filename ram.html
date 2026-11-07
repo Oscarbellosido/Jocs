@@ -139,7 +139,7 @@ function novaFila(){
   const marge=((CAIXA_D-CAIXA_E)-n*2*R)/2;
   for(let i=0;i<n;i++)afegeix(novaBola(),CAIXA_E+marge+R+i*2*R,TERRA-R);
   files++;perFila=0;
-  // La fisica ja ho ha mogut tot de cop, pero aixi no es veu: en Carles va
+  // La fisica ja ho ha mogut tot de cop, pero aixi no es veu: l'usuari va
   // dir que "de cop han aparegut moltes boles" i semblava una avaria. Amb
   // aixo el dibuix va endarrerit mitja mica i tot sembla pujar des de sota,
   // que es el que passa de debo.
@@ -418,7 +418,7 @@ function draw(){
   // L'avis de la filera va al TERRA, que es d'on puja i on ja estas mirant:
   // una barra que s'omple de mica en mica i, quan ja ve, pampallugueja amb
   // ratlles. El retol de dalt hi era des del primer dia, pero de lletra grisa
-  // d'onze pixels i a dalt de tot: en Carles ni el veia. Ara es mes clar,
+  // d'onze pixels i a dalt de tot: l'usuari ni el veia. Ara es mes clar,
   // pero qui avisa de debo es la barra.
   const cada=cadaFila(), falten=Math.max(0,cada-perFila);
   if(state==='play'){

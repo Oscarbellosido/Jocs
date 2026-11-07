@@ -320,7 +320,7 @@ async function anunciaAhir(env) {
 }
 
 // ===== ELS JOCS NOUS =====
-// En Carles va demanar que, quan surti un joc nou, s'avisi. Quan es torna a
+// L'usuari va demanar que, quan surti un joc nou, s'avisi. Quan es torna a
 // enganxar el Worker amb un joc nou a les llistes, la primera visita fa que
 // el bot ho digui al grup, amb un botó per anar-hi. Es compara amb els
 // fitxers ja anunciats (telegram:jocs-anunciats). La primera vegada encara
@@ -452,7 +452,7 @@ function textLliga(l) {
 }
 
 // ---- QUANTA GENT HI JUGA (/visites) ----
-// En Carles va demanar saber quanta gent entra als jocs. Cada aparell (mobil,
+// L'usuari va demanar saber quanta gent entra als jocs. Cada aparell (mobil,
 // ordinador, l'app instal.lada, Telegram per dins) te un numero a l'atzar que
 // no diu qui es; quan obre un joc per primer cop en un dia, el records.js ho
 // envia aqui (POST /visita, {a: aparell, j: 'tetris'}). Es desa UNA clau per
@@ -623,7 +623,7 @@ async function diari(request, env, joc, dia) {
   const llista = await llegir(env, clau);
   // Nomes compta la primera partida del dia de cada inicials. Al mateix mobil
   // ja no es pot tornar a jugar, pero des d'un altre (o des de l'ordinador)
-  // si: en Carles va veure que algu la podia fer dues vegades. Es guarda qui
+  // si: l'usuari va veure que algu la podia fer dues vegades. Es guarda qui
   // ja hi ha jugat a part de la taula, perque la taula nomes te els 10 millors.
   const clauJugat = 'jugat:' + clau;
   let jugat = [];
