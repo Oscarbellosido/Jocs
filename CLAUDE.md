@@ -1858,6 +1858,22 @@ passada amb el podi (`anunciaLliga`, marcat a `telegram:anunciat:lliga` abans
 d'enviar, com els de cada matí). És dilluns i no diumenge al vespre perquè el
 Worker no té rellotge: tot ho engega la primera visita del dia.
 
+**Quanta gent hi juga** (`/visites` al grup). En Carles ho va demanar. Cada
+aparell té un número a l'atzar (`jocs-aparell`, al `records.js`) que no diu qui
+és, i el primer cop que obre cada joc (o la portada) en un dia ho envia al Worker
+(`POST /visita`, `{a, j}`), i només des de la web de debò, no des de les proves
+(`file://`). El Worker desa **una clau per aparell i dia**
+(`visita:<dia>:<aparell>`, 60 dies) amb els jocs a les **metadades**: per
+comptar n'hi ha prou de llistar les claus (`list` torna les metadades), sense
+llegir-les una per una. **El KV gratuït deixa 1.000 escriptures al dia** i els
+rècords també en gasten: per això el navegador recorda què ja ha enviat avui
+(`jocs-visites`) i el Worker no torna a escriure si el joc ja hi era. `/visites`
+diu la gent d'avui, d'ahir i de cada dia de la setmana, la gent diferent dels
+últims 7 dies i els jocs on n'ha entrat més. L'app instal·lada, el navegador i
+Telegram per dins compten com a aparells diferents. Perquè `/visites` surti a
+la llista d'ordres del bot cal tornar a obrir `…/telegram/activa`; sense
+fer-ho, l'ordre funciona igual.
+
 **Les medalles de sempre** (el palmarès): cada dilluns, la setmana passada es
 tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
 plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la
@@ -1978,8 +1994,9 @@ No hi ha framework: proves amb Playwright (ja instal·lat a
 `/opt/node22/lib/node_modules/playwright`) que obren el joc de veritat i
 comproven el comportament.
 
-- `node scripts/prova-worker.mjs` — el Worker contra un KV simulat, i el bot de
-  Telegram contra un Telegram de mentida (res no surt a internet).
+- `node scripts/prova-worker.mjs` — el Worker contra un KV simulat (amb
+  `list` i metadades, per a les visites), i el bot de Telegram contra un
+  Telegram de mentida (res no surt a internet).
 - `node scripts/prova-dialeg.mjs` — que el quadre de les inicials es vegi bé a
   tots els jocs.
 - `node scripts/prova-menu.mjs` — que en acabar la partida tots els jocs

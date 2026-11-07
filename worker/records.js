@@ -451,6 +451,66 @@ function textLliga(l) {
     '\n\nCada partida del dia: el primer 10 punts, el segon 8, el tercer 6... i 1 per haver-hi jugat.';
 }
 
+// ---- QUANTA GENT HI JUGA (/visites) ----
+// En Carles va demanar saber quanta gent entra als jocs. Cada aparell (mobil,
+// ordinador, l'app instal.lada, Telegram per dins) te un numero a l'atzar que
+// no diu qui es; quan obre un joc per primer cop en un dia, el records.js ho
+// envia aqui (POST /visita, {a: aparell, j: 'tetris'}). Es desa UNA clau per
+// aparell i dia, visita:<dia>:<aparell>, amb els jocs a les metadades: aixi,
+// per comptar, n'hi ha prou de llistar les claus (list torna les metadades)
+// sense llegir-les una per una. El KV gratuit deixa 1.000 escriptures al dia
+// i els records tambe en gasten: per aixo nomes s'escriu el primer cop de
+// cada joc, cada dia, a cada aparell. Es guarden 60 dies.
+const DIES_VISITES = 60;
+async function apuntaVisita(request, env) {
+  let cos;
+  try { cos = await request.json(); } catch { return json({ error: 'cos invalid' }, 400); }
+  const a = String(cos.a || ''), j = String(cos.j || '');
+  if (!/^[a-z0-9]{8,24}$/.test(a)) return json({ error: 'aparell invalid' }, 400);
+  if (j !== 'index' && !totsElsJocs().has(j + '.html')) return json({ error: 'joc desconegut' }, 400);
+  if (!env.RECORDS.getWithMetadata || !env.RECORDS.list) return json({ ok: true });
+  const clau = 'visita:' + diaMadrid(0) + ':' + a;
+  const ara = await env.RECORDS.getWithMetadata(clau);
+  const jocs = (ara && ara.metadata && Array.isArray(ara.metadata.j)) ? ara.metadata.j : [];
+  if (jocs.includes(j)) return json({ ok: true });
+  jocs.push(j);
+  await env.RECORDS.put(clau, '', { metadata: { j: jocs.slice(0, 60) }, expirationTtl: DIES_VISITES * 86400 });
+  return json({ ok: true });
+}
+// tots els aparells d'un dia: [[aparell, [jocs]], ...]
+async function visitesDe(env, dia) {
+  const out = [], prefix = 'visita:' + dia + ':';
+  let cursor;
+  for (let i = 0; i < 10; i++) {
+    const r = await env.RECORDS.list({ prefix, cursor });
+    for (const k of r.keys) out.push([k.name.slice(prefix.length), (k.metadata && k.metadata.j) || []]);
+    if (r.list_complete || !r.cursor) break;
+    cursor = r.cursor;
+  }
+  return out;
+}
+async function textVisites(env) {
+  if (!env.RECORDS.list) return 'Encara no es compten les visites.';
+  const dies = [];
+  for (let i = 0; i < 7; i++) dies.push([diaMadrid(i), await visitesDe(env, diaMadrid(i))]);
+  const setmana = new Set(), perJoc = new Map(), noms = totsElsJocs();
+  for (const [, v] of dies) for (const [a, jocs] of v) {
+    setmana.add(a);
+    for (const j of jocs) if (j !== 'index') { if (!perJoc.has(j)) perJoc.set(j, new Set()); perJoc.get(j).add(a); }
+  }
+  const gent = n => n + (n === 1 ? ' persona' : ' persones');
+  const nomDia = d => new Intl.DateTimeFormat('ca', { weekday: 'long', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'));
+  const top = [...perJoc].map(([j, s]) => [noms.get(j + '.html') || j, s.size]).sort((x, y) => y[1] - x[1]).slice(0, 8);
+  return '👥 <b>Quanta gent hi juga</b>\n\n' +
+    'Avui: <b>' + gent(dies[0][1].length) + '</b>\n' +
+    'Ahir: ' + gent(dies[1][1].length) + '\n' +
+    dies.slice(2).map(([d, v]) => nomDia(d) + ' ' + Number(d.slice(8)) + ': ' + gent(v.length)).join('\n') + '\n\n' +
+    'En els últims 7 dies: <b>' + gent(setmana.size) + ' diferents</b>' +
+    (top.length ? '\n\n🎮 <b>Els més jugats</b> (7 dies, quanta gent hi ha entrat)\n' +
+      top.map(([n, k], i) => (i + 1 + '.').padEnd(4) + esc(n) + '  ' + k).join('\n') : '') +
+    '\n\nCada mòbil o ordinador compta com una persona (l\'app instal·lada, el navegador i Telegram per dins compten a part). No es guarda qui és ningú.';
+}
+
 const AJUDA =
   'Sóc el bot dels Jocs. 🎮\n\n' +
   '/aqui — avisaré en aquest xat quan algú faci un rècord nou\n' +
@@ -458,6 +518,7 @@ const AJUDA =
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
   '/lliga — la classificació de la setmana\n' +
+  '/visites — quanta gent hi juga, avui i aquesta setmana\n' +
   '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles, El Trencaclosques, La Botifarra, El Poble del Dia i La Sopa de Lletres)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
 
@@ -491,6 +552,7 @@ async function ordre(env, msg) {
     }
     return respon('Les partides del dia, com van avui:\n\n' + parts.join('\n\n'));
   }
+  if (o === 'visites') return respon(await textVisites(env));
   if (o === 'lliga') {
     const avui = diaMadrid(0);
     const pal = medalles(await llegirPalmares(env));
@@ -526,6 +588,7 @@ async function activa(env, origen) {
     { command: 'records', description: 'qui mana a cada joc, o la taula d\'un joc' },
     { command: 'avui', description: 'com van les partides del dia' },
     { command: 'lliga', description: 'la classificació de la setmana' },
+    { command: 'visites', description: 'quanta gent hi juga' },
     { command: 'aqui', description: 'avisa en aquest xat dels rècords nous' },
     { command: 'prou', description: 'deixa d\'avisar' },
     { command: 'ajuda', description: 'què sé fer' },
@@ -617,6 +680,9 @@ export default {
       l.palmares = medalles(await llegirPalmares(env));
       return json(l);
     }
+
+    // un aparell ha obert un joc per primer cop avui
+    if (parts[0] === 'visita' && request.method === 'POST') return apuntaVisita(request, env);
 
     if (parts[0] !== 'records') {
       return json({ ok: true, servei: 'jocs-records', jocs: Object.keys(JOCS) });

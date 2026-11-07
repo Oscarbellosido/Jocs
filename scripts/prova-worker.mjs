@@ -1,11 +1,20 @@
 import worker from '../worker/records.js';
 
 // KV de mentida, per provar sense desplegar res
-const store = new Map();
+const store = new Map(), meta = new Map();
+let escriptures = 0;
 const env = { RECORDS: {
   get: async k => (store.has(k) ? store.get(k) : null),
-  put: async (k, v) => { store.set(k, v); },
-  delete: async k => { store.delete(k); },
+  getWithMetadata: async k => (store.has(k) ? { value: store.get(k), metadata: meta.get(k) || null } : { value: null, metadata: null }),
+  put: async (k, v, o) => { escriptures++; store.set(k, v); if (o && o.metadata) meta.set(k, o.metadata); else meta.delete(k); },
+  delete: async k => { store.delete(k); meta.delete(k); },
+  // com el de debò: de 2 en 2 aquí, perquè es provi el cursor
+  list: async ({ prefix = '', cursor } = {}) => {
+    const totes = [...store.keys()].filter(k => k.startsWith(prefix)).sort();
+    const i = cursor ? Number(cursor) : 0, tros = totes.slice(i, i + 2);
+    const fi = i + 2 >= totes.length;
+    return { keys: tros.map(name => ({ name, metadata: meta.get(name) })), list_complete: fi, cursor: fi ? undefined : String(i + 2) };
+  },
 }};
 const call = async (method, path, body) => {
   const r = await worker.fetch(new Request('https://x.dev' + path, {
@@ -488,6 +497,35 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   await crida(env, 'GET', '/records/tetris');
   ok(enviats.length === 0, 'sense la clau del bot, no s\'envia res');
   store.delete('telegram:xat');
+}
+
+// QUANTA GENT HI JUGA: cada aparell, un cop al dia per joc; /visites ho compta
+{
+  const dia = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date(Date.now() - d * 864e5));
+  let r = await crida(env, 'POST', '/visita', { a: 'aparell01', j: 'tetris' });
+  ok(r.status === 200 && JSON.stringify(meta.get('visita:' + dia(0) + ':aparell01')) === '{"j":["tetris"]}', 'una visita queda apuntada al dia d\'avui, amb el joc');
+  const abans = escriptures;
+  await crida(env, 'POST', '/visita', { a: 'aparell01', j: 'tetris' });
+  ok(escriptures === abans, 'el mateix aparell al mateix joc el mateix dia no torna a escriure res');
+  await crida(env, 'POST', '/visita', { a: 'aparell01', j: 'sopa' });
+  ok(JSON.stringify(meta.get('visita:' + dia(0) + ':aparell01').j) === '["tetris","sopa"]' && escriptures === abans + 1, 'un altre joc s\'afegeix a la mateixa clau (una escriptura)');
+  r = await crida(env, 'POST', '/visita', { a: 'aparell01', j: 'nosequè' });
+  const r2 = await crida(env, 'POST', '/visita', { a: 'x', j: 'tetris' });
+  const r3 = await crida(env, 'POST', '/visita', { a: 'aparell01', j: 'index' });
+  ok(r.status === 400 && r2.status === 400 && r3.status === 200, 'un joc que no existeix o un aparell estrany es rebutgen; la portada (index) compta');
+  for (const [a, j] of [['aparell02', 'tetris'], ['aparell03', 'gofra'], ['aparell04', 'tetris']]) await crida(env, 'POST', '/visita', { a, j });
+  // d'ahir i de fa 3 dies, posats a mà
+  store.set('visita:' + dia(1) + ':aparell01', ''); meta.set('visita:' + dia(1) + ':aparell01', { j: ['gofra'] });
+  store.set('visita:' + dia(3) + ':aparell09', ''); meta.set('visita:' + dia(3) + ':aparell09', { j: ['tetris'] });
+  store.set('visita:' + dia(9) + ':aparell08', ''); meta.set('visita:' + dia(9) + ':aparell08', { j: ['tetris'] });
+  store.set('telegram:xat', '-1001'); store.set('telegram:jocs-anunciats', JSON.stringify(totsHtml)); enviats.length = 0;
+  await tg('/visites@JocsBot');
+  const t = (missatges().find(m => /Quanta gent/.test(m.cos.text)) || { cos: {} }).cos.text || '';
+  ok(/Avui: <b>4 persones<\/b>/.test(t) && /Ahir: 1 persona\b/.test(t) && /últims 7 dies: <b>5 persones diferents/.test(t),
+    '/visites diu quanta gent avui (4), ahir (1) i en 7 dies (5), sense comptar la de fa 9 dies');
+  ok(/1\.\s+Els Blocs\s+4/.test(t) && /Gofra\s+2/.test(t) && /Sopa de Lletres\s+1/.test(t) && !/index/.test(t), '/visites diu els més jugats per quanta gent hi ha entrat, i la portada no hi surt');
+  store.delete('telegram:xat');
+  for (const k of [...store.keys()]) if (k.startsWith('visita:')) { store.delete(k); meta.delete(k); }
 }
 
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix

@@ -77,6 +77,33 @@ const Records = (() => {
     }
   } catch (e) { }
 
+  // ---- quanta gent hi juga (/visites al bot) ----
+  // Cada aparell té un número a l'atzar (jocs-aparell) que no diu qui és. El
+  // primer cop que obre cada joc (o la portada) en un dia, ho diu al Worker,
+  // i el bot ho compta. Només una vegada per joc i dia: el servei gratuït
+  // deixa poques escriptures al dia, i els rècords també en gasten. Si falla
+  // (sense connexió), es tornarà a provar la propera vegada que s'obri.
+  try {
+    const f = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
+    if (/^[a-z_]+$/.test(f) && /^https?:$/.test(location.protocol)) {
+      let a = localStorage.getItem('jocs-aparell');
+      if (!/^[a-z0-9]{8,24}$/.test(a || '')) {
+        const b = new Uint8Array(8); crypto.getRandomValues(b);
+        a = [...b].map(x => (x % 36).toString(36)).join('') + Date.now().toString(36).slice(-4);
+        localStorage.setItem('jocs-aparell', a);
+      }
+      const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+      let v = {}; try { v = JSON.parse(localStorage.getItem('jocs-visites') || '{}'); } catch (e) { }
+      if (v.d !== dia || !Array.isArray(v.j)) v = { d: dia, j: [] };
+      if (!v.j.includes(f)) {
+        fetch(URL_BASE + '/visita', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ a, j: f }), keepalive: true })
+          .then(r => { if (r.ok) { v.j.push(f); localStorage.setItem('jocs-visites', JSON.stringify(v)); } })
+          .catch(() => { });
+      }
+    }
+  } catch (e) { }
+
   // ---- dins de Telegram ----
   // Quan els jocs s'obren des del boto "Jocs" del bot, Telegram afegeix
   // #tgWebAppData=... a l'adreça de la primera pagina. Alla dins, lliscar el
