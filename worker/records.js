@@ -71,7 +71,7 @@ const JOCS = {
   colles:            99999,   // les colles trobades, acumulades de totes les partides del dia
   botifarra:         99999,   // les partides lliures guanyades, acumulades
   poble:             99999,   // els pobles del dia endevinats, acumulats
-  tresor:             1600,   // 100 per prova (30 menys per pista) i fins a 600 pel temps
+  tresor:             1600,   // 16 proves de 75 (30 menys per pista) i fins a 400 pel temps
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la

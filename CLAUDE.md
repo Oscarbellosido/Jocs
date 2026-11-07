@@ -75,7 +75,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `colles.html` | Les Quatre Colles (de l'estil del *Connections*) | 2026 |
 | `trencaclosques.html` | El Trencaclosques (el de tota la vida, també amb les teves fotos) | 2026 |
 | `poble.html` | El Poble del Dia (de l'estil del *Worldle*, amb els municipis) | 2026 |
-| `tresor.html` | El Tresor dels Templers (aventura de trencaclosques per Catalunya) | 2026 |
+| `tresor.html` | El Tresor dels Templers (aventura de trencaclosques per Catalunya, setze proves) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -904,7 +904,7 @@ rellotge, la pausa, desar i continuar, i les dues taules. I el mateix amb la
 difícil: les seves definicions, el compte de lletres, que es reprengui on
 era i que vagi a la seva taula.
 
-## El Tresor dels Templers: deu proves per Catalunya
+## El Tresor dels Templers: setze proves per Catalunya
 
 L'usuari en va fer un de jove, amb el nom d'una pel·lícula d'aventures,
 que anava de passar pantalla **sense res d'acció**: a cada pantalla havies
@@ -913,30 +913,66 @@ de descobrir o fer alguna cosa. Va demanar la mateixa idea, i que fos
 tresor quan el rei els va fer fora del castell de Miravet (1308), i l'avi
 Ramon, excursionista, el va buscar tota la vida.
 
-- **Deu proves, deu llocs** (`SALES`): Montserrat (tres rodes, i els
-  dibuixos amagats darrere l'heura), l'Ebre (corda + garfi per estirar la
-  barca del pas), el refugi del Pirineu (el diari diu la combinació del
-  cofre: ocells, ampolles i estrelles, 3-2-5), la cova de les pintures (a
-  les fosques, amb la llum de la llàntia; palanques per ordre de punts), el
-  mercat de Vic (la balança: la llonganissa pesa 7 i hi ha un pes d'1
-  soldat), Poblet (miralls que porten el raig de sol al disc), el campanar
-  (la cotorra, si li dones una nespra, canta la cançó de les campanes),
-  Tàrraco (VII + VIII en números romans: XV), la casa modernista (només les
-  rajoles de la rosa aguanten) i el castell de Miravet (el segell dels
-  templers, en quatre trossos que s'han de posar i girar).
+- **Setze proves, setze llocs** (`SALES`), per aquest ordre:
+  1. **Montserrat**: tres rodes de sis dibuixos; els que hi van són darrere
+     l'heura, i l'ordre el diuen els punts de sota (sol, ones, lluna).
+  2. **L'Ebre**: corda + garfi per estirar la barca del pas.
+  3. **La Font del Lleó** (Caldes de Montbui): el problema dels gerros. Una
+     gerra de 3 litres i un càntir de 5, i al plat de la porta hi ha de
+     pujar el càntir amb 4 litres. La font omple, la pica buida, i un
+     recipient s'aboca a l'altre fins que un s'acaba o l'altre és ple.
+  4. **El refugi del Pirineu**: el diari diu la combinació del cofre
+     (ocells, ampolles i estrelles, 3-2-5).
+  5. **La cova de les pintures**: a les fosques, palanques per l'ordre dels
+     punts. Primer tros del segell.
+  6. **El pont de Besalú**: una xifra de Cèsar. La roda de lletres, girada
+     tres, llegeix la inscripció (`OOXQD VRO HVWUHOOD` = LLUNA SOL ESTRELLA),
+     i els escuts de la torre s'han de prémer en aquell ordre.
+  7. **El mercat de Vic**: la balança (la llonganissa pesa 7, hi ha un pes
+     d'1 soldat: 2 + 4).
+  8. **Les ruïnes d'Empúries**: un mosaic de 3 × 3 desordenat; tocant dues
+     peces es canvien. L'àmfora té el dibuix sencer. El mosaic es pinta un
+     sol cop en un llenç a part (`mosaic`).
+  9. **Poblet**: miralls que porten el raig de sol al disc. Segon tros.
+  10. **Els castellers de Valls**: un pilar de quatre, de baix a dalt, amb
+      les tres pistes del paper del cap de colla (Pol, Marta, Jan i la Laia
+      d'enxaneta). Si l'ordre no és bo, el pilar fa figa. L'alcalde dona la
+      clau de la porta de l'Ajuntament.
+  11. **El campanar**: la cotorra, si li dones una nespra, canta la cançó de
+      les campanes (set notes, `MEL`).
+  12. **Tàrraco**: XVII + XIX en números romans (XXXVI). Tercer tros.
+  13. **El laberint d'Horta**: un laberint de 9 × 6 que surt sempre igual
+      (`laberint`, llavor 1714), 33 passes del portal a l'estàtua d'Eros. Es
+      toca on vols anar i hi camines en línia recta, si no hi ha bardissa.
+  14. **La Sagrada Família**: el quadrat màgic d'en Subirachs de la façana
+      de la Passió (tot suma 33), amb tres números per posar (`MQ`, `QB`).
+      Hi ha una filera i una columna senceres per saber quant ha de sumar.
+  15. **La casa modernista**: només les rajoles de la rosa aguanten. Quart
+      tros.
+  16. **El castell de Miravet**: el segell, en quatre trossos que s'han de
+      posar i girar.
+- **Al principi eren deu** i l'usuari el va trobar curt i fàcil: s'hi van
+  afegir les sis del mig (Caldes, Besalú, Empúries, Valls, Horta i la Sagrada
+  Família), i algunes de les d'abans es van fer més difícils (sis dibuixos a
+  les rodes de Montserrat i l'ordre pels punts, set notes al campanar, una
+  suma més llarga a Tàrraco). Les partides desades amb deu proves (`v:1`)
+  continuen on eren (`VELLES` diu on ha anat a parar cada prova vella).
 - **Tot es fa tocant.** Tocar una cosa la mira o l'agafa. A la **motxilla**
   (sis caselles a sota), un toc agafa l'objecte i el següent toc a l'escena
   el fa servir; tocant-lo dues vegades es mira (o es llegeix: el diari i el
-  pergamí); tocant-ne un i després un altre, s'ajunten (`COMBINA`).
+  pergamí); tocant-ne un i després un altre, s'ajunten (`COMBINA`). Les
+  coses de l'escena que es mouen d'un lloc a l'altre (la gerra i el càntir,
+  les peces del mosaic) es trien amb un toc i van on toques després (`tria`).
 - **Els quatre trossos del segell surten en resoldre** la cova, Poblet,
   Tàrraco i les rajoles: mai no cal tornar enrere a buscar res.
 - **Cap prova no es pot quedar sense sortida**: tot el que s'equivoca torna
-  a començar (les palanques pugen, el número s'esborra, la rajola et torna
-  a l'entrada), i res no es gasta abans d'hora.
-- **💡 PISTA**: tres per prova, cada vegada més clares (l'última diu la
-  solució). Cada una nova treu 30 punts dels 100 de la prova (com a mínim
-  en queden 10). En acabar, fins a 600 punts més pel temps (600 menys els
-  segons partits per 6): màxim 1.600. Taula `tresor`.
+  a començar (les palanques pugen, el número s'esborra, el pilar fa figa, la
+  rajola et torna a l'entrada), i res no es gasta abans d'hora.
+- **💡 PISTA**: només **dues** per prova (n'hi havia tres, i l'última deia la
+  solució). Cada prova val 75 punts i cada pista en treu 30 (sempre en
+  queden 15). En acabar, fins a 400 punts més pel temps (400 menys els
+  segons partits per 8): màxim 16 × 75 + 400 = 1.600, que és el sostre que
+  ja tenia el Worker. Taula `tresor`.
 - El rellotge només corre jugant. **Es desa a cada toc** (`tresor-partida`),
   i el menú ofereix CONTINUA. Tornar a començar és petit i pregunta.
 - Les coses que es poden tocar són rectangles (`obj`, o una funció quan es
