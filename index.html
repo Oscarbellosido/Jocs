@@ -304,6 +304,7 @@
   </div>
   <h2 class="seccio">FORA DELS SALONS <i>del cafè, la tele, l'ordinador i el mòbil</i></h2>
   <div class="games" id="moderns">
+    <a class="btn" href="escacs.html" data-nou="2026-11-08"><img src="thumbs/escacs.png" alt="ELS ESCACS" width="240" height="240"><span>ELS ESCACS</span><em><i class="any" data-any="1475">1475</i><b class="rec" data-joc="escacs"></b></em></a>
     <a class="btn" href="botifarra.html"><img src="thumbs/botifarra.png" alt="LA BOTIFARRA" width="240" height="240"><span>LA BOTIFARRA</span><em><i class="any" data-any="1850">S. XIX</i><b class="rec" data-joc="botifarra"></b></em></a>
     <a class="btn" href="sopa.html" data-nou="2026-11-05"><img src="thumbs/sopa.png" alt="LA SOPA DE LLETRES" width="240" height="240"><span>LA SOPA DE LLETRES</span><em><i class="any">1968</i><b class="rec" data-joc="sopa"></b></em></a>
     <a class="btn" href="xifres.html"><img src="thumbs/xifres.png" alt="XIFRES" width="240" height="240"><span>XIFRES</span><em><i class="any">1972</i><b class="rec" data-joc="xifres"></b></em></a>
@@ -357,7 +358,7 @@ function pintaNous(){
   const noves=[];
   document.querySelectorAll('a.btn').forEach(a=>{
     const href=a.getAttribute('href'),id=a.querySelector('.rec').dataset.joc,nom=a.querySelector('span').textContent;
-    const nou=!!a.dataset.nou&&(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
+    const dn=(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5,nou=!!a.dataset.nou&&dn>=0&&dn<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
     // NOVA VERSIÓ: si ja hi havies jugat abans del canvi i encara no l'has tornat a obrir.
     let nv=null;
     try{nv=!nou&&typeof Records!=='undefined'&&Records.novetat?Records.novetat(href,oberts[href]&&oberts[href].t,avui):null}catch(e){}

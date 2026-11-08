@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Els Escacs</title>
+<style>
+html,body{margin:0;height:100%;background:#16120e;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#estat{flex:none;font:bold 14px monospace;letter-spacing:.06em;color:#f0d8a0;padding:2px 0 6px;text-align:center;max-width:96%;min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#estat.escac{color:#ff8a70}
+#screen{flex:1 1 0;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#c{touch-action:none;user-select:none;-webkit-user-select:none;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.7)}
+#controls{flex:none;display:flex;gap:8px;margin-top:8px;width:94%;justify-content:space-between}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:42px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#menu{width:27%;font-size:12px;color:#d8c8a8;border-color:#4a3e2e;background:#211a12}
+#desfes{width:40%;color:#f0d8a0;background:#2e2410;border-color:#7a6030}
+#abandona{width:27%;font-size:11px;color:#e09080;background:#2a1410;border-color:#6a3020}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.45;display:none;background:rgba(22,18,14,.97);border:1px solid #5a4a36;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 15px monospace;text-decoration:none;border-radius:8px;padding:10px 12px;margin:8px auto 0;max-width:290px}
+#msg .nv{color:#1a1200;background:#f0d8a0}
+#msg .nv i{font-style:normal;font-weight:normal;font-size:12px;color:#5a4420}
+#msg .colors{display:flex;gap:6px;justify-content:center;margin:6px 0 2px}
+#msg .colors a{font:12px monospace;color:#d8c8a8;text-decoration:none;border:1px solid #5a4a36;border-radius:6px;padding:5px 7px}
+#msg .colors a.sel{background:#5a4a36;color:#fff}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(22,18,14,.96);font-size:22px;letter-spacing:.2em;color:#f0e8d8;z-index:3}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:5px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span id="mode">—</span><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="estat"></div>
+  <div id="screen"><canvas id="c"></canvas><div id="pausa">PAUSA</div></div>
+  <div id="controls"><button id="menu">MENÚ</button><button id="desfes">↶ DESFÉS</button><button id="abandona">ABANDONA</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Fes escac i mat al rei de l'altre.</b> toca una peça i després on la vols moure · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+// ELS ESCACS: contra la màquina (quatre nivells) o dues persones amb el
+// mateix mòbil. Les regles són les de sempre: enroc, captura al pas,
+// coronació, escac i mat, ofegat i taules.
+// ==REGLES==
+// Les regles dels escacs i la màquina. Són funcions pures: el joc i la prova
+// (scripts/prova-escacs.mjs) fan servir les mateixes.
+//
+// El tauler és una llista de 64 caselles: 0 és a8 (dalt a l'esquerra, vist
+// per les blanques) i 63 és h1. Les peces són números: 1 peó, 2 cavall,
+// 3 alfil, 4 torre, 5 dama, 6 rei; en positiu les blanques i en negatiu les
+// negres. Una jugada és un número: d'on (6 bits), on (6 bits), a què
+// corona (3 bits) i què té d'especial (captura al pas, enroc, peó que surt
+// de dues).
+const PEO=1,CAV=2,ALF=3,TOR=4,DAM=5,REI=6;
+const E_PAS=1,E_ENROC=2,E_DOBLE=4;
+const jugada=(de,a,cor=0,esp=0)=>de|a<<6|cor<<12|esp<<15;
+const jDe=m=>m&63,jA=m=>m>>6&63,jCor=m=>m>>12&7,jEsp=m=>m>>15&7;
+const fila=s=>s>>3,col=s=>s&7;
+const NOM_COL='abcdefgh';
+const nomCasella=s=>NOM_COL[col(s)]+(8-fila(s));
+
+// Les claus de Zobrist, per reconèixer una posició repetida
+const ZOB=(()=>{let x=0x2545F491;const r=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return x>>>0};
+  const t=[];for(let i=0;i<13*64+16+9+1;i++)t.push(r());return t})();
+const zp=(p,s)=>ZOB[(p+6)*64+s];
+
+function inicial(){
+  const b=new Int8Array(64),f=[TOR,CAV,ALF,DAM,REI,ALF,CAV,TOR];
+  for(let c=0;c<8;c++){b[c]=-f[c];b[8+c]=-PEO;b[48+c]=PEO;b[56+c]=f[c]}
+  return posicio(b,1,15,-1,0,1);
+}
+function posicio(b,torn,enroc,ep,mitges,num){
+  const P={b,torn,enroc,ep,mitges,num,rei:[0,0],h:0};
+  for(let s=0;s<64;s++){if(b[s]===REI)P.rei[0]=s;if(b[s]===-REI)P.rei[1]=s}
+  P.h=hashDe(P);return P;
+}
+function hashDe(P){let h=0;for(let s=0;s<64;s++)if(P.b[s])h^=zp(P.b[s],s);
+  h^=ZOB[13*64+P.enroc];if(P.ep>=0)h^=ZOB[13*64+16+col(P.ep)];if(P.torn<0)h^=ZOB[13*64+25];return h>>>0}
+function copia(P){return {b:P.b.slice(),torn:P.torn,enroc:P.enroc,ep:P.ep,mitges:P.mitges,num:P.num,rei:P.rei.slice(),h:P.h}}
+
+const DCAV=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const DREI=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const DALF=[[-1,-1],[-1,1],[1,-1],[1,1]],DTOR=[[-1,0],[1,0],[0,-1],[0,1]];
+// les caselles on salta cada peça des de cada casella (es calcula un cop)
+const SALTS=(()=>{const mk=d=>{const t=[];for(let s=0;s<64;s++){const l=[];for(const[df,dc]of d){const f=fila(s)+df,c=col(s)+dc;if(f>=0&&f<8&&c>=0&&c<8)l.push(f*8+c)}t.push(l)}return t};return {cav:mk(DCAV),rei:mk(DREI)}})();
+const RAIGS=(()=>{const t={alf:[],tor:[]};for(const[k,d]of[['alf',DALF],['tor',DTOR]])for(let s=0;s<64;s++){t[k].push(d.map(([df,dc])=>{const l=[];let f=fila(s)+df,c=col(s)+dc;while(f>=0&&f<8&&c>=0&&c<8){l.push(f*8+c);f+=df;c+=dc}return l}))}return t})();
+
+// La casella s, l'ataca algú del color qui (1 blanques, -1 negres)?
+function atacada(P,s,qui){
+  const b=P.b;
+  const f=fila(s),c=col(s),pf=f+qui;   // els peons blancs ataquen cap amunt: venen de la fila de sota
+  if(pf>=0&&pf<8){if(c>0&&b[pf*8+c-1]===qui*PEO)return true;if(c<7&&b[pf*8+c+1]===qui*PEO)return true}
+  for(const t of SALTS.cav[s])if(b[t]===qui*CAV)return true;
+  for(const t of SALTS.rei[s])if(b[t]===qui*REI)return true;
+  for(const raig of RAIGS.alf[s])for(const t of raig){const p=b[t];if(p){if(p===qui*ALF||p===qui*DAM)return true;break}}
+  for(const raig of RAIGS.tor[s])for(const t of raig){const p=b[t];if(p){if(p===qui*TOR||p===qui*DAM)return true;break}}
+  return false;
+}
+const escac=(P,qui=P.torn)=>atacada(P,P.rei[qui>0?0:1],-qui);
+
+// totes les jugades, sense mirar si deixen el rei en escac (nomesCaptures: per a la quietud)
+function pseudo(P,nomesCaptures=false){
+  const b=P.b,t=P.torn,out=[];
+  for(let s=0;s<64;s++){const p=b[s];if(!p||(p>0)!==(t>0))continue;const a=p*t;
+    if(a===PEO){const dir=-t*8,d=s+dir,ultima=t>0?0:7,f=fila(s);
+      const afegeix=(to,esp=0)=>{if(fila(to)===ultima){for(const cor of[DAM,CAV,TOR,ALF])out.push(jugada(s,to,cor,esp))}else out.push(jugada(s,to,0,esp))};
+      if(!nomesCaptures||fila(d)===ultima){if(d>=0&&d<64&&!b[d]){afegeix(d);const inici=t>0?6:1;if(!nomesCaptures&&f===inici&&!b[d+dir])out.push(jugada(s,d+dir,0,E_DOBLE))}}
+      for(const dc of[-1,1]){const c=col(s)+dc;if(c<0||c>7)continue;const to=d+dc;if(b[to]&&(b[to]>0)!==(t>0))afegeix(to);else if(to===P.ep)out.push(jugada(s,to,0,E_PAS))}}
+    else if(a===CAV||a===REI){for(const to of(a===CAV?SALTS.cav:SALTS.rei)[s]){const q=b[to];if(q?(q>0)!==(t>0):!nomesCaptures)out.push(jugada(s,to))}}
+    else{const rs=a===ALF?RAIGS.alf[s]:a===TOR?RAIGS.tor[s]:RAIGS.alf[s].concat(RAIGS.tor[s]);
+      for(const raig of rs)for(const to of raig){const q=b[to];if(!q){if(!nomesCaptures)out.push(jugada(s,to))}else{if((q>0)!==(t>0))out.push(jugada(s,to));break}}}
+  }
+  // l'enroc: ni el rei ni les caselles per on passa poden estar atacades
+  if(!nomesCaptures){
+    const r=t>0?60:4,kb=t>0?1:4,qb=t>0?2:8;
+    if(b[r]===t*REI&&!atacada(P,r,-t)){
+      if(P.enroc&kb&&!b[r+1]&&!b[r+2]&&b[r+3]===t*TOR&&!atacada(P,r+1,-t)&&!atacada(P,r+2,-t))out.push(jugada(r,r+2,0,E_ENROC));
+      if(P.enroc&qb&&!b[r-1]&&!b[r-2]&&!b[r-3]&&b[r-4]===t*TOR&&!atacada(P,r-1,-t)&&!atacada(P,r-2,-t))out.push(jugada(r,r-2,0,E_ENROC));
+    }
+  }
+  return out;
+}
+// el que perd cada casella si s'hi mou o s'hi menja alguna cosa
+const PERD_ENROC=new Uint8Array(64).fill(15);PERD_ENROC[60]=12;PERD_ENROC[56]=13;PERD_ENROC[63]=14;PERD_ENROC[4]=3;PERD_ENROC[0]=7;PERD_ENROC[7]=11;
+// fa la jugada i torna el que cal per desfer-la
+function fes(P,m){
+  const b=P.b,de=jDe(m),a=jA(m),cor=jCor(m),esp=jEsp(m),p=b[de],t=P.torn;
+  const u={m,cap:b[a],enroc:P.enroc,ep:P.ep,mitges:P.mitges,h:P.h,capS:a};
+  let h=P.h^ZOB[13*64+P.enroc]^(P.ep>=0?ZOB[13*64+16+col(P.ep)]:0)^ZOB[13*64+25];
+  h^=zp(p,de);
+  if(esp&E_PAS){u.capS=a+t*8;u.cap=b[u.capS];b[u.capS]=0;h^=zp(u.cap,u.capS)}
+  else if(u.cap)h^=zp(u.cap,a);
+  const np=cor?cor*t:p;b[a]=np;b[de]=0;h^=zp(np,a);
+  if(esp&E_ENROC){const [tf,tt]=a>de?[de+3,de+1]:[de-4,de-1];b[tt]=b[tf];b[tf]=0;h^=zp(t*TOR,tf)^zp(t*TOR,tt)}
+  if(p*t===REI)P.rei[t>0?0:1]=a;
+  P.enroc&=PERD_ENROC[de]&PERD_ENROC[a];
+  P.ep=esp&E_DOBLE?(de+a)>>1:-1;
+  P.mitges=(p*t===PEO||u.cap)?0:P.mitges+1;
+  if(t<0)P.num++;
+  P.torn=-t;
+  h^=ZOB[13*64+P.enroc]^(P.ep>=0?ZOB[13*64+16+col(P.ep)]:0);
+  P.h=h>>>0;
+  return u;
+}
+function desfes(P,u){
+  const b=P.b,m=u.m,de=jDe(m),a=jA(m),cor=jCor(m),esp=jEsp(m);P.torn=-P.torn;const t=P.torn;
+  const p=cor?t*PEO:b[a];b[de]=p;b[a]=0;if(u.cap)b[u.capS]=u.cap;
+  if(esp&E_ENROC){const [tf,tt]=a>de?[de+3,de+1]:[de-4,de-1];b[tf]=b[tt];b[tt]=0}
+  if(p*t===REI)P.rei[t>0?0:1]=de;
+  if(t<0)P.num--;
+  P.enroc=u.enroc;P.ep=u.ep;P.mitges=u.mitges;P.h=u.h;
+}
+function legals(P){const out=[];for(const m of pseudo(P)){const u=fes(P,m);if(!escac(P,-P.torn))out.push(m);desfes(P,u)}return out}
+function perft(P,d){if(d===0)return 1;let n=0;for(const m of pseudo(P)){const u=fes(P,m);if(!escac(P,-P.torn))n+=d===1?1:perft(P,d-1);desfes(P,u)}return n}
+
+// Una posició de la notació FEN (només la fan servir les proves)
+function deFEN(fen){
+  const [pos,t,en,ep,mi,nu]=fen.split(' '),b=new Int8Array(64),L={p:PEO,n:CAV,b:ALF,r:TOR,q:DAM,k:REI};let s=0;
+  for(const ch of pos){if(ch==='/')continue;if(/\d/.test(ch)){s+=+ch;continue}const v=L[ch.toLowerCase()];b[s++]=ch===ch.toLowerCase()?-v:v}
+  let e=0;if(en.includes('K'))e|=1;if(en.includes('Q'))e|=2;if(en.includes('k'))e|=4;if(en.includes('q'))e|=8;
+  const sq=ep==='-'?-1:(8-+ep[1])*8+NOM_COL.indexOf(ep[0]);
+  return posicio(b,t==='w'?1:-1,e,sq,+(mi||0),+(nu||1));
+}
+
+// Com s'acaba: mat, ofegat, o taules (cinquanta jugades, material
+// insuficient, tres vegades la mateixa posició). vistes: quantes vegades ha
+// sortit cada posició (per la clau)
+function estat(P,vistes){
+  const l=legals(P);
+  if(!l.length)return escac(P)?{fi:'mat',guanya:-P.torn}:{fi:'ofegat'};
+  if(P.mitges>=100)return {fi:'cinquanta'};
+  if(insuficient(P))return {fi:'material'};
+  if(vistes&&(vistes[P.h]||0)>=3)return {fi:'repeticio'};
+  return null;
+}
+function insuficient(P){
+  const p=[];for(let s=0;s<64;s++){const a=Math.abs(P.b[s]);if(a&&a!==REI)p.push([a,s])}
+  if(!p.length)return true;
+  if(p.length===1&&(p[0][0]===CAV||p[0][0]===ALF))return true;
+  if(p.every(([a])=>a===ALF)){const c=p.map(([,s])=>(fila(s)+col(s))%2);return c.every(v=>v===c[0])}
+  return false;
+}
+
+// ===== LA MÀQUINA =====
+// Material i un bon lloc per a cada peça (les taules simplificades de
+// sempre: cavalls al mig, peons endavant, el rei arrecerat fins al final).
+const VAL=[0,100,320,330,500,900,0];
+const PST=(()=>{const T={
+ 1:[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
+ 2:[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+ 3:[-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+ 4:[0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0],
+ 5:[-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+ 6:[-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20],
+ 7:[-50,-40,-30,-20,-20,-30,-40,-50,-30,-20,-10,0,0,-10,-20,-30,-30,-10,20,30,30,20,-10,-30,-30,-10,30,40,40,30,-10,-30,-30,-10,30,40,40,30,-10,-30,-30,-10,20,30,30,20,-10,-30,-30,-30,0,0,0,0,-30,-30,-50,-30,-30,-30,-30,-30,-30,-50]};return T})();
+function avalua(P){
+  const b=P.b;let s=0,dames=0,menors=0;
+  for(let i=0;i<64;i++){const a=Math.abs(b[i]);if(a===DAM)dames++;else if(a===CAV||a===ALF||a===TOR)menors++}
+  const final=dames===0||(dames<=2&&menors<=2);
+  for(let i=0;i<64;i++){const p=b[i];if(!p)continue;const a=Math.abs(p),t=a===REI&&final?7:a,
+    k=p>0?i:(7-fila(i))*8+col(i);
+    s+=(p>0?1:-1)*(VAL[a]+PST[t][k])}
+  return s*P.torn;
+}
+// L'ordre en què es miren les jugades: primer menjar la peça grossa amb la
+// petita, i les coronacions
+function puntOrdre(P,m,millor){if(m===millor)return 1e6;const v=P.b[jA(m)],c=jCor(m);
+  return (v?10*VAL[Math.abs(v)]-VAL[Math.abs(P.b[jDe(m)])]:0)+(c?VAL[c]:0)+(jEsp(m)&E_PAS?900:0)}
+const MAT=100000;
+function cerca(P,opc={}){
+  const prof=opc.prof||4,temps=opc.temps||1e9,soroll=opc.soroll||0,rnd=opc.rnd||Math.random,vistes=opc.vistes||{};
+  const t0=Date.now();let nodes=0,parat=false;
+  const historia=[];   // les claus de les posicions de la branca, per les repeticions
+  const quiet=(alfa,beta,d)=>{
+    nodes++;const est=avalua(P);if(est>=beta)return est;if(est>alfa)alfa=est;if(d>6)return est;
+    const ms=pseudo(P,true).sort((x,y)=>puntOrdre(P,y)-puntOrdre(P,x));
+    for(const m of ms){const u=fes(P,m);if(escac(P,-P.torn)){desfes(P,u);continue}
+      const v=-quiet(-beta,-alfa,d+1);desfes(P,u);if(v>=beta)return v;if(v>alfa)alfa=v}
+    return alfa;
+  };
+  const nega=(d,alfa,beta,ply)=>{
+    if((++nodes&1023)===0&&Date.now()-t0>temps){parat=true}
+    if(parat)return 0;
+    if(ply>0&&(P.mitges>=100||historia.includes(P.h)||(vistes[P.h]||0)>=2))return 0;
+    const ec=escac(P);if(ec)d++;
+    if(d<=0)return opc.senseQuiet?avalua(P):quiet(alfa,beta,0);
+    const ms=pseudo(P).sort((x,y)=>puntOrdre(P,y)-puntOrdre(P,x));let n=0,millor=-Infinity;
+    historia.push(P.h);
+    for(const m of ms){const u=fes(P,m);if(escac(P,-P.torn)){desfes(P,u);continue}n++;
+      const v=-nega(d-1,-beta,-alfa,ply+1);desfes(P,u);if(parat)break;
+      if(v>millor)millor=v;if(v>alfa)alfa=v;if(alfa>=beta)break}
+    historia.pop();
+    if(!n)return ec?-MAT+ply:0;
+    return millor;
+  };
+  // a l'arrel, profunditat creixent fins que s'acaba el temps
+  let jug=legals(P);if(!jug.length)return null;if(jug.length===1)return jug[0];
+  let millor=jug[0],puntsMillor=-Infinity;
+  for(let d=1;d<=prof;d++){
+    const ord=jug.slice().sort((x,y)=>puntOrdre(P,y,millor)-puntOrdre(P,x,millor));const pts=[];
+    let alfa=-Infinity;
+    historia.push(P.h);
+    for(const m of ord){const u=fes(P,m);const v=-nega(d-1,-Infinity,-alfa+(soroll?soroll*2:0),1);desfes(P,u);if(parat)break;
+      const vs=v+(soroll?(rnd()*2-1)*soroll:0);pts.push([m,vs]);if(vs>alfa)alfa=vs}
+    historia.pop();
+    if(parat&&pts.length<ord.length){if(pts.length&&pts.sort((a,b)=>b[1]-a[1])[0][1]>puntsMillor)millor=pts[0][0];break}
+    pts.sort((a,b)=>b[1]-a[1]);millor=pts[0][0];puntsMillor=pts[0][1];
+    if(Math.abs(puntsMillor)>MAT-100)break;   // ja ha trobat un mat
+    if(Date.now()-t0>temps*.45)break;          // la següent ja no hi cabria
+  }
+  cerca.nodes=nodes;
+  return millor;
+}
+// Els quatre nivells de la màquina
+const NIVELLS=[
+  {nom:'PRINCIPIANT',punts:1,taules:0,opc:{prof:1,soroll:120,senseQuiet:true},atzar:.3},
+  {nom:'AFICIONAT',punts:3,taules:1,opc:{prof:2,soroll:35,temps:600}},
+  {nom:'JUGADOR DE CAFÈ',punts:6,taules:2,opc:{prof:4,soroll:12,temps:900}},
+  {nom:'MESTRE',punts:10,taules:4,opc:{prof:8,temps:1800}},
+];
+function jugadaMaquina(P,nivell,vistes,rnd=Math.random){
+  const N=NIVELLS[nivell];
+  if(N.atzar&&rnd()<N.atzar){const l=legals(P);return l[Math.floor(rnd()*l.length)]}
+  return cerca(P,{...N.opc,vistes,rnd});
+}
+// ==FI REGLES==
+
+const JOC='escacs',CLAU='escacs-partida',CLAU_STATS='escacs-stats',CLAU_COLOR='escacs-color';
+const $=id=>document.getElementById(id);
+const CV=$('c'),g=CV.getContext('2d');
+let K=1,DPR=1,MIDA=320;
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}}
+function tone(f,d,type='sine',vol=.2,slide=0,del=0){
+  if(!AC)return;const t=AC.currentTime+del,o=AC.createOscillator(),gg=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  gg.gain.setValueAtTime(vol,t);gg.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(gg);gg.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  toc(){aInit();tone(620,.04,'triangle',.07)},
+  mou(){aInit();tone(180,.06,'square',.06,-60);tone(900,.03,'triangle',.05)},
+  menja(){aInit();tone(140,.12,'square',.09,-70);tone(500,.05,'triangle',.07)},
+  escac(){aInit();tone(660,.12,'triangle',.12);tone(880,.18,'triangle',.12,0,.1)},
+  no(){aInit();tone(160,.18,'square',.07,-40)},
+  fi(){aInit();[523,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',.18,0,i*.12))},
+  perd(){aInit();[392,330,262].forEach((f,i)=>tone(f,.35,'triangle',.15,0,i*.16))},
+};
+
+// ===== LES PECES =====
+// Dibuixades a mà (les lletres ♔♕ dels mòbils de vegades surten com a emoji)
+const PTS={
+  cav:[[.3,.84],[.34,.6],[.25,.54],[.21,.45],[.36,.3],[.44,.16],[.49,.1],[.53,.17],[.64,.24],[.73,.4],[.74,.6],[.7,.84]],
+};
+function peca(p,x,y,s){
+  if(!p)return;const blanca=p>0,a=Math.abs(p);
+  const fons=blanca?'#f8f1e2':'#2c2620',vora=blanca?'#2a2420':'#e8dcc4';
+  g.save();g.translate(x,y);g.scale(s,s);g.lineWidth=.035;g.lineJoin='round';g.lineCap='round';g.fillStyle=fons;g.strokeStyle=vora;
+  const forma=f=>{g.beginPath();f();g.fill();g.stroke()};
+  const base=(w=.5,y0=.78)=>forma(()=>{g.moveTo(.5-w/2,.88);g.lineTo(.5+w/2,.88);g.lineTo(.5+w/2-.04,y0);g.lineTo(.5-w/2+.04,y0);g.closePath()});
+  if(a===PEO){
+    forma(()=>{g.moveTo(.36,.8);g.quadraticCurveTo(.4,.56,.45,.48);g.lineTo(.55,.48);g.quadraticCurveTo(.6,.56,.64,.8);g.closePath()});
+    forma(()=>{g.ellipse(.5,.48,.12,.04,0,0,Math.PI*2)});
+    forma(()=>{g.arc(.5,.34,.11,0,Math.PI*2)});
+    base(.42);
+  }else if(a===TOR){
+    forma(()=>{g.rect(.34,.36,.32,.42)});
+    forma(()=>{g.moveTo(.28,.36);g.lineTo(.28,.18);g.lineTo(.36,.18);g.lineTo(.36,.25);g.lineTo(.46,.25);g.lineTo(.46,.18);g.lineTo(.54,.18);g.lineTo(.54,.25);g.lineTo(.64,.25);g.lineTo(.64,.18);g.lineTo(.72,.18);g.lineTo(.72,.36);g.closePath()});
+    base(.5);
+  }else if(a===ALF){
+    forma(()=>{g.moveTo(.38,.78);g.quadraticCurveTo(.44,.66,.44,.6);g.lineTo(.56,.6);g.quadraticCurveTo(.56,.66,.62,.78);g.closePath()});
+    forma(()=>{g.moveTo(.5,.16);g.quadraticCurveTo(.68,.34,.62,.52);g.quadraticCurveTo(.5,.6,.38,.52);g.quadraticCurveTo(.32,.34,.5,.16)});
+    forma(()=>{g.arc(.5,.13,.045,0,Math.PI*2)});
+    g.beginPath();g.moveTo(.47,.42);g.lineTo(.57,.3);g.stroke();
+    forma(()=>{g.ellipse(.5,.6,.11,.035,0,0,Math.PI*2)});
+    base(.46);
+  }else if(a===CAV){
+    forma(()=>{PTS.cav.forEach(([u,v],i)=>i?g.lineTo(u,v):g.moveTo(u,v));g.closePath()});
+    g.fillStyle=vora;g.beginPath();g.arc(.44,.33,.025,0,Math.PI*2);g.fill();
+    g.beginPath();g.moveTo(.26,.47);g.lineTo(.3,.47);g.stroke();
+    g.fillStyle=fons;base(.5);
+  }else if(a===DAM||a===REI){
+    forma(()=>{g.moveTo(.34,.78);g.lineTo(.3,.36);g.lineTo(.42,.5);g.lineTo(.5,.3);g.lineTo(.58,.5);g.lineTo(.7,.36);g.lineTo(.66,.78);g.closePath()});
+    forma(()=>{g.ellipse(.5,.78,.17,.04,0,0,Math.PI*2)});
+    if(a===DAM){for(const[u,v]of[[.3,.33],[.5,.27],[.7,.33]])forma(()=>{g.arc(u,v,.045,0,Math.PI*2)})}
+    else{forma(()=>{g.rect(.47,.12,.06,.18)});forma(()=>{g.rect(.41,.17,.18,.06)})}
+    base(.5,.8);
+  }
+  g.restore();
+}
+
+// ===== LA PARTIDA =====
+// Z: el que es desa. P: la posició, que es refà amb la llista de jugades.
+let Z=null,P=null,vistes={},sel=-1,destins=[],corona=null,pensant=false,anim=null,paused=false,potTancar=false;
+const llegeix=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return v==null?d:v}catch(e){return d}};
+const escriu=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix(CLAU_STATS,null)||{punts:0,n:NIVELLS.map(()=>({g:0,t:0,p:0})),dos:0};
+function nova(mode,nivell,jo){return {v:1,mode,nivell,jo,hist:[],desfet:false,fi:null,comptat:false,nou:false,comencada:true}}
+function refa(){P=inicial();vistes={[P.h]:1};for(const m of Z.hist){fes(P,m);vistes[P.h]=(vistes[P.h]||0)+1}}
+function desa(){if(Z&&Z.comencada)escriu(CLAU,Z)}
+function carrega(){const d=llegeix(CLAU,null);if(d&&d.v===1&&Array.isArray(d.hist))return d;return null}
+const maquina=()=>Z&&Z.mode==='maquina'&&!Z.fi&&P.torn!==Z.jo;
+const jugant=()=>Z&&Z.comencada&&!Z.fi&&!paused&&$('msg').style.display!=='block';
+const girat=()=>Z&&Z.mode==='maquina'&&Z.jo<0;
+
+function aplica(m,animat=true){
+  const cap=P.b[jA(m)]||(jEsp(m)&E_PAS);
+  if(animat)anim={m,p:jCor(m)?jCor(m)*P.torn:P.b[jDe(m)],t0:performance.now()};
+  fes(P,m);Z.hist.push(m);vistes[P.h]=(vistes[P.h]||0)+1;
+  sel=-1;destins=[];corona=null;
+  const e=estat(P,vistes);
+  if(e){Z.fi=e;Z.nou=true;desa();setTimeout(acaba,650)}
+  else if(escac(P))so.escac();else if(cap)so.menja();else so.mou();
+  desa();pintaEstat();
+}
+function juga(){
+  if(!maquina()||pensant||paused)return;
+  pensant=true;pintaEstat();
+  setTimeout(()=>{
+    const t0=performance.now();const m=jugadaMaquina(copia(P),Z.nivell,vistes);
+    // que la màquina no mogui de cop: com a mínim mig segon
+    setTimeout(()=>{pensant=false;if(Z&&!Z.fi&&m!=null&&maquina())aplica(m)},Math.max(0,450-(performance.now()-t0)));
+  },60);
+}
+function tocaCasella(s){
+  if(!jugant()||pensant||maquina())return;
+  const p=P.b[s],meva=p&&(p>0)===(P.torn>0);
+  if(sel>=0){
+    const ms=destins.filter(m=>jA(m)===s);
+    if(ms.length>1){corona={s,ms};so.toc();return}
+    if(ms.length===1){aplica(ms[0]);return}
+  }
+  if(meva){sel=s;destins=legals(P).filter(m=>jDe(m)===s);so.toc();if(!destins.length)so.no()}
+  else{sel=-1;destins=[]}
+}
+function desfes1(){
+  if(!Z||!Z.hist.length||pensant)return false;
+  Z.hist.pop();if(Z.mode==='maquina'){while(Z.hist.length&&(Z.hist.length%2===0?1:-1)!==Z.jo)Z.hist.pop();Z.desfet=true}
+  Z.fi=null;sel=-1;destins=[];corona=null;anim=null;refa();desa();pintaEstat();so.toc();return true;
+}
+
+// ===== EL FINAL =====
+const PER_QUE={mat:'escac i mat',ofegat:'el rei està ofegat: no es pot moure i no està en escac',cinquanta:'cinquanta jugades sense menjar res ni moure cap peó',material:'no queda prou material per fer mat',repeticio:'la mateixa posició, tres vegades',abandona:'abandona'};
+function resultat(){
+  const f=Z.fi;if(!f)return null;
+  const taules=!f.guanya;
+  if(Z.mode==='dos')return {taules,titol:taules?'TAULES':(f.guanya>0?'GUANYEN LES BLANQUES':'GUANYEN LES NEGRES')};
+  const guanyo=f.guanya===Z.jo;
+  return {taules,guanyo,titol:taules?'TAULES':guanyo?'HAS GUANYAT!':'HA GUANYAT LA MÀQUINA'};
+}
+function acaba(){
+  if(!Z||!Z.fi)return;
+  const r=resultat();
+  if(!Z.comptat){Z.comptat=true;Z.guany=0;
+    if(Z.mode==='dos')stats.dos++;
+    else{const s=stats.n[Z.nivell];if(r.taules)s.t++;else if(r.guanyo)s.g++;else s.p++;
+      if(!Z.desfet){Z.guany=r.taules?NIVELLS[Z.nivell].taules:r.guanyo?NIVELLS[Z.nivell].punts:0;stats.punts+=Z.guany}}
+    escriu(CLAU_STATS,stats);desa();
+  }
+  if(r.taules||r.guanyo||Z.mode==='dos')so.fi();else so.perd();
+  pintaHud();pintaEstat();finalPartida();
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!Z||!Z.fi){msg('<div style="color:#f0d8a0">ELS ESCACS</div><small>la partida encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!(Z&&Z.comencada);return}
+    const r=resultat(),f=Z.fi,N=NIVELLS[Z.nivell];
+    const motiu=f.fi==='abandona'?(Z.mode==='dos'?(f.guanya>0?'les negres abandonen':'les blanques abandonen'):'has abandonat'):PER_QUE[f.fi];
+    let punts='';
+    if(Z.mode==='maquina'){
+      if(Z.guany)punts='<div style="font-size:30px;font-weight:bold;color:#f0d8a0">+'+Z.guany+'</div><small style="color:#c8b898">'+(Z.guany===1?'punt':'punts')+' contra el '+N.nom.toLowerCase()+' · en portes '+stats.punts+'</small>';
+      else if(Z.desfet&&(r.guanyo||r.taules))punts='<small style="color:#c8a080">Has desfet alguna jugada: aquesta partida no puntua.</small>';
+      else punts='<small style="color:#a89878">en portes '+stats.punts+'</small>';
+    }
+    msg('<div style="color:'+(r.guanyo||Z.mode==='dos'?'#7dff9b':r.taules?'#f0d8a0':'#ff9a80')+'">'+r.titol+'</div><small style="color:#d8c8a8">'+motiu+'</small>'+punts+
+      '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>'+
+      '<a href="#" class="bt nv" id="f-altra">UNA ALTRA PARTIDA</a><a href="#" class="bt" id="f-menu" style="color:#d8c8a8;border:1px solid #5a4a36">TRIA UN ALTRE NIVELL</a>'+Records.peuFinal('o toca per tancar i mirar el tauler'));
+    potTancar=true;
+    enllac('f-altra',()=>comenca(Z.mode,Z.nivell,Z.mode==='maquina'?triaColor():1));enllac('f-menu',menu);
+    let t;
+    if(Z.nou&&Z.guany>0){t=await Records.fiPartida(JOC,stats.punts);Z.nou=false;desa()}
+    else{Z.nou=false;desa();t={html:Records.taulaHTML(await Records.llista(JOC),null,JOC),posicio:0}}
+    const el=$('taula');if(el)el.innerHTML=t.html+(t.posicio===1?'<div style="color:#ff0;font-size:13px">ETS EL NÚMERO 1!</div>':t.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+t.posicio+'!</div>':'');
+    Records.pintaMillor(JOC,$('best'));
+  }finally{enFinal=false}
+}
+
+// ===== EL MENÚ =====
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();so.toc();fn()})}
+const triaColor=()=>{const c=llegeix(CLAU_COLOR,1);return c===0?(Math.random()<.5?1:-1):c};
+function menu(){
+  desa();
+  const mig=Z&&Z.comencada&&!Z.fi&&Z.hist.length>0,col=llegeix(CLAU_COLOR,1);
+  const desc=mig?(Z.mode==='dos'?'dos jugadors':'contra el '+NIVELLS[Z.nivell].nom.toLowerCase())+' · jugada '+Math.ceil((Z.hist.length+1)/2):'';
+  msg('<div style="color:#f0d8a0;letter-spacing:.12em">ELS ESCACS</div>'+
+    '<small style="color:#c8b898">El primer text amb les regles d\'ara, amb la dama que es mou tant com vol, és el «Scachs d\'amor», escrit en català a València cap al 1475.</small>'+
+    (mig?'<a href="#" class="bt nv" id="m-cont">CONTINUA ▸</a><small style="color:#a89878;margin-top:2px">'+desc+'</small>':'')+
+    '<small style="color:#f0d8a0;margin-top:12px">CONTRA LA MÀQUINA · jugues amb</small>'+
+    '<div class="colors">'+[[1,'BLANQUES'],[-1,'NEGRES'],[0,"A L'ATZAR"]].map(([v,t])=>'<a href="#" id="c'+(v+1)+'"'+(col===v?' class="sel"':'')+'>'+t+'</a>').join('')+'</div>'+
+    NIVELLS.map((N,i)=>{const s=stats.n[i];return '<a href="#" class="bt nv" id="n'+i+'">'+N.nom+' <i>· '+N.punts+(N.punts===1?' punt':' punts')+(s.g?' · '+s.g+(s.g===1?' guanyada':' guanyades'):'')+'</i></a>'}).join('')+
+    '<a href="#" class="bt" id="m-dos" style="color:#d8c8a8;border:1px solid #5a4a36;margin-top:12px">DOS JUGADORS, AMB EL MATEIX MÒBIL</a>'+
+    '<small style="color:#8a7a62;margin-top:10px">Guanyant la màquina sumes punts per a la taula; fent taules, menys. Si desfàs alguna jugada, aquella partida no puntua. Portes '+stats.punts+(stats.punts===1?' punt.':' punts.')+'</small>');
+  enllac('m-cont',continua);
+  for(const v of[1,-1,0])enllac('c'+(v+1),()=>{escriu(CLAU_COLOR,v);menu()});
+  NIVELLS.forEach((_,i)=>enllac('n'+i,()=>{const f=()=>comenca('maquina',i,triaColor());mig?segur(f):f()}));
+  enllac('m-dos',()=>{const f=()=>comenca('dos',0,1);mig?segur(f):f()});
+}
+function segur(f){
+  msg('<div style="color:#ffb070">SEGUR?</div><small style="color:#d8c8a8">Deixaries la partida que portes a mitges.</small>'+
+    '<a href="#" class="bt nv" id="s-no">NO, TORNA ENRERE</a><a href="#" id="s-si" style="display:block;margin-top:14px;font:12px monospace;color:#c08060">sí, comença\'n una de nova</a>');
+  enllac('s-no',menu);enllac('s-si',f);
+}
+function comenca(mode,nivell,jo){Z=nova(mode,nivell,jo);refa();sel=-1;destins=[];corona=null;anim=null;pensant=false;desa();hideMsg();pintaHud();pintaEstat()}
+function continua(){hideMsg();pintaEstat()}
+function abandona(){
+  if(!Z||Z.fi||!Z.comencada||!Z.hist.length)return;
+  msg('<div style="color:#ffb070">ABANDONES?</div><small style="color:#d8c8a8">'+(Z.mode==='dos'?'Abandonen les '+(P.torn>0?'blanques':'negres')+', i la partida s\'acaba.':'La partida comptarà com a perduda.')+'</small>'+
+    '<a href="#" class="bt nv" id="a-no">NO, SEGUEIXO</a><a href="#" id="a-si" style="display:block;margin-top:14px;font:12px monospace;color:#c08060">sí, abandono</a>');
+  enllac('a-no',hideMsg);
+  enllac('a-si',()=>{hideMsg();Z.fi={fi:'abandona',guanya:Z.mode==='dos'?-P.torn:-Z.jo};Z.nou=true;desa();acaba()});
+}
+
+// ===== LA PANTALLA =====
+function pintaHud(){
+  $('mode').textContent=!Z?'—':Z.mode==='dos'?'DOS JUGADORS':NIVELLS[Z.nivell].nom;
+  $('score').textContent=stats.punts;Records.marcador(JOC,$('best'),stats.punts);
+}
+function pintaEstat(){
+  const e=$('estat');if(!Z||!P){e.textContent='';return}
+  let t,ec=false;
+  if(Z.fi){const r=resultat();t=r.titol}
+  else if(Z.mode==='maquina'){ec=escac(P);t=P.torn===Z.jo?(ec?'ESCAC! Et toca a tu':'Et toca a tu, amb les '+(Z.jo>0?'blanques':'negres')):(ec?'Escac a la màquina... pensa':'La màquina pensa...')}
+  else{ec=escac(P);t=(ec?'ESCAC! ':'')+'Mouen les '+(P.torn>0?'blanques':'negres')}
+  e.textContent=t;e.className=ec?'escac':'';
+}
+function mesura(){
+  const sc=$('screen').getBoundingClientRect();
+  MIDA=Math.max(200,Math.floor(Math.min(sc.width,sc.height)/8)*8);DPR=Math.min(3,window.devicePixelRatio||1);
+  CV.style.width=MIDA+'px';CV.style.height=MIDA+'px';CV.width=Math.round(MIDA*DPR);CV.height=Math.round(MIDA*DPR);
+}
+addEventListener('resize',mesura);
+try{new ResizeObserver(()=>mesura()).observe($('screen'))}catch(e){}
+// la casella s es dibuixa a (x, y)
+const aPantalla=s=>{const v=girat()?63-s:s;return [col(v)*MIDA/8,fila(v)*MIDA/8]};
+const deLaPantalla=(x,y)=>{const c=Math.floor(x/(MIDA/8)),f=Math.floor(y/(MIDA/8));if(c<0||c>7||f<0||f>7)return -1;const v=f*8+c;return girat()?63-v:v};
+function dibuixa(now){
+  g.setTransform(DPR,0,0,DPR,0,0);const q=MIDA/8;
+  for(let s=0;s<64;s++){const[x,y]=aPantalla(s);g.fillStyle=(fila(s)+col(s))%2?'#b58863':'#f0d9b5';g.fillRect(x,y,q,q)}
+  if(Z&&Z.hist.length){const m=Z.hist[Z.hist.length-1];for(const s of[jDe(m),jA(m)]){const[x,y]=aPantalla(s);g.fillStyle='rgba(205,210,60,.45)';g.fillRect(x,y,q,q)}}
+  if(sel>=0){const[x,y]=aPantalla(sel);g.fillStyle='rgba(90,160,90,.55)';g.fillRect(x,y,q,q)}
+  if(P&&escac(P)&&!(Z&&Z.fi&&Z.fi.fi!=='mat')){const[x,y]=aPantalla(P.rei[P.torn>0?0:1]);const gr=g.createRadialGradient(x+q/2,y+q/2,q*.1,x+q/2,y+q/2,q*.6);gr.addColorStop(0,'rgba(255,40,20,.9)');gr.addColorStop(1,'rgba(255,40,20,0)');g.fillStyle=gr;g.fillRect(x,y,q,q)}
+  g.font='bold '+Math.round(q*.2)+'px monospace';
+  for(let i=0;i<8;i++){
+    const sf=girat()?7-i:i;
+    g.fillStyle=i%2?'#f0d9b5':'#b58863';g.textAlign='left';g.textBaseline='top';g.fillText(String(8-sf),2,i*q+2);
+    g.fillStyle=(i+1)%2?'#f0d9b5':'#b58863';g.textAlign='right';g.textBaseline='bottom';g.fillText(NOM_COL[girat()?7-i:i],(i+1)*q-2,MIDA-1);
+  }
+  if(!P)return;
+  let ap=null,t=0;if(anim){t=Math.min(1,(now-anim.t0)/180);if(t>=1)anim=null;else ap=jA(anim.m)}
+  for(let s=0;s<64;s++){if(s===ap)continue;const[x,y]=aPantalla(s);peca(P.b[s],x,y,q)}
+  for(const m of destins){const[x,y]=aPantalla(jA(m));g.fillStyle='rgba(30,60,30,.35)';
+    if(P.b[jA(m)]){g.lineWidth=q*.07;g.strokeStyle='rgba(30,60,30,.45)';g.beginPath();g.arc(x+q/2,y+q/2,q*.44,0,Math.PI*2);g.stroke()}
+    else{g.beginPath();g.arc(x+q/2,y+q/2,q*.15,0,Math.PI*2);g.fill()}}
+  if(ap!=null){const[x0,y0]=aPantalla(jDe(anim.m)),[x1,y1]=aPantalla(ap),e=1-(1-t)*(1-t);peca(anim.p,x0+(x1-x0)*e,y0+(y1-y0)*e,q)}
+  if(corona){g.fillStyle='rgba(0,0,0,.55)';g.fillRect(0,0,MIDA,MIDA);const w=q*1.3,x0=MIDA/2-2*w,y0=MIDA/2-w/2;
+    g.fillStyle='#f0e4c8';g.fillRect(x0-6,y0-26,4*w+12,w+32);g.fillStyle='#3a2a1a';g.font='bold 12px monospace';g.textAlign='center';g.textBaseline='middle';g.fillText('CORONES AMB...',MIDA/2,y0-13);
+    [DAM,TOR,ALF,CAV].forEach((c,i)=>{g.fillStyle=i%2?'#e2cfa8':'#d6c096';g.fillRect(x0+i*w,y0,w,w);peca(c*P.torn,x0+i*w+(w-q)/2,y0+(w-q)/2,q)})}
+  if(paused){g.fillStyle='rgba(22,18,14,.97)';g.fillRect(0,0,MIDA,MIDA)}
+}
+function tocaCorona(x,y){
+  const q=MIDA/8,w=q*1.3,x0=MIDA/2-2*w,y0=MIDA/2-w/2;
+  if(y<y0||y>y0+w||x<x0||x>x0+4*w){corona=null;sel=-1;destins=[];return}
+  const c=[DAM,TOR,ALF,CAV][Math.floor((x-x0)/w)],m=corona.ms.find(m=>jCor(m)===c);if(m)aplica(m);
+}
+
+// ===== TOCS =====
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  const r=CV.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
+  if(!jugant()){so.toc();return}
+  if(corona){tocaCorona(x,y);return}
+  const s=deLaPantalla(x,y);if(s<0)return;tocaCasella(s);
+});
+$('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();so.toc();menu()});
+$('desfes').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}if(!Z||$('msg').style.display==='block'&&!Z.fi)return;
+  if(Z.fi)hideMsg();if(!desfes1())so.no()});
+$('abandona').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();so.toc();if(paused){posaPausa(false);return}abandona()});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';if(paused)desa()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)desa()});
+addEventListener('pagehide',desa);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape')posaPausa(!paused)});
+
+function loop(now){
+  if(Z&&!Z.fi&&maquina()&&!pensant&&!paused&&$('msg').style.display!=='block')juga();
+  dibuixa(now);requestAnimationFrame(loop);
+}
+
+Z=carrega();
+if(Z)refa();else{P=inicial()}
+mesura();pintaHud();pintaEstat();Records.pintaMillor(JOC,$('best'));
+menu();
+requestAnimationFrame(loop);
+
+// En entrar, la taula de rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

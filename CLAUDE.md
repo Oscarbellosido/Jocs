@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i dinou que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,10 +53,11 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I dinou que no són de saló
+### I vint que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
+| `escacs.html` | Els Escacs (contra la màquina, a quatre nivells, o dos al mateix mòbil) | 1475 |
 | `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
 | `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
@@ -1028,6 +1029,49 @@ Coses que no s'han de desfer sense entendre-les:
   Amb 30 temes, cal anar-ne afegint.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
+
+## Els Escacs: contra la màquina o dos al mateix mòbil
+
+L'usuari va preguntar si es podien fer. És **el joc de tota la vida**, amb el
+seu nom. L'any (1475) és el del *Scachs d'amor*, escrit en català a València:
+el primer text conegut amb les regles d'ara, amb la dama que es mou tant com
+vol. **No hi ha problema del dia**: l'usuari no ho va voler, que no tothom en
+sap prou.
+
+- **Contra la màquina**, amb blanques, negres o a l'atzar, a quatre nivells
+  (`NIVELLS`): PRINCIPIANT, AFICIONAT, JUGADOR DE CAFÈ i MESTRE. Guanyar-la
+  dona 1, 3, 6 o 10 punts, i fer-hi taules 0, 1, 2 o 4.
+- **Dos jugadors amb el mateix mòbil**: no compta per a res i el tauler no
+  es gira: les blanques sempre a baix, i es passen el mòbil.
+- **La taula (`escacs`) són els punts acumulats**, cadascú una sola vegada
+  (`UNA_PER_NOM`), i s'envia quan en guanyes.
+- **DESFÉS** torna enrere la teva jugada i la de la màquina (a dos
+  jugadors, només una). Es pot, però **aquella partida ja no puntua**
+  (`desfet`): si no, desfent fins a trobar la bona, qualsevol guanyaria el
+  mestre. El menú ho diu.
+- Un toc a la peça ensenya on pot anar (punts), i un altre toc a la casella
+  la mou. Coronant, pregunta a què. ABANDONA pregunta abans.
+- **Es desa a cada jugada** (`escacs-partida`) i el menú ofereix CONTINUA.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **El motor és entre `==REGLES==` i `==FI REGLES==`**, i el fan servir el
+  joc i la prova. Tauler de 64 caselles, jugades en un enter, fer i desfer
+  sense copiar el tauler. **Les regles s'han comprovat contant totes les
+  partides possibles** (`perft`) des de cinc posicions conegudes, que tenen
+  els números publicats: si una regla (enroc, al pas, coronació, escacs a la
+  descoberta) estigués malament, els números no quadrarien.
+- **La màquina** busca amb alfa-beta, mira les captures fins al final
+  (`quiet`) i pensa a cada nivell un temps màxim: el mestre, com a molt uns
+  dos segons, que al mòbil esperar més cansa. Els nivells fàcils hi afegeixen
+  **soroll** a la valoració, i el principiant de vegades tira a l'atzar: si
+  no, jugaria massa bé o sempre igual. Calibrat: cada nivell guanya
+  l'anterior.
+- **Taules**: ofegat, material insuficient, cinquanta jugades sense menjar ni
+  moure peons i la mateixa posició tres vegades (`vistes`, amb el resum de
+  cada posició). La màquina també ho sap, i no repeteix si va guanyant.
+- **El tauler es dibuixa amb vectors** (`peca`), sense imatges ni lletres
+  d'escacs Unicode, que a cada mòbil surten diferents.
 
 ## La Botifarra: el joc de cartes de casa
 
@@ -2120,6 +2164,12 @@ comproven el comportament.
   igual per a tothom i no repeteixi tema, i que es jugui amb el dit: lliscant,
   tocant, del revés, la pista, la pausa, desar i continuar, acabar-la (va a la
   taula del dia una vegada), la pràctica i que hi capiga a 320 px.
+- `node scripts/prova-escacs.mjs` — les regles dels Escacs (comptant totes
+  les partides possibles des de cinc posicions conegudes, l'enroc, al pas,
+  coronar, el mat, l'ofegat i les taules), que la màquina vegi el mat i que
+  cada nivell guanyi l'anterior, i que es jugui tocant: moure, desfer, desar
+  i continuar, guanyar (i els punts a la taula), dos jugadors, coronar,
+  abandonar, jugar amb negres i que hi capiga a 320 px.
 - `node scripts/prova-botifarra.mjs` — les regles de La Botifarra (l'ordre,
   els punts, seguir, matar, fallar i sobrefallar), que la màquina no faci mai
   una jugada prohibida i jugui millor que l'atzar, que la del dia tingui les

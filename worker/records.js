@@ -72,12 +72,13 @@ const JOCS = {
   botifarra:         99999,   // les partides lliures guanyades, acumulades
   poble:             99999,   // els pobles del dia endevinats, acumulats
   tresor:             1600,   // 16 proves de 75 (30 menys per pista) i fins a 400 pel temps
+  escacs:           100000,   // punts acumulats guanyant la màquina (1, 3, 6 o 10 per partida)
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble', 'escacs']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -143,6 +144,7 @@ const FITXA = {
   botifarra:       ['La Botifarra',    'a la Botifarra',     'botifarra.html'],
   poble:           ['El Poble del Dia', 'al Poble del Dia',  'poble.html'],
   tresor:          ['El Tresor dels Templers', 'al Tresor dels Templers', 'tresor.html'],
+  escacs:          ['Els Escacs', 'als Escacs', 'escacs.html'],
 };
 
 const cors = {
@@ -201,7 +203,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats', escacs: 'punts' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
