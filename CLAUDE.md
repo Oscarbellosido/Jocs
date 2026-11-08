@@ -1869,6 +1869,16 @@ primera pàgina arriba amb `#tgWebAppData` a l'adreça, i ho apunta a
 `sessionStorage` per quan passes a un joc. Fora de Telegram no es carrega res
 de nou. És l'únic codi de fora que carrega la col·lecció.
 
+**Cada avís del bot surt un sol cop encara que arribin peticions alhora**
+(`reclama`). La portada, en obrir-se, en fa tres de cop (la lliga, els rècords
+i la visita) i el grup rebia cada missatge del matí tres vegades: apuntar-ho
+al KV abans d'enviar no n'hi havia prou, perquè les tres llegien abans que
+cap escrivís. Ara cada petició s'apunta amb un número seu, espera mig segon
+llarg (`ESPERA_RECLAMA`, 1,5 s) i torna a mirar: només avisa la que ha quedat
+apuntada. Ho fan els podis d'ahir (una sola marca per a tots,
+`telegram:anunciat:ahir`), la lliga i els jocs nous. La prova del Worker ho
+reprodueix amb un KV que triga uns mil·lisegons a respondre.
+
 **Els jocs nous**: quan es torna a enganxar el Worker amb un joc nou a
 `FITXA` o a `ANUNCIA_DIARI`, la primera visita fa que el bot ho digui al
 grup («🆕 Hi ha un joc nou a la col·lecció: ...», amb un botó per jugar-hi)

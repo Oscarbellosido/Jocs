@@ -3,7 +3,7 @@ import worker from '../worker/records.js';
 // KV de mentida, per provar sense desplegar res
 const store = new Map(), meta = new Map();
 let escriptures = 0;
-const env = { RECORDS: {
+const env = { ESPERA_RECLAMA: 30, RECORDS: {
   get: async k => (store.has(k) ? store.get(k) : null),
   getWithMetadata: async k => (store.has(k) ? { value: store.get(k), metadata: meta.get(k) || null } : { value: null, metadata: null }),
   put: async (k, v, o) => { escriptures++; store.set(k, v); if (o && o.metadata) meta.set(k, o.metadata); else meta.delete(k); },
@@ -112,7 +112,7 @@ globalThis.fetch = async (u, opts) => {
   return new Response(JSON.stringify({ ok: true, result: true }));
 };
 const TOKEN = '123456:clau-de-prova';
-const envTg = { RECORDS: env.RECORDS, TELEGRAM_TOKEN: TOKEN };
+const envTg = { RECORDS: env.RECORDS, TELEGRAM_TOKEN: TOKEN, ESPERA_RECLAMA: 30 };
 const crida = async (e, method, path, body, capcaleres = {}) => {
   const r = await worker.fetch(new Request('https://jocs-records.x.dev' + path, {
     method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...capcaleres },
@@ -363,6 +363,7 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.delete('telegram:anunciat:trencaclosques_dia');
   store.delete('telegram:anunciat:botifarra_dia');
   store.delete('telegram:anunciat:poble_dia');
+  store.delete('telegram:anunciat:ahir');
   store.set('joc:botifarra_dia:' + madrid(1), JSON.stringify([{ n: 'JAU', p: 1234, t: 1 }]));
   store.set('joc:poble_dia:' + madrid(1), JSON.stringify([{ n: 'POB', p: 800, t: 1 }, { n: 'CRE', p: 320, t: 2 }]));
   store.set('joc:trencaclosques_dia:' + madrid(1), JSON.stringify([{ n: 'MAR', p: 3600 - 192, t: 1 }]));
@@ -402,6 +403,17 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/ram');
   ok(missatges().length === 0, 'i només un cop: la segona vegada ja no avisa');
+  // la portada fa tres peticions de cop en obrir-se: el grup rebia cada
+  // missatge tres vegades
+  for (const k of [...store.keys()]) if (k.startsWith('telegram:anunciat:') && k !== 'telegram:anunciat:lliga') store.delete(k);
+  enviats.length = 0;
+  // el KV de debò triga uns mil·lisegons a respondre: així les tres llegeixen abans que cap escrigui
+  const lent = f => async (...a) => { await new Promise(r => setTimeout(r, 4)); return f(...a); };
+  const envLent = { ...envTg, RECORDS: Object.fromEntries(Object.entries(env.RECORDS).map(([k, f]) => [k, lent(f)])) };
+  await Promise.all([crida(envLent, 'GET', '/lliga'), crida(envLent, 'GET', '/records'), crida(envLent, 'POST', '/visita', { a: 'aparell77', j: 'index' })]);
+  const quants = missatges().filter(x => /Impremta/.test(x.cos.text)).length;
+  ok(quants === 1 && missatges().length === 8, `tres peticions alhora només avisen una vegada (${quants} de La Impremta, ${missatges().length} en total)`);
+  for (const k of [...store.keys()]) if (k.startsWith('visita:')) { store.delete(k); meta.delete(k); }
   store.set('joc:impremta_dia:' + madrid(0), JSON.stringify([{ n: 'TRA', p: 900, t: 1 }]));
   store.set('joc:gofra_dia:' + madrid(0), JSON.stringify([{ n: 'BOB', p: 4, t: 1 }]));
   enviats.length = 0;

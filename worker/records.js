@@ -300,11 +300,28 @@ function diaMadrid(enrere = 0) {
   catch { return d.toISOString().slice(0, 10); }
 }
 const MEDALLES = ['🥇', '🥈', '🥉'];
+// Dues peticions que arriben alhora llegien totes dues que encara no s'havia
+// avisat, i avisaven totes dues. La portada, en obrir-se, en fa tres de cop
+// (la lliga, els rècords i la visita), i el grup rebia cada missatge del matí
+// tres vegades. Apuntar-ho abans d'enviar no n'hi havia prou: les tres
+// llegien abans que cap escrivís. Ara cada petició s'apunta amb un número
+// seu, espera una mica i torna a mirar: només avisa la que ha quedat apuntada
+// (la darrera que ha escrit), i les altres ho deixen córrer.
+const ESPERA_RECLAMA = 1500;
+async function reclama(env, marca, valor) {
+  const ara = await env.RECORDS.get(marca);
+  if (ara === valor || (ara && ara.startsWith(valor + '|'))) return false;
+  const meu = valor + '|' + Math.random().toString(36).slice(2, 10);
+  await env.RECORDS.put(marca, meu);
+  await new Promise(r => setTimeout(r, env.ESPERA_RECLAMA ?? ESPERA_RECLAMA));
+  return await env.RECORDS.get(marca) === meu;
+}
 async function anunciaAhir(env) {
   if (!env.TELEGRAM_TOKEN) return;
   const xat = await env.RECORDS.get('telegram:xat');
   if (!xat) return;
   const ahir = diaMadrid(1);
+  if (!await reclama(env, 'telegram:anunciat:ahir', ahir)) return;
   for (const [joc, [nom, fitxer, forma]] of Object.entries(ANUNCIA_DIARI)) {
     const marca = 'telegram:anunciat:' + joc;
     if (await env.RECORDS.get(marca) === ahir) continue;
@@ -341,7 +358,8 @@ async function anunciaNous(env) {
   const fets = vell ? JSON.parse(vell) : [...tots.keys()].filter(f => !ESTRENES.includes(f));
   const nous = [...tots.keys()].filter(f => !fets.includes(f));
   if (!nous.length) { if (!vell) await env.RECORDS.put('telegram:jocs-anunciats', JSON.stringify(fets)); return; }
-  // s'apunta abans d'enviar, que dues visites alhora no l'anunciïn dues vegades
+  // dues visites alhora no l'han d'anunciar dues vegades
+  if (!await reclama(env, 'telegram:anunciat:nous', nous.join(','))) return;
   await env.RECORDS.put('telegram:jocs-anunciats', JSON.stringify([...fets, ...nous]));
   const noms = nous.map(f => '<b>' + esc(tots.get(f)) + '</b>');
   const llista = noms.length === 1 ? noms[0] : noms.slice(0, -1).join(', ') + ' i ' + noms[noms.length - 1];
@@ -430,8 +448,7 @@ async function anunciaLliga(env) {
   if (!xat) return;
   const passada = sumaDies(dillunsDe(diaMadrid(0)), -7);
   const marca = 'telegram:anunciat:lliga';
-  if (await env.RECORDS.get(marca) === passada) return;
-  await env.RECORDS.put(marca, passada);
+  if (!await reclama(env, marca, passada)) return;
   const l = await lliga(env, passada, sumaDies(passada, 6));
   if (!l.classificacio.length) return;
   const g = l.classificacio[0];
