@@ -9,6 +9,7 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 
 const ARREL = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -313,7 +314,9 @@ for (const [w, h] of MIDES) {
   be = toast && /^NOVA VERSIÓ.*diagonal/.test(toast.t) && toast.cap && !toast2 && !m.noves.includes('sopa') && !m.avis.includes('sopa') && !errors.length;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} en obrir-lo, el rètol diu què ha canviat, i només la primera vegada (${toast && toast.t})` + (errors.length ? ' ' + errors[0] : ''));
-  await p.clock.setFixedTime(new Date('2026-11-21T12:00:00Z'));
+  // quinze dies després de la novetat més recent de records.js
+  const dates = [...readFileSync(resolve(ARREL, 'records.js'), 'utf8').matchAll(/\['(\d{4}-\d\d-\d\dT\d\d:\d\dZ)'/g)].map(x => Date.parse(x[1]));
+  await p.clock.setFixedTime(new Date(Math.max(...dates) + 15 * 864e5));
   await p.reload(); await p.waitForTimeout(200);
   m = await mira();
   be = m.noves === '' && m.avis === '';
