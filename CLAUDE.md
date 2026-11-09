@@ -1370,7 +1370,9 @@ trencaclosques. N'hi ha dos:
   amb una app d'IA (Gemini) i va pujar al repositori, en tres tandes de deu.
   Surten una cada dia del #14 (7 de novembre del 2026) al #43 (6 de
   desembre), i després tornen els dibuixats. **La tercera tanda és de
-  Taradell** (#34 a #43, del 27 de novembre al 6 de desembre) i, a
+  Taradell** i l'usuari la va voler abans que la resta: va del #17 al #26
+  (del 10 al 19 de novembre), just després de les tres que ja havien
+  sortit (#14 a #16, que no es van moure). A
   diferència de les altres, les fotos eren **quadrades**: aquells dies el
   trencaclosques fa **6 × 6 peces** (el tercer camp de `FOTOS`, que llegeix
   `graellaFoto`). Es van retallar 44 px per sota, on hi havia la marca de

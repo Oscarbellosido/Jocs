@@ -205,21 +205,24 @@ function escenaDe(n){
 // retallades a 7 per 4 (la marca de l'app queda fora) i reduïdes a 980 × 560.
 // Per afegir-ne: posar-les al final de FOTOS, que les que ja han sortit no
 // canviïn de dia.
-const FOTOS=[['montserrat','Montserrat'],['delta',"el delta de l'Ebre"],['pedraforca','el Pedraforca'],['cap-de-creus','el cap de Creus'],
-  ['fageda',"la Fageda d'en Jordà"],['mont-rebei','el congost de Mont-rebei'],['penedes','les vinyes del Penedès'],
-  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria'],
-  // les deu de la segona tanda (la de Girona era un cartell: es va retallar per dins del marc)
-  ['sagrada-familia','la Sagrada Família'],['cadaques','Cadaqués'],['besalu','el pont de Besalú'],['tossa','la vila vella de Tossa'],
-  ['taull','Sant Climent de Taüll'],['girona',"les cases de l'Onyar"],['siurana','Siurana'],['sitges','Sitges'],
-  ['rupit','el pont penjat de Rupit'],['park-guell','el park Güell'],
-  // les deu de Taradell (tercera tanda): són quadrades i fan 6 × 6 peces. Es
-  // van retallar 44 px per sota (la marca de l'app) i 22 per cada costat, i
-  // reduir a 840 × 840.
+const FOTOS=[
+  // les tres primeres (#14 a #16) ja havien sortit quan van arribar les de Taradell
+  ['montserrat','Montserrat'],['delta',"el delta de l'Ebre"],['pedraforca','el Pedraforca'],
+  // les deu de Taradell (tercera tanda), del #17 (10 de novembre) al #26: l'usuari les
+  // va voler abans que la resta. Són quadrades i fan 6 × 6 peces. Es van retallar 44 px
+  // per sota (la marca de l'app) i 22 per cada costat, i reduir a 840 × 840.
   ['taradell-santa-llucia','Santa Llúcia (Taradell)',[6,6]],['taradell-can-boix','el castell de Can Boix (Taradell)',[6,6]],
   ['taradell-rocaguinarda','les Cuines de Rocaguinarda (Taradell)',[6,6]],['taradell-font-gran','la Font Gran (Taradell)',[6,6]],
   ['taradell-enclusa',"l'Enclusa (Taradell)",[6,6]],['taradell-sagrera','la Sagrera (Taradell)',[6,6]],
   ['taradell-sant-genis','Sant Genís (Taradell)',[6,6]],['taradell-sant-joan','Sant Joan del Prat (Taradell)',[6,6]],
-  ['taradell-sant-quirze','Sant Quirze de Subiradells (Taradell)',[6,6]],['taradell-torre-don-carles','la torre de Don Carles (Taradell)',[6,6]]];
+  ['taradell-sant-quirze','Sant Quirze de Subiradells (Taradell)',[6,6]],['taradell-torre-don-carles','la torre de Don Carles (Taradell)',[6,6]],
+  // la resta de la primera tanda i la segona (la de Girona era un cartell: es va
+  // retallar per dins del marc)
+  ['cap-de-creus','el cap de Creus'],['fageda',"la Fageda d'en Jordà"],['mont-rebei','el congost de Mont-rebei'],['penedes','les vinyes del Penedès'],
+  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria'],['sagrada-familia','la Sagrada Família'],
+  ['cadaques','Cadaqués'],['besalu','el pont de Besalú'],['tossa','la vila vella de Tossa'],['taull','Sant Climent de Taüll'],
+  ['girona',"les cases de l'Onyar"],['siurana','Siurana'],['sitges','Sitges'],['rupit','el pont penjat de Rupit'],
+  ['park-guell','el park Güell']];
 // Sense res més, 7 × 4 peces (les apaïsades); si la foto en porta, les seves.
 const FOTO_DES_DE=14,COLS_FOTO=7,FILES_FOTO=4;
 const graellaFoto=f=>f[2]||[COLS_FOTO,FILES_FOTO];
