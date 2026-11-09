@@ -20,7 +20,7 @@ function diu(be, text) { if (!be) malament++; console.log(`${be ? '✓' : '✗'}
 
 const b = await chromium.launch();
 const errors = [], enviats = [];
-const obre = async (w = 390, h = 780, neteja = true) => {
+const obre = async (w = 390, h = 780, neteja = true, data = '2026-11-10') => {
   const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: true });
   await ctx.route('**/jocs-records*/**', r => {
     const q = r.request();
@@ -32,6 +32,7 @@ const obre = async (w = 390, h = 780, neteja = true) => {
   });
   const p = await ctx.newPage();
   p.on('pageerror', e => errors.push(String(e)));
+  await p.clock.setFixedTime(new Date(data + 'T10:00:00+01:00'));
   await p.goto(URL_JOC);
   if (neteja) { await p.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); }); await p.reload(); }
   await p.waitForTimeout(400);
@@ -71,6 +72,15 @@ diu(g.nmal === 0, `25 sopes de cada un dels ${g.L} temes surten bé, amb cada pa
 diu(g.iguals, 'la del dia surt igual cada vegada (igual per a tothom)');
 diu(g.seguits === 0 && g.temes === g.L, `cap tema dos dies seguits, i tots surten abans de repetir-ne cap (${g.temes} de ${g.L})`);
 diu(g.u === 1, 'la #1 és la del 5 de novembre del 2026');
+const g3 = await p.evaluate(() => {
+  const mal = [];const rev = t => [...t].reverse().join('');
+  for (let n = 6; n <= 66; n++) { const s = sopaDia(n);
+    const altres = TEMES[s.tema][1].split(' ').map(pla).filter(x => x.length >= 3 && x.length <= N && !s.paraules.some(q => q.p.includes(x) || q.p.includes(rev(x))));
+    altres.forEach(x => { if (vegades(s.graella, x)) mal.push('#' + n + ' ' + x); }); }
+  return { mal, cinc: JSON.stringify(sopaDia(5)) === JSON.stringify(fesSopa('DIA-5', temaDe(5), 2)) };
+});
+diu(g3.mal.length === 0, 'des de la #6, a la sopa no hi surt per casualitat cap altra paraula del tema ' + g3.mal.slice(0, 3).join(' '));
+diu(g3.cinc, 'la #5, que ja s\'estava jugant, és la mateixa d\'abans');
 const dirs = await p.evaluate(() => {
   let mal = 0;
   for (let n = 2; n <= 120; n++) { const c = { H: 0, V: 0, D: 0 }; sopaDia(n).paraules.forEach(q => c[tipus([q.dx, q.dy])]++); if (c.H < 3 || c.V < 2 || c.D < 2) mal++; }
@@ -100,11 +110,26 @@ await llisca(p, dolenta[0], dolenta[1], dolenta[0] + 2, dolenta[1]);
 diu(await trobades(p) === 3, 'tres lletres que no són cap paraula no compten');
 diu(await p.evaluate(() => $('paraules').querySelectorAll('.feta').length === 3 && $('trobades').textContent === '3/10'), 'a la llista, les trobades surten ratllades i el comptador diu 3/10');
 
-// la pista
+// les paraules que falten no es veuen: només quantes lletres tenen
+const am = await p.evaluate(() => {
+  const sp = [...$('paraules').children], falten = S.paraules.filter((q, i) => !P.trobades.includes(i));
+  return { amagades: sp.filter(x => x.className === 'amagada').length, text: sp.map(x => x.textContent).join(' '), falten: falten.map(q => q.w.toUpperCase()), llargs: falten.map(q => q.p.length + ' lletres') };
+});
+diu(am.amagades === 7 && am.falten.every(w => !am.text.includes(w)) && am.llargs.every(l => am.text.includes(l)), `les que falten no es veuen, només quantes lletres tenen (${am.text})`);
+// la pista: primer et diu el nom d'una que falta
 const t0 = await p.evaluate(() => P.temps);
 await p.click('#pista'); await p.waitForTimeout(100);
-const pi = await p.evaluate(() => ({ dt: P.temps, pistes: P.pistes, vis: pistaVis, falta: !P.trobades.includes(pistaVis.i), pr: [S.paraules[pistaVis.i].x, S.paraules[pistaVis.i].y] }));
-diu(pi.dt - t0 >= 30 && pi.pistes === 1 && pi.falta && pi.vis.x === pi.pr[0] && pi.vis.y === pi.pr[1], 'la PISTA encercla la primera lletra d\'una que falta i suma 30 segons');
+const pi = await p.evaluate(() => { const i = P.vistes[0], q = S.paraules[i];
+  return { dt: P.temps, pistes: P.pistes, n: P.vistes.length, falta: !P.trobades.includes(i), llarga: S.paraules.every((r, k) => P.trobades.includes(k) || r.p.length <= q.p.length),
+    llista: [...$('paraules').querySelectorAll('.vista')].map(x => x.textContent).join(), w: q.w.toUpperCase(), cercle: !!pistaVis }; });
+diu(pi.dt - t0 >= 30 && pi.pistes === 1 && pi.n === 1 && pi.falta && pi.llarga && pi.llista === pi.w && !pi.cercle, `la PISTA et diu el nom de la més llarga que falta (${pi.w}), surt a la llista i suma 30 segons`);
+// quan ja te les ha dit totes, t'encercla on comença una
+for (let k = 0; k < 6; k++) await p.click('#pista');
+const pc = await p.evaluate(() => ({ n: P.vistes.length, cercle: !!pistaVis, ok: pistaVis && !P.trobades.includes(pistaVis.i) && pistaVis.x === S.paraules[pistaVis.i].x && pistaVis.y === S.paraules[pistaVis.i].y, amagades: $('paraules').querySelectorAll('.amagada').length }));
+diu(pc.n === 7 && !pc.cercle && pc.amagades === 0, 'amb set pistes, ja te les ha dit totes');
+await p.click('#pista'); await p.waitForTimeout(100);
+diu(await p.evaluate(() => !!pistaVis && !P.trobades.includes(pistaVis.i) && pistaVis.x === S.paraules[pistaVis.i].x && pistaVis.y === S.paraules[pistaVis.i].y && P.pistes === 8),
+  'i la següent t\'encercla la primera lletra d\'una que falta');
 
 // el rellotge corre jugant i s'atura en pausa
 let a = await p.evaluate(() => P.temps); await p.waitForTimeout(1200);
@@ -158,6 +183,12 @@ diu(pr.mode === 'practica' && pr.t !== pr.avui, "PRÀCTICA fa una altra sopa, d'
 for (let i = 0; i < 10; i++) { [x0, y0, x1, y1] = await extrems(p, i); await llisca(p, x0, y0, x1, y1); }
 await p.waitForTimeout(1200);
 diu(await p.evaluate(() => P.fi && /pràctica no compten/.test($('msg').textContent)) && enviats.filter(e => /sopa/.test(e.url)).length === 1, 'acabar-ne una de pràctica no va a cap taula');
+await ctx.close();
+
+// ---------- 3b. la #5 encara té la llista a la vista ----------
+({ ctx, p } = await obre(390, 780, true, '2026-11-09'));
+await p.click('#m-dia'); await p.waitForTimeout(150);
+diu(await p.evaluate(() => P.n === 5 && !amagades() && S.paraules.every(q => $('paraules').textContent.includes(q.w.toUpperCase()))), 'la d\'avui, la #5, encara ensenya les deu paraules');
 await ctx.close();
 
 // ---------- 4. hi cap ----------

@@ -266,57 +266,65 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
-// NOVA VERSIÓ: un joc on ja havies jugat i que ha canviat porta el rètol
-// verd i surt a dalt (com a molt tres); en obrir-lo, un rètol diu què ha
-// canviat, una sola vegada
+// NOVA VERSIÓ: un joc que ha canviat i que no has obert des de llavors porta
+// el rètol verd i surt a dalt (com a molt tres); en obrir-lo, un rètol diu què
+// ha canviat, una sola vegada. Els avisos es llegeixen de NOVETATS, al
+// records.js, i el rellotge es posa just després del més nou: així la prova
+// no s'ha de tocar cada vegada que se n'hi afegeix un.
 {
+  const NOV = [...readFileSync(resolve(ARREL, 'records.js'), 'utf8').matchAll(/'([a-z_]+\.html)':\s*\['(\d{4}-\d\d-\d\dT\d\d:\d\dZ)',\s*'((?:[^'\\]|\\.)*)'\]/g)]
+    .map(x => ({ f: x[1], d: Date.parse(x[2]), text: x[3].replace(/\\'/g, "'") })).sort((a, b) => b.d - a.d);
+  const ARA = NOV[0].d + 3600e3, DIES = 14 * 864e5;
+  const actius = NOV.filter(x => ARA - x.d < DIES);
   const ctx = await b.newContext({ viewport: { width: 320, height: 568 } });
   await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e)));
-  await p.clock.setFixedTime(new Date('2026-11-06T12:00:00Z'));
+  await p.clock.setFixedTime(new Date(ARA));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
-  const t = s => Date.parse(s);
-  await p.evaluate(o => { localStorage.clear(); localStorage.setItem('jocs-obertes', JSON.stringify(o)) }, {
-    'sopa.html': { n: 2, t: t('2026-11-05T10:00Z') }, 'tetris.html': { n: 9, t: t('2026-11-01T10:00Z') },
-    'trencaclosques.html': { n: 3, t: t('2026-11-06T11:00Z') }, 'pong.html': { n: 1, t: t('2026-11-01T10:00Z') },
-  });
+  // tots oberts abans del seu canvi (així cap no és NOU, que aquests no diuen
+  // NOVA VERSIÓ), i els jocs nous oberts també
+  const nous = await p.evaluate(() => [...document.querySelectorAll('a.btn[data-nou]')].map(a => a.getAttribute('href')));
+  const oberts = Object.fromEntries(nous.map(f => [f, { n: 1, t: ARA - 3600e3 }]));
+  NOV.forEach(x => { oberts[x.f] = { n: 2, t: x.d - 864e5 }; });
+  await p.evaluate(o => { localStorage.clear(); localStorage.setItem('jocs-obertes', JSON.stringify(o)) }, oberts);
   await p.reload(); await p.waitForTimeout(200);
   const mira = () => p.evaluate(() => ({
     noves: [...document.querySelectorAll('a.btn .nou.nova')].map(r => r.closest('a').getAttribute('href')).sort().join(),
-    nous: [...document.querySelectorAll('a.btn .nou:not(.nova)')].map(r => r.closest('a').getAttribute('href')).sort().join(),
     avis: [...document.querySelectorAll('#novetats a.nou-joc.nova')].map(a => a.getAttribute('href')).join(),
     mes: (document.querySelector('#novetats .nou-mes') || {}).textContent || '',
     cap: [...document.querySelectorAll('#novetats a.nou-joc, a.btn .nou')].every(a => a.scrollWidth <= a.clientWidth + 1)
       && document.documentElement.scrollWidth <= innerWidth + 1,
     text: [...document.querySelectorAll('#novetats a.nou-joc.nova')].every(a => /^NOVA VERSIÓ/.test(a.textContent)),
   }));
-  const TOTS = ['track_field', 'moon_patrol', 'amunt', 'donkey_kong', 'frogger', 'nibbler', 'missile_command', 'centipede', 'tetris', 'sopa'].map(x => x + '.html');
   let m = await mira();
-  let be = m.noves === [...TOTS].sort().join() && m.avis === 'sopa.html,tetris.html,centipede.html' && /^i 7 jocs més/.test(m.mes)
-    && m.nous === 'tresor.html' && m.cap && m.text;
+  const resta = actius.length - 3;
+  let be = m.noves === actius.map(x => x.f).sort().join() && m.avis === actius.slice(0, 3).map(x => x.f).join()
+    && (resta > 0 ? new RegExp('^i ' + resta + ' jocs? més').test(m.mes) : !m.mes) && m.cap && m.text;
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} NOVA VERSIÓ: rètol verd als que han canviat i no has obert des de llavors (també si no hi havies jugat), i a dalt els tres més nous (${m.avis} · ${m.mes})`);
+  console.log(`${be ? '✓' : '✗'} NOVA VERSIÓ: rètol verd als ${actius.length} que han canviat i no has obert des de llavors, i a dalt els tres més nous (${m.avis} · ${m.mes})`);
+  // els obres tots menys els dos més nous
   await p.evaluate(o => { const c = JSON.parse(localStorage.getItem('jocs-obertes')); Object.assign(c, o); localStorage.setItem('jocs-obertes', JSON.stringify(c)) },
-    Object.fromEntries(TOTS.slice(0, 8).map(f => [f, { n: 1, t: t('2026-11-06T11:30Z') }])));
+    Object.fromEntries(actius.slice(2).map(x => [x.f, { n: 3, t: ARA - 60e3 }])));
   await p.reload(); await p.waitForTimeout(200);
   m = await mira();
-  be = m.noves === 'sopa.html,tetris.html' && m.avis === 'sopa.html,tetris.html' && !m.mes && m.cap;
+  const dos = actius.slice(0, 2);
+  be = m.noves === dos.map(x => x.f).sort().join() && m.avis === dos.map(x => x.f).join() && !m.mes && m.cap;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} els que ja has obert després del canvi ja no ho diuen (${m.noves})`);
-  await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);
+  const X = actius[0];
+  await p.goto('file://' + resolve(ARREL, X.f)); await p.waitForTimeout(600);
   const toast = await p.evaluate(() => { const r = document.getElementById('nova-versio'); return r && { t: r.textContent, cap: r.getBoundingClientRect().right <= innerWidth && r.getBoundingClientRect().left >= 0 }; });
-  await p.goto('file://' + resolve(ARREL, 'sopa.html')); await p.waitForTimeout(600);
+  await p.goto('file://' + resolve(ARREL, X.f)); await p.waitForTimeout(600);
   const toast2 = await p.evaluate(() => !!document.getElementById('nova-versio'));
   await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(200);
   m = await mira();
-  be = toast && /^NOVA VERSIÓ.*diagonal/.test(toast.t) && toast.cap && !toast2 && !m.noves.includes('sopa') && !m.avis.includes('sopa') && !errors.length;
+  be = toast && /^NOVA VERSIÓ/.test(toast.t) && toast.t.toLowerCase().includes(X.text.toLowerCase()) && toast.cap && !toast2 && !m.noves.includes(X.f) && !m.avis.includes(X.f) && !errors.length;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} en obrir-lo, el rètol diu què ha canviat, i només la primera vegada (${toast && toast.t})` + (errors.length ? ' ' + errors[0] : ''));
-  // quinze dies després de la novetat més recent de records.js
-  const dates = [...readFileSync(resolve(ARREL, 'records.js'), 'utf8').matchAll(/\['(\d{4}-\d\d-\d\dT\d\d:\d\dZ)'/g)].map(x => Date.parse(x[1]));
-  await p.clock.setFixedTime(new Date(Math.max(...dates) + 15 * 864e5));
+  // quinze dies després de la novetat més recent
+  await p.clock.setFixedTime(new Date(NOV[0].d + 15 * 864e5));
   await p.reload(); await p.waitForTimeout(200);
   m = await mira();
   be = m.noves === '' && m.avis === '';

@@ -33,7 +33,7 @@ const Records = (() => {
     'missile_command.html': ['2026-11-05T13:29Z', 'ciutats amb finestres i explosions de llum'],
     'centipede.html':     ['2026-11-05T13:31Z', 'bolets de debò, un centpeus amb potes i un gnom'],
     'tetris.html':        ['2026-11-05T13:32Z', 'peces amb relleu'],
-    'sopa.html':          ['2026-11-05T17:22Z', 'ara les paraules van de costat, de dalt a baix i en diagonal'],
+    'sopa.html':          ['2026-11-09T15:51Z', 'des de demà no et diu les paraules: les has d\'endevinar pel tema'],
     'trencaclosques.html': ['2026-11-09T11:00Z', 'fotos de Taradell del 10 al 19 de novembre, i més peces a les fotos'],
     'tresor.html':        ['2026-11-07T22:10Z', 'setze proves en lloc de deu, més difícils i amb només dues pistes'],
   };

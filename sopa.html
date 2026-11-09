@@ -17,6 +17,8 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #paraules{flex:none;width:96%;display:grid;grid-template-columns:repeat(3,1fr);gap:3px 6px;margin-top:6px}
 #paraules span{font:bold 12px monospace;color:#e8f0f4;text-align:center;padding:3px 2px;border-radius:5px;background:#1d2e3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #paraules span.feta{color:#6a8090;text-decoration:line-through;background:#16232c}
+#paraules span.amagada{color:#7a98a8;font-weight:normal;font-style:italic}
+#paraules span.vista{color:#ffd77a}
 #controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:94%}
 button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
 #pista{flex:1 1 0;color:#1a1200;background:#ffd77a;border-color:#ffd77a}
@@ -39,7 +41,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="paraules"></div>
   <div id="controls"><button id="pista">💡 PISTA (+30 s)</button><button id="menu">MENÚ</button></div>
   <div id="msg"></div>
-  <small><b style="color:#ddd">Troba les deu paraules amagades a la sopa.</b> llisca el dit per sobre de cada una (o toca la primera lletra i després l'última); poden anar en qualsevol direcció, també del revés · pausa: P</small>
+  <small><b style="color:#ddd">Troba les deu paraules del tema amagades a la sopa.</b> no et diu quines són, només quantes lletres tenen; llisca el dit per sobre de cada una (o toca la primera i l'última), en qualsevol direcció · pausa: P</small>
 </div>
 <script src="records.js"></script>
 <script>
@@ -133,7 +135,10 @@ function vegades(g,w){
 // diagonal, repartides a l'atzar entre les paraules.
 const PLA=[[1,0],[1,0],[1,0],[-1,0],[0,1],[0,1],[0,-1],[1,1],[1,-1],[1,1]];
 const tipus=([dx,dy])=>dy===0?'H':dx===0?'V':'D';
-// gen 1: com es feien fins a la #1 (que ja s'estava jugant); gen 2: barrejades
+// gen 1: com es feien fins a la #1 (que ja s'estava jugant); gen 2: barrejades;
+// gen 3 (des de la #6, que les paraules ja no es veuen): a més, cap altra
+// paraula del tema no hi pot sortir per casualitat, que si no la trobaries i
+// el joc et diria que no.
 function fesSopa(llavor,tema,gen=2){
   for(let intent=0;intent<(gen===1?40:200);intent++){
     const r=mulberry(hashText('SOPA-'+llavor+'-'+intent));
@@ -161,7 +166,9 @@ function fesSopa(llavor,tema,gen=2){
     if(plans){const c={H:0,V:0,D:0};posades.forEach(q=>c[tipus([q.dx,q.dy])]++);if(c.H<3||c.V<2||c.D<2)continue}
     for(let f=0;f<30;f++){
       const h=g.map(row=>row.map(c=>c||FARCIT[Math.floor(r()*FARCIT.length)]));
-      if(posades.every(q=>vegades(h,q.p)===1)){
+      const rev=t=>[...t].reverse().join('');
+      const altres=gen>=3?TEMES[tema][1].split(' ').map(pla).filter(x=>x.length>=3&&x.length<=N&&!posades.some(q=>q.p.includes(x)||q.p.includes(rev(x)))):[];
+      if(posades.every(q=>vegades(h,q.p)===1)&&altres.every(x=>!vegades(h,x))){
         // a la llista van per ordre alfabètic, que no es vegi on són
         posades.sort((a,b)=>a.p.localeCompare(b.p));
         return {tema,graella:h,paraules:posades};
@@ -197,13 +204,19 @@ function temaDe(n){
   if(tanda>0&&o[0]===ordre(tanda-1)[L-1]){if(k===0)return o[1];if(k===1)return o[0]}
   return o[k];
 }
-const sopaDia=n=>fesSopa('DIA-'+n,temaDe(n),n<=1?1:2);
+// Des de la #6 (el 10 de novembre del 2026) les paraules no es veuen: només
+// quantes lletres tenen. L'usuari la trobava massa fàcil, amb la llista a la
+// vista. La #5, que ja s'estava jugant, es va quedar amb la llista.
+const AMAGADES_DES_DE=6;
+const genDia=n=>n<=1?1:n>=AMAGADES_DES_DE?3:2;
+const sopaDia=n=>fesSopa('DIA-'+n,temaDe(n),genDia(n));
+const amagades=()=>P&&(P.mode==='dia'?P.n>=AMAGADES_DES_DE:(P.gen||1)>=3);
 
 // ===== LA PARTIDA =====
 let S=null,P=null,mode='dia',dia='',numero=0,paused=false,brut=true;
 // P: el que es desa (quines has trobat, el temps, les pistes); S: la sopa,
 // que es torna a fer igual a partir de la llavor
-function novaP(m,llavor,tema){return {v:1,gen:2,mode:m,dia,n:numero,llavor,tema,temps:0,trobades:[],pistes:0,fi:false,comencada:false}}
+function novaP(m,llavor,tema){return {v:1,gen:m==='dia'?genDia(numero):3,mode:m,dia,n:numero,llavor,tema,temps:0,trobades:[],vistes:[],pistes:0,fi:false,comencada:false}}
 const clau=()=>mode==='dia'?'sopa-'+P.dia:'sopa-practica';
 function desaP(){if(P)desa(clau(),P)}
 function carregaS(){S=P.mode==='dia'?sopaDia(P.n):fesSopa(P.llavor,P.tema,P.gen||1);sel=null;inici=null;pistaVis=null;pintaParaules();mesura();brut=true}
@@ -234,7 +247,9 @@ function menu(){
   const d=llegeix('sopa-'+dia,null),pr=llegeix('sopa-practica',null);
   const bt=(id,t,c,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#8aa8b8;margin-top:2px">'+sub+'</small>':'');
   msg('<div style="color:#ffd77a;letter-spacing:.12em">LA SOPA DE LLETRES</div>'+
-    '<small>Hi ha deu paraules amagades, d\'un mateix tema. Poden anar de costat, amunt, avall o en diagonal, i també del revés.</small>'+
+    (numero>=AMAGADES_DES_DE?'<small>Hi ha deu paraules amagades del tema del dia, però no et diu quines: només quantes lletres tenen. Poden anar de costat, amunt, avall o en diagonal, i també del revés.</small>'+
+    '<small style="color:#ffd77a">La PISTA et diu el nom d\'una de les que falten (i quan ja te les ha dit totes, on comença).</small>'
+    :'<small>Hi ha deu paraules amagades, d\'un mateix tema. Poden anar de costat, amunt, avall o en diagonal, i també del revés.</small>')+
     '<small style="color:#9fc0d0">Llisca el dit per sobre de cada una, o toca la primera lletra i després l\'última.</small>'+
     (d&&d.fi?bt('m-dia','☀ LA D\'AVUI: FETA EN '+mmss(d.temps),'color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+numero+' · demà n\'hi haurà una altra')
       :bt('m-dia',d&&d.comencada?'☀ CONTINUA LA D\'AVUI':'☀ LA D\'AVUI ▸','color:#1a1200;background:#ffd77a','#'+numero+' · '+nomDia(dia)+' · igual per a tothom'))+
@@ -291,7 +306,16 @@ function pintaParaules(){
   const el=$('paraules');el.innerHTML='';
   if(!S)return;
   $('tema').textContent=TEMES[S.tema][0]+(mode==='dia'?' · #'+P.n:' · PRÀCTICA');
-  S.paraules.forEach((q,i)=>{const sp=document.createElement('span');sp.textContent=q.w.toUpperCase();if(P.trobades.includes(i))sp.className='feta';el.appendChild(sp)});
+  const am=amagades(),vistes=P.vistes||[];
+  // amagades, van per llargada (per ordre alfabètic, l'ordre ja diria coses)
+  const ordre=S.paraules.map((q,i)=>i);
+  if(am)ordre.sort((a,b)=>S.paraules[a].p.length-S.paraules[b].p.length||S.paraules[a].p.localeCompare(S.paraules[b].p));
+  ordre.forEach(i=>{const q=S.paraules[i],sp=document.createElement('span');
+    if(P.trobades.includes(i)){sp.textContent=q.w.toUpperCase();sp.className='feta'}
+    else if(!am){sp.textContent=q.w.toUpperCase()}
+    else if(vistes.includes(i)){sp.textContent=q.w.toUpperCase();sp.className='vista'}
+    else{sp.textContent=q.p.length+' lletres';sp.className='amagada'}
+    el.appendChild(sp)});
   $('trobades').textContent=P.trobades.length+'/'+S.paraules.length;
 }
 
@@ -359,9 +383,17 @@ $('pista').addEventListener('pointerdown',ev=>{
   if(!jugant())return;
   const falten=S.paraules.map((q,i)=>i).filter(i=>!P.trobades.includes(i));
   if(!falten.length)return;
+  P.temps+=PENA_PISTA;P.pistes++;so.pista();brut=true;
+  // Amagades: la pista primer et diu el nom d'una de les que falten (la més
+  // llarga); quan ja te les ha dit totes, t'encercla la primera lletra.
+  if(amagades()){
+    P.vistes=P.vistes||[];
+    const noVistes=falten.filter(i=>!P.vistes.includes(i)).sort((a,b)=>S.paraules[b].p.length-S.paraules[a].p.length);
+    if(noVistes.length){const i=noVistes[0];P.vistes.push(i);desaP();pintaParaules();
+      avisa('Una de les que falten: '+S.paraules[i].w.toUpperCase()+' · +'+PENA_PISTA+' s');return}
+  }
   const i=falten.sort((a,b)=>S.paraules[b].p.length-S.paraules[a].p.length)[0],q=S.paraules[i];
-  pistaVis={i,x:q.x,y:q.y,fins:performance.now()+4000};
-  P.temps+=PENA_PISTA;P.pistes++;so.pista();desaP();brut=true;
+  pistaVis={i,x:q.x,y:q.y,fins:performance.now()+4000};desaP();
   avisa('Comença a la lletra encerclada: '+q.w.toUpperCase()+' · +'+PENA_PISTA+' s');
 });
 $('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();menu()});

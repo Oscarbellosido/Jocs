@@ -1006,9 +1006,20 @@ empresa: va amb el seu nom.
 - El rellotge només corre mentre jugues (no amb el menú, ni en pausa, ni fora
   de l'app). Es desa cada dos segons i a cada paraula (`sopa-<data>`).
 - **PRÀCTICA**: una altra sopa, d'un tema que no és el d'avui, que no compta.
+- **Des de la #6 (10 de novembre del 2026) no et diu quines paraules són**
+  (`AMAGADES_DES_DE`): a la llista de sota només hi ha quantes lletres té
+  cada una («7 lletres», per llargada) fins que la trobes. L'usuari la
+  trobava massa fàcil amb la llista a la vista. **La PISTA et diu el nom**
+  de la més llarga que falta (surt en groc a la llista, `P.vistes`) i,
+  quan ja te les ha dit totes, t'encercla la primera lletra d'una; sempre
+  +30 s. La #5, que ja s'estava jugant, es va quedar amb la llista.
 
 Coses que no s'han de desfer sense entendre-les:
 
+- **Cap altra paraula del tema no hi pot sortir per casualitat** (des de la
+  #6, `gen` 3): sense la llista, trobaries POMA a la sopa de fruites i el joc
+  et diria que no. Les que caben dins d'una de les deu (GALL i GALLINA) no
+  es miren, que ja hi són per força.
 - **Cada paraula surt una sola vegada a la graella**, comptant les vuit
   direccions (`vegades`). Si les lletres de farciment en fan sortir una altra
   còpia (SOL, MAR...), es torna a omplir. Si no, trobaries la bona i el joc
