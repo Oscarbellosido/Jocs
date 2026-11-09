@@ -1378,11 +1378,16 @@ trencaclosques. N'hi ha dos:
   `graellaFoto`). Es van retallar 44 px per sota, on hi havia la marca de
   l'app, i 22 per cada costat, i reduir a 840 × 840. Retallades apaïsades
   com les altres, haurien perdut els campanars i les torres. La de Girona era un cartell amb
-  marc i lletres: es va retallar per dins del marc. Són
-  apaïsades, i aquells dies el trencaclosques fa **7 × 4 peces** quadrades
-  (`COLS_FOTO`, `FILES_FOTO`). Es van retallar a 7 per 4 (així la marca de
-  l'app, a baix a la dreta, queda fora) i reduir a 980 × 560 en JPEG: de 2 MB
-  a uns 130 KB cada una. Es baixen el dia que toca (`imatgeDia`, que per als
+  marc i lletres: es va retallar per dins del marc. Les altres vint són
+  apaïsades. Es van retallar a 7 per 4 (així la marca de l'app, a baix a la
+  dreta, queda fora) i reduir a 980 × 560 en JPEG: de 2 MB a uns 130 KB cada
+  una. Al principi feien **7 × 4 peces** (`COLS_FOTO`, `FILES_FOTO`), però amb
+  quatre fileres l'usuari les trobava massa fàcils: les disset que encara no
+  havien sortit (#27 a #43) es van retallar una desena part per cada costat,
+  a 784 × 560, i fan **7 × 5** (35, com el dibuixat). Les peces no es van fer
+  més petites: a 320 px ja fan 43 px, i més petites costarien d'agafar amb el
+  dit. Les tres primeres (#14 a #16) es van quedar de 7 × 4, que ja havien
+  sortit. Es baixen el dia que toca (`imatgeDia`, que per als
   dibuixats torna el `paisatge`) i el `sw.js` les desa; sense connexió i sense
   haver-la baixat, ho diu (`senseFoto`). El menú diu que és feta amb IA.
   **Per afegir-ne**, al final de `FOTOS`, que les que ja han sortit no canviïn

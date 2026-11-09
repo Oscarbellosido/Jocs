@@ -223,8 +223,20 @@ diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' 
   diu(t.n === 17 && t.cols === 6 && t.files === 6 && t.w === 840 && t.h === 840 && t.marc && Math.abs(t.pw - t.ph) <= 1 && t.pw >= 40,
     `el #17 és de 6 × 6 peces quadrades (${t.w} × ${t.h}, peces de ${t.pw} px) i hi cap a 320 px`);
   // totes les de Taradell es poden baixar i són de 840 × 840
-  const mides = await p2.evaluate(() => Promise.all(FOTOS.filter(f => f[2]).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth + 'x' + im.naturalHeight); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
+  const mides = await p2.evaluate(() => Promise.all(FOTOS.filter(f => f[0].startsWith('taradell-')).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth + 'x' + im.naturalHeight); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
   diu(mides.length === 10 && mides.every(m => m === '840x840'), 'les deu fotos de Taradell hi són, de 840 × 840 (' + [...new Set(mides)].join(', ') + ')');
+  // les apaïsades que encara no havien sortit es van retallar pels costats: 7 × 5 peces
+  await p2.clock.setFixedTime(new Date('2026-11-20T10:00:00+01:00'));
+  await p2.evaluate(() => localStorage.clear()); await p2.reload(); await p2.waitForTimeout(500);
+  await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
+  const menuC = await p2.evaluate(() => document.getElementById('msg').textContent);
+  await p2.click('#m-dia'); await p2.waitForTimeout(800);
+  const c = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n,
+    marc: L.fx >= 0 && L.fx + L.fw <= L.W && L.fy + L.fh <= L.sy, pw: Math.round(L.pw), ph: Math.round(L.ph) }));
+  diu(/cap de Creus/.test(menuC) && /35 peces/.test(menuC) && c.n === 27 && c.cols === 7 && c.files === 5 && c.w === 784 && c.h === 560 && c.marc && Math.abs(c.pw - c.ph) <= 1 && c.pw >= 40,
+    `el #27, el cap de Creus, és de 7 × 5 peces quadrades (${c.w} × ${c.h}, peces de ${c.pw} px) i hi cap a 320 px`);
+  const apaisades = await p2.evaluate(() => Promise.all(FOTOS.slice(13).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(f[2] && f[2].join('x') === '7x5' && im.naturalWidth === 784 && im.naturalHeight === 560 ? 'bé' : f[0]); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
+  diu(apaisades.length === 17 && apaisades.every(x => x === 'bé'), 'les disset apaïsades que queden són de 784 × 560 i de 7 × 5 (' + apaisades.filter(x => x !== 'bé').join(', ') + ')');
   await ctx2.close();
 }
 

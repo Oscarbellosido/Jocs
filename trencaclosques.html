@@ -217,12 +217,14 @@ const FOTOS=[
   ['taradell-sant-genis','Sant Genís (Taradell)',[6,6]],['taradell-sant-joan','Sant Joan del Prat (Taradell)',[6,6]],
   ['taradell-sant-quirze','Sant Quirze de Subiradells (Taradell)',[6,6]],['taradell-torre-don-carles','la torre de Don Carles (Taradell)',[6,6]],
   // la resta de la primera tanda i la segona (la de Girona era un cartell: es va
-  // retallar per dins del marc)
-  ['cap-de-creus','el cap de Creus'],['fageda',"la Fageda d'en Jordà"],['mont-rebei','el congost de Mont-rebei'],['penedes','les vinyes del Penedès'],
-  ['sant-maurici','l\'estany de Sant Maurici'],['montseny','el Montseny'],['nuria','la vall de Núria'],['sagrada-familia','la Sagrada Família'],
-  ['cadaques','Cadaqués'],['besalu','el pont de Besalú'],['tossa','la vila vella de Tossa'],['taull','Sant Climent de Taüll'],
-  ['girona',"les cases de l'Onyar"],['siurana','Siurana'],['sitges','Sitges'],['rupit','el pont penjat de Rupit'],
-  ['park-guell','el park Güell']];
+  // retallar per dins del marc). Amb 7 × 4 només hi havia quatre fileres i
+  // l'usuari les trobava massa fàcils: es van retallar una desena part per cada
+  // costat (784 × 560) i fan 7 × 5 peces, 35 com el dibuixat i de la mateixa mida.
+  ['cap-de-creus','el cap de Creus',[7,5]],['fageda',"la Fageda d'en Jordà",[7,5]],['mont-rebei','el congost de Mont-rebei',[7,5]],['penedes','les vinyes del Penedès',[7,5]],
+  ['sant-maurici','l\'estany de Sant Maurici',[7,5]],['montseny','el Montseny',[7,5]],['nuria','la vall de Núria',[7,5]],['sagrada-familia','la Sagrada Família',[7,5]],
+  ['cadaques','Cadaqués',[7,5]],['besalu','el pont de Besalú',[7,5]],['tossa','la vila vella de Tossa',[7,5]],['taull','Sant Climent de Taüll',[7,5]],
+  ['girona',"les cases de l'Onyar",[7,5]],['siurana','Siurana',[7,5]],['sitges','Sitges',[7,5]],['rupit','el pont penjat de Rupit',[7,5]],
+  ['park-guell','el park Güell',[7,5]]];
 // Sense res més, 7 × 4 peces (les apaïsades); si la foto en porta, les seves.
 const FOTO_DES_DE=14,COLS_FOTO=7,FILES_FOTO=4;
 const graellaFoto=f=>f[2]||[COLS_FOTO,FILES_FOTO];

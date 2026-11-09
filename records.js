@@ -34,7 +34,7 @@ const Records = (() => {
     'centipede.html':     ['2026-11-05T13:31Z', 'bolets de debò, un centpeus amb potes i un gnom'],
     'tetris.html':        ['2026-11-05T13:32Z', 'peces amb relleu'],
     'sopa.html':          ['2026-11-05T17:22Z', 'ara les paraules van de costat, de dalt a baix i en diagonal'],
-    'trencaclosques.html': ['2026-11-09T10:15Z', 'fotos de Taradell, una cada dia del 10 al 19 de novembre'],
+    'trencaclosques.html': ['2026-11-09T11:00Z', 'fotos de Taradell del 10 al 19 de novembre, i més peces a les fotos'],
     'tresor.html':        ['2026-11-07T22:10Z', 'setze proves en lloc de deu, més difícils i amb només dues pistes'],
   };
   const DIES_NOVETAT = 14;
