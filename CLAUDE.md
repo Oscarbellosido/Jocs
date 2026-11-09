@@ -1366,10 +1366,16 @@ trencaclosques. N'hi ha dos:
   tornava a sortir el d'ahir. Els sis primers (#1 a #6) es van quedar com
   eren, que el #6 ja s'estava jugant. El nom de l'escena surt al menú i a
   dalt del joc.
-- **Les fotos de l'usuari** (`FOTOS`, a `fotos/`): vint imatges que va fer
-  amb una app d'IA (Gemini) i va pujar al repositori, en dues tandes de deu.
-  Surten una cada dia del #14 (7 de novembre del 2026) al #33 (26 de
-  novembre), i després tornen els dibuixats. La de Girona era un cartell amb
+- **Les fotos de l'usuari** (`FOTOS`, a `fotos/`): trenta imatges que va fer
+  amb una app d'IA (Gemini) i va pujar al repositori, en tres tandes de deu.
+  Surten una cada dia del #14 (7 de novembre del 2026) al #43 (6 de
+  desembre), i després tornen els dibuixats. **La tercera tanda és de
+  Taradell** (#34 a #43, del 27 de novembre al 6 de desembre) i, a
+  diferència de les altres, les fotos eren **quadrades**: aquells dies el
+  trencaclosques fa **6 × 6 peces** (el tercer camp de `FOTOS`, que llegeix
+  `graellaFoto`). Es van retallar 44 px per sota, on hi havia la marca de
+  l'app, i 22 per cada costat, i reduir a 840 × 840. Retallades apaïsades
+  com les altres, haurien perdut els campanars i les torres. La de Girona era un cartell amb
   marc i lletres: es va retallar per dins del marc. Són
   apaïsades, i aquells dies el trencaclosques fa **7 × 4 peces** quadrades
   (`COLS_FOTO`, `FILES_FOTO`). Es van retallar a 7 per 4 (així la marca de

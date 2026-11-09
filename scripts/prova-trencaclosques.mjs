@@ -80,7 +80,9 @@ diu(d.n === 35 && d.mal === 0, `el del dia té ${d.n} peces; les vores de fora s
 diu(await p.evaluate(() => /EL D'AVUI/.test(document.getElementById('msg').textContent) && !!document.getElementById('m-foto')), 'en entrar, el menú: el d\'avui o una foto teva');
 await p.click('#m-dia');
 await p.waitForTimeout(1300);
-diu(await p.evaluate(() => G && G.safata.length === 35 && G.temps > .8), 'el d\'avui comença amb les 35 peces a la safata, i el rellotge corre');
+// (els dies de foto en té 28 o 36, i no 35: es compara amb les que toquen avui)
+const nAvui = await p.evaluate(() => pecesDelDia(numero));
+diu(await p.evaluate(n => G && G.safata.length === n && G.temps > .8, nAvui), `el d'avui comença amb les ${nAvui} peces a la safata, i el rellotge corre`);
 let i0 = await p.evaluate(() => G.safata[0]);
 await arrossega(p, await lloc(p, SLOT, 0), await lloc(p, CASA, i0));
 diu(await p.evaluate(i => G.peces[i].e === 'l' && !G.safata.includes(i), i0), 'arrossegant una peça de la safata al seu lloc, hi encaixa');
@@ -184,8 +186,9 @@ diu(await p.evaluate(() => mode === 'foto' && G.fi && /no compten/.test(document
 await ctx.close();
 
 // ---------- 5b. els dies de foto ----------
-// Del #14 (7 de novembre del 2026) al #33 surten les fotos de l'usuari, una
-// cada dia, en un trencaclosques apaïsat de 7 × 4; abans i després, els dibuixats.
+// Del #14 (7 de novembre del 2026) al #43 surten les fotos de l'usuari, una
+// cada dia: les vint primeres en un trencaclosques apaïsat de 7 × 4, i les deu
+// de Taradell (#34 a #43), quadrades, de 6 × 6. Abans i després, els dibuixats.
 {
   const ctx2 = await b.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true });
   await ctx2.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
@@ -195,8 +198,8 @@ await ctx.close();
   await p2.goto(URL_JOC);
   await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); }); await p2.reload(); await p2.waitForTimeout(500);
   await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
-  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], darrer: fotoDe(33)[0], despres: fotoDe(34), menu: document.getElementById('msg').textContent }));
-  diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' && !dies.despres, 'les vint fotos surten del #14 al #33, i abans i després els paisatges dibuixats');
+  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], darrer: fotoDe(43)[0], despres: fotoDe(44), menu: document.getElementById('msg').textContent }));
+  diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'taradell-torre-don-carles' && !dies.despres, 'les trenta fotos surten del #14 al #43, i abans i després els paisatges dibuixats');
   diu(/Montserrat/.test(dies.menu) && /28 peces/.test(dies.menu) && /feta amb IA/.test(dies.menu), 'el menú del #14 diu Montserrat, 28 peces i que la imatge és feta amb IA');
   await p2.click('#m-dia'); await p2.waitForTimeout(800);
   const f = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n, que: document.getElementById('que').textContent,
@@ -207,6 +210,20 @@ await ctx.close();
   await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
   await p2.click('#m-dia'); await p2.waitForTimeout(800);
   diu(await p2.evaluate(() => G.cols === 7 && G.files === 4 && IMG.width === 980), 'continuant-lo, torna a sortir la foto amb les mateixes peces');
+  // el #34 (27 de novembre), la primera de Taradell: quadrada, de 6 × 6
+  await p2.clock.setFixedTime(new Date('2026-11-27T10:00:00+01:00'));
+  await p2.evaluate(() => localStorage.clear()); await p2.reload(); await p2.waitForTimeout(500);
+  await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
+  const menuT = await p2.evaluate(() => document.getElementById('msg').textContent);
+  diu(/#34/.test(menuT) && /Santa Llúcia/.test(menuT) && /36 peces/.test(menuT), 'el menú del #34 diu Santa Llúcia (Taradell) i 36 peces');
+  await p2.click('#m-dia'); await p2.waitForTimeout(800);
+  const t = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n,
+    marc: L.fx >= 0 && L.fx + L.fw <= L.W && L.fy + L.fh <= L.sy, pw: Math.round(L.pw), ph: Math.round(L.ph) }));
+  diu(t.n === 34 && t.cols === 6 && t.files === 6 && t.w === 840 && t.h === 840 && t.marc && Math.abs(t.pw - t.ph) <= 1 && t.pw >= 40,
+    `el #34 és de 6 × 6 peces quadrades (${t.w} × ${t.h}, peces de ${t.pw} px) i hi cap a 320 px`);
+  // totes les de Taradell es poden baixar i són de 840 × 840
+  const mides = await p2.evaluate(() => Promise.all(FOTOS.filter(f => f[2]).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth + 'x' + im.naturalHeight); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
+  diu(mides.length === 10 && mides.every(m => m === '840x840'), 'les deu fotos de Taradell hi són, de 840 × 840 (' + [...new Set(mides)].join(', ') + ')');
   await ctx2.close();
 }
 
