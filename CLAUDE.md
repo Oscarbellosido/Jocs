@@ -99,9 +99,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les nou partides del dia (la Gofra, la Impremta, l'Abecedari i la seva
-difícil, les Colles, el Poble del Dia, el Trencaclosques, la Sopa de
-Lletres i la Conquesta), cadascuna
+les vuit partides del dia (la Gofra, la Impremta, l'Abecedari, les
+Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres i la
+Conquesta), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -116,9 +116,10 @@ a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
 navegador de les proves això no passa (allà la pàgina sempre es torna a
 carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va perquè
 cada dia n'hi ha deu, de partides del dia, escampades per la portada, i no
-hi havia manera de saber d'una ullada quines et quedaven. **La Botifarra no hi surt**:
-l'usuari la va voler treure de la llista. La partida del dia de la Botifarra
-segueix existint i comptant per a la lliga; només no surt aquí. **No porta
+hi havia manera de saber d'una ullada quines et quedaven. **La Botifarra i L'Abecedari
+difícil no hi surten**: l'usuari els va voler treure de la llista. Les seves
+partides del dia segueixen existint i comptant per a la lliga; només no
+surten aquí. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
