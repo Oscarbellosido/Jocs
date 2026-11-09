@@ -28,7 +28,7 @@ const ORDRE = [
 // clàssics. Dins de l'apartat, també per ordre d'any.
 const MODERNS = [['escacs', 1475], ['botifarra', 1850], ['sopa', 1968], ['xifres', 1972], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026], ['poble', 2026], ['tresor', 2026]];
 // les partides del dia, que surten a dalt de tot a ELS JOCS D'AVUI
-const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'abecedari_dificil_dia', 'colles_dia', 'poble_dia', 'trencaclosques_dia', 'sopa_dia', 'botifarra_dia', 'conquesta_dia'];
+const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'abecedari_dificil_dia', 'colles_dia', 'poble_dia', 'trencaclosques_dia', 'sopa_dia', 'conquesta_dia'];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
@@ -130,9 +130,9 @@ for (const [w, h] of MIDES) {
   if (r.tg) problemes.push('el botó de Telegram: ' + r.tg);
   const a = r.avui;
   if (JSON.stringify(a.joc) !== JSON.stringify(DIARIS)) problemes.push('a ELS JOCS D\'AVUI hi falten partides del dia: ' + a.joc.join(','));
-  if (a.est[0] !== '✓ FET' || a.est[4] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.fets !== '1 de 10 fets')
+  if (a.est[0] !== '✓ FET' || a.est[4] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.fets !== '1 de 9 fets')
     problemes.push('els estats de les partides del dia no quadren: ' + a.est.join(','));
-  if (a.lid[0] !== 'WWW ★★★★★' || a.lid[6] !== 'WWW 3:20' || a.lid[5] !== 'WWW 6/6' || a.lid[1] !== 'WWW 3.400' || a.lid[7] !== 'WWW 3:20' || a.lid[9] !== '')
+  if (a.lid[0] !== 'WWW ★★★★★' || a.lid[6] !== 'WWW 3:20' || a.lid[5] !== 'WWW 6/6' || a.lid[1] !== 'WWW 3.400' || a.lid[7] !== 'WWW 3:20' || a.lid[8] !== '')
     problemes.push('qui guanya avui no surt bé: ' + a.lid.join(','));
   if (a.vessa) problemes.push(`${a.vessa} files de les partides del dia que no hi caben`);
   if (!/BOB 120/.test(a.lliga) || !/Tu, CRE: 4t amb 6 punts/.test(a.lliga)) problemes.push('la lliga de la setmana no surt: ' + a.lliga);
@@ -168,7 +168,7 @@ for (const [w, h] of MIDES) {
   });
   await p.waitForTimeout(200);
   const despres = await estat();
-  const be = abans[0] === 'PER FER' && despres[0] === '✓ FET' && despres[1] === '1 de 10 fets' && !errors.length;
+  const be = abans[0] === 'PER FER' && despres[0] === '✓ FET' && despres[1] === '1 de 9 fets' && !errors.length;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} tornant enrere des d'un joc, la partida acabada surt com a feta (${abans[0]} → ${despres[0]}, ${despres[1]})` + (errors.length ? ' ' + errors[0] : ''));
   await ctx.close();

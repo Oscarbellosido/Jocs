@@ -418,7 +418,7 @@ function posaLiders() {
 posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
-// Les deu partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
@@ -441,7 +441,6 @@ posaLiders();
     ['poble_dia','EL POBLE DEL DIA','poble.html',()=>{const d=llegeix('poble-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null},p=>p>=500?(11-p/100)+'/6':'✗'],
     ['trencaclosques_dia','EL TRENCACLOSQUES','trencaclosques.html',()=>{const d=llegeix('trencaclosques-'+avui);return !d?null:d.fi?'fet':'mig'},temps],
     ['sopa_dia','LA SOPA DE LLETRES','sopa.html',()=>{const d=llegeix('sopa-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
-    ['botifarra_dia','LA BOTIFARRA','botifarra.html',()=>{const d=llegeix('botifarra-'+avui);return !d?null:d.fi?'fet':'mig'}],
     ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{
       if(llegeix('conquesta-fi-'+avui))return 'fet';
       return llegeix('conquesta-dia')===avui?'mig':null}],
