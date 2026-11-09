@@ -306,6 +306,7 @@
   <div class="games" id="moderns">
     <a class="btn" href="escacs.html" data-nou="2026-11-08"><img src="thumbs/escacs.png" alt="ELS ESCACS" width="240" height="240"><span>ELS ESCACS</span><em><i class="any" data-any="1475">1475</i><b class="rec" data-joc="escacs"></b></em></a>
     <a class="btn" href="botifarra.html"><img src="thumbs/botifarra.png" alt="LA BOTIFARRA" width="240" height="240"><span>LA BOTIFARRA</span><em><i class="any" data-any="1850">S. XIX</i><b class="rec" data-joc="botifarra"></b></em></a>
+    <a class="btn" href="penjat.html" data-nou="2026-11-09"><img src="thumbs/penjat.png" alt="EL PENJAT" width="240" height="240"><span>EL PENJAT</span><em><i class="any" data-any="1894">1894</i><b class="rec" data-joc="penjat"></b></em></a>
     <a class="btn" href="sopa.html" data-nou="2026-11-05"><img src="thumbs/sopa.png" alt="LA SOPA DE LLETRES" width="240" height="240"><span>LA SOPA DE LLETRES</span><em><i class="any">1968</i><b class="rec" data-joc="sopa"></b></em></a>
     <a class="btn" href="xifres.html"><img src="thumbs/xifres.png" alt="XIFRES" width="240" height="240"><span>XIFRES</span><em><i class="any">1972</i><b class="rec" data-joc="xifres"></b></em></a>
     <a class="btn" href="temple.html"><img src="thumbs/temple.png" alt="EL TEMPLE" width="240" height="240"><span>EL TEMPLE</span><em><i class="any">1989</i><b class="rec" data-joc="temple"></b></em></a>
@@ -418,7 +419,7 @@ function posaLiders() {
 posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
-// Les vuit partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
@@ -440,6 +441,7 @@ posaLiders();
     ['poble_dia','EL POBLE DEL DIA','poble.html',()=>{const d=llegeix('poble-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null},p=>p>=500?(11-p/100)+'/6':'✗'],
     ['trencaclosques_dia','EL TRENCACLOSQUES','trencaclosques.html',()=>{const d=llegeix('trencaclosques-'+avui);return !d?null:d.fi?'fet':'mig'},temps],
     ['sopa_dia','LA SOPA DE LLETRES','sopa.html',()=>{const d=llegeix('sopa-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
+    ['penjat_dia','EL PENJAT','penjat.html',()=>{const d=llegeix('penjat-'+avui);return !d?null:d.fi?'fet':(d.lletres&&d.lletres.length)?'mig':null},p=>p?'✓ '+(8-p/100)+' err.':'✗'],
     ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{
       if(llegeix('conquesta-fi-'+avui))return 'fet';
       return llegeix('conquesta-dia')===avui?'mig':null}],
@@ -526,7 +528,7 @@ posaLiders();
   const idDe=a=>a.querySelector('.rec').dataset.joc;
   // les partides del dia que es desen amb la data: cada dia desat, una vegada jugat
   const DIES={gofra:['gofra-'],colles:['colles-'],abecedari:['abecedari-','abecedari-dificil-'],poble:['poble-'],
-    trencaclosques:['trencaclosques-'],sopa:['sopa-'],botifarra:['botifarra-'],conquesta:['conquesta-fi-'],impremta:[]};
+    trencaclosques:['trencaclosques-'],sopa:['sopa-'],penjat:['penjat-'],botifarra:['botifarra-'],conquesta:['conquesta-fi-'],impremta:[]};
   const cops=()=>{
     const vells=llegeix('jocs-jugats')||{},oberts=llegeix('jocs-obertes')||{};
     let claus=[];try{claus=Object.keys(localStorage)}catch(e){}

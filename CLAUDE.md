@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vint que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint-i-un que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,12 +53,13 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vint que no són de saló
+### I vint-i-un que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
 | `escacs.html` | Els Escacs (contra la màquina, a quatre nivells, o dos al mateix mòbil) | 1475 |
 | `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
+| `penjat.html` | El Penjat (el de paper de tota la vida, amb un bruixot) | 1894 |
 | `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
 | `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
@@ -99,9 +100,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les vuit partides del dia (la Gofra, la Impremta, l'Abecedari, les
-Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres i la
-Conquesta), cadascuna
+les nou partides del dia (la Gofra, la Impremta, l'Abecedari, les
+Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat
+i la Conquesta), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -1075,6 +1076,45 @@ Coses que no s'han de desfer sense entendre-les:
   cada posició). La màquina també ho sap, i no repeteix si va guanyant.
 - **El tauler es dibuixa amb vectors** (`peca`), sense imatges ni lletres
   d'escacs Unicode, que a cada mòbil surten diferents.
+
+## El Penjat: la paraula del dia, amb un bruixot
+
+L'usuari el va demanar, i que el penjat fos un dibuix seu: un bruixot
+imaginari que va fer amb una app d'IA. És **el joc de paper de tota la
+vida** (el primer que se'n sap és del 1894, en un llibre de jocs populars
+anglesos), no el d'una empresa: va amb el seu nom.
+
+- **Una paraula amb la pista del tema** («UN DOLÇ», «A LA CUINA»...): sense,
+  seria una loteria. Es toquen les lletres amb **un teclat propi** (el del
+  mòbil taparia el bruixot), sense accents: la A val per la À i la C per la Ç.
+- **Set errors.** A cada lletra que no hi és surt un tros més del bruixot,
+  penjat de la corda pel barret (el barret, la cara, el cos, un braç, l'altre,
+  les cames i el bastó). Si surt sencer, la calavera del bastó s'encén, riu i
+  guanya ell. Si l'endevines, la corda es trenca i el bruixot cau.
+- **La paraula del dia, igual per a tothom** (#1 = 9 de novembre del 2026), a
+  la taula del dia (`penjat_dia/<data>`): **800 punts sense cap error i 100
+  menys per cada error**; penjat, 0 (que també compta per a la lliga). I les
+  **paraules endevinades de sempre** (`penjat`, acumulades, cadascú una
+  vegada). El bot diu cada matí qui la va guanyar.
+- Es desa a cada lletra (`penjat-<data>`, i `penjat-practica`). **PRÀCTICA**:
+  una altra paraula, que no compta.
+- **Al grup s'envien els errors** (🟥🟥⬜⬜⬜⬜⬜) i el tema, mai la paraula.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **El bruixot va dins del joc** (una imatge WebP de 512 px, 33 KB): així
+  el joc segueix essent un sol fitxer. Se li va treure el fons blanc i la
+  marca de l'app. **Els trossos són polígons sobre la imatge** (`TROSSOS`, en
+  coordenades de 1.024) i es dibuixa retallat pels que ja han sortit; cada
+  un apareix a poc a poc. On el bastó travessa el cos, aquell tros surt amb
+  el cos.
+- **Les paraules són a `TEMES`** (34 temes, 344 paraules de 5 a 10 lletres,
+  escrites a mà i sense repetir-ne cap). **No en surt cap dues vegades fins
+  que no han sortit totes**, i **mai dues de seguides del mateix tema**
+  (`ordreTanda`). Si se n'afegeixen, canvien les dels dies que vénen (no les
+  ja jugades: la partida desada porta la paraula escrita).
+- **La P del teclat de l'ordinador prova la P**: només fa pausa la P de
+  mentida del botó del marcador, com a L'Abecedari.
 
 ## La Botifarra: el joc de cartes de casa
 
@@ -2186,6 +2226,11 @@ comproven el comportament.
   cada nivell guanyi l'anterior, i que es jugui tocant: moure, desfer, desar
   i continuar, guanyar (i els punts a la taula), dos jugadors, coronar,
   abandonar, jugar amb negres i que hi capiga a 320 px.
+- `node scripts/prova-penjat.mjs` — que les paraules del Penjat estiguin ben
+  fetes (de 5 a 10 lletres, sense repetides), que la del dia sigui igual per
+  a tothom, que no se'n repeteixi cap ni surtin dos dies seguits del mateix
+  tema, i que es jugui tocant: encertar, fallar, guanyar (les dues taules),
+  perdre, desar i continuar, la pràctica, la P i que hi capiga a 320 px.
 - `node scripts/prova-botifarra.mjs` — les regles de La Botifarra (l'ordre,
   els punts, seguir, matar, fallar i sobrefallar), que la màquina no faci mai
   una jugada prohibida i jugui millor que l'atzar, que la del dia tingui les

@@ -73,12 +73,13 @@ const JOCS = {
   poble:             99999,   // els pobles del dia endevinats, acumulats
   tresor:             1600,   // 16 proves de 75 (30 menys per pista) i fins a 400 pel temps
   escacs:           100000,   // punts acumulats guanyant la màquina (1, 3, 6 o 10 per partida)
+  penjat:            99999,   // les paraules del dia endevinades, acumulades
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble', 'escacs']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble', 'escacs', 'penjat']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -95,6 +96,7 @@ const DIARIS = {
   sopa_dia:           3599,   // igual: 3.600 menys els segons (i 30 per pista)
   botifarra_dia:      4608,   // els punts de la parella en 8 mans: com a molt 36 × 2 × 8 cada una
   poble_dia:          1000,   // 1.000 al primer intent... 500 al sise; si no, 400 menys els km
+  penjat_dia:          800,   // 800 sense cap error i 100 menys per error; penjat, 0
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -145,6 +147,7 @@ const FITXA = {
   poble:           ['El Poble del Dia', 'al Poble del Dia',  'poble.html'],
   tresor:          ['El Tresor dels Templers', 'al Tresor dels Templers', 'tresor.html'],
   escacs:          ['Els Escacs', 'als Escacs', 'escacs.html'],
+  penjat:          ['El Penjat', 'al Penjat', 'penjat.html'],
 };
 
 const cors = {
@@ -203,7 +206,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats', escacs: 'punts' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats', escacs: 'punts', penjat: 'paraules endevinades' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
@@ -288,12 +291,15 @@ const ANUNCIA_DIARI = {
   poble_dia: ['El Poble del Dia', 'poble.html', p => p >= 500
     ? 'el poble al ' + ordinal(11 - p / 100) + ' intent'
     : 'el més a prop: a ' + (400 - p) + ' km (no el va trobar ningú)'],
+  // Al Penjat, 800 punts sense cap error i 100 menys per cada error
+  penjat_dia: ['El Penjat', 'penjat.html', p => 'la paraula amb ' + (8 - p / 100) + ((8 - p / 100) === 1 ? ' error' : ' errors')],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const ordinal = n => n + (n === 1 ? 'r' : n === 2 ? 'n' : n === 3 ? 'r' : n === 4 ? 't' : 'è');
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencaclosques_dia' || joc === 'sopa_dia') ? temps(p)
-  : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km') : xifra(p);
+  : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km')
+  : joc === 'penjat_dia' ? (8 - p / 100) + ' err.' : xifra(p);
 // «a La Impremta», pero «al Trencaclosques» i «al Poble del Dia»
 const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : 'a ' + nom;
 function diaMadrid(enrere = 0) {
