@@ -97,6 +97,7 @@ const DIARIS = {
   botifarra_dia:      4608,   // els punts de la parella en 8 mans: com a molt 36 × 2 × 8 cada una
   poble_dia:          1000,   // 1.000 al primer intent... 500 al sise; si no, 400 menys els km
   penjat_dia:          800,   // 800 sense cap error i 100 menys per error; penjat, 0
+  quadres_dia:        3599,   // el sudoku: 3.600 menys els segons (i 30 per error i 60 per pista)
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -283,6 +284,8 @@ const ANUNCIA_DIARI = {
   // Al Trencaclosques la puntuacio es 3.600 menys els segons: es diu el temps
   trencaclosques_dia: ['El Trencaclosques', 'trencaclosques.html', p => 'un temps de ' + temps(p)],
   sopa_dia: ['La Sopa de Lletres', 'sopa.html', p => 'un temps de ' + temps(p)],
+  // Els Nou Quadres (el sudoku), igual: el temps, amb els errors i les pistes ja sumats
+  quadres_dia: ['Els Nou Quadres', 'quadres.html', p => 'un temps de ' + temps(p)],
   // A la Botifarra, els punts que va fer la parella en les 8 mans del dia
   botifarra_dia: ['La Botifarra', 'botifarra.html', p => xifra(p) + ' punts en 8 mans'],
   // Al Poble del Dia, 1.000 punts al primer intent i 100 menys per cada
@@ -297,11 +300,11 @@ const ANUNCIA_DIARI = {
 };
 const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const ordinal = n => n + (n === 1 ? 'r' : n === 2 ? 'n' : n === 3 ? 'r' : n === 4 ? 't' : 'è');
-const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencaclosques_dia' || joc === 'sopa_dia') ? temps(p)
+const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencaclosques_dia' || joc === 'sopa_dia' || joc === 'quadres_dia') ? temps(p)
   : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km')
   : joc === 'penjat_dia' ? (8 - p / 100) + ' err.' : xifra(p);
-// «a La Impremta», pero «al Trencaclosques» i «al Poble del Dia»
-const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : 'a ' + nom;
+// «a La Impremta», pero «al Trencaclosques», «al Poble del Dia» i «als Nou Quadres»
+const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : nom.startsWith('Els ') ? 'als ' + nom.slice(4) : 'a ' + nom;
 function diaMadrid(enrere = 0) {
   const d = new Date(Date.now() - enrere * 86400e3);
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d); }

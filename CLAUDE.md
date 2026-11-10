@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vint-i-un que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint-i-dos que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,7 +53,7 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vint-i-un que no són de saló
+### I vint-i-dos que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -62,6 +62,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `penjat.html` | El Penjat (el de paper de tota la vida, amb un bruixot) | 1894 |
 | `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
+| `quadres.html` | Els Nou Quadres (el sudoku dels diaris, amb un del dia) | 1979 |
 | `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
 | `amunt.html` | Amunt (de l'estil del *Doodle Jump*) | 2009 |
 | `boles.html` | Boles (de l'estil del *Ballz*) | 2016 |
@@ -100,9 +101,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les nou partides del dia (la Gofra, la Impremta, l'Abecedari, les
-Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat
-i la Conquesta), cadascuna
+les deu partides del dia (la Gofra, la Impremta, l'Abecedari, les
+Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat,
+la Conquesta i els Nou Quadres), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -1055,6 +1056,69 @@ Coses que no s'han de desfer sense entendre-les:
   duren fins al 26 de desembre sense repetir-ne cap.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
+
+## Els Nou Quadres: el sudoku, amb un del dia
+
+L'usuari el va triar d'una llista d'idees. És **el passatemps dels diaris**
+(el primer es va publicar el 1979 en una revista americana de passatemps,
+amb el nom de *Number Place*; «sudoku» és com li van dir després al Japó).
+Aquí es diu Els Nou Quadres, i el menú diu que és el sudoku.
+
+- **Toques una casella i després el número** (un teclat de nou botons a
+  sota, cadascun amb quants en falten per posar; quan ja hi és nou vegades,
+  s'apaga). La casella triada il·lumina la seva filera, columna i quadre, i
+  tots els números iguals.
+- **Si el número hi va, s'hi queda i ja no es pot treure. Si no hi va, surt
+  en vermell, compta un error i suma 30 segons** (`PENA_ERROR`). Sense això,
+  es podria anar provant números fins que n'entrés un. Tornant a tocar el
+  mateix número equivocat, es treu i no torna a costar res.
+- **NOTES**: amb el botó engegat (groc), els números s'apunten en petit a la
+  casella i no es comprova res. En posar un número de debò, les notes
+  d'aquell número a la seva filera, columna i quadre s'esborren soles.
+- **💡 PISTA**: destapa la casella triada (o, si no n'hi ha cap de triada per
+  omplir, la que ara mateix és més fàcil de trobar) i **suma 60 segons**.
+  **Pregunta abans** («SEGUR? +60 s», tres segons): és a tocar del teclat i
+  un toc sense voler costaria un minut (la trampa 3).
+- **El del dia és igual per a tothom** (llavor `DIA-<n>`, el #1 és el del 10
+  de novembre del 2026) i va a la taula del dia (`quadres_dia/<data>`) **pel
+  temps**, com la Sopa: es desa 3.600 menys els segons i surt «6:41». No té
+  taula de sempre. Al grup s'envia el nivell, el temps, una ❌ per error i
+  una 💡 per pista.
+- **El nivell del dia va amb la setmana, com als diaris** (`nivellDia`):
+  dilluns i dimarts, FÀCIL; de dimecres a divendres, MITJÀ; dissabte i
+  diumenge, DIFÍCIL. **PRÀCTICA**: un altre, del nivell que triïs, que no
+  compta.
+- El rellotge només corre mentre jugues, i **la pausa tapa la graella** (si
+  no, es podria pensar amb el rellotge aturat). Es desa a cada número i cada
+  dos segons (`quadres-<data>`, `quadres-practica`).
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Els sudokus es fabriquen al moment**, a partir de la llavor (entre
+  `==REGLES==` i `==FI REGLES==`, que també fa servir la prova): una graella
+  plena a l'atzar (`fesSolucio`) i se n'hi van traient números **de dos en
+  dos, cada casella amb la del seu davant** (girant la graella mitja volta,
+  com als diaris), mentre el nivell encara el sàpiga resoldre. Triga de 0,6 a
+  25 mil·lèsimes de mitjana, i com a molt un quart de segon.
+- **El nivell no és quants números hi ha, sinó què cal saber per resoldre'l**
+  (`resol`, que el fa com una persona, sense provar mai a cegues):
+  1. FÀCIL: n'hi ha prou amb «només hi cap aquí» (en una filera, columna o
+     quadre, un número només té una casella). 36 números donats.
+  2. MITJÀ: a més, cal «aquí només hi pot anar aquest» (a una casella només
+     li queda un número). Uns 30.
+  3. DIFÍCIL: a més, candidats tancats i parelles: calen les notes. De 24 a
+     32.
+  **Cada un ha de necessitar el seu nivell**: si un de mitjà surt que es
+  resol amb les tècniques del fàcil, es torna a fer amb un altre intent
+  (`fesSudoku`, fins a 400; de mediana en calen 6).
+- **Tots tenen una sola solució**, i no cal comprovar-ho a part: com que cada
+  pas del `resol` és segur, si l'acaba, no n'hi pot haver cap altra. La prova
+  ho torna a mirar comptant solucions a la força (`compta`).
+- **Si es toca `resol`, `fesSolucio` o `fesSudoku`, canvien els sudokus dels
+  dies que vénen i també el d'avui**: la partida desada només guarda el que
+  has posat, i la graella es torna a fer a partir de la llavor. Si algun dia
+  cal, s'ha de fer com amb la Sopa (`gen`): el codi vell per als dies ja
+  jugats.
 
 ## Els Escacs: contra la màquina o dos al mateix mòbil
 
@@ -2244,6 +2308,13 @@ comproven el comportament.
   igual per a tothom i no repeteixi tema, i que es jugui amb el dit: lliscant,
   tocant, del revés, la pista, la pausa, desar i continuar, acabar-la (va a la
   taula del dia una vegada), la pràctica i que hi capiga a 320 px.
+- `node scripts/prova-quadres.mjs` — que els sudokus dels Nou Quadres
+  tinguin una sola solució, es resolguin amb les tècniques del seu nivell i
+  les necessitin, que el del dia sigui igual per a tothom i del nivell que
+  toca, i que es jugui tocant: posar números, l'error (+30 s), les notes,
+  esborrar, la pista (que pregunta, +60 s), la pausa, desar i continuar,
+  acabar-lo (va a la taula del dia una vegada), la pràctica i que hi capiga
+  a 320 px.
 - `node scripts/prova-escacs.mjs` — les regles dels Escacs (comptant totes
   les partides possibles des de cinc posicions conegudes, l'enroc, al pas,
   coronar, el mat, l'ofegat i les taules), que la màquina vegi el mat i que

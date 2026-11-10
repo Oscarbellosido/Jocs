@@ -309,6 +309,7 @@
     <a class="btn" href="penjat.html" data-nou="2026-11-09"><img src="thumbs/penjat.png" alt="EL PENJAT" width="240" height="240"><span>EL PENJAT</span><em><i class="any" data-any="1894">1894</i><b class="rec" data-joc="penjat"></b></em></a>
     <a class="btn" href="sopa.html" data-nou="2026-11-05"><img src="thumbs/sopa.png" alt="LA SOPA DE LLETRES" width="240" height="240"><span>LA SOPA DE LLETRES</span><em><i class="any">1968</i><b class="rec" data-joc="sopa"></b></em></a>
     <a class="btn" href="xifres.html"><img src="thumbs/xifres.png" alt="XIFRES" width="240" height="240"><span>XIFRES</span><em><i class="any">1972</i><b class="rec" data-joc="xifres"></b></em></a>
+    <a class="btn" href="quadres.html" data-nou="2026-11-10"><img src="thumbs/quadres.png" alt="ELS NOU QUADRES" width="240" height="240"><span>ELS NOU QUADRES</span><em><i class="any">1979</i><b class="rec" data-joc="quadres"></b></em></a>
     <a class="btn" href="temple.html"><img src="thumbs/temple.png" alt="EL TEMPLE" width="240" height="240"><span>EL TEMPLE</span><em><i class="any">1989</i><b class="rec" data-joc="temple"></b></em></a>
     <a class="btn" href="amunt.html"><img src="thumbs/amunt.png" alt="AMUNT" width="240" height="240"><span>AMUNT</span><em><i class="any">2009</i><b class="rec" data-joc="amunt"></b></em></a>
     <a class="btn" href="boles.html"><img src="thumbs/boles.png" alt="BOLES" width="240" height="240"><span>BOLES</span><em><i class="any">2016</i><b class="rec" data-joc="boles"></b></em></a>
@@ -419,7 +420,7 @@ function posaLiders() {
 posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
-// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les deu partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
@@ -445,6 +446,7 @@ posaLiders();
     ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{
       if(llegeix('conquesta-fi-'+avui))return 'fet';
       return llegeix('conquesta-dia')===avui?'mig':null}],
+    ['quadres_dia','ELS NOU QUADRES','quadres.html',()=>{const d=llegeix('quadres-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
   ];
   const ul=document.getElementById('avui-llista');
   let lliga=null;
@@ -528,7 +530,7 @@ posaLiders();
   const idDe=a=>a.querySelector('.rec').dataset.joc;
   // les partides del dia que es desen amb la data: cada dia desat, una vegada jugat
   const DIES={gofra:['gofra-'],colles:['colles-'],abecedari:['abecedari-','abecedari-dificil-'],poble:['poble-'],
-    trencaclosques:['trencaclosques-'],sopa:['sopa-'],penjat:['penjat-'],botifarra:['botifarra-'],conquesta:['conquesta-fi-'],impremta:[]};
+    trencaclosques:['trencaclosques-'],sopa:['sopa-'],penjat:['penjat-'],quadres:['quadres-'],botifarra:['botifarra-'],conquesta:['conquesta-fi-'],impremta:[]};
   const cops=()=>{
     const vells=llegeix('jocs-jugats')||{},oberts=llegeix('jocs-obertes')||{};
     let claus=[];try{claus=Object.keys(localStorage)}catch(e){}

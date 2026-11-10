@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Els Nou Quadres</title>
+<style>
+html,body{margin:0;height:100%;background:#13202a;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,520px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#9fc0d0;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96%}
+#tema{flex:none;font:bold 14px monospace;letter-spacing:.12em;color:#ffd77a;padding:3px 0 4px;text-align:center;max-width:96%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen{flex:1 1 auto;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#c{touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(19,32,42,.98);font-size:22px;letter-spacing:.2em;color:#e8f0f4;z-index:3}
+#teclat{flex:none;width:96%;display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin-top:7px}
+#teclat button{height:46px;font:bold 21px monospace;padding:0 0 6px;position:relative;background:#1d2e3a;color:#e8f0f4;border-color:#3a5a6a;min-width:0}
+#teclat button i{position:absolute;left:0;right:0;bottom:2px;font:normal 9px monospace;color:#7a98a8;font-style:normal}
+#teclat button.ple{opacity:.28}
+#teclat.apunta button{color:#ffd77a;border-color:#8a7030;font-size:16px;font-style:italic}
+#controls{flex:none;display:flex;gap:6px;margin-top:7px;align-items:center;justify-content:center;width:96%}
+button{font:bold 12px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:42px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 4px}
+#pista{flex:0 0 23%;font-size:11px;color:#ffd77a;border-color:#6a5a2a;background:#1c1a10}
+#pista.segur{color:#1a1200;background:#ffd77a;border-color:#ffd77a}
+#notes{flex:1 1 0;font-size:13px;color:#e8f0f4;border-color:#3a5a6a;background:#1d2e3a}
+#notes.on{color:#1a1200;background:#ffd77a;border-color:#ffd77a}
+#esborra{flex:0 0 27%;color:#e8f0f4;border-color:#3a5a6a;background:#1d2e3a}
+#menu{flex:0 0 17%;color:#9fc0d0;border-color:#2e4656;background:#162530}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.5;display:none;background:rgba(14,24,32,.97);border:1px solid #3a5a6a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 16px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:270px}
+#msg .nivells{display:flex;gap:6px;justify-content:center;margin:6px auto 0;max-width:300px}
+#msg .nivells a{flex:1 1 0;font:bold 13px monospace;color:#e8f0f4;text-decoration:none;background:#1d2e3a;border:1px solid #3a5a6a;border-radius:8px;padding:11px 2px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TEMPS <b id="score">0:00</b></span><span>ERRORS <b id="errors">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="tema"></div>
+  <div id="screen"><canvas id="c"></canvas><div id="pausa">PAUSA</div></div>
+  <div id="teclat"></div>
+  <div id="controls"><button id="pista">💡 PISTA</button><button id="notes">✎ NOTES</button><button id="esborra">⌫ ESBORRA</button><button id="menu">MENÚ</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Omple la graella: a cada filera, columna i quadre de 3 × 3, de l'1 al 9 sense repetir-ne cap.</b> toca una casella i després el número · NOTES per apuntar els que hi podrien anar · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}
+}
+function tone(f,d,type='sine',vol=.2,slide=0){
+  if(!AC)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  toca(){aInit();tone(660,.04,'triangle',.07)},
+  apunta(){aInit();tone(880,.03,'triangle',.05)},
+  be(){aInit();tone(784,.09,'triangle',.14)},
+  ple(){aInit();[784,988,1319].forEach((f,i)=>setTimeout(()=>tone(f,.12,'triangle',.18),i*70))},
+  no(){aInit();tone(180,.16,'square',.09,-40)},
+  pista(){aInit();tone(523,.2,'sine',.15,260)},
+  fi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.24,'triangle',.22),i*110))},
+};
+
+// ===== ELS SUDOKUS =====
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function barreja(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ==REGLES==
+// La graella són 81 caselles, de la 0 (a dalt a l'esquerra) a la 80. Les 27
+// UNITATS són les 9 fileres, les 9 columnes i els 9 quadres; les VEINES
+// d'una casella, les 20 que comparteixen unitat amb ella. Els números que
+// encara hi poden anar («candidats») es guarden com a bits: el bit 3 vol dir
+// que el 3 encara hi cap.
+const FILA=i=>(i/9)|0,COL=i=>i%9,QUAD=i=>((i/27)|0)*3+(((i%9)/3)|0);
+const UNITATS=[];
+for(let k=0;k<9;k++)UNITATS.push(Array.from({length:9},(_,j)=>k*9+j));
+for(let k=0;k<9;k++)UNITATS.push(Array.from({length:9},(_,j)=>j*9+k));
+for(let k=0;k<9;k++){const f=((k/3)|0)*3,c=(k%3)*3;UNITATS.push(Array.from({length:9},(_,j)=>(f+((j/3)|0))*9+c+j%3))}
+const VEINES=Array.from({length:81},(_,i)=>{const s=new Set();UNITATS.forEach(u=>{if(u.includes(i))u.forEach(j=>{if(j!==i)s.add(j)})});return [...s]});
+const TOTS=0x3FE;
+const quants=m=>{let n=0;while(m){m&=m-1;n++}return n};
+const elBit=m=>31-Math.clz32(m);
+function candidats(v){
+  const c=new Array(81).fill(0);
+  for(let i=0;i<81;i++)if(!v[i]){let m=TOTS;for(const j of VEINES[i])if(v[j])m&=~(1<<v[j]);c[i]=m}
+  return c;
+}
+// Una graella plena a l'atzar: es va omplint la casella on caben menys
+// números, provant-los barrejats, i es torna enrere quan no en cap cap.
+function fesSolucio(r){
+  const v=new Array(81).fill(0);
+  const prova=()=>{
+    let on=-1,mm=0,mb=10;
+    for(let i=0;i<81;i++)if(!v[i]){let m=TOTS;for(const j of VEINES[i])if(v[j])m&=~(1<<v[j]);const b=quants(m);if(b<mb){mb=b;on=i;mm=m;if(b<=1)break}}
+    if(on<0)return true;
+    if(!mb)return false;
+    for(const d of barreja(r,[1,2,3,4,5,6,7,8,9].filter(d=>mm>>d&1))){v[on]=d;if(prova())return true}
+    v[on]=0;return false;
+  };
+  prova();return v;
+}
+// Quantes solucions té (para de comptar a «fins»): només per a les proves.
+function compta(g,fins=2){
+  const v=g.slice();let n=0;
+  const prova=()=>{
+    let on=-1,mm=0,mb=10;
+    for(let i=0;i<81;i++)if(!v[i]){let m=TOTS;for(const j of VEINES[i])if(v[j])m&=~(1<<v[j]);const b=quants(m);if(b<mb){mb=b;on=i;mm=m;if(b<=1)break}}
+    if(on<0){n++;return}
+    if(!mb)return;
+    for(let d=1;d<=9&&n<fins;d++)if(mm>>d&1){v[on]=d;prova()}
+    v[on]=0;
+  };
+  prova();return n;
+}
+// El que el resol com ho faria una persona, sense provar mai a cegues. Fa
+// servir, per ordre, les tècniques que deixa cada nivell:
+//   1 (fàcil)   «només hi cap aquí»: en una filera, columna o quadre, un
+//               número només té una casella on posar-se
+//   2 (mitjà)   «aquí només hi pot anar aquest»: a una casella només li
+//               queda un número possible
+//   3 (difícil) candidats tancats (en un quadre, un número només cap en una
+//               filera, i per tant no pot ser a la resta d'aquella filera; i
+//               al revés) i parelles (dues caselles d'una unitat que només
+//               admeten els mateixos dos números)
+// Com que cada pas és segur, si l'acaba, la solució és única. «us» diu
+// quantes vegades ha fet servir cada tècnica.
+function resol(g,nivell){
+  const v=g.slice(),c=candidats(v),us=[0,0,0,0];
+  const posa=(i,d)=>{v[i]=d;c[i]=0;for(const j of VEINES[i])c[j]&=~(1<<d)};
+  let buides=0;for(let i=0;i<81;i++)if(!v[i])buides++;
+  while(buides){
+    let fet=false;
+    for(const u of UNITATS)for(let d=1;d<=9;d++){
+      let n=0,on=-1;for(const i of u)if(c[i]>>d&1){n++;on=i}
+      if(n===1){posa(on,d);buides--;us[0]++;fet=true}
+    }
+    if(fet)continue;
+    if(nivell<2)break;
+    for(let i=0;i<81;i++)if(!v[i]&&quants(c[i])===1){posa(i,elBit(c[i]));buides--;us[1]++;fet=true}
+    if(fet)continue;
+    if(nivell<3)break;
+    for(const u of UNITATS)for(let d=1;d<=9;d++){
+      const on=u.filter(i=>c[i]>>d&1);if(on.length<2||on.length>3)continue;
+      for(const w of UNITATS){if(w===u||!on.every(i=>w.includes(i)))continue;
+        for(const j of w)if(!on.includes(j)&&(c[j]>>d&1)){c[j]&=~(1<<d);fet=true}}
+    }
+    if(fet){us[2]++;continue}
+    for(const u of UNITATS)for(let a=0;a<9;a++){
+      const i=u[a];if(quants(c[i])!==2)continue;
+      for(let b=a+1;b<9;b++){const j=u[b];if(c[j]!==c[i])continue;
+        for(const k of u)if(k!==i&&k!==j&&(c[k]&c[i])){c[k]&=~c[i];fet=true}}
+    }
+    if(fet){us[3]++;continue}
+    break;
+  }
+  return {resolt:!buides,v,us};
+}
+// Fa un sudoku d'un nivell a partir d'una llavor: una graella plena, i se
+// n'hi van traient números de dos en dos (cada casella amb la del seu
+// davant, girant la graella mitja volta, com als diaris) mentre el nivell
+// encara el sàpiga resoldre. Al final ha de NECESSITAR el seu nivell: si un
+// de mitjà es resol amb les tècniques del fàcil, es torna a fer.
+const DONADES_MIN=[0,36,30,24];
+function fesSudoku(llavor,nivell){
+  let primer=null;
+  for(let intent=0;intent<400;intent++){
+    const r=mulberry(hashText('QUADRES-'+llavor+'-'+nivell+'-'+intent));
+    const sol=fesSolucio(r),g=sol.slice();let donades=81;
+    for(const i of barreja(r,Array.from({length:41},(_,k)=>k))){
+      const j=80-i,treu=i===j?1:2;
+      if(donades-treu<DONADES_MIN[nivell])continue;
+      const a=g[i],b=g[j];g[i]=0;g[j]=0;
+      if(resol(g,nivell).resolt)donades-=treu;else{g[i]=a;g[j]=b}
+    }
+    const s={g,sol,nivell,donades,intent};
+    if(nivell===1||!resol(g,nivell-1).resolt)return s;
+    if(!primer)primer=s;
+  }
+  return primer;
+}
+// ==FI REGLES==
+
+// ===== EL DIA =====
+const JOC='quadres',taulaDia=d=>JOC+'_dia/'+d;
+const mmss=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+// A la taula, la puntuacio es 3.600 menys els segons, com a la Sopa i al
+// Trencaclosques, pero el que s'ensenya es el temps. Cada error suma 30
+// segons (si no, es podria anar provant numeros) i cada pista, 60.
+const MAX_SEGONS=3600,PENA_ERROR=30,PENA_PISTA=60;
+const puntsDe=s=>Math.max(1,MAX_SEGONS-Math.round(s));
+Records.formata(JOC+'_dia',p=>mmss(MAX_SEGONS-p));
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// el primer, el #1, és el del 10 de novembre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-11-10T12:00:00Z'))/864e5)+1;
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+// El nivell del dia va amb la setmana, com als diaris: dilluns i dimarts,
+// fàcil; de dimecres a divendres, mitjà; i el cap de setmana, difícil.
+const NIVELLS=['','FÀCIL','MITJÀ','DIFÍCIL'];
+const nivellDia=d=>{const s=new Date(d+'T12:00:00Z').getUTCDay();return s===0||s===6?3:s<=2?1:2};
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+
+// ===== LA PARTIDA =====
+let S=null,P=null,mode='dia',dia='',numero=0,paused=false,brut=true;
+let sel=-1,apunta=false,llum=0,flaix=null;
+// P: el que es desa (el que has posat, les notes, el temps, els errors i les
+// pistes); S: el sudoku, que es torna a fer igual a partir de la llavor
+function novaP(m,llavor,nivell){return {v:1,mode:m,dia,n:numero,llavor,nivell,temps:0,vals:new Array(81).fill(0),notes:new Array(81).fill(0),errors:0,pistes:0,fi:false,comencada:false}}
+const clau=()=>mode==='dia'?'quadres-'+P.dia:'quadres-practica';
+function desaP(){if(P)desa(clau(),P)}
+const valDe=i=>S.g[i]||P.vals[i];
+const bona=i=>!!S.g[i]||P.vals[i]===S.sol[i];
+const fetes=()=>{let n=0;for(let i=0;i<81;i++)if(bona(i))n++;return n};
+function carregaS(){S=fesSudoku(P.llavor,P.nivell);sel=-1;llum=0;flaix=null;posaApunta(false);pintaTeclat();pintaTema();mesura();brut=true}
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('quadres-'+dia,null);
+  P=d&&d.v===1&&d.n===numero?d:novaP('dia','DIA-'+numero,nivellDia(dia));
+  P.comencada=true;carregaS();desaP();hideMsg();pintaLider();
+  if(P.fi)finalPartida();
+}
+function obrePractica(nivell){
+  mode='practica';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('quadres-practica',null);
+  if(!nivell&&d&&d.v===1&&!d.fi)P=d;
+  else P=novaP('practica','PRACTICA-'+Date.now()+'-'+Math.random(),nivell||1);
+  P.comencada=true;carregaS();desaP();hideMsg();pintaLider();
+}
+const jugant=()=>P&&S&&!P.fi&&!paused&&$('msg').style.display!=='block';
+
+// ===== EL MENU =====
+function menu(){
+  desaP();
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('quadres-'+dia,null),pr=llegeix('quadres-practica',null),nv=NIVELLS[nivellDia(dia)];
+  const bt=(id,t,c,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#8aa8b8;margin-top:2px">'+sub+'</small>':'');
+  msg('<div style="color:#ffd77a;letter-spacing:.12em">ELS NOU QUADRES</div>'+
+    '<small>És el sudoku: a cada filera, columna i quadre de 3 × 3, de l\'1 al 9 sense repetir-ne cap.</small>'+
+    (d&&d.fi?bt('m-dia','☀ EL D\'AVUI: FET EN '+mmss(d.temps),'color:#9fd0a0;background:#16241a;border:1px solid #3a6a40','#'+numero+' · '+nv.toLowerCase()+' · demà n\'hi haurà un altre')
+      :bt('m-dia',d&&d.comencada?'☀ CONTINUA EL D\'AVUI':'☀ EL D\'AVUI ▸','color:#1a1200;background:#ffd77a','#'+numero+' · '+nomDia(dia)+' · '+nv.toLowerCase()+' · igual per a tothom'))+
+    (pr&&!pr.fi&&pr.comencada?bt('m-cont','CONTINUA LA PRÀCTICA','color:#e8f0f4;background:#1d2e3a;border:1px solid #3a5a6a',NIVELLS[pr.nivell].toLowerCase()+' · '+mmss(pr.temps)):'')+
+    '<small style="color:#e8f0f4;margin-top:12px">PRÀCTICA <span style="color:#8aa8b8">(no compta)</span></small>'+
+    '<div class="nivells"><a href="#" id="m-p1">FÀCIL</a><a href="#" id="m-p2">MITJÀ</a><a href="#" id="m-p3">DIFÍCIL</a></div>'+
+    '<small style="color:#6a8898;margin-top:10px;font-size:12px">El d\'avui va a la taula pel temps: error, +'+PENA_ERROR+' s; pista, +'+PENA_PISTA+' s.<br>Dilluns i dimarts, fàcil · de dimecres a divendres, mitjà · cap de setmana, difícil</small>');
+  enllac('m-dia',obreDia);enllac('m-cont',()=>obrePractica(0));
+  [1,2,3].forEach(k=>enllac('m-p'+k,()=>obrePractica(k)));
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+
+// ===== DIBUIX =====
+const $=id=>document.getElementById(id);
+const CV=$('c'),g=CV.getContext('2d');
+let L={mida:300,cela:33,dpr:1};
+function mesura(){
+  const sc=$('screen').getBoundingClientRect();
+  const m=Math.max(180,Math.floor(Math.min(sc.width,sc.height)));
+  L.dpr=Math.min(3,window.devicePixelRatio||1);L.mida=m;L.cela=m/9;
+  CV.style.width=m+'px';CV.style.height=m+'px';
+  CV.width=Math.round(m*L.dpr);CV.height=Math.round(m*L.dpr);brut=true;
+}
+addEventListener('resize',mesura);
+function dibuixa(){
+  if(!S)return;
+  g.setTransform(L.dpr,0,0,L.dpr,0,0);
+  const c=L.cela,m=L.mida,ara=performance.now();
+  // el paper, amb els quadres alterns una mica més foscos
+  g.fillStyle='#f6efdc';g.fillRect(0,0,m,m);
+  g.fillStyle='rgba(120,90,40,.09)';
+  for(let q=0;q<9;q++)if(q%2===0)g.fillRect((q%3)*3*c,((q/3)|0)*3*c,3*c,3*c);
+  // la casella triada, la seva filera, columna i quadre, i els números iguals
+  const dl=sel>=0&&valDe(sel)?valDe(sel):llum;
+  for(let i=0;i<81;i++){
+    const x=COL(i)*c,y=FILA(i)*c,v=valDe(i);
+    let col=null;
+    if(sel>=0&&i!==sel&&(FILA(i)===FILA(sel)||COL(i)===COL(sel)||QUAD(i)===QUAD(sel)))col='rgba(70,130,220,.13)';
+    if(dl&&v===dl&&bona(i))col='rgba(70,130,220,.36)';
+    if(P.vals[i]&&!bona(i))col='rgba(230,60,50,.26)';
+    if(i===sel)col='rgba(255,196,40,.62)';
+    if(col){g.fillStyle=col;g.fillRect(x,y,c,c)}
+  }
+  // la pista: la casella que t'ha destapat, que batega
+  if(flaix&&ara<flaix.fins){const k=.5+.5*Math.sin(ara/120);
+    g.strokeStyle='rgba(255,140,0,'+(.5+k*.5)+')';g.lineWidth=3;g.strokeRect(COL(flaix.i)*c+2,FILA(flaix.i)*c+2,c-4,c-4)}
+  // els números i les notes
+  g.textAlign='center';g.textBaseline='middle';
+  for(let i=0;i<81;i++){
+    const x=COL(i)*c,y=FILA(i)*c,v=valDe(i);
+    if(v){
+      g.fillStyle=S.g[i]?'#231c12':bona(i)?'#1c57b8':'#cc1a14';
+      g.font=(S.g[i]?'bold ':'')+Math.round(c*.62)+'px monospace';
+      g.fillText(v,x+c/2,y+c*.54);
+    }else if(P.notes[i]){
+      g.font=Math.round(c*.27)+'px monospace';
+      for(let d=1;d<=9;d++)if(P.notes[i]>>d&1){
+        g.fillStyle=dl===d?'#1c57b8':'#6e6250';
+        g.fillText(d,x+c*(.2+((d-1)%3)*.3),y+c*(.22+(((d-1)/3)|0)*.3));
+      }
+    }
+  }
+  // les ratlles: primes entre caselles, gruixudes entre quadres
+  g.strokeStyle='rgba(70,52,24,.38)';g.lineWidth=1;g.beginPath();
+  for(let k=1;k<9;k++)if(k%3){g.moveTo(Math.round(k*c)+.5,0);g.lineTo(Math.round(k*c)+.5,m);g.moveTo(0,Math.round(k*c)+.5);g.lineTo(m,Math.round(k*c)+.5)}
+  g.stroke();
+  g.strokeStyle='#231c12';g.lineWidth=2.4;g.beginPath();
+  for(let k=3;k<9;k+=3){g.moveTo(k*c,0);g.lineTo(k*c,m);g.moveTo(0,k*c);g.lineTo(m,k*c)}
+  g.stroke();g.lineWidth=3;g.strokeRect(1.5,1.5,m-3,m-3);
+  if(paused){g.fillStyle='rgba(19,32,42,.98)';g.fillRect(0,0,m,m)}
+}
+// El teclat: nou botons, cadascun amb quants en falten per posar d'aquell
+// número. Quan ja hi són tots nou, s'apaga.
+const TECLAT=$('teclat');
+for(let d=1;d<=9;d++){const b=document.createElement('button');b.dataset.d=d;b.innerHTML=d+'<i></i>';TECLAT.appendChild(b)}
+function faltenDe(d){let n=9;for(let i=0;i<81;i++)if(bona(i)&&valDe(i)===d)n--;return n}
+function pintaTeclat(){
+  if(!S)return;
+  TECLAT.querySelectorAll('button').forEach(b=>{const f=faltenDe(+b.dataset.d);b.querySelector('i').textContent=f?f:'';b.classList.toggle('ple',!f)});
+  $('errors').textContent=P.errors;
+}
+function pintaTema(){$('tema').textContent=NIVELLS[P.nivell]+(mode==='dia'?' · #'+P.n:' · PRÀCTICA')}
+function posaApunta(v){apunta=v;$('notes').classList.toggle('on',v);TECLAT.classList.toggle('apunta',v)}
+
+// ===== JUGAR =====
+// Toques una casella i després el número. Si hi va, s'hi queda (i ja no es
+// pot treure); si no hi va, surt en vermell i et costa trenta segons. Amb
+// NOTES engegat, el número s'hi apunta en petit i no es comprova res.
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  const r=CV.getBoundingClientRect(),x=Math.floor((ev.clientX-r.left)/L.cela),y=Math.floor((ev.clientY-r.top)/L.cela);
+  if(x<0||y<0||x>8||y>8)return;
+  sel=y*9+x;llum=0;so.toca();brut=true;
+});
+function posaNumero(d){
+  if(!jugant())return;
+  // sense cap casella triada, el número només s'il·lumina a tota la graella
+  if(sel<0){llum=llum===d?0:d;so.toca();brut=true;return}
+  const i=sel;
+  if(bona(i)){llum=0;so.toca();brut=true;return}
+  if(apunta){
+    P.vals[i]=0;P.notes[i]^=1<<d;so.apunta();desaP();brut=true;return;
+  }
+  // tornar a tocar el número equivocat el treu, i no torna a costar res
+  if(P.vals[i]===d){P.vals[i]=0;so.toca();desaP();brut=true;return}
+  P.vals[i]=d;
+  if(d===S.sol[i]){
+    // les notes d'aquell número a la filera, la columna i el quadre ja no hi fan res
+    P.notes[i]=0;for(const j of VEINES[i])P.notes[j]&=~(1<<d);
+    if(!faltenDe(d))so.ple();else so.be();
+    pintaTeclat();desaP();brut=true;
+    if(fetes()===81)acaba();
+  }else{
+    P.errors++;P.temps+=PENA_ERROR;so.no();pintaTeclat();desaP();brut=true;
+    avisa('El '+d+' no hi va: +'+PENA_ERROR+' s');
+  }
+}
+TECLAT.addEventListener('pointerdown',ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  posaNumero(+b.dataset.d);
+});
+function esborra(){
+  if(!jugant()||sel<0||bona(sel))return;
+  P.vals[sel]=0;P.notes[sel]=0;so.toca();desaP();brut=true;
+}
+$('esborra').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}esborra()});
+$('notes').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}if(!jugant())return;posaApunta(!apunta);so.toca()});
+
+// ===== LA PISTA =====
+// Destapa la casella triada (o, si no n'hi ha cap de triada per omplir, la
+// que ara mateix és més fàcil de trobar) i et costa seixanta segons. Com que
+// és a tocar del teclat, s'ha de tocar dues vegades: la primera pregunta.
+let segurT=null;
+function desarmaPista(){clearTimeout(segurT);segurT=null;$('pista').classList.remove('segur');$('pista').textContent='💡 PISTA'}
+function casellaPista(){
+  if(sel>=0&&!bona(sel))return sel;
+  // la que trobaria primer qui el resol: on només hi cap un número
+  const v=Array.from({length:81},(_,i)=>bona(i)?valDe(i):0),c=candidats(v);
+  for(const u of UNITATS)for(let d=1;d<=9;d++){let n=0,on=-1;for(const i of u)if(c[i]>>d&1){n++;on=i}if(n===1)return on}
+  let on=-1,mb=10;for(let i=0;i<81;i++)if(!v[i]&&quants(c[i])<mb){mb=quants(c[i]);on=i}
+  return on;
+}
+function pista(){
+  const i=casellaPista();if(i<0)return;
+  const d=S.sol[i];
+  P.vals[i]=d;P.notes[i]=0;for(const j of VEINES[i])P.notes[j]&=~(1<<d);
+  P.temps+=PENA_PISTA;P.pistes++;sel=i;llum=0;flaix={i,fins:performance.now()+2500};
+  so.pista();pintaTeclat();desaP();brut=true;
+  avisa('Aquí hi va un '+d+' · +'+PENA_PISTA+' s');
+  if(fetes()===81)acaba();
+}
+$('pista').addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(!jugant())return;
+  if(segurT){desarmaPista();pista();return}
+  $('pista').classList.add('segur');$('pista').textContent='SEGUR? +'+PENA_PISTA+' s';so.toca();
+  segurT=setTimeout(desarmaPista,3000);
+});
+$('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();desarmaPista();menu()});
+let avisT=null;
+function avisa(t){$('lider').textContent=t;$('lider').style.color='#ffb070';clearTimeout(avisT);avisT=setTimeout(()=>{$('lider').style.color='';pintaLider()},3000)}
+
+// ===== EL FINAL =====
+function acaba(){
+  P.fi=true;P.nou=mode==='dia';sel=-1;llum=0;desaP();so.fi();brut=true;
+  setTimeout(finalPartida,700);
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!P||!S||!P.fi){msg('<div style="color:#ffd77a">ELS NOU QUADRES</div><small>encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!(P&&S);return}
+    const pt=puntsDe(P.temps),dia2=P.dia,nv=NIVELLS[P.nivell].toLowerCase();
+    const com=(P.errors?P.errors+(P.errors===1?' error':' errors'):'sense cap error')+(P.pistes?' i '+P.pistes+(P.pistes===1?' pista':' pistes'):'');
+    let t='<div style="color:#7dff9b">FET!</div>'+
+      '<div style="font-size:32px;font-weight:bold">'+mmss(P.temps)+'</div>'+
+      '<small style="color:#9fc0d0">'+nv+' · '+com+(mode==='dia'?' · el d\'avui, #'+P.n:' · pràctica')+'</small>';
+    if(mode==='dia'){
+      const tx='Els Nou Quadres #'+P.n+' · '+nv+' · '+mmss(P.temps)+(P.errors?' '+'❌'.repeat(Math.min(6,P.errors)):' sense errors')+(P.pistes?' '+'💡'.repeat(Math.min(6,P.pistes)):''),enl=location.href.split('#')[0];
+      t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+        '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'+
+        '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    }else t+='<small style="color:#8aa8b8">els de pràctica no compten per a cap taula</small>';
+    t+='<a href="#" id="f-menu" class="bt" style="color:#e8f0f4;background:#1d2e3a;border:1px solid #3a5a6a">PRÀCTICA: UN ALTRE</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà un altre':'o toca per tancar'));potTancar=true;
+    enllac('f-menu',menu);
+    if(mode==='dia'){
+      // nomes compta el primer cop que l'acabes (i el Worker, la primera de cada inicials)
+      let r={html:'',posicio:0};
+      if(P.nou){r=await Records.fiPartida(taulaDia(dia2),pt);P.nou=false;desaP()}
+      else r.html=Records.taulaHTML(await Records.llista(taulaDia(dia2)),null,taulaDia(dia2));
+      const el=document.getElementById('taula');
+      if(el)el.innerHTML='<div style="color:#ffd77a;font-size:13px;margin-top:8px">☀ EL D\'AVUI</div>'+r.html+
+        (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES EL D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'');
+      refrescaLiders();
+    }
+  }finally{enFinal=false}
+}
+let potTancar=false;
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+let lider=null;
+function pintaLider(){
+  $('lider').textContent=mode==='practica'?'PRÀCTICA · no compta per a la taula':'☀ EL D\'AVUI: '+(lider?lider.n+' en '+mmss(MAX_SEGONS-lider.p):'ningú encara');
+  Records.marcador(taulaDia(diaAvui()),$('best'),0);
+}
+async function refrescaLiders(){try{lider=await Records.lider(taulaDia(diaAvui()))}catch(e){}pintaLider()}
+
+// ===== EL RELLOTGE =====
+// Corre mentre jugues: no amb el menú obert, ni en pausa (que tapa la
+// graella, que si no es podria pensar amb el rellotge aturat), ni si surts
+// de l'app.
+let last=performance.now(),desatT=0,segAnt=-1;
+function loop(t){
+  const dt=Math.min(.25,(t-last)/1000);last=t;
+  if(jugant()&&!document.hidden){P.temps+=dt;desatT+=dt;if(desatT>2){desatT=0;desaP()}}
+  if(P&&Math.floor(P.temps)!==segAnt){segAnt=Math.floor(P.temps);$('score').textContent=mmss(P.temps)}
+  const batega=!!(flaix&&performance.now()<flaix.fins);
+  if(brut||batega){dibuixa();brut=false}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';brut=true;if(paused)desaP()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){desaP();if(jugant())posaPausa(true)}});
+addEventListener('pagehide',desaP);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// A l'ordinador: els números, les fletxes per moure's, N per a les notes i
+// la tecla d'esborrar.
+document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.tagName==='INPUT')return;aInit();
+  if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}
+  if(!jugant())return;
+  if(e.key>='1'&&e.key<='9'){posaNumero(+e.key);return}
+  if(e.key==='Backspace'||e.key==='Delete'||e.key==='0'){esborra();return}
+  if(e.code==='KeyN'){posaApunta(!apunta);return}
+  const mou={ArrowLeft:-1,ArrowRight:1,ArrowUp:-9,ArrowDown:9}[e.key];
+  if(mou){e.preventDefault();
+    if(sel<0)sel=40;
+    else if(Math.abs(mou)===1){if(FILA(sel+mou)===FILA(sel)&&sel+mou>=0&&sel+mou<81)sel+=mou}
+    else if(sel+mou>=0&&sel+mou<81)sel+=mou;
+    llum=0;brut=true}
+});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+
+mesura();
+refrescaLiders();
+// en entrar, el menú: el d'avui, continuar la pràctica o fer-ne un altre
+menu();
+
+// En entrar al joc, els records d'avui uns segons, com les maquines de debo.
+Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false;brut=true},
+  [['☀ EL D\'AVUI (temps)',taulaDia(diaAvui())]]);
+</script>
+</body>
+</html>
