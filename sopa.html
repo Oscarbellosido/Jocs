@@ -99,7 +99,36 @@ const TEMES=[
   ['CIUTATS DE CASA','vic reus lleida girona tarragona manresa olot figueres tortosa terrassa sabadell berga blanes calella igualada solsona tremp valls'],
   ['DOLÇOS','pastís bombó caramel gelat crema flam xurro coca panellet bunyol torró neula magdalena mató xuixo'],
   ['NADAL','tió pessebre caganer torró neula estrella àngel pastor camell reis regal arbre neu escudella canelons galets'],
+  // --- afegits el 10 de novembre del 2026 (surten des de la #7, vegeu LOTS) ---
+  ['FLORS','rosa clavell margarida tulipa gessamí violeta rosella lliri orquídia dàlia gerani hortènsia mimosa narcís camèlia'],
+  ['ANIMALS SALVATGES','lleó tigre elefant girafa zebra cocodril hipopòtam rinoceront goril·la pantera lleopard guepard hiena búfal cangur camell mico'],
+  ['INSECTES I BITXOS','formiga abella vespa mosca mosquit papallona grill aranya marieta escarabat cuc puça libèl·lula saltamartí tèrmit eruga'],
+  ["L'ESPAI",'sol lluna terra mart venus júpiter saturn urà neptú mercuri estrella cometa galàxia satèl·lit coet asteroide eclipsi'],
+  ['A LA CIUTAT','carrer plaça semàfor vorera fanal botiga mercat estació parada museu parc pont avinguda edifici ajuntament font cinema'],
+  ['SENTIMENTS','alegria tristesa por ràbia enveja vergonya sorpresa amor odi calma enyor il·lusió orgull tendresa nervis fàstic'],
+  ['AL METGE','metge infermer xarop pastilla bena vacuna febre tos recepta ferida guix tireta termòmetre grip injecció dolor'],
+  ['EL CASTELL MEDIEVAL','torre muralla fossat pont rei reina cavaller espasa escut llança corona princesa bandera masmorra armadura merlet joglar'],
+  ['MÚSICA','nota ritme cançó melodia concert cor orquestra director solfa partitura compàs acord veu escenari micròfon públic'],
+  ["L'ORDINADOR",'pantalla teclat ratolí impressora fitxer carpeta xarxa correu programa clau memòria disc cable bateria tauleta mòbil internet enllaç'],
+  ['AL BOSC','arbre fulla branca tronc arrel molsa bolet falguera esbarzer camí font ombra niu pinya gla escorça clariana'],
+  ['EL MAR','onada marea platja far port vaixell àncora illa escull corrent sal alga balena dofí tauró sirena tempesta horitzó'],
+  ['BOLETS','rovelló cep camagroc múrgola llenega rossinyol fredolic pinetell reig moixernó xampinyó carlet trompeta gírgola tòfona'],
+  ['PEDRES I METALLS','plata ferro coure plom estany bronze acer marbre granit quars diamant robí safir maragda pissarra argila'],
+  ["PAÏSOS D'EUROPA",'frança itàlia portugal alemanya grècia irlanda suècia noruega polònia àustria suïssa bèlgica holanda finlàndia dinamarca andorra'],
+  ['COMARQUES','osona bages anoia garrotxa ripollès segrià urgell cerdanya maresme garraf priorat montsià pallars selva noguera berguedà solsonès empordà'],
+  ['CUINAR','fregir bullir rostir coure tallar pelar remenar amanir batre ratllar picar sofregir escalfar torrar colar salar pastar'],
+  ['CONTES I LLEGENDES','drac princesa bruixa fada gegant nan ogre follet castell bosc llop rei reina cavaller encanteri tresor mag'],
+  ['JOGUINES I JOCS','pilota nina baldufa bitlles corda xarranca estel patinet bales tren titella gronxador tobogan cavallet daus cromos'],
+  ['HERBES I ESPÈCIES','farigola romaní orenga julivert menta alfàbrega llorer sàlvia pebre canyella safrà comí anís all gingebre fonoll'],
+  ['EL COTXE','volant roda motor fre embragatge maleter capó far mirall seient cinturó clàxon benzina matrícula parabrisa pedal marxa'],
+  ["POBLES D'OSONA",'vic manlleu torelló taradell tona centelles seva balenyà gurb rupit viladrau tavertet orís sora malla vidrà montesquiu muntanyola espinelves'],
 ];
+// Els temes es van afegint AL FINAL, i les paraules dels que ja hi són no es
+// toquen: la sopa de cada dia es torna a fer a partir del tema. LOTS diu des
+// de quina sopa n'hi ha quants: així els dies que ja s'han jugat no canvien.
+// Per afegir-ne més: temes nous al final i una parella més aquí, amb el
+// número de la sopa de l'endemà i quants temes hi ha en total.
+const LOTS=[[1,30],[7,52]];
 const pla=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z]/g,'').toUpperCase();
 const N=10,PARAULES=10;
 const DIRS=[[1,0],[0,1],[1,1],[1,-1],[-1,0],[0,-1],[-1,-1],[-1,1]];
@@ -196,13 +225,22 @@ const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+
 const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
 const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 // El tema de cada dia: tots barrejats per tandes, sense repetir-ne cap fins
-// que no han sortit tots, i mai el mateix dos dies seguits.
+// que no han sortit tots, i mai el mateix dos dies seguits. Es calcula dia
+// per dia des del primer (i es recorda): cada dia tria, dels temes que hi
+// havia aquell dia (LOTS), el primer de la barreja que encara no ha sortit
+// en aquesta tanda. Amb 30 temes dona exactament el que donava abans.
+const _temes=[];let _usats=new Set(),_tanda=0;
 function temaDe(n){
-  const L=TEMES.length,tanda=Math.floor((n-1)/L),k=(n-1)%L;
-  const ordre=t=>barreja(mulberry(hashText('SOPA-TEMES-'+t)),TEMES.map((_,i)=>i));
-  const o=ordre(tanda);
-  if(tanda>0&&o[0]===ordre(tanda-1)[L-1]){if(k===0)return o[1];if(k===1)return o[0]}
-  return o[k];
+  while(_temes.length<n){
+    const d=_temes.length+1;let q=LOTS[0][1];
+    for(const [des,quants] of LOTS)if(d>=des)q=quants;
+    const queden=()=>barreja(mulberry(hashText('SOPA-TEMES-'+_tanda+(q===LOTS[0][1]?'':'-'+q))),Array.from({length:q},(_,i)=>i)).filter(x=>!_usats.has(x));
+    let o=queden();
+    if(!o.length){_tanda++;_usats=new Set();o=queden()}
+    const t=o[0]===_temes[d-2]&&o.length>1?o[1]:o[0];
+    _usats.add(t);_temes.push(t);
+  }
+  return _temes[n-1];
 }
 // Des de la #6 (el 10 de novembre del 2026) les paraules no es veuen: només
 // quantes lletres tenen. L'usuari la trobava massa fàcil, amb la llista a la

@@ -991,7 +991,7 @@ se sap que es va publicar és del 1968, en un diari d'Oklahoma), no el d'una
 empresa: va amb el seu nom.
 
 - Una graella de **10 × 10** amb **deu paraules d'un mateix tema** (`TEMES`,
-  30 temes escrits a mà: fruites, oficis, festa major, ciutats de casa...).
+  52 temes escrits a mà: fruites, oficis, festa major, bolets, pobles d'Osona...).
   Poden anar en qualsevol de les vuit direccions, també del revés.
 - **Es marca lliscant el dit** de la primera lletra a l'última (si el dit va
   una mica de través, es queda amb la direcció més propera, `linia`), o
@@ -1041,7 +1041,18 @@ Coses que no s'han de desfer sense entendre-les:
   de seguida.
 - **El tema de cada dia** surt de tandes barrejades (`temaDe`): no se'n
   repeteix cap fins que no han sortit tots, i mai el mateix dos dies seguits.
-  Amb 30 temes, cal anar-ne afegint.
+  **Es calcula dia per dia des del primer** (i es recorda): cada dia tria,
+  dels temes que hi havia aquell dia, el primer de la barreja que encara no
+  ha sortit en aquesta tanda.
+- **Els temes s'afegeixen al final, i `LOTS` diu des de quina sopa n'hi ha
+  quants** (`[[1,30],[7,52]]`: 30 fins a la #6, 52 des de la #7, l'11 de
+  novembre del 2026). Així els dies que ja s'han jugat no canvien: amb 30
+  temes s'haurien començat a repetir el 5 de desembre, i afegint-ne sense
+  més a la llista, la barreja hauria estat una altra i la sopa d'avui també.
+  **Les paraules d'un tema que ja ha sortit no es toquen**: la sopa desada
+  es torna a fer a partir del tema. Per afegir-ne més: temes nous al final i
+  una parella més a `LOTS`, amb el número de la sopa de l'endemà. Amb 52,
+  duren fins al 26 de desembre sense repetir-ne cap.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
 
@@ -1299,7 +1310,9 @@ després del Wordle), amb nom nostre: en català no n'hi havia cap.
 
 Coses que no s'han de desfer sense entendre-les:
 
-- **Les partides són escrites a mà** (`COLLES`, dins del joc), 60 de moment (la darrera, la #60, és la del 22 de desembre del 2026).
+- **Les partides són escrites a mà** (`COLLES`, dins del joc), 100 de moment (la darrera, la #100, és la del 31 de gener del 2027).
+  Les del 24 de desembre al 6 de gener van amb el dia: el tió, el dinar de
+  Nadal, cap d'any, la nit de Reis i el tortell.
   Cada dia surt la següent **en l'ordre en què estan escrites** (no
   barrejades: així es tria quina va primer, i les fluixes no surten mai al
   principi). La #1 és la del 24 d'octubre del 2026. Quan s'acaben, tornen a

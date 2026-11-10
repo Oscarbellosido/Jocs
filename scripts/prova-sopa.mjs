@@ -66,12 +66,18 @@ const g = await p.evaluate(() => {
   let seguits = 0, ant = -1, iguals = true, temes = new Set();
   for (let n = 1; n <= 300; n++) { const t = temaDe(n); if (t === ant) seguits++; ant = t; if (n <= TEMES.length) temes.add(t); }
   for (let n = 1; n <= 20; n++) if (JSON.stringify(sopaDia(n)) !== JSON.stringify(sopaDia(n))) iguals = false;
-  return { mal: mal.slice(0, 5), nmal: mal.length, seguits, iguals, temes: temes.size, L: TEMES.length, u: numeroDe('2026-11-05') };
+  const primers = [1, 2, 3, 4, 5, 6].map(temaDe).join(), sis = sopaDia(6).paraules.map(q => q.p + ':' + q.x + ',' + q.y + ',' + q.dx + ',' + q.dy).sort().join(' ');
+  const llargs = TEMES.flatMap(([nom, ws]) => ws.split(' ').filter(w => pla(w).length > N).map(w => nom + ': ' + w));
+  const pocs = TEMES.filter(([, ws]) => ws.split(' ').filter(w => pla(w).length >= 3).length < 13).map(x => x[0]);
+  return { mal: mal.slice(0, 5), nmal: mal.length, seguits, iguals, temes: temes.size, L: TEMES.length, u: numeroDe('2026-11-05'), primers, sis, llargs, pocs, lots: LOTS[LOTS.length - 1][1] };
 });
 diu(g.nmal === 0, `25 sopes de cada un dels ${g.L} temes surten bé, amb cada paraula una sola vegada (en qualsevol direcció) ${g.nmal ? JSON.stringify(g.mal) : ''}`);
 diu(g.iguals, 'la del dia surt igual cada vegada (igual per a tothom)');
 diu(g.seguits === 0 && g.temes === g.L, `cap tema dos dies seguits, i tots surten abans de repetir-ne cap (${g.temes} de ${g.L})`);
 diu(g.u === 1, 'la #1 és la del 5 de novembre del 2026');
+diu(g.primers === '14,27,3,18,21,22' && g.sis === 'CARENA:7,4,-1,0 CASCADA:0,7,0,-1 CINGLE:2,3,1,0 COLL:5,6,1,1 COVA:1,0,0,1 ESTANY:9,2,0,1 LLAC:1,4,1,1 REFUGI:3,9,1,-1 ROCA:4,0,1,0 VALL:5,1,1,0',
+  'afegint-hi temes, les sis primeres sopes (les que ja s\'han jugat) no han canviat: ' + g.primers);
+diu(g.lots === g.L && g.llargs.length === 0 && g.pocs.length === 0, `tots els temes són a LOTS (${g.lots} de ${g.L}), amb 13 paraules o més i cap de més de 10 lletres ${g.llargs.concat(g.pocs).slice(0, 3).join(' · ')}`);
 const g3 = await p.evaluate(() => {
   const mal = [];const rev = t => [...t].reverse().join('');
   for (let n = 6; n <= 66; n++) { const s = sopaDia(n);
