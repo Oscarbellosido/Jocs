@@ -280,6 +280,41 @@ diu(r.length === 3 && /t\.me\/share/.test(r[0]) && /wa\.me/.test(r[1]) && decode
   `en acabar hi ha REPTA PER TELEGRAM, PER WHATSAPP i COPIA L'ENLLAÇ, amb la llavor de la partida`);
 diu(await p.$('a[data-menu-jocs]') !== null, `i el botó de tornar al menú`);
 
+// --- tornar a entrar amb la del dia feta: no es torna a començar sola ---
+{
+  // el que hi havia abans: la del dia acabada (777) i la repetida (999)
+  await p.evaluate(() => { hideMsg(); state = 'inici'; P = null; updateHUD(); });
+  await p.waitForTimeout(150);
+  // el botó PARTIDA DEL DIA és el penúltim gros del menú
+  const toca = async quin => {
+    const [x, y] = await p.evaluate(quin => {
+      const bt = zones.filter(z => z.w === W - 60 && z.h > 40), z = bt[bt.length - quin];
+      const r = c.getBoundingClientRect();
+      return [r.left + (z.x0 + z.w / 2) / W * r.width, r.top + (z.y0 + z.h / 2) / H * r.height];
+    }, quin);
+    await p.mouse.click(x, y); await p.waitForTimeout(100);
+  };
+  const feta = await p.evaluate(() => fetaAvui(diaAvui()));
+  await toca(2);
+  const pregunta = await p.evaluate(() => ({ state, text: document.getElementById('msg').textContent, vis: document.getElementById('msg').style.display }));
+  await toca(1);   // tocant el menú de sota (PARTIDA LLIURE) amb la pregunta oberta, no passa res
+  const quiet = await p.evaluate(() => state);
+  await p.click('#rep-no'); await p.waitForTimeout(100);
+  const no = await p.evaluate(() => ({ state, vis: document.getElementById('msg').style.display }));
+  diu(feta === 777 && pregunta.state === 'inici' && pregunta.vis === 'block' && /JA LA TENS FETA/.test(pregunta.text) && /777/.test(pregunta.text) &&
+      quiet === 'inici' && no.state === 'inici' && no.vis === 'none',
+    `amb la del dia feta, PARTIDA DEL DIA (JA JUGADA) no la torna a començar: diu que la vas fer amb ${feta} punts i pregunta; «no» et deixa al menú`);
+  await toca(2); await p.click('#rep-si'); await p.waitForTimeout(1300);
+  const si = await p.evaluate(() => ({ state, fora: P && P.fora, desat: JSON.parse(localStorage.getItem('impremta-partida') || 'null') }));
+  // la portada: la repetida a mig fer no fa que la d'avui surti A MIG FER
+  const q = await p.context().newPage();
+  await q.goto(URL_JOC.replace('impremta.html', 'index.html')); await q.waitForTimeout(400);
+  const fila = await q.evaluate(() => { const a = [...document.querySelectorAll('#avui-llista a')].find(a => a.getAttribute('href') === 'impremta.html'); return a && a.querySelector('.est').textContent; });
+  await q.close();
+  diu(si.state === 'pagina' && si.fora && si.desat && si.desat.P.fora && fila === '✓ FET',
+    `«repeteix-la» la torna a començar, però no compta, i a la portada la d'avui segueix dient ${fila}`);
+}
+
 // --- el repte: l'enllac obre la mateixa partida ---
 const p2 = await obre('#repte=K7Q2PX&n=CRE&p=12340&c=4&g=2');
 errorsDe.push(p2);

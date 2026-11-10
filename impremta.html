@@ -542,7 +542,8 @@ async function finalPartida(){
   // Dues competicions separades: la del dia nomes va a la taula d'avui, i
   // les lliures (i els reptes) a la de sempre. Qui guanya la d'avui, el bot
   // ho diu al grup l'endema al mati.
-  if(P.mode==='dia'&&!P.fora)r=await Records.fiPartida(taula(),P.total);
+  if(P.mode==='dia'&&!P.fora){try{localStorage.setItem('impremta-dia-fi',JSON.stringify({d:P.llavor.slice(4),p:P.total}))}catch(e){}
+    r=await Records.fiPartida(taula(),P.total)}
   else if(P.mode!=='dia')r=await Records.fiPartida(JOC,P.total);
   if(state!=='over')return;
   const enl=enllacRepte();
@@ -609,6 +610,21 @@ function partidaDesada(){
   // la del dia d'un altre dia ja no es pot apuntar enlloc: no val la pena
   if(d.P.mode==='dia'&&d.P.llavor!=='DIA-'+diaAvui())return null;
   return d;
+}
+// La del dia ja feta: amb quants punts (si es va acabar en aquest mòbil).
+function fetaAvui(dia){try{const f=JSON.parse(localStorage.getItem('impremta-dia-fi'));return f&&f.d===dia?f.p:null}catch(e){return null}}
+// L'usuari va acabar la del dia, va tornar a entrar i el botó PARTIDA DEL
+// DIA (JA JUGADA) la tornava a començar de cap i de seguida: semblava que
+// s'hagués perdut, i a la portada sortia A MIG FER. Ara pregunta abans.
+function demanaRepetir(dia,feta){
+  const estil='display:inline-block;font:15px monospace;text-decoration:none;border-radius:8px;padding:10px 14px;margin:6px;white-space:nowrap';
+  msg('<div style="color:#ffe08a">LA D\'AVUI JA LA TENS FETA</div>'+
+    '<small>'+(feta!==null?'La vas fer amb '+xifra(feta)+' punts, i ja és a la taula d\'avui. ':'Ja l\'has jugada, i només compta la primera vegada. ')+
+    'Si la tornes a jugar, la repetida no comptarà per a res.</small>'+
+    '<div style="margin-top:10px"><a href="#" id="rep-no" style="'+estil+';color:#fff;background:#1d3a24;border:1px solid #7dff9b">NO, DEIXA-HO</a>'+
+    '<a href="#" id="rep-si" style="'+estil+';color:#ffe08a;background:#111;border:1px solid #8a7030">REPETEIX-LA</a></div>');
+  document.getElementById('rep-no').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg()});
+  document.getElementById('rep-si').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();hideMsg();novaPartida('dia','DIA-'+dia);sndBe()});
 }
 function continuaPartida(){
   if(!partidaDesada())return;
@@ -987,16 +1003,17 @@ function dibuixaInici(){
   };
   if(desada){
     const q=desada.P;
-    boto('CONTINUA LA PARTIDA',(q.mode==='dia'?'la del dia':q.repte?'el repte de '+q.repte.n:'la lliure')+
+    boto('CONTINUA LA PARTIDA',(q.mode==='dia'?(q.fora?'la del dia repetida, que no compta':'la del dia'):q.repte?'el repte de '+q.repte.n:'la lliure')+
       ' · capítol '+q.capitol+', pàgina '+q.pagina+' · '+xifra(q.total)+' punts','#7dff9b',()=>{continuaPartida();sndBe()});
   }
   if(REPTE)boto('REPTE DE '+REPTE.n,xifra(REPTE.p)+' punts'+(REPTE.c?' (capítol '+REPTE.c+')':'')+' · mateixes lletres','#7dff9b',
     ()=>{novaPartida('lliure',REPTE.llavor,REPTE);sndBe()});
   const dia=diaAvui();
   let jugada=null;try{jugada=localStorage.getItem('impremta-dia')}catch(e){}
-  boto(jugada===dia?'PARTIDA DEL DIA (JA JUGADA)':'PARTIDA DEL DIA',jugada===dia?'la pots repetir, però ja no compta per als rècords':
+  const feta=jugada===dia?fetaAvui(dia):null;
+  boto(jugada===dia?'PARTIDA DEL DIA (JA JUGADA)':'PARTIDA DEL DIA',jugada===dia?(feta!==null?'la vas fer amb '+xifra(feta)+' punts · repetir-la no compta':'la pots repetir, però ja no compta per als rècords'):
     'la mateixa per a tothom, '+nomDia(dia)+(liderDia?' · mana '+liderDia.n+' amb '+xifra(liderDia.p):''),'#ffe08a',
-    ()=>{novaPartida('dia','DIA-'+dia);sndBe()});
+    ()=>{if(jugada===dia)demanaRepetir(dia,feta);else{novaPartida('dia','DIA-'+dia);sndBe()}});
   boto('PARTIDA LLIURE','lletres a l\'atzar · després pots reptar els amics','#8ac4ff',()=>{novaPartida('lliure',llavorNova());sndBe()});
   // qui mana a cada taula, que es vegi abans de triar
   const yr=H-58;
@@ -1100,6 +1117,7 @@ c.addEventListener('pointerdown',ev=>{
   ev.preventDefault();aInit();
   if(paused)return;
   if(state==='puntua'&&anim){anim.vel=5;return}
+  if(state==='inici'&&document.getElementById('msg').style.display==='block')return;   // hi ha una pregunta oberta
   const q=punt(ev);
   for(let i=zones.length-1;i>=0;i--){
     const z=zones[i];

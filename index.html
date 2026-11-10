@@ -436,7 +436,8 @@ posaLiders();
     ['impremta_dia','LA IMPREMTA','impremta.html',()=>{
       if(cru('impremta-dia')!==avui)return null;
       const d=llegeix('impremta-partida');
-      return d&&d.P&&d.P.llavor==='DIA-'+avui?'mig':'fet'}],
+      // la repetida (fora) no compta: la d'avui ja és feta
+      return d&&d.P&&d.P.llavor==='DIA-'+avui&&!d.P.fora?'mig':'fet'}],
     ['abecedari_dia',"L'ABECEDARI",'abecedari.html',()=>{const d=llegeix('abecedari-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null}],
     ['colles_dia','LES QUATRE COLLES','colles.html',()=>{const d=llegeix('colles-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null}],
     ['poble_dia','EL POBLE DEL DIA','poble.html',()=>{const d=llegeix('poble-'+avui);return !d?null:d.fi?'fet':(d.intents&&d.intents.length)?'mig':null},p=>p>=500?(11-p/100)+'/6':'✗'],

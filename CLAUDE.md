@@ -712,6 +712,14 @@ Coses que no s'han de desfer sense entendre-les:
     sempre, i l'usuari va dir que s'havien de distingir. La marca es posa
     en **començar**-la, no en acabar-la: si la tornes a obrir, ja és la
     repetida, i el botó ho diu (PARTIDA DEL DIA (JA JUGADA)).
+    **Repetir-la pregunta abans** (`demanaRepetir`): l'usuari va acabar la
+    del dia, va tornar a entrar i, tocant aquell botó, la partida tornava a
+    començar de cap: semblava que s'hagués perdut, i com que la repetida
+    es desa com a «del dia», a la portada sortia A MIG FER. Ara el botó diu
+    amb quants punts la vas fer (`impremta-dia-fi`, només si la vas acabar
+    en aquest mòbil) i pregunta «NO, DEIXA-HO» / «REPETEIX-LA». La repetida
+    (`P.fora`) no fa que la portada digui A MIG FER, i CONTINUA LA PARTIDA
+    diu que és la repetida, que no compta.
   - **Cada matí el bot diu al grup qui va guanyar la d'ahir**, amb el podi
     (`anunciaAhir` al Worker). No cal cap rellotge a Cloudflare: ho fa la
     primera petició del dia, de qualsevol joc, i es marca a

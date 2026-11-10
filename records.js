@@ -35,7 +35,7 @@ const Records = (() => {
     'tetris.html':        ['2026-11-05T13:32Z', 'peces amb relleu'],
     'sopa.html':          ['2026-11-10T10:25Z', 'no et diu les paraules, i 22 temes nous: bolets, l\'espai, pobles d\'Osona...'],
     'trencaclosques.html': ['2026-11-09T11:00Z', 'fotos de Taradell del 10 al 19 de novembre, i més peces a les fotos'],
-    'impremta.html':      ['2026-11-10T21:35Z', 'a sota dels botons, «acaba la partida» per plegar quan vulguis'],
+    'impremta.html':      ['2026-11-10T21:50Z', '«acaba la partida» sempre a mà, i la del dia feta ja no es torna a començar sola'],
     'tresor.html':        ['2026-11-07T22:10Z', 'setze proves en lloc de deu, més difícils i amb només dues pistes'],
   };
   const DIES_NOVETAT = 14;
