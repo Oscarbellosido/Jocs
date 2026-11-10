@@ -238,6 +238,26 @@ diu(r.pag === r.pg + 1 && r.state === 'pagina', `SEGÜENT PÀGINA porta a la pà
     `sense descarts, el botó diu PLEGA; «no» deixa seguir i «sí» acaba la partida i l'apunta (${text})`);
 }
 
+// --- plegar quan vulguis: l'enllaç de sota, encara que quedin descarts ---
+{
+  await p.evaluate(() => { novaPartida('lliure', 'PLEGA2'); P.total = 222; });
+  await p.waitForTimeout(150);
+  const abans = await p.evaluate(() => ({ desc: P.descarts, vis: getComputedStyle(document.getElementById('plega')).visibility, b1: document.getElementById('b1').textContent }));
+  await p.click('#plega'); await p.waitForTimeout(100);
+  const pregunta = await p.evaluate(() => /VOLS PLEGAR/.test(document.getElementById('msg').textContent) && state === 'pagina');
+  await p.click('#plega-no'); await p.waitForTimeout(50);
+  const segueix = await p.evaluate(() => state);
+  await p.click('#plega'); await p.waitForTimeout(100);
+  enviats.length = 0;
+  await p.click('#plega-si');
+  await p.waitForTimeout(1500);
+  if (await p.$('#rec-ok')) { await p.fill('#rec-nom', 'TST'); await p.click('#rec-ok'); }
+  await p.waitForTimeout(500);
+  const fi = await p.evaluate(() => ({ state, msg: document.getElementById('msg').textContent, vis: getComputedStyle(document.getElementById('plega')).visibility }));
+  diu(abans.desc > 0 && abans.b1 === 'DESCARTA' && abans.vis === 'visible' && pregunta && segueix === 'pagina' && fi.state === 'over' && /TANCAT/.test(fi.msg) && enviats.some(u => /records\/impremta$/.test(u)) && fi.vis === 'hidden',
+    `amb descarts i tot, l'enllaç «acaba la partida» de sota pregunta, «no» deixa seguir i «sí» l'acaba i l'apunta; un cop acabada, l'enllaç ja no hi és`);
+}
+
 // --- la partida del dia: una sola vegada a la taula del dia ---
 const dia = await p.evaluate(() => diaAvui());
 enviats.length = 0;

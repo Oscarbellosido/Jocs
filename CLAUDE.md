@@ -771,6 +771,14 @@ cap paraula a la mà i sense descarts, no hi havia manera d'acabar la
 partida. Plegar fa el mateix que quan la impremta tanca sola: els punts
 s'apunten a la taula.
 
+**I a sota dels botons sempre hi ha «acaba la partida i apunta els punts»**
+(`#plega`, un enllaç petit, només mentre compons una pàgina), que fa la
+mateixa pregunta. L'usuari ho va tornar a demanar: amb PLEGA només quan
+s'acabaven els descarts, no sabia com acabar i es quedava parat sense
+puntuar. És un enllaç i no un cinquè botó perquè a 320 px no n'hi cap cap
+més a la filera (la trampa 4), i com que pregunta abans, tocar-lo sense
+voler no fa res.
+
 ## La Rotllana: el joc de paraules fàcil
 
 L'usuari va demanar, després dels altres tres, un joc de paraules **fàcil,

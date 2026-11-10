@@ -19,6 +19,8 @@ button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;bord
 #b2{width:150px;font-size:16px;color:#ffe08a;border-color:#a8873a}
 #b1{width:84px;font-size:12px;color:#ff9b8a;border-color:#8a4a3a}
 #b3{width:76px;font-size:12px;color:#aaa}
+/* Plegar sempre es pot, pero petit i a sota, lluny d'IMPRIMEIX, i pregunta abans */
+#plega{flex:none;font:12px monospace;color:#c98a6a;text-decoration:underline;padding:6px 10px 0;visibility:hidden}
 #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:19px;line-height:1.6;display:none;background:rgba(0,0,0,.92);border:1px solid #555;border-radius:10px;padding:14px 20px;max-width:84%;max-height:88%;overflow:auto;box-sizing:border-box}
 #msg small{display:block;margin-top:6px;font-size:13px}
 #msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
@@ -34,6 +36,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
   <div id="controls">
     <button id="b1">DESCARTA</button><button id="b2">IMPRIMEIX</button><button id="b3">BARREJA</button>
   </div>
+  <a href="#" id="plega">acaba la partida i apunta els punts</a>
   <div id="msg"></div>
   <small><b style="color:#ddd">Fes paraules amb les lletres de la mà i arriba als punts que demana cada pàgina; amb els rals, compra segells que multipliquen.</b> toca les lletres en ordre i IMPRIMEIX · toca un segell per saber què fa · pausa: P</small>
 </div>
@@ -1038,6 +1041,11 @@ function draw(){
 
 // Els tres botons de sota canvien segons on ets.
 const B1=document.getElementById('b1'),B2=document.getElementById('b2'),B3=document.getElementById('b3');
+// L'usuari es va quedar sense poder fer res i sense poder acabar: PLEGA
+// nomes sortia quan ja no quedaven descarts. Ara, a sota dels botons, sempre
+// hi ha l'enllac per acabar la partida, que pregunta abans.
+const PLEGA=document.getElementById('plega');
+PLEGA.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();if(paused)return;demanaPlegar()});
 let botonsAra='';
 function botons(){
   let cfg;
@@ -1048,6 +1056,7 @@ function botons(){
   else if(state==='botiga')cfg=['CANVIA '+P.botiga.preuCanvi,'SEGÜENT PÀGINA',''];
   else if(state==='paquet')cfg=['','SALTA',''];
   else cfg=['','',''];
+  PLEGA.style.visibility=state==='pagina'?'visible':'hidden';
   const k=cfg.join('|');if(k===botonsAra)return;botonsAra=k;
   [B1,B2,B3].forEach((b,i)=>{b.textContent=cfg[i];b.style.visibility=cfg[i]?'visible':'hidden'});
 }
