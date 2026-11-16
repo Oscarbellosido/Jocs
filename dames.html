@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Les Dames</title>
+<style>
+html,body{margin:0;height:100%;background:#16120e;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,560px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#estat{flex:none;font:bold 14px monospace;letter-spacing:.06em;color:#f0d8a0;padding:2px 0 6px;text-align:center;max-width:96%;min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#estat.menja{color:#ff8a70}
+#screen{flex:1 1 0;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#c{touch-action:none;user-select:none;-webkit-user-select:none;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.7)}
+#controls{flex:none;display:flex;gap:8px;margin-top:8px;width:94%;justify-content:space-between}
+button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555;border-radius:8px;height:42px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0 6px}
+#menu{width:27%;font-size:12px;color:#d8c8a8;border-color:#4a3e2e;background:#211a12}
+#desfes{width:40%;color:#f0d8a0;background:#2e2410;border-color:#7a6030}
+#abandona{width:27%;font-size:11px;color:#e09080;background:#2a1410;border-color:#6a3020}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.45;display:none;background:rgba(22,18,14,.97);border:1px solid #5a4a36;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 15px monospace;text-decoration:none;border-radius:8px;padding:10px 12px;margin:8px auto 0;max-width:290px}
+#msg .nv{color:#1a1200;background:#f0d8a0}
+#msg .nv i{font-style:normal;font-weight:normal;font-size:12px;color:#5a4420}
+#msg .colors{display:flex;gap:6px;justify-content:center;margin:6px 0 2px}
+#msg .colors a{font:12px monospace;color:#d8c8a8;text-decoration:none;border:1px solid #5a4a36;border-radius:6px;padding:5px 7px}
+#msg .colors a.sel{background:#5a4a36;color:#fff}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(22,18,14,.96);font-size:22px;letter-spacing:.2em;color:#f0e8d8;z-index:3}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:5px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span id="mode">—</span><span>PUNTS <b id="score">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="estat"></div>
+  <div id="screen"><canvas id="c"></canvas><div id="pausa">PAUSA</div></div>
+  <div id="controls"><button id="menu">MENÚ</button><button id="desfes">↶ DESFÉS</button><button id="abandona">ABANDONA</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Menja totes les peces de l'altre o deixa'l sense cap jugada.</b> toca una peça i després on la vols moure · menjar és obligatori · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+// LES DAMES: contra la màquina (quatre nivells) o dues persones amb el
+// mateix mòbil. Les regles són les de casa nostra (les que a fora en diuen
+// «espanyoles»): els peons avancen i mengen només endavant, la dama va i
+// menja tan lluny com vol, menjar és obligatori i s'han de menjar com més
+// peces millor.
+// ==REGLES==
+// Les regles i la màquina. Són funcions pures: el joc i la prova
+// (scripts/prova-dames.mjs) fan servir les mateixes.
+//
+// El tauler és una llista de 64 caselles: 0 és dalt a l'esquerra (vist per
+// les blanques) i 63 baix a la dreta. Només es juga a les fosques, les que
+// tenen fila + columna senar. Les peces: 1 peó i 2 dama, en positiu les
+// blanques (baix, pugen) i en negatiu les negres (dalt, baixen). Surten les
+// blanques. Una jugada: {de, a, cap: les caselles que es menja, cam: les
+// caselles on va caient, cor: si es fa dama}.
+const PEO=1,DAMA=2;
+const fila=s=>s>>3,col=s=>s&7;
+const fosca=s=>((s>>3)+(s&7))%2===1;
+const NOM_COL='abcdefgh';
+const nomCasella=s=>NOM_COL[col(s)]+(8-fila(s));
+const DIRS=[[-1,-1],[-1,1],[1,-1],[1,1]];
+// RAIGS[s][k]: les caselles des de s en la direcció k, de la més propera a la més llunyana
+const RAIGS=Array.from({length:64},(_,s)=>DIRS.map(([df,dc])=>{const l=[];let f=fila(s)+df,c=col(s)+dc;while(f>=0&&f<8&&c>=0&&c<8){l.push(f*8+c);f+=df;c+=dc}return l}));
+const ENDAVANT=t=>t>0?[0,1]:[2,3];
+const DARRERA=t=>t>0?0:7;              // la fila on el peó es fa dama
+
+// Les claus de Zobrist, per reconèixer una posició repetida
+const ZOB=(()=>{let x=0x2545F491;const r=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return x>>>0};
+  const t=[];for(let i=0;i<5*64+1;i++)t.push(r());return t})();
+const zp=(p,s)=>ZOB[(p+2)*64+s];
+function posicio(b,torn,quietes=0){const P={b,torn,quietes,h:0};P.h=hashDe(P);return P}
+function hashDe(P){let h=0;for(let s=0;s<64;s++)if(P.b[s])h^=zp(P.b[s],s);if(P.torn<0)h^=ZOB[320];return h>>>0}
+function inicial(){
+  const b=new Int8Array(64);
+  for(let s=0;s<64;s++)if(fosca(s)){if(fila(s)<3)b[s]=-PEO;else if(fila(s)>4)b[s]=PEO}
+  return posicio(b,1);
+}
+function copia(P){return {b:P.b.slice(),torn:P.torn,quietes:P.quietes,h:P.h}}
+
+// Totes les maneres de menjar. La peça que salta deixa la seva casella buida
+// (s'hi pot tornar a passar), i les que es menja no se'n van fins al final:
+// no es poden saltar dues vegades i fan nosa a la dama que va lluny.
+function captures(P){
+  const b=P.b,t=P.torn,out=[];
+  for(let s=0;s<64;s++){
+    const p=b[s];if(p*t<=0)continue;
+    const dama=Math.abs(p)===DAMA,dirs=dama?[0,1,2,3]:ENDAVANT(t),caps=[],cam=[];
+    b[s]=0;
+    const rec=x=>{
+      let segueix=false;
+      for(const k of dirs){
+        const r=RAIGS[x][k];
+        if(dama){
+          let i=0;while(i<r.length&&b[r[i]]===0)i++;
+          if(i>=r.length)continue;
+          const e=r[i];if(b[e]*t>0||caps.includes(e))continue;
+          for(let j=i+1;j<r.length&&b[r[j]]===0;j++){caps.push(e);cam.push(r[j]);rec(r[j]);caps.pop();cam.pop();segueix=true}
+        }else{
+          if(r.length<2)continue;
+          const e=r[0],l=r[1];if(b[e]*t>=0||caps.includes(e)||b[l]!==0)continue;
+          caps.push(e);cam.push(l);
+          if(fila(l)===DARRERA(t))out.push({de:s,a:l,cap:caps.slice(),cam:cam.slice()});   // a la darrera fila s'acaba: ja no pot anar més endavant
+          else rec(l);
+          caps.pop();cam.pop();segueix=true;
+        }
+      }
+      if(!segueix&&caps.length)out.push({de:s,a:x,cap:caps.slice(),cam:cam.slice()});
+    };
+    rec(s);
+    b[s]=p;
+  }
+  if(!out.length)return out;
+  // la llei de la quantitat: les que en mengen més; i a igualtat, la de la
+  // qualitat: les que mengen més dames
+  const dames=m=>m.cap.reduce((n,c)=>n+(Math.abs(b[c])===DAMA),0);
+  let max=0;for(const m of out)max=Math.max(max,m.cap.length);
+  let l=out.filter(m=>m.cap.length===max);
+  let maxd=0;for(const m of l)maxd=Math.max(maxd,dames(m));
+  l=l.filter(m=>dames(m)===maxd);
+  // la mateixa jugada per camins diferents, una sola vegada
+  const vist=new Set(),fi=[];
+  for(const m of l){const k=m.de+'-'+m.a+'-'+m.cap.slice().sort((x,y)=>x-y).join(',');if(vist.has(k))continue;vist.add(k);
+    m.cor=Math.abs(b[m.de])===PEO&&fila(m.a)===DARRERA(t);fi.push(m)}
+  return fi;
+}
+function senzilles(P){
+  const b=P.b,t=P.torn,out=[];
+  for(let s=0;s<64;s++){
+    const p=b[s];if(p*t<=0)continue;
+    if(Math.abs(p)===DAMA){for(let k=0;k<4;k++)for(const l of RAIGS[s][k]){if(b[l])break;out.push({de:s,a:l,cap:[],cam:[l],cor:false})}}
+    else for(const k of ENDAVANT(t)){const l=RAIGS[s][k][0];if(l!=null&&!b[l])out.push({de:s,a:l,cap:[],cam:[l],cor:fila(l)===DARRERA(t)})}
+  }
+  return out;
+}
+// Si es pot menjar, s'ha de menjar
+function legals(P){const c=captures(P);return c.length?c:senzilles(P)}
+function fes(P,m){
+  const b=P.b,p=b[m.de],np=m.cor?Math.sign(p)*DAMA:p;
+  const u={m,p,caps:m.cap.map(c=>b[c]),q:P.quietes,h:P.h};
+  b[m.de]=0;let h=P.h^zp(p,m.de);
+  m.cap.forEach((c,i)=>{h^=zp(u.caps[i],c);b[c]=0});
+  b[m.a]=np;h^=zp(np,m.a)^ZOB[320];
+  P.h=h>>>0;P.quietes=m.cap.length||Math.abs(p)===PEO?0:P.quietes+1;P.torn=-P.torn;
+  return u;
+}
+function desfes(P,u){
+  const b=P.b,m=u.m;
+  b[m.a]=0;m.cap.forEach((c,i)=>{b[c]=u.caps[i]});b[m.de]=u.p;
+  P.h=u.h;P.quietes=u.q;P.torn=-P.torn;
+}
+function compta(P){const n={1:0,2:0,'-1':0,'-2':0};for(let s=0;s<64;s++)if(P.b[s])n[P.b[s]]++;return n}
+
+// Com s'acaba: qui no es pot moure (o no té peces) perd. Taules: la mateixa
+// posició tres vegades, vint-i-cinc jugades de cada sense menjar res ni
+// moure cap peó, o una dama sola contra una dama sola.
+// vistes: quantes vegades ha sortit cada posició (per la clau)
+function estat(P,vistes){
+  const n=compta(P),meves=P.torn>0?n[1]+n[2]:n[-1]+n[-2];
+  if(!meves)return {fi:'sense',guanya:-P.torn};
+  if(!legals(P).length)return {fi:'tancat',guanya:-P.torn};
+  if(n[1]+n[-1]===0&&n[2]===1&&n[-2]===1)return {fi:'dues'};
+  if(P.quietes>=50)return {fi:'quietes'};
+  if(vistes&&(vistes[P.h]||0)>=3)return {fi:'repeticio'};
+  return null;
+}
+// Per a les proves: un tauler escrit a mà, de dalt a baix, una fila per línia
+// (b peó blanc, B dama blanca, n peó negre, N dama negra, . buida)
+function deText(t,torn=1){
+  const b=new Int8Array(64),L={b:PEO,B:DAMA,n:-PEO,N:-DAMA};
+  t.replace(/\s/g,'').split('').forEach((ch,i)=>{if(L[ch])b[i]=L[ch]});
+  return posicio(b,torn);
+}
+
+// ===== LA MÀQUINA =====
+// Un peó val 100 i una dama, que va tan lluny com vol, 320. Els peons valen
+// més com més endavant són, al mig més que als costats, i els de la fila de
+// sortida fan de porter mentre l'altre encara té peons.
+const V_PEO=100,V_DAMA=320;
+function avalua(P){
+  const b=P.b;let s=0,peons=0,total=0;
+  for(let i=0;i<64;i++){const p=b[i];if(!p)continue;total++;if(Math.abs(p)===PEO)peons++}
+  for(let i=0;i<64;i++){
+    const p=b[i];if(!p)continue;const t=p>0?1:-1,c=col(i);
+    let v;
+    if(Math.abs(p)===DAMA){v=V_DAMA;if(fila(i)===7-c||fila(i)===c)v+=6}       // les grans diagonals
+    else{const av=t>0?7-fila(i):fila(i);v=V_PEO+av*av*1.2+(c>=2&&c<=5?6:0);
+      if(av===0&&peons>8)v+=10}
+    s+=t*v;
+  }
+  // qui va guanyant vol canviar peces: com menys en queden, més pesa el que té de més
+  s=s*(1+(24-total)/40);
+  return s*P.torn;
+}
+const ordre=m=>m.cap.length*1000+(m.cor?500:0);
+const GUANY=100000;
+function cerca(P,opc={}){
+  const prof=opc.prof||4,temps=opc.temps||1e9,soroll=opc.soroll||0,rnd=opc.rnd||Math.random,vistes=opc.vistes||{};
+  const t0=Date.now();let nodes=0,parat=false;
+  const historia=[];
+  const nega=(d,alfa,beta,ply)=>{
+    if((++nodes&1023)===0&&Date.now()-t0>temps)parat=true;
+    if(parat)return 0;
+    if(ply>0&&(P.quietes>=50||historia.includes(P.h)||(vistes[P.h]||0)>=2))return 0;
+    const cap=captures(P);
+    // quan es pot menjar no s'atura: tot és obligat, i aturar-se a mig canvi enganyaria
+    if(d<=0&&!cap.length)return avalua(P);
+    if(d<-12)return avalua(P);
+    const ms=(cap.length?cap:senzilles(P)).sort((x,y)=>ordre(y)-ordre(x));
+    if(!ms.length)return -GUANY+ply;
+    let millor=-Infinity;historia.push(P.h);
+    for(const m of ms){const u=fes(P,m);const v=-nega(d-1,-beta,-alfa,ply+1);desfes(P,u);if(parat)break;
+      if(v>millor)millor=v;if(v>alfa)alfa=v;if(alfa>=beta)break}
+    historia.pop();
+    return millor;
+  };
+  const jug=legals(P);if(!jug.length)return null;if(jug.length===1)return jug[0];
+  let millor=jug[0],puntsMillor=-Infinity;
+  for(let d=1;d<=prof;d++){
+    const ord=jug.slice().sort((x,y)=>(y===millor)-(x===millor)||ordre(y)-ordre(x));const pts=[];
+    let alfa=-Infinity;historia.push(P.h);
+    for(const m of ord){const u=fes(P,m);const v=-nega(d-1,-Infinity,-alfa+(soroll?soroll*2:0),1);desfes(P,u);if(parat)break;
+      const vs=v+(soroll?(rnd()*2-1)*soroll:0);pts.push([m,vs]);if(vs>alfa)alfa=vs}
+    historia.pop();
+    if(parat&&pts.length<ord.length){if(pts.length&&pts.sort((a,b)=>b[1]-a[1])[0][1]>puntsMillor)millor=pts[0][0];break}
+    pts.sort((a,b)=>b[1]-a[1]);millor=pts[0][0];puntsMillor=pts[0][1];
+    if(Math.abs(puntsMillor)>GUANY-200)break;
+    if(Date.now()-t0>temps*.45)break;
+  }
+  cerca.nodes=nodes;
+  return millor;
+}
+// Els quatre nivells de la màquina
+const NIVELLS=[
+  {nom:'PRINCIPIANT',punts:1,taules:0,opc:{prof:1,soroll:90},atzar:.35},
+  {nom:'AFICIONAT',punts:3,taules:1,opc:{prof:3,soroll:30,temps:500}},
+  {nom:'JUGADOR DE CAFÈ',punts:6,taules:2,opc:{prof:6,soroll:10,temps:900}},
+  {nom:'MESTRE',punts:10,taules:4,opc:{prof:20,temps:1800}},
+];
+function jugadaMaquina(P,nivell,vistes,rnd=Math.random){
+  const N=NIVELLS[nivell];
+  if(N.atzar&&rnd()<N.atzar){const l=legals(P);return l[Math.floor(rnd()*l.length)]}
+  return cerca(P,{...N.opc,vistes,rnd});
+}
+// ==FI REGLES==
+
+const JOC='dames',CLAU='dames-partida',CLAU_STATS='dames-stats',CLAU_COLOR='dames-color';
+const $=id=>document.getElementById(id);
+const CV=$('c'),g=CV.getContext('2d');
+let DPR=1,MIDA=320;
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}}
+function tone(f,d,type='sine',vol=.2,slide=0,del=0){
+  if(!AC)return;const t=AC.currentTime+del,o=AC.createOscillator(),gg=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  gg.gain.setValueAtTime(vol,t);gg.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(gg);gg.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  toc(){aInit();tone(620,.04,'triangle',.07)},
+  mou(){aInit();tone(200,.06,'square',.05,-60);tone(820,.03,'triangle',.05)},
+  menja(n=1){aInit();for(let i=0;i<n;i++)tone(150,.1,'square',.08,-60,i*.17)},
+  dama(){aInit();[660,880,1100].forEach((f,i)=>tone(f,.14,'triangle',.12,0,i*.08))},
+  no(){aInit();tone(160,.18,'square',.07,-40)},
+  fi(){aInit();[523,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',.18,0,i*.12))},
+  perd(){aInit();[392,330,262].forEach((f,i)=>tone(f,.35,'triangle',.15,0,i*.16))},
+};
+
+// ===== LES PECES =====
+// Fitxes rodones de fusta; la dama porta una corona a sobre
+function peca(p,x,y,q,alfa=1){
+  if(!p)return;const blanca=p>0,r=q*.38,cx=x+q/2,cy=y+q/2;
+  g.save();g.globalAlpha=alfa;
+  const cos=blanca?['#fbf4e4','#d9c7a2']:['#4a3a2e','#1e1712'],vora=blanca?'#8a7350':'#0c0806';
+  // l'ombra i el gruix de la fitxa
+  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(cx,cy+r*.18,r,r*.98,0,0,Math.PI*2);g.fill();
+  g.fillStyle=vora;g.beginPath();g.arc(cx,cy+r*.1,r,0,Math.PI*2);g.fill();
+  const gr=g.createRadialGradient(cx-r*.35,cy-r*.4,r*.1,cx,cy,r);gr.addColorStop(0,cos[0]);gr.addColorStop(1,cos[1]);
+  g.fillStyle=gr;g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.fill();
+  g.strokeStyle=blanca?'rgba(120,95,60,.55)':'rgba(255,230,190,.22)';g.lineWidth=Math.max(1,q*.025);
+  g.beginPath();g.arc(cx,cy,r*.68,0,Math.PI*2);g.stroke();
+  if(Math.abs(p)===DAMA){
+    const w=r*.95,h=r*.6,bx=cx-w/2,by=cy-h*.45;
+    g.fillStyle='#e6b628';g.strokeStyle='#7a5508';g.lineWidth=Math.max(1,q*.02);
+    g.beginPath();g.moveTo(bx,by+h);g.lineTo(bx,by+h*.25);g.lineTo(bx+w*.25,by+h*.6);g.lineTo(bx+w*.5,by);g.lineTo(bx+w*.75,by+h*.6);g.lineTo(bx+w,by+h*.25);g.lineTo(bx+w,by+h);g.closePath();g.fill();g.stroke();
+  }
+  g.restore();
+}
+
+// ===== LA PARTIDA =====
+// Z: el que es desa. P: la posició, que es refà amb la llista de jugades.
+let Z=null,P=null,vistes={},sel=-1,destins=[],pensant=false,anim=null,paused=false,potTancar=false,avisT=0;
+const llegeix=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return v==null?d:v}catch(e){return d}};
+const escriu=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let stats=llegeix(CLAU_STATS,null)||{punts:0,n:NIVELLS.map(()=>({g:0,t:0,p:0})),dos:0};
+function nova(mode,nivell,jo){return {v:1,mode,nivell,jo,hist:[],desfet:false,fi:null,comptat:false,nou:false,comencada:true}}
+// les jugades es desen curtes: d'on, on i què es menja
+const curta=m=>[m.de,m.a,...m.cap];
+function llarga(c){const P2=P;const l=legals(P2);return l.find(m=>m.de===c[0]&&m.a===c[1]&&m.cap.length===c.length-2&&c.slice(2).every(x=>m.cap.includes(x)))}
+function refa(){P=inicial();vistes={[P.h]:1};const h=Z.hist;Z.hist=[];
+  for(const c of h){const m=llarga(c);if(!m)break;fes(P,m);Z.hist.push(c);vistes[P.h]=(vistes[P.h]||0)+1}}
+function desa(){if(Z&&Z.comencada)escriu(CLAU,Z)}
+function carrega(){const d=llegeix(CLAU,null);if(d&&d.v===1&&Array.isArray(d.hist))return d;return null}
+const maquina=()=>Z&&Z.mode==='maquina'&&!Z.fi&&P.torn!==Z.jo;
+const jugant=()=>Z&&Z.comencada&&!Z.fi&&!paused&&$('msg').style.display!=='block';
+const girat=()=>Z&&Z.mode==='maquina'&&Z.jo<0;
+
+function aplica(m,animat=true){
+  const p=P.b[m.de],caps=m.cap.map(c=>[c,P.b[c]]);
+  if(animat)anim={m,p,np:m.cor?Math.sign(p)*DAMA:p,caps,t0:performance.now()};
+  fes(P,m);Z.hist.push(curta(m));vistes[P.h]=(vistes[P.h]||0)+1;
+  sel=-1;destins=[];
+  const e=estat(P,vistes);
+  if(e){Z.fi=e;Z.nou=true;desa();setTimeout(acaba,durada(m)+350)}
+  if(m.cap.length)so.menja(m.cap.length);else so.mou();
+  if(m.cor)setTimeout(()=>so.dama(),durada(m));
+  desa();pintaEstat();
+}
+const durada=m=>m.cam.length*170;
+function juga(){
+  if(!maquina()||pensant||paused||anim)return;
+  pensant=true;pintaEstat();
+  setTimeout(()=>{
+    const t0=performance.now();const m=jugadaMaquina(copia(P),Z.nivell,vistes);
+    setTimeout(()=>{pensant=false;if(Z&&!Z.fi&&m&&maquina())aplica(m)},Math.max(0,450-(performance.now()-t0)));
+  },60);
+}
+function avisa(t){avisT=performance.now()+2600;const e=$('estat');e.textContent=t;e.className='menja'}
+function tocaCasella(s){
+  if(!jugant()||pensant||maquina()||anim)return;
+  const p=P.b[s],meva=p&&(p>0)===(P.torn>0);
+  if(sel>=0){
+    const ms=destins.filter(m=>m.a===s);
+    if(ms.length){aplica(ms[0]);return}
+  }
+  if(meva){
+    const totes=legals(P);sel=s;destins=totes.filter(m=>m.de===s);so.toc();
+    if(!destins.length){so.no();
+      if(totes.length&&totes[0].cap.length)avisa('Has de menjar, i amb una altra peça');
+      else avisa('Aquesta no es pot moure')}
+  }else{sel=-1;destins=[]}
+}
+function desfes1(){
+  if(!Z||!Z.hist.length||pensant)return false;
+  Z.hist.pop();if(Z.mode==='maquina'){while(Z.hist.length&&(Z.hist.length%2===0?1:-1)!==Z.jo)Z.hist.pop();Z.desfet=true}
+  Z.fi=null;sel=-1;destins=[];anim=null;refa();desa();pintaEstat();so.toc();return true;
+}
+
+// ===== EL FINAL =====
+const PER_QUE={dues:'una dama contra una dama: no hi ha manera de guanyar',quietes:'vint-i-cinc jugades de cada sense menjar res ni moure cap peó',repeticio:'la mateixa posició, tres vegades',abandona:'abandona'};
+function perQue(f){
+  if(f.fi==='abandona')return Z.mode==='dos'?'abandonen les '+(f.guanya>0?'negres':'blanques'):'has abandonat';
+  if(!f.guanya)return PER_QUE[f.fi];
+  const perd=-f.guanya,jo=Z.mode==='maquina'&&perd===Z.jo,maq=Z.mode==='maquina'&&!jo,colors=perd>0?'les blanques':'les negres';
+  if(f.fi==='sense')return jo?'no et queda cap peça':maq?'a la màquina no li queda cap peça':'a '+colors+' no els queda cap peça';
+  return jo?'no et queda cap jugada: totes les teves peces estan tancades':maq?'la màquina no té cap jugada: totes les seves peces estan tancades':colors+' no tenen cap jugada: totes les peces estan tancades';
+}
+function resultat(){
+  const f=Z.fi;if(!f)return null;
+  const taules=!f.guanya;
+  if(Z.mode==='dos')return {taules,titol:taules?'TAULES':(f.guanya>0?'GUANYEN LES BLANQUES':'GUANYEN LES NEGRES')};
+  const guanyo=f.guanya===Z.jo;
+  return {taules,guanyo,titol:taules?'TAULES':guanyo?'HAS GUANYAT!':'HA GUANYAT LA MÀQUINA'};
+}
+function acaba(){
+  if(!Z||!Z.fi)return;
+  const r=resultat();
+  if(!Z.comptat){Z.comptat=true;Z.guany=0;
+    if(Z.mode==='dos')stats.dos++;
+    else{const s=stats.n[Z.nivell];if(r.taules)s.t++;else if(r.guanyo)s.g++;else s.p++;
+      if(!Z.desfet){Z.guany=r.taules?NIVELLS[Z.nivell].taules:r.guanyo?NIVELLS[Z.nivell].punts:0;stats.punts+=Z.guany}}
+    escriu(CLAU_STATS,stats);desa();
+  }
+  if(r.taules||r.guanyo||Z.mode==='dos')so.fi();else so.perd();
+  pintaHud();pintaEstat();finalPartida();
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!Z||!Z.fi){msg('<div style="color:#f0d8a0">LES DAMES</div><small>la partida encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!(Z&&Z.comencada);return}
+    const r=resultat(),f=Z.fi,N=NIVELLS[Z.nivell];
+    const motiu=perQue(f);
+    let punts='';
+    if(Z.mode==='maquina'){
+      if(Z.guany)punts='<div style="font-size:30px;font-weight:bold;color:#f0d8a0">+'+Z.guany+'</div><small style="color:#c8b898">'+(Z.guany===1?'punt':'punts')+' contra el '+N.nom.toLowerCase()+' · en portes '+stats.punts+'</small>';
+      else if(Z.desfet&&(r.guanyo||r.taules))punts='<small style="color:#c8a080">Has desfet alguna jugada: aquesta partida no puntua.</small>';
+      else punts='<small style="color:#a89878">en portes '+stats.punts+'</small>';
+    }
+    msg('<div style="color:'+(r.guanyo||Z.mode==='dos'?'#7dff9b':r.taules?'#f0d8a0':'#ff9a80')+'">'+r.titol+'</div><small style="color:#d8c8a8">'+motiu+'</small>'+punts+
+      '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>'+
+      '<a href="#" class="bt nv" id="f-altra">UNA ALTRA PARTIDA</a><a href="#" class="bt" id="f-menu" style="color:#d8c8a8;border:1px solid #5a4a36">TRIA UN ALTRE NIVELL</a>'+Records.peuFinal('o toca per tancar i mirar el tauler'));
+    potTancar=true;
+    enllac('f-altra',()=>comenca(Z.mode,Z.nivell,Z.mode==='maquina'?triaColor():1));enllac('f-menu',menu);
+    let t;
+    if(Z.nou&&Z.guany>0){t=await Records.fiPartida(JOC,stats.punts);Z.nou=false;desa()}
+    else{Z.nou=false;desa();t={html:Records.taulaHTML(await Records.llista(JOC),null,JOC),posicio:0}}
+    const el=$('taula');if(el)el.innerHTML=t.html+(t.posicio===1?'<div style="color:#ff0;font-size:13px">ETS EL NÚMERO 1!</div>':t.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+t.posicio+'!</div>':'');
+    Records.pintaMillor(JOC,$('best'));
+  }finally{enFinal=false}
+}
+
+// ===== EL MENÚ =====
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();so.toc();fn()})}
+const triaColor=()=>{const c=llegeix(CLAU_COLOR,1);return c===0?(Math.random()<.5?1:-1):c};
+const REGLES='<div style="text-align:left;font-size:13px;line-height:1.5;color:#d8c8a8;margin-top:8px">'+
+  '· Es juga a les caselles fosques, i surten les blanques.<br>'+
+  '· El peó avança una casella en diagonal, <b>sempre endavant</b>.<br>'+
+  '· Es menja saltant per sobre d\'una peça de l\'altre, i si després pots tornar a saltar, segueixes.<br>'+
+  '· <b>Menjar és obligatori</b>, i s\'ha de fer per on se\'n mengen més (a igualtat, més dames).<br>'+
+  '· El peó només menja endavant.<br>'+
+  '· El peó que arriba a l\'altra punta es fa <b>dama</b>: va i menja en diagonal, endavant i enrere, tan lluny com vol.<br>'+
+  '· Guanya qui deixa l\'altre sense peces o sense cap jugada.</div>';
+function menu(){
+  desa();
+  const mig=Z&&Z.comencada&&!Z.fi&&Z.hist.length>0,col=llegeix(CLAU_COLOR,1);
+  const desc=mig?(Z.mode==='dos'?'dos jugadors':'contra el '+NIVELLS[Z.nivell].nom.toLowerCase())+' · jugada '+Math.ceil((Z.hist.length+1)/2):'';
+  msg('<div style="color:#f0d8a0;letter-spacing:.12em">LES DAMES</div>'+
+    '<small style="color:#c8b898">Les de casa nostra. El primer llibre de dames que es coneix es va imprimir a València el 1547.</small>'+
+    (mig?'<a href="#" class="bt nv" id="m-cont">CONTINUA ▸</a><small style="color:#a89878;margin-top:2px">'+desc+'</small>':'')+
+    '<small style="color:#f0d8a0;margin-top:12px">CONTRA LA MÀQUINA · jugues amb</small>'+
+    '<div class="colors">'+[[1,'BLANQUES'],[-1,'NEGRES'],[0,"A L'ATZAR"]].map(([v,t])=>'<a href="#" id="c'+(v+1)+'"'+(col===v?' class="sel"':'')+'>'+t+'</a>').join('')+'</div>'+
+    NIVELLS.map((N,i)=>{const s=stats.n[i];return '<a href="#" class="bt nv" id="n'+i+'">'+N.nom+' <i>· '+N.punts+(N.punts===1?' punt':' punts')+(s.g?' · '+s.g+(s.g===1?' guanyada':' guanyades'):'')+'</i></a>'}).join('')+
+    '<a href="#" class="bt" id="m-dos" style="color:#d8c8a8;border:1px solid #5a4a36;margin-top:12px">DOS JUGADORS, AMB EL MATEIX MÒBIL</a>'+
+    '<a href="#" class="bt" id="m-regles" style="color:#d8c8a8;border:1px solid #5a4a36">COM ES JUGA</a>'+
+    '<small style="color:#8a7a62;margin-top:10px">Guanyant la màquina sumes punts per a la taula; fent taules, menys. Si desfàs alguna jugada, aquella partida no puntua. Portes '+stats.punts+(stats.punts===1?' punt.':' punts.')+'</small>');
+  enllac('m-cont',continua);
+  for(const v of[1,-1,0])enllac('c'+(v+1),()=>{escriu(CLAU_COLOR,v);menu()});
+  NIVELLS.forEach((_,i)=>enllac('n'+i,()=>{const f=()=>comenca('maquina',i,triaColor());mig?segur(f):f()}));
+  enllac('m-dos',()=>{const f=()=>comenca('dos',0,1);mig?segur(f):f()});
+  enllac('m-regles',regles);
+}
+function regles(){
+  msg('<div style="color:#f0d8a0;letter-spacing:.12em">COM ES JUGA</div>'+REGLES+'<a href="#" class="bt nv" id="r-ok">ENTESOS</a>');
+  enllac('r-ok',menu);
+}
+function segur(f){
+  msg('<div style="color:#ffb070">SEGUR?</div><small style="color:#d8c8a8">Deixaries la partida que portes a mitges.</small>'+
+    '<a href="#" class="bt nv" id="s-no">NO, TORNA ENRERE</a><a href="#" id="s-si" style="display:block;margin-top:14px;font:12px monospace;color:#c08060">sí, comença\'n una de nova</a>');
+  enllac('s-no',menu);enllac('s-si',f);
+}
+function comenca(mode,nivell,jo){Z=nova(mode,nivell,jo);refa();sel=-1;destins=[];anim=null;pensant=false;desa();hideMsg();pintaHud();pintaEstat()}
+function continua(){hideMsg();pintaEstat()}
+function abandona(){
+  if(!Z||Z.fi||!Z.comencada||!Z.hist.length)return;
+  msg('<div style="color:#ffb070">ABANDONES?</div><small style="color:#d8c8a8">'+(Z.mode==='dos'?'Abandonen les '+(P.torn>0?'blanques':'negres')+', i la partida s\'acaba.':'La partida comptarà com a perduda.')+'</small>'+
+    '<a href="#" class="bt nv" id="a-no">NO, SEGUEIXO</a><a href="#" id="a-si" style="display:block;margin-top:14px;font:12px monospace;color:#c08060">sí, abandono</a>');
+  enllac('a-no',hideMsg);
+  enllac('a-si',()=>{hideMsg();Z.fi={fi:'abandona',guanya:Z.mode==='dos'?-P.torn:-Z.jo};Z.nou=true;desa();acaba()});
+}
+
+// ===== LA PANTALLA =====
+function pintaHud(){
+  $('mode').textContent=!Z?'—':Z.mode==='dos'?'DOS JUGADORS':NIVELLS[Z.nivell].nom;
+  $('score').textContent=stats.punts;Records.marcador(JOC,$('best'),stats.punts);
+}
+let hiHaCaptura=false;
+function pintaEstat(){
+  const e=$('estat');if(performance.now()<avisT)return;
+  if(!Z||!P){e.textContent='';return}
+  let t;hiHaCaptura=false;
+  if(Z.fi){t=resultat().titol}
+  else{
+    hiHaCaptura=captures(P).length>0;
+    if(Z.mode==='maquina')t=P.torn===Z.jo?(hiHaCaptura?'Et toca a tu: has de menjar!':'Et toca a tu, amb les '+(Z.jo>0?'blanques':'negres')):'La màquina pensa...';
+    else t='Mouen les '+(P.torn>0?'blanques':'negres')+(hiHaCaptura?': han de menjar!':'');
+  }
+  e.textContent=t;e.className=hiHaCaptura&&!maquina()?'menja':'';
+}
+function mesura(){
+  const sc=$('screen').getBoundingClientRect();
+  MIDA=Math.max(200,Math.floor(Math.min(sc.width,sc.height)/8)*8);DPR=Math.min(3,window.devicePixelRatio||1);
+  CV.style.width=MIDA+'px';CV.style.height=MIDA+'px';CV.width=Math.round(MIDA*DPR);CV.height=Math.round(MIDA*DPR);
+}
+addEventListener('resize',mesura);
+try{new ResizeObserver(()=>mesura()).observe($('screen'))}catch(e){}
+const aPantalla=s=>{const v=girat()?63-s:s;return [col(v)*MIDA/8,fila(v)*MIDA/8]};
+const deLaPantalla=(x,y)=>{const c=Math.floor(x/(MIDA/8)),f=Math.floor(y/(MIDA/8));if(c<0||c>7||f<0||f>7)return -1;const v=f*8+c;return girat()?63-v:v};
+function dibuixa(now){
+  g.setTransform(DPR,0,0,DPR,0,0);const q=MIDA/8;
+  for(let s=0;s<64;s++){const[x,y]=aPantalla(s);g.fillStyle=fosca(s)?'#9a6a44':'#ecd6ae';g.fillRect(x,y,q,q)}
+  // la darrera jugada, amb el camí que ha fet
+  if(Z&&Z.hist.length&&!anim){const c=Z.hist[Z.hist.length-1];for(const s of[c[0],c[1]]){const[x,y]=aPantalla(s);g.fillStyle='rgba(205,210,60,.42)';g.fillRect(x,y,q,q)}}
+  if(sel>=0){const[x,y]=aPantalla(sel);g.fillStyle='rgba(90,170,90,.6)';g.fillRect(x,y,q,q)}
+  if(!P)return;
+  // les peces que poden moure, quan és obligatori menjar: que es vegi quines
+  const torn=Z&&!Z.fi&&!maquina()&&!anim&&hiHaCaptura;
+  const obligades=torn&&sel<0?new Set(captures(P).map(m=>m.de)):null;
+  let ap=null,t=0,seg=0,u=0;
+  if(anim){t=(now-anim.t0)/170;seg=Math.floor(t);u=t-seg;if(seg>=anim.m.cam.length){anim=null;pintaEstat()}else ap=anim.m.a}
+  for(let s=0;s<64;s++){if(s===ap)continue;const[x,y]=aPantalla(s);
+    if(obligades&&obligades.has(s)){const k=.5+.5*Math.sin(now/160);g.fillStyle='rgba(255,120,60,'+(.25+.3*k)+')';g.fillRect(x,y,q,q)}
+    peca(P.b[s],x,y,q)}
+  for(const m of destins){const[x,y]=aPantalla(m.a);g.fillStyle='rgba(30,70,30,.5)';g.beginPath();g.arc(x+q/2,y+q/2,q*.15,0,Math.PI*2);g.fill();
+    for(const c of m.cap){const[cx,cy]=aPantalla(c);g.strokeStyle='rgba(220,50,30,.85)';g.lineWidth=q*.06;g.beginPath();g.moveTo(cx+q*.25,cy+q*.25);g.lineTo(cx+q*.75,cy+q*.75);g.moveTo(cx+q*.75,cy+q*.25);g.lineTo(cx+q*.25,cy+q*.75);g.stroke()}}
+  if(anim){
+    // les que es menja s'esvaeixen quan hi passa per sobre
+    anim.caps.forEach(([c,p],i)=>{const[x,y]=aPantalla(c);peca(p,x,y,q,i<seg?Math.max(0,1-(t-i-.5)*2):1)});
+    const cam=[anim.m.de,...anim.m.cam],[x0,y0]=aPantalla(cam[seg]),[x1,y1]=aPantalla(cam[seg+1]),e=1-(1-u)*(1-u);
+    const sup=anim.m.cap.length?Math.sin(u*Math.PI)*q*.18:0;
+    peca(seg===anim.m.cam.length-1&&u>.9?anim.np:anim.p,x0+(x1-x0)*e,y0+(y1-y0)*e-sup,q);
+  }
+  if(paused){g.fillStyle='rgba(22,18,14,.97)';g.fillRect(0,0,MIDA,MIDA)}
+}
+
+// ===== TOCS =====
+CV.addEventListener('pointerdown',ev=>{
+  ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  const r=CV.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
+  if(!jugant()){so.toc();return}
+  const s=deLaPantalla(x,y);if(s<0)return;tocaCasella(s);
+});
+$('menu').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();so.toc();menu()});
+$('desfes').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();if(paused){posaPausa(false);return}if(!Z||$('msg').style.display==='block'&&!Z.fi)return;
+  if(Z.fi)hideMsg();if(!desfes1())so.no()});
+$('abandona').addEventListener('pointerdown',ev=>{ev.preventDefault();aInit();so.toc();if(paused){posaPausa(false);return}abandona()});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';if(paused)desa()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)desa()});
+addEventListener('pagehide',desa);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape')posaPausa(!paused)});
+
+function loop(now){
+  if(Z&&!Z.fi&&maquina()&&!pensant&&!paused&&!anim&&$('msg').style.display!=='block')juga();
+  if(avisT&&now>avisT){avisT=0;pintaEstat()}
+  dibuixa(now);requestAnimationFrame(loop);
+}
+
+Z=carrega();
+if(Z)refa();else{P=inicial()}
+mesura();pintaHud();pintaEstat();Records.pintaMillor(JOC,$('best'));
+menu();
+requestAnimationFrame(loop);
+
+// En entrar, la taula de rècords uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false);
+</script>
+</body>
+</html>

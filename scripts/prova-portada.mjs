@@ -27,7 +27,7 @@ const ORDRE = [
 // trenquin la linia del temps.
 // No son de saló: van a part perquè no trenquin la línia del temps dels
 // clàssics. Dins de l'apartat, també per ordre d'any.
-const MODERNS = [['escacs', 1475], ['botifarra', 1850], ['penjat', 1894], ['sopa', 1968], ['xifres', 1972], ['quadres', 1979], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026], ['poble', 2026], ['tresor', 2026]];
+const MODERNS = [['escacs', 1475], ['dames', 1547], ['botifarra', 1850], ['penjat', 1894], ['sopa', 1968], ['xifres', 1972], ['quadres', 1979], ['temple', 1989], ['amunt', 2009], ['boles', 2016], ['sindria', 2021], ['balanca', 2026], ['ram', 2026], ['garbuix', 2026], ['gofra', 2026], ['impremta', 2026], ['rotllana', 2026], ['abecedari', 2026], ['conquesta', 2026], ['colles', 2026], ['trencaclosques', 2026], ['poble', 2026], ['tresor', 2026]];
 // les partides del dia, que surten a dalt de tot a ELS JOCS D'AVUI
 const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'colles_dia', 'poble_dia', 'trencaclosques_dia', 'sopa_dia', 'penjat_dia', 'conquesta_dia', 'quadres_dia'];
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
@@ -190,7 +190,7 @@ for (const [w, h] of MIDES) {
     // el compte del primer dia (de la portada), un record d'abans i dos dies de trencaclosques desats
     localStorage.setItem('jocs-jugats', JSON.stringify({ colles: 3, pong: 1 }));
     // els jocs nous, com si ja s'haguessin obert (si no, van al davant: es prova a part)
-    localStorage.setItem('jocs-obertes', JSON.stringify({ 'sopa.html': { n: 0, t: 0 }, 'tresor.html': { n: 0, t: 0 }, 'escacs.html': { n: 0, t: 0 }, 'penjat.html': { n: 0, t: 0 }, 'quadres.html': { n: 0, t: 0 } }));
+    localStorage.setItem('jocs-obertes', JSON.stringify({ 'sopa.html': { n: 0, t: 0 }, 'tresor.html': { n: 0, t: 0 }, 'escacs.html': { n: 0, t: 0 }, 'dames.html': { n: 0, t: 0 }, 'penjat.html': { n: 0, t: 0 }, 'quadres.html': { n: 0, t: 0 } }));
     localStorage.setItem('best_galaga', '3000'); localStorage.setItem('best_breakout', '50');
     localStorage.setItem('trencaclosques-2026-10-30', '{}'); localStorage.setItem('trencaclosques-2026-10-31', '{}');
   });
@@ -257,7 +257,9 @@ for (const [w, h] of MIDES) {
   be = m.nous === 'sopa.html' && m.avis === 'sopa.html';
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} un cop obert, ja no és nou (${m.nous} / ${m.avis})`);
-  await p.clock.setFixedTime(new Date('2026-12-02T12:00:00'));
+  // tres setmanes i un dia després del joc nou més nou de la portada
+  const darrerNou = [...readFileSync(resolve(ARREL, 'index.html'), 'utf8').matchAll(/data-nou="(\d{4}-\d\d-\d\d)"/g)].map(m => m[1]).sort().pop();
+  await p.clock.setFixedTime(new Date(Date.parse(darrerNou + 'T12:00:00') + 22 * 864e5));
   await p.reload(); await p.waitForTimeout(200);
   m = await mira();
   be = m.nous === '' && m.avis === '' && !errors.length;

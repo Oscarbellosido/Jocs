@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vint-i-dos que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint-i-tres que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,11 +53,12 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vint-i-dos que no són de saló
+### I vint-i-tres que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
 | `escacs.html` | Els Escacs (contra la màquina, a quatre nivells, o dos al mateix mòbil) | 1475 |
+| `dames.html` | Les Dames (les de casa nostra, contra la màquina o dos al mateix mòbil) | 1547 |
 | `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
 | `penjat.html` | El Penjat (el de paper de tota la vida, amb un bruixot) | 1894 |
 | `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
@@ -1178,6 +1179,58 @@ Coses que no s'han de desfer sense entendre-les:
   cada posició). La màquina també ho sap, i no repeteix si va guanyant.
 - **El tauler es dibuixa amb vectors** (`peca`), sense imatges ni lletres
   d'escacs Unicode, que a cada mòbil surten diferents.
+
+## Les Dames: les de casa nostra
+
+L'usuari les va demanar després dels Escacs, i són el mateix joc per fora:
+contra la màquina (blanques, negres o a l'atzar) a quatre nivells, que donen
+1, 3, 6 o 10 punts guanyant i 0, 1, 2 o 4 fent taules; dos jugadors amb el
+mateix mòbil; DESFÉS (i aquella partida ja no puntua); ABANDONA que pregunta;
+es desa a cada jugada (`dames-partida`), i la taula (`dames`) són els punts
+acumulats, cadascú una vegada (`UNA_PER_NOM`). L'any (1547) és el del primer
+llibre de dames que es coneix, imprès a València.
+
+**Les regles són les de casa nostra**, les que a fora en diuen «espanyoles»,
+i el menú les explica (COM ES JUGA), que no tothom les recorda:
+
+- 8 × 8, es juga a les caselles fosques, dotze peces cadascú, surten les
+  blanques.
+- El peó avança una casella en diagonal, **i només menja endavant**.
+- **Menjar és obligatori**, i s'ha de fer per on **se'n mengen més** (la
+  llei de la quantitat); a igualtat, per on es mengen **més dames** (la de
+  la qualitat).
+- **La dama va i menja tan lluny com vol**, endavant i enrere, i després de
+  menjar cau a qualsevol casella buida del darrere.
+- Les peces menjades no se'n van fins al final del moviment: no es poden
+  saltar dues vegades, i fan nosa a la dama que va lluny.
+- El peó que arriba a l'altra punta es fa dama. Si hi arriba menjant,
+  s'atura allà (ja no pot anar més endavant).
+- Perd qui es queda sense peces o sense cap jugada. Taules: la mateixa
+  posició tres vegades, 25 jugades de cada sense menjar ni moure cap peó
+  (`quietes`), o una dama sola contra una dama sola.
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **El motor és entre `==REGLES==` i `==FI REGLES==`**, i el fan servir el
+  joc i la prova. Com que de les dames no hi ha números de referència tan
+  coneguts com als escacs, **la prova porta un segon motor escrit d'una altra
+  manera** (que copia el tauler a cada salt) i tots dos han de comptar el
+  mateix: les partides possibles des de la sortida (7, 49, 302, 1.469,
+  7.361, 36.473, 177.532) i les jugades de 800 posicions a l'atzar plenes de
+  dames.
+- **Quan has de menjar, el joc t'ho diu**: a dalt («has de menjar!»), les
+  peces que poden menjar bateguen en taronja, i si toques una altra peça diu
+  que has de menjar amb una altra. Les peces que et menjaries surten amb una
+  creu vermella abans de moure. Si no, l'obligació semblaria que el joc no
+  et deixa moure.
+- **La màquina** busca amb alfa-beta i, quan es pot menjar, no s'atura
+  (`nega` segueix mentre hi ha captures): aturar-se a mig canvi enganyaria.
+  Un peó val 100 i una dama 320; els peons valen més com més endavant i al
+  mig, i qui va guanyant vol canviar peces. Calibrat amb partides entre
+  nivells: l'aficionat guanya el principiant 19 a 1, el jugador de cafè
+  l'aficionat 9 a 0, i el mestre el jugador de cafè 7 a 0.
+- Si dues jugades acaben a la mateixa casella menjant peces diferents (molt
+  rar), el toc fa la primera.
 
 ## El Penjat: la paraula del dia, amb un bruixot
 
@@ -2337,6 +2390,14 @@ comproven el comportament.
   cada nivell guanyi l'anterior, i que es jugui tocant: moure, desfer, desar
   i continuar, guanyar (i els punts a la taula), dos jugadors, coronar,
   abandonar, jugar amb negres i que hi capiga a 320 px.
+- `node scripts/prova-dames.mjs` — les regles de Les Dames, comprovades
+  amb un segon motor (les partides possibles des de la sortida i 800
+  posicions a l'atzar), menjar obligatori, la quantitat i la qualitat, que el
+  peó no mengi enrere, la dama que va lluny, la coronació i com s'acaba; que
+  cada nivell de la màquina guanyi l'anterior; i que es jugui tocant:
+  moure, l'avís de menjar, desfer, desar i continuar, guanyar (i els punts a
+  la taula), dos jugadors, abandonar, jugar amb negres i que hi capiga a
+  320 px.
 - `node scripts/prova-penjat.mjs` — que les paraules del Penjat estiguin ben
   fetes (de 5 a 10 lletres, sense repetides), que la del dia sigui igual per
   a tothom, que no se'n repeteixi cap ni surtin dos dies seguits del mateix
