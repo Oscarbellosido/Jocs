@@ -421,7 +421,7 @@ function posaLiders() {
 posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
-// Les deu partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
@@ -445,9 +445,6 @@ posaLiders();
     ['trencaclosques_dia','EL TRENCACLOSQUES','trencaclosques.html',()=>{const d=llegeix('trencaclosques-'+avui);return !d?null:d.fi?'fet':'mig'},temps],
     ['sopa_dia','LA SOPA DE LLETRES','sopa.html',()=>{const d=llegeix('sopa-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
     ['penjat_dia','EL PENJAT','penjat.html',()=>{const d=llegeix('penjat-'+avui);return !d?null:d.fi?'fet':(d.lletres&&d.lletres.length)?'mig':null},p=>p?'✓ '+(8-p/100)+' err.':'✗'],
-    ['conquesta_dia','LA CONQUESTA','conquesta.html',()=>{
-      if(llegeix('conquesta-fi-'+avui))return 'fet';
-      return llegeix('conquesta-dia')===avui?'mig':null}],
     ['quadres_dia','ELS NOU QUADRES','quadres.html',()=>{const d=llegeix('quadres-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
   ];
   const ul=document.getElementById('avui-llista');
