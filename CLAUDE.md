@@ -1447,7 +1447,7 @@ després del Wordle), amb nom nostre: en català no n'hi havia cap.
 
 Coses que no s'han de desfer sense entendre-les:
 
-- **Les partides són escrites a mà** (`COLLES`, dins del joc), 100 de moment (la darrera, la #100, és la del 31 de gener del 2027).
+- **Les partides són escrites a mà** (`COLLES`, dins del joc), 130 de moment (la darrera, la #130, és la del 2 de març del 2027; les del febrer porten Dijous Gras, Carnestoltes i Sant Valentí).
   Les del 24 de desembre al 6 de gener van amb el dia: el tió, el dinar de
   Nadal, cap d'any, la nit de Reis i el tortell.
   Cada dia surt la següent **en l'ordre en què estan escrites** (no
