@@ -1,6 +1,6 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vint-i-tres que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint-i-quatre que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
 La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
@@ -53,7 +53,7 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vint-i-tres que no són de saló
+### I vint-i-quatre que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -62,6 +62,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `botifarra.html` | La Botifarra (el joc de cartes català, de cafè) | s. XIX |
 | `penjat.html` | El Penjat (el de paper de tota la vida, amb un bruixot) | 1894 |
 | `sopa.html` | La Sopa de Lletres (la dels diaris i les revistes de passatemps) | 1968 |
+| `caixa.html` | La Caixa Forta (de l'estil del *Mastermind*, amb una del dia) | 1970 |
 | `xifres.html` | Xifres (la prova de números de *Des chiffres et des lettres*) | 1972 |
 | `quadres.html` | Els Nou Quadres (el sudoku dels diaris, amb un del dia) | 1979 |
 | `temple.html` | El Temple (de l'estil del *Prince of Persia*) | 1989 |
@@ -102,9 +103,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les nou partides del dia (la Gofra, la Impremta, l'Abecedari, les
-Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat
-i els Nou Quadres), cadascuna
+les deu partides del dia (la Gofra, la Impremta, l'Abecedari, les
+Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat,
+els Nou Quadres i La Caixa Forta), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -122,7 +123,7 @@ llista es torna a pintar amb el `pageshow` que porta `persisted` (i en tornar
 a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
 navegador de les proves això no passa (allà la pàgina sempre es torna a
 carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va perquè
-cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
+cada dia n'hi ha deu, de partides del dia, escampades per la portada, i no
 hi havia manera de saber d'una ullada quines et quedaven. **La Botifarra, L'Abecedari
 difícil i La Conquesta no hi surten**: l'usuari els va voler treure de la llista. Les seves
 partides del dia segueixen existint i comptant per a la lliga; només no
@@ -1077,6 +1078,47 @@ Coses que no s'han de desfer sense entendre-les:
   duren fins al 26 de desembre sense repetir-ne cap.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
+
+## La Caixa Forta: endevina la combinació
+
+L'usuari la va triar d'una llista d'idees («el Mastermind»). El *Mastermind*
+(1970, d'un inventor israelià, i d'una empresa viva) és la versió amb colors
+d'un joc de paper i llapis molt més antic; aquí és **inspirada en**, amb nom
+i dibuix nostres: la combinació és la d'una caixa forta.
+
+- **4 colors d'entre 6, que es poden repetir, i 10 intents**: les regles de
+  la caixa de sempre. A cada intent, una **pista vermella** per cada color al
+  seu lloc i una de **blanca** per cada color que hi és però en un altre
+  lloc (`pistes`, entre `==REGLES==` i `==FI REGLES==`). Les pistes no diuen
+  quin és quin, només quants; a la ratlla de dalt també ho diu en paraules
+  («2 al seu lloc i 1 hi és però en un altre lloc»).
+- **Cada color porta una forma a dins** (`FORMA`: cercle, estrella,
+  triangle, quadrat, rombe, creu, cor i anella), com al Ram: el vermell i el
+  taronja es confonen d'una ullada. Dibuixades en SVG, no amb lletres
+  Unicode, que a cada mòbil surten diferents.
+- **Es juga tocant**: un color va al forat marcat i el cursor passa al
+  següent buit; tocant un forat el tries, i tocant-lo un altre cop el buides;
+  ESBORRA treu l'últim que has posat. A l'ordinador, de l'1 al 8, Retorn i
+  la tecla d'esborrar. **La mateixa combinació dues vegades no gasta cap
+  intent.** `COMPROVA` gros al mig, `ESBORRA` i `MENÚ` petits als costats.
+- **La del dia és igual per a tothom** (`codiDe`, llavor `CAIXA-<n>`; la #1
+  és la del 18 de novembre del 2026) i va a la taula del dia
+  (`caixa_dia/<data>`): **1.000 punts al primer intent i 100 menys per cada
+  intent de més** (100 al desè); si no l'obres, 0, que també compta per a la
+  lliga. A la taula surt «5/10». I les **caixes obertes de sempre**
+  (`caixa`, acumulades, cadascú una vegada). El bot diu cada matí qui la va
+  guanyar. Es desa a cada color (`caixa-<data>`, `caixa-practica`), amb la
+  combinació escrita a dins.
+- **Al grup s'envien les pistes de cada intent** (🟥⬜⬛), mai els colors.
+- **PRÀCTICA**: una altra caixa de 4 de 6, o la **DIFÍCIL**, de 5 colors
+  d'entre 8 en 12 intents (com la versió gran de la caixa de sempre). No
+  compten.
+
+**Sempre s'hi pot arribar jugant amb cap**: un jugador automàtic que només
+prova combinacions que encaixen amb totes les pistes obre les 1.296 de la
+normal en 5,8 intents de mitjana i 9 com a molt, i les difícils en 7,7 i 11
+com a molt. Ho mira el `scripts/prova-caixa.mjs`, i si es toquen els
+intents o els colors és la primera cosa que s'ha de tornar a mirar.
 
 ## Els Nou Quadres: el sudoku, amb un del dia
 
@@ -2399,6 +2441,12 @@ comproven el comportament.
   esborrar, la pista (que pregunta, +60 s), la pausa, desar i continuar,
   acabar-lo (va a la taula del dia una vegada), la pràctica i que hi capiga
   a 320 px.
+- `node scripts/prova-caixa.mjs` — les pistes de La Caixa Forta (també
+  amb colors repetits), que la del dia sigui igual per a tothom, que totes
+  les combinacions es puguin obrir a temps jugant amb cap, i que es jugui
+  tocant: posar i treure colors, esborrar, la combinació repetida, guanyar
+  (les dues taules), perdre (0 per a la lliga), desar i continuar, la
+  difícil, la pausa i que hi capiga a 320 px.
 - `node scripts/prova-escacs.mjs` — les regles dels Escacs (comptant totes
   les partides possibles des de cinc posicions conegudes, l'enroc, al pas,
   coronar, el mat, l'ofegat i les taules), que la màquina vegi el mat i que

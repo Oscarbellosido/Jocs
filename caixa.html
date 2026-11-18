@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>La Caixa Forta</title>
+<style>
+html,body{margin:0;height:100%;background:#0f1318;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,480px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#c9b27a;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96%;min-height:14px}
+#tema{flex:none;font:bold 13px monospace;letter-spacing:.12em;color:#e8c768;padding:1px 0 3px;text-align:center;max-width:96%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen{flex:1 1 auto;min-height:0;width:96%;max-width:380px;display:flex;flex-direction:column;position:relative;
+  background:linear-gradient(#2a323c,#1c2229);border:2px solid #4a5562;border-radius:12px;box-shadow:inset 0 0 0 3px #161b21,0 3px 12px rgba(0,0,0,.6);padding:6px 6px 4px;box-sizing:border-box}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,19,24,.97);font-size:22px;letter-spacing:.2em;color:#e8e0c4;z-index:3;border-radius:10px}
+#tauler{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:2px}
+.fila{flex:1 1 0;min-height:0;display:grid;grid-template-columns:20px 1fr 34px;align-items:center;gap:4px;border-radius:6px;padding:0 3px}
+.fila.ara{background:rgba(232,199,104,.13);box-shadow:inset 0 0 0 1px rgba(232,199,104,.45)}
+.fila .num{font-size:10px;color:#6c7886;text-align:right}
+.fila.ara .num{color:#e8c768}
+.forats{display:flex;justify-content:space-around;align-items:center;height:100%;min-width:0}
+.forat{height:86%;max-height:40px;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 40%,#0b0e12 55%,#262d36 100%);box-shadow:inset 0 2px 3px rgba(0,0,0,.8);position:relative;flex:none}
+.forat svg{position:absolute;inset:-2%;width:104%;height:104%}
+.fila.ara .forat.cursor{box-shadow:0 0 0 2px #e8c768,inset 0 2px 3px rgba(0,0,0,.8)}
+.pistes{display:grid;grid-template-columns:repeat(var(--pc,2),var(--p,10px));justify-content:center;align-content:center;gap:var(--pg,3px);width:34px;height:100%}
+.pistes i{width:var(--p,10px);height:var(--p,10px);border-radius:50%;background:#0b0e12;box-shadow:inset 0 1px 2px rgba(0,0,0,.9)}
+.pistes i.lloc{background:#ff4b3a;box-shadow:0 0 4px rgba(255,75,58,.7)}
+.pistes i.mal{background:#f4f1e6}
+/* la porta de la caixa: la combinació amagada, que surt al final */
+.porta{flex:none;height:44px;display:grid;grid-template-columns:20px 1fr 34px;align-items:center;gap:4px;padding:0 3px 4px;margin-bottom:4px;border-bottom:2px solid #4a5562}
+.porta .forat{height:36px;background:radial-gradient(circle at 50% 35%,#5b6673,#2e353e);box-shadow:inset 0 -2px 3px rgba(0,0,0,.6)}
+.porta .forat b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#c9d1da}
+.porta .pany{font-size:20px;text-align:center}
+#llegenda{flex:none;font-size:10px;color:#8b96a3;text-align:center;padding:3px 0 0}
+#llegenda i{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin:0 3px 0 6px}
+#paleta{flex:none;width:96%;max-width:380px;display:flex;gap:5px;justify-content:center;margin-top:6px}
+button{font:bold 15px monospace;background:#232a33;color:#e8ecf0;border:1px solid #435060;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#paleta button{flex:1 1 0;min-width:0;max-width:52px;height:46px;background:#161b21;border-color:#2e3742;display:flex;align-items:center;justify-content:center}
+#paleta button svg{width:36px;height:36px;max-width:92%;pointer-events:none}
+#accions{flex:none;width:96%;max-width:380px;display:flex;gap:6px;margin-top:6px}
+#accions button{flex:1 1 0;font-size:12px;color:#aab6c2}
+#accions #b-comprova{flex:2.4 1 0;font-size:16px;background:#c9a23c;border-color:#e8c768;color:#1a1408}
+#accions #b-comprova.no{background:#3a3424;border-color:#5a4f30;color:#8a7d58}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:18px;line-height:1.5;display:none;background:rgba(16,20,26,.97);border:1px solid #6a5a2a;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 15px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:280px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg .mostra{display:flex;gap:6px;justify-content:center;margin:8px 0 2px}
+#msg .mostra svg{width:34px;height:34px}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>OBERTES <b id="score">0</b></span><span>INTENT <b id="intent">1/10</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="tema">LA CAIXA FORTA</div>
+  <div id="screen"><div class="porta" id="porta"></div><div id="tauler"></div><div id="llegenda"><i style="background:#ff4b3a"></i>al seu lloc<i style="background:#f4f1e6"></i>hi és, però en un altre lloc</div><div id="pausa">PAUSA</div></div>
+  <div id="paleta"></div>
+  <div id="accions"><button id="b-esborra">ESBORRA</button><button id="b-comprova">COMPROVA</button><button id="b-menu">MENÚ</button></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Obre la caixa: endevina la combinació de colors.</b> toca els colors i COMPROVA · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}
+}
+function tone(f,d,type='sine',vol=.2,slide=0,ret=0){
+  if(!AC)return;const t=AC.currentTime+ret,o=AC.createOscillator(),gn=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  gn.gain.setValueAtTime(vol,t);gn.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(gn);gn.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  posa(){aInit();tone(520,.05,'triangle',.08)},
+  treu(){aInit();tone(300,.05,'triangle',.06)},
+  // el clic de cada pista, com el pany d'una caixa forta
+  clic(lloc,ret){aInit();tone(lloc?1500:1100,.03,'square',.07,0,ret)},
+  res(){aInit();tone(180,.12,'triangle',.08)},
+  mal(){aInit();tone(220,.2,'sawtooth',.08,-80)},
+  obre(){aInit();[392,523,659,784,1047].forEach((f,i)=>tone(f,.2,'triangle',.18,0,i*.09))},
+  tancada(){aInit();[330,294,262,196].forEach((f,i)=>tone(f,.25,'square',.07,0,i*.16))},
+};
+
+// ===== LES REGLES =====
+// Les del joc de tota la vida: una combinació de 4 colors d'entre 6, que es
+// poden repetir, i 10 intents. A cada intent, una pista vermella per cada
+// color que és al seu lloc, i una de blanca per cada color que hi és però en
+// un altre lloc. Les pistes no diuen quin és quin: només quants.
+const NIVELLS={normal:{N:4,K:6,MAX:10,nom:'NORMAL'},dificil:{N:5,K:8,MAX:12,nom:'DIFÍCIL'}};
+// ==REGLES==
+function pistes(codi,g){
+  let lloc=0;const a=new Array(8).fill(0),b=new Array(8).fill(0);
+  for(let i=0;i<codi.length;i++){if(codi[i]===g[i])lloc++;a[codi[i]]++;b[g[i]]++}
+  let tots=0;for(let c=0;c<8;c++)tots+=Math.min(a[c],b[c]);
+  return {lloc,mal:tots-lloc};
+}
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+// La combinació del dia, igual per a tothom: 4 de 6
+function codiDe(n){const r=mulberry(hashText('CAIXA-'+n));return Array.from({length:4},()=>Math.floor(r()*6))}
+// Punts del dia: 1.000 al primer intent, 100 menys per cada intent de més
+// (100 al desè); si no l'obres, 0
+const puntsDe=(guanyat,intents)=>guanyat?100*(11-intents):0;
+// ==FI REGLES==
+
+// ===== ELS COLORS =====
+// Cada color porta la seva forma a dins: el vermell i el taronja, o el verd i
+// el groc, es confonen d'una ullada, i més si hi veus malament.
+const COL=['#e8433a','#f5c518','#33b249','#2f7de1','#a259e0','#f28a1e','#ff6fae','#5fd6d0'];
+const NOM_COL=['vermell','groc','verd','blau','lila','taronja','rosa','turquesa'];
+const estrella=(()=>{let d='';for(let i=0;i<10;i++){const r=i%2?3.6:8.6,a=-Math.PI/2+i*Math.PI/5;d+=(i?'L':'M')+(20+r*Math.cos(a)).toFixed(1)+' '+(20.5+r*Math.sin(a)).toFixed(1)}return d+'Z'})();
+const FORMA=[
+  'M20 13a7 7 0 1 0 .01 0z',                     // cercle
+  estrella,                                       // estrella
+  'M20 11.5L28.5 27H11.5Z',                       // triangle
+  'M13.5 13.5h13v13h-13z',                        // quadrat
+  'M20 10.5L29.5 20 20 29.5 10.5 20Z',            // rombe
+  'M17 11h6v6h6v6h-6v6h-6v-6h-6v-6h6z',           // creu
+  'M20 28.5L12.2 20.6A4.6 4.6 0 0 1 20 14.2A4.6 4.6 0 0 1 27.8 20.6Z', // cor
+  'M20 11a9 9 0 1 0 .01 0zM20 16a4 4 0 1 1-.01 0z', // anella
+];
+function peg(c){
+  return '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="'+COL[c]+'" stroke="rgba(0,0,0,.55)" stroke-width="2"/>'+
+    '<ellipse cx="14" cy="12.5" rx="7" ry="4.6" fill="rgba(255,255,255,.33)"/>'+
+    '<path d="'+FORMA[c]+'" fill="rgba(0,0,0,.42)" fill-rule="evenodd"/></svg>';
+}
+
+// ===== EL DIA =====
+const JOC='caixa',taulaDia=d=>JOC+'_dia/'+d;
+const formatDia=p=>p?(11-p/100)+'/10':'✗';
+Records.formata(JOC+'_dia',formatDia);
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// la primera, la #1, és la del 18 de novembre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-11-18T12:00:00Z'))/864e5)+1;
+const nomDia=d=>{const[a,m,dd]=d.split('-');return Number(dd)+'/'+Number(m)+'/'+a};
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+
+// ===== LA PARTIDA =====
+// P: el que es desa. Porta la combinació: així la partida desada no canvia
+// mai, encara que algun dia canviés com es fa la del dia.
+let P=null,mode='dia',dia='',numero=0,paused=false,ocupat=false;
+function novaP(m,niv,codi){const v=NIVELLS[niv];return {v:1,mode:m,niv,N:v.N,K:v.K,MAX:v.MAX,dia,n:numero,codi,intents:[],ara:new Array(v.N).fill(null),cursor:0,ordre:[],fi:false,guanyat:false,nou:false,comencada:false}}
+const clau=()=>mode==='dia'?'caixa-'+P.dia:'caixa-practica';
+function desaP(){if(P&&P.comencada)desa(clau(),P)}
+let stats=llegeix('caixa-stats',{jugades:0,obertes:0,ratxa:0,millor:0,ultim:''});
+function obreDia(){
+  mode='dia';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('caixa-'+dia,null);
+  P=d&&d.v===1&&d.n===numero?d:novaP('dia','normal',codiDe(numero));
+  P.comencada=true;construeix();desaP();hideMsg();pintaLider();
+  if(P.fi)finalPartida();
+}
+function obrePractica(niv){
+  mode='practica';dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('caixa-practica',null);
+  if(!niv&&d&&d.v===1&&!d.fi)P=d;
+  else{const v=NIVELLS[niv||'normal'];P=novaP('practica',niv||'normal',Array.from({length:v.N},()=>Math.floor(Math.random()*v.K)))}
+  P.comencada=true;construeix();desaP();hideMsg();pintaLider();
+}
+const jugant=()=>P&&!P.fi&&!paused&&!ocupat&&$('msg').style.display!=='block';
+
+// el cursor va al primer forat buit a partir d'on és
+function avancaCursor(){
+  for(let k=1;k<=P.N;k++){const i=(P.cursor+k)%P.N;if(P.ara[i]===null){P.cursor=i;return}}
+}
+function posa(c){
+  if(!jugant()||c>=P.K)return;
+  if(P.ara[P.cursor]!==null&&P.ara.some(x=>x===null))avancaCursor();
+  const i=P.cursor;
+  P.ordre=P.ordre.filter(x=>x!==i);P.ara[i]=c;P.ordre.push(i);
+  so.posa();avancaCursor();desaP();pintaFila();
+}
+function triaForat(i){
+  if(!jugant())return;
+  if(P.ara[i]!==null&&P.cursor===i){P.ara[i]=null;P.ordre=P.ordre.filter(x=>x!==i);so.treu()}
+  P.cursor=i;desaP();pintaFila();
+}
+function esborra(){
+  if(!jugant()||!P.ordre.length)return;
+  const i=P.ordre.pop();P.ara[i]=null;P.cursor=i;so.treu();desaP();pintaFila();
+}
+function comprova(){
+  if(!jugant())return;
+  if(P.ara.some(x=>x===null)){avisa('Falten '+P.ara.filter(x=>x===null).length+' colors per posar');so.res();return}
+  const g=P.ara.slice();
+  if(P.intents.some(x=>x.g.join()===g.join())){avisa('Aquesta combinació ja l\'has provada');so.res();return}
+  const p=pistes(P.codi,g);
+  P.intents.push({g,lloc:p.lloc,mal:p.mal});
+  P.ara=new Array(P.N).fill(null);P.cursor=0;P.ordre=[];
+  if(p.lloc===P.N)P.guanyat=true;
+  if(P.guanyat||P.intents.length>=P.MAX)P.fi=true;
+  desaP();
+  // les pistes surten d'una en una, amb el clic del pany
+  ocupat=true;construeix(true);
+  const n=p.lloc+p.mal;
+  for(let k=0;k<n;k++)so.clic(k<p.lloc,k*.11);
+  if(!n)so.res();
+  setTimeout(()=>{
+    ocupat=false;pintaPistes();
+    if(P.fi)acaba();
+    else avisa(textPista(p));
+  },n*110+250);
+}
+const textPista=p=>!p.lloc&&!p.mal?'Cap d\'aquests colors no hi és':
+  (p.lloc?p.lloc+' al seu lloc':'')+(p.lloc&&p.mal?' i ':'')+(p.mal?p.mal+(p.mal===1?' hi és':' hi són')+' però en un altre lloc':'');
+
+// ===== EL TAULER =====
+const $=id=>document.getElementById(id);
+function construeix(animant){
+  if(!P)return;
+  const t=$('tauler');t.innerHTML='';
+  for(let r=0;r<P.MAX;r++){
+    const f=document.createElement('div');f.className='fila';f.dataset.r=r;
+    let h='<span class="num">'+(r+1)+'</span><div class="forats">';
+    for(let i=0;i<P.N;i++)h+='<div class="forat" data-i="'+i+'"></div>';
+    h+='</div><div class="pistes"></div>';
+    f.innerHTML=h;t.appendChild(f);
+  }
+  pintaFila();pintaPistes(animant);pintaPorta();mesuraPistes();
+  // la paleta, amb els colors d'aquest nivell
+  const pl=$('paleta');pl.innerHTML='';
+  for(let c=0;c<P.K;c++){const b=document.createElement('button');b.dataset.c=c;b.innerHTML=peg(c);b.setAttribute('aria-label',NOM_COL[c]);pl.appendChild(b)}
+  $('tema').textContent=mode==='dia'?'LA CAIXA FORTA · #'+P.n:P.niv==='dificil'?'PRÀCTICA DIFÍCIL · 5 DE 8':'LA CAIXA FORTA · PRÀCTICA';
+  updateHUD();
+}
+// Les pistes de cada fila (2 × 2, o 3 + 2 al difícil) han de cabre a
+// l'alçada de la fila: a 320 px, amb deu files, en fan poc més de vint.
+function mesuraPistes(){
+  const f=document.querySelector('#tauler .fila');if(!f||!P)return;
+  const h=f.getBoundingClientRect().height,col=P.N>4?3:2,gap=h<30?2:3;
+  const t=$('tauler');t.style.setProperty('--pc',col);t.style.setProperty('--pg',gap+'px');
+  t.style.setProperty('--p',Math.max(4,Math.min(10,Math.floor((h-2-gap)/2),Math.floor((34-gap*(col-1))/col)))+'px');
+}
+addEventListener('resize',mesuraPistes);
+function pintaFila(){
+  const files=[...document.querySelectorAll('#tauler .fila')];
+  files.forEach((f,r)=>{
+    const ara=!P.fi&&r===P.intents.length;
+    f.classList.toggle('ara',ara);
+    const g=r<P.intents.length?P.intents[r].g:ara?P.ara:null;
+    f.querySelectorAll('.forat').forEach((el,i)=>{
+      el.innerHTML=g&&g[i]!==null&&g[i]!==undefined?peg(g[i]):'';
+      el.classList.toggle('cursor',ara&&i===P.cursor);
+    });
+  });
+  const b=$('b-comprova');if(b)b.classList.toggle('no',!P||P.fi||P.ara.some(x=>x===null));
+  updateHUD();
+}
+function pintaPistes(fins){
+  const files=[...document.querySelectorAll('#tauler .fila')];
+  files.forEach((f,r)=>{
+    const el=f.querySelector('.pistes');let h='';
+    if(r<P.intents.length&&!(fins&&r===P.intents.length-1)){
+      const x=P.intents[r];
+      for(let k=0;k<P.N;k++)h+='<i class="'+(k<x.lloc?'lloc':k<x.lloc+x.mal?'mal':'')+'"></i>';
+    }else for(let k=0;k<P.N;k++)h+='<i></i>';
+    el.innerHTML=h;
+  });
+  if(fins){
+    // l'última fila s'omple d'una en una
+    const x=P.intents[P.intents.length-1],el=files[P.intents.length-1].querySelector('.pistes');
+    const ii=[...el.querySelectorAll('i')];
+    for(let k=0;k<x.lloc+x.mal;k++)setTimeout(()=>{if(ii[k])ii[k].className=k<x.lloc?'lloc':'mal'},k*110);
+  }
+}
+function pintaPorta(){
+  let h='<span class="pany">🔒</span><div class="forats">';
+  for(let i=0;i<P.N;i++)h+='<div class="forat">'+(P.fi?peg(P.codi[i]):'<b>?</b>')+'</div>';
+  h+='</div><span class="pany"></span>';
+  $('porta').innerHTML=h;
+  $('porta').querySelector('.pany').textContent=P.fi&&P.guanyat?'🔓':'🔒';
+}
+$('tauler').addEventListener('pointerdown',ev=>{
+  const f=ev.target.closest('.forat');if(!f)return;ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  const fila=f.closest('.fila');if(!fila||Number(fila.dataset.r)!==P.intents.length)return;
+  triaForat(Number(f.dataset.i));
+});
+$('paleta').addEventListener('pointerdown',ev=>{
+  const b=ev.target.closest('button');if(!b)return;ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  posa(Number(b.dataset.c));
+});
+$('accions').addEventListener('pointerdown',ev=>{
+  const b=ev.target.closest('button');if(!b)return;ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(b.id==='b-comprova')comprova();
+  else if(b.id==='b-esborra')esborra();
+  else if(b.id==='b-menu')menu();
+});
+let avisT=null;
+function avisa(t){$('lider').textContent=t;$('lider').style.color='#ffd27a';clearTimeout(avisT);avisT=setTimeout(()=>{$('lider').style.color='';pintaLider()},3500)}
+
+// ===== EL MENU =====
+function menu(){
+  desaP();
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('caixa-'+dia,null),pr=llegeix('caixa-practica',null);
+  const bt=(id,t,c,sub)=>'<a href="#" class="bt" id="'+id+'" style="'+c+'">'+t+'</a>'+(sub?'<small style="color:#a8b4c0;margin-top:2px">'+sub+'</small>':'');
+  const gris='color:#e8ecf0;background:#232a33;border:1px solid #435060';
+  msg('<div style="color:#e8c768;letter-spacing:.12em">LA CAIXA FORTA</div>'+
+    '<small>La caixa s\'obre amb una combinació de 4 colors (n\'hi ha 6, i es poden repetir). Tens 10 intents per endevinar-la.</small>'+
+    '<div class="mostra">'+peg(3)+peg(0)+peg(0)+peg(1)+'</div>'+
+    '<small style="color:#c8d0d8">Després de cada intent, la caixa et diu <b style="color:#ff6b5a">quants colors són al seu lloc</b> (en vermell) i <b style="color:#fff">quants hi són però en un altre lloc</b> (en blanc). No et diu quins: això ho has de deduir tu.</small>'+
+    (d&&d.fi?bt('m-dia',d.guanyat?'☀ LA D\'AVUI: OBERTA EN '+d.intents.length:'☀ LA D\'AVUI: NO S\'HA OBERT','color:#cfe0a8;background:#1c2414;border:1px solid #4a6a30','#'+numero+' · demà n\'hi haurà una altra')
+      :bt('m-dia',d&&d.intents&&d.intents.length?'☀ CONTINUA LA D\'AVUI':'☀ LA CAIXA D\'AVUI ▸','color:#1a1408;background:#e8c768','#'+numero+' · '+nomDia(dia)+' · igual per a tothom'))+
+    (pr&&!pr.fi&&pr.intents&&pr.intents.length?bt('m-cont','CONTINUA LA PRÀCTICA',gris,NIVELLS[pr.niv].nom.toLowerCase()+' · '+pr.intents.length+' intents'):'')+
+    bt('m-prac','PRÀCTICA: UNA ALTRA CAIXA',gris,'4 colors de 6 · no compta per a res')+
+    bt('m-dif','PRÀCTICA DIFÍCIL',gris,'5 colors de 8, en 12 intents')+
+    '<small style="color:#7a8694;margin-top:12px">La d\'avui va a la taula: 1.000 punts si l\'obres al primer intent, i 100 menys per cada intent de més.</small>');
+  enllac('m-dia',obreDia);enllac('m-cont',()=>obrePractica(null));enllac('m-prac',()=>obrePractica('normal'));enllac('m-dif',()=>obrePractica('dificil'));
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+
+// ===== EL FINAL =====
+function acaba(){
+  if(mode==='dia'){
+    P.nou=true;
+    if(stats.ultim!==P.dia){
+      const ahir=new Date(Date.parse(P.dia+'T12:00:00Z')-864e5).toISOString().slice(0,10);
+      stats.jugades++;if(P.guanyat)stats.obertes++;
+      stats.ratxa=P.guanyat?(stats.ultim===ahir&&stats.ratxa>0?stats.ratxa+1:1):0;
+      stats.millor=Math.max(stats.millor,stats.ratxa);stats.ultim=P.dia;desa('caixa-stats',stats);
+    }
+  }
+  desaP();pintaFila();pintaPorta();updateHUD();
+  if(P.guanyat)so.obre();else so.tancada();
+  setTimeout(finalPartida,P.guanyat?1200:1600);
+}
+function textCompartir(){
+  const fil=P.intents.map(x=>'🟥'.repeat(x.lloc)+'⬜'.repeat(x.mal)+'⬛'.repeat(P.N-x.lloc-x.mal)).join('\n');
+  return 'La Caixa Forta'+(mode==='dia'?' #'+P.n:' (pràctica)')+' · '+(P.guanyat?'oberta en '+P.intents.length+'/'+P.MAX:'no s\'ha obert')+'\n'+fil;
+}
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!P||!P.fi){msg('<div style="color:#e8c768">LA CAIXA FORTA</div><small>encara és a mig fer</small>'+Records.peuFinal('o toca per tancar'));potTancar=!!P;return}
+    const pt=puntsDe(P.guanyat,P.intents.length),dia2=P.dia;
+    let t='<div style="color:'+(P.guanyat?'#9dff8a':'#ffb3a8')+'">'+(P.guanyat?(P.intents.length===1?'A LA PRIMERA!':'LA CAIXA ÉS OBERTA!'):'LA CAIXA NO S\'HA OBERT')+'</div>'+
+      '<div class="mostra">'+P.codi.map(peg).join('')+'</div>'+
+      '<small style="color:#c9b27a">'+(P.guanyat?'en '+P.intents.length+(P.intents.length===1?' intent':' intents')+' de '+P.MAX:'aquesta era la combinació')+(mode==='dia'?' · <b style="color:#fff">'+pt+' punts</b>':'')+'</small>';
+    if(mode==='dia'){
+      t+='<small style="color:#aaa">ratxa: '+stats.ratxa+' · la millor: '+stats.millor+' · obertes: '+stats.obertes+' de '+stats.jugades+'</small>';
+      const tx=textCompartir(),enl=location.href.split('#')[0];
+      t+='<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+        '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'+
+        '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>';
+    }else t+='<small style="color:#a8b4c0">les de pràctica no compten per a cap taula</small>';
+    t+='<a href="#" class="bt" id="f-prac" style="color:#e8ecf0;background:#232a33;border:1px solid #435060">PRÀCTICA: UNA ALTRA CAIXA</a>'+
+      '<a href="#" id="f-veure" style="display:block;margin-top:12px;font:12px monospace;color:#c9b27a">mira el tauler</a>'+
+      '<a href="#" id="f-menu" style="display:block;margin-top:10px;font:12px monospace;color:#c9b27a">torna al menú del joc</a>';
+    msg(t+Records.peuFinal(mode==='dia'?'demà n\'hi haurà una altra':'o toca per tancar'));potTancar=true;
+    enllac('f-prac',()=>obrePractica(P.niv||'normal'));enllac('f-menu',menu);enllac('f-veure',hideMsg);
+    if(mode==='dia'){
+      // Les dues taules: la d'avui (els punts; només compta la primera de
+      // cada inicials) i les caixes obertes de sempre (cadascú un cop)
+      let r={html:'',posicio:0};
+      const nova=P.nou;
+      if(nova){r=await Records.fiPartida(taulaDia(dia2),pt);P.nou=false;desaP()}
+      else r.html=Records.taulaHTML(await Records.llista(taulaDia(dia2)),null,taulaDia(dia2));
+      if(nova&&P.guanyat&&stats.obertes>0&&Records.nom())await Records.envia(JOC,stats.obertes);
+      const sempre=Records.taulaHTML(await Records.llista(JOC));
+      const titol=t2=>'<div style="color:#e8c768;font-size:13px;margin-top:8px">'+t2+'</div>';
+      const el=document.getElementById('taula');
+      if(el)el.innerHTML=titol('☀ LA D\'AVUI')+r.html+
+        (r.posicio===1?'<div style="color:#ff0;font-size:13px">ARA MATEIX GUANYES LA D\'AVUI!<br><span style="color:#aaa">demà al matí el bot ho dirà al grup</span></div>':
+         r.posicio?'<div style="color:#ff0;font-size:13px">Ets el número '+r.posicio+' d\'avui!</div>':'')+
+        titol('★ CAIXES OBERTES')+sempre;
+      Records.pintaMillor(JOC,$('best'),stats.obertes);
+      refrescaLiders();
+    }
+  }finally{enFinal=false}
+}
+let potTancar=false;
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+function updateHUD(){
+  $('score').textContent=stats.obertes;
+  $('intent').textContent=P?Math.min(P.intents.length+(P.fi?0:1),P.MAX)+'/'+P.MAX:'1/10';
+  Records.desaLocal(JOC,stats.obertes);
+  Records.marcador(JOC,$('best'),stats.obertes);
+}
+let liderDia=null,liderSempre=null;
+function pintaLider(){
+  $('lider').textContent=mode==='practica'?'PRÀCTICA · no compta per a cap taula':
+    '☀ #'+numero+' AVUI: '+(liderDia?liderDia.n+' '+formatDia(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
+}
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(taulaDia(diaAvui()));liderSempre=await Records.lider(JOC)}catch(e){}
+  pintaLider();
+}
+
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';if(paused)desaP()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)desaP()});
+addEventListener('pagehide',desaP);
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// A l'ordinador: els números posen els colors, Retorn comprova i la tecla
+// d'esborrar treu l'últim.
+document.addEventListener('keydown',e=>{
+  aInit();
+  if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}
+  if(paused||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(/^[1-8]$/.test(e.key)){e.preventDefault();posa(Number(e.key)-1)}
+  else if(e.key==='Enter'){e.preventDefault();comprova()}
+  else if(e.key==='Backspace'){e.preventDefault();esborra()}
+});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+
+// de fons, la d'avui (o la que hi hagi) mentre surt el menú
+{
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('caixa-'+dia,null);
+  P=d&&d.v===1&&d.n===numero?d:novaP('dia','normal',codiDe(numero));
+  construeix();
+}
+Records.pintaMillor(JOC,$('best'),stats.obertes);
+refrescaLiders();
+menu();
+
+// En entrar al joc, els records uns segons, com les màquines de debò.
+Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false},
+  [['☀ LA D\'AVUI',taulaDia(diaAvui())],['★ CAIXES OBERTES',JOC]]);
+</script>
+</body>
+</html>

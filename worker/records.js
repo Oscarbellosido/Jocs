@@ -75,12 +75,13 @@ const JOCS = {
   escacs:           100000,   // punts acumulats guanyant la màquina (1, 3, 6 o 10 per partida)
   dames:            100000,   // igual que als Escacs
   penjat:            99999,   // les paraules del dia endevinades, acumulades
+  caixa:             99999,   // les caixes del dia obertes, acumulades
 };
 
 // Taules on cadascu surt una sola vegada, amb la seva millor puntuacio. A la
 // Gofra la puntuacio son les estrelles acumulades i creix cada dia: sense
 // aixo, la taula s'ompliria del mateix jugador amb 12, 15, 19 estrelles...
-const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble', 'escacs', 'penjat', 'dames']);
+const UNA_PER_NOM = new Set(['gofra', 'rotllana', 'abecedari', 'colles', 'botifarra', 'poble', 'escacs', 'penjat', 'dames', 'caixa']);
 
 // Les partides del dia: una taula per a cada dia (/records/impremta_dia/2026-10-02).
 // No surten a la llista de tots els jocs ni avisen per Telegram: el primer
@@ -99,6 +100,7 @@ const DIARIS = {
   poble_dia:          1000,   // 1.000 al primer intent... 500 al sise; si no, 400 menys els km
   penjat_dia:          800,   // 800 sense cap error i 100 menys per error; penjat, 0
   quadres_dia:        3599,   // el sudoku: 3.600 menys els segons (i 30 per error i 60 per pista)
+  caixa_dia:          1000,   // 1.000 al primer intent i 100 menys per cada intent de mes; si no s'obre, 0
 };
 const DIES_DIARI = 60;
 const TOP = 10;
@@ -151,6 +153,7 @@ const FITXA = {
   escacs:          ['Els Escacs', 'als Escacs', 'escacs.html'],
   dames:           ['Les Dames', 'a les Dames', 'dames.html'],
   penjat:          ['El Penjat', 'al Penjat', 'penjat.html'],
+  caixa:           ['La Caixa Forta',  'a la Caixa Forta',   'caixa.html'],
 };
 
 const cors = {
@@ -209,7 +212,7 @@ async function contrasenya(env) {
 
 // Als jocs on el numero no son punts, que vol dir. A la Rotllana, «ha fet 37»
 // no s'entendria: son 37 nivells.
-const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats', escacs: 'punts', dames: 'punts', penjat: 'paraules endevinades' };
+const UNITAT = { rotllana: 'nivells', gofra: 'estrelles', abecedari: 'encerts', colles: 'colles', botifarra: 'partides guanyades', poble: 'pobles endevinats', escacs: 'punts', dames: 'punts', penjat: 'paraules endevinades', caixa: 'caixes obertes' };
 const quant = (joc, p) => xifra(p) + (UNITAT[joc] ? ' ' + UNITAT[joc] : '');
 
 // Quan algu passa a ser el numero 1 d'un joc, s'avisa el grup.
@@ -298,13 +301,15 @@ const ANUNCIA_DIARI = {
     : 'el més a prop: a ' + (400 - p) + ' km (no el va trobar ningú)'],
   // Al Penjat, 800 punts sense cap error i 100 menys per cada error
   penjat_dia: ['El Penjat', 'penjat.html', p => 'la paraula amb ' + (8 - p / 100) + ((8 - p / 100) === 1 ? ' error' : ' errors')],
+  // A La Caixa Forta, 1.000 punts al primer intent i 100 menys per cada intent de mes
+  caixa_dia: ['La Caixa Forta', 'caixa.html', p => 'la combinació al ' + ordinal(11 - p / 100) + ' intent'],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
 };
 const temps = p => { const s = 3600 - p; return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const ordinal = n => n + (n === 1 ? 'r' : n === 2 ? 'n' : n === 3 ? 'r' : n === 4 ? 't' : 'è');
 const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencaclosques_dia' || joc === 'sopa_dia' || joc === 'quadres_dia') ? temps(p)
   : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km')
-  : joc === 'penjat_dia' ? (8 - p / 100) + ' err.' : xifra(p);
+  : joc === 'penjat_dia' ? (8 - p / 100) + ' err.' : joc === 'caixa_dia' ? (11 - p / 100) + '/10' : xifra(p);
 // «a La Impremta», pero «al Trencaclosques», «al Poble del Dia» i «als Nou Quadres»
 const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : nom.startsWith('Els ') ? 'als ' + nom.slice(4) : 'a ' + nom;
 function diaMadrid(enrere = 0) {
