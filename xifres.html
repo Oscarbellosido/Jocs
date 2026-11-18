@@ -57,6 +57,9 @@ function sndDesfes(){aInit();tone(300,.07,"sine",.16,-80)}
 function sndExacte(){aInit();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.2,"triangle",.3),i*90))}
 function sndProp(){aInit();[440,554].forEach((f,i)=>setTimeout(()=>tone(f,.18,"sine",.24),i*120))}
 function sndRes(){aInit();[330,247].forEach((f,i)=>setTimeout(()=>tone(f,.25,"sine",.22,-60),i*180))}
+// el tic-tac dels últims deu segons (els tres últims, més agut): l'usuari
+// va perdre una ronda per una dècima sense adonar-se que s'acabava el temps
+function sndTic(agut){aInit();tone(agut?1320:880,.05,"square",agut?.2:.13)}
 function sndFi(){aInit();[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,.24,"triangle",.28),i*140))}
 
 const c=document.getElementById('game'),x=c.getContext('2d');
@@ -513,8 +516,10 @@ function loop(t){
     if(brill>0)brill-=dt*1.5;
     if(esperaSeg>0)esperaSeg-=dt;
     if(state==='juga'){
+      const abans=Math.ceil(temps);
       temps-=dt;
       if(temps<=0){temps=0;acabaRonda('temps')}
+      else{const k=Math.ceil(temps);if(k<abans&&k<=10)sndTic(k<=3)}   // quan el rellotge passa a dir 10, 9... 1
     }
   }
   draw();
