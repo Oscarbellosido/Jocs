@@ -110,7 +110,11 @@ lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
 si algun joc canvia com desa la del dia, s'ha de canviar també aquí. Qui guanya
 i la lliga venen del Worker (`/lliga`); sense connexió la llista surt igual,
-sense noms. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant
+sense noms. **Les fetes en un altre lloc també surten com a fetes**: la
+portada demana `/lliga?nom=<inicials>` i el Worker hi afegeix `fets`, les
+partides d'avui on aquelles inicials ja són a la taula o a `jugat:`. L'usuari
+ho va demanar: feia la Gofra al mòbil i a l'ordinador li deia PER FER. Cal
+el Worker nou; amb el vell, `fets` no hi és i només mana el que hi ha desat. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant
 d'un joc amb el botó d'enrere del mòbil**, el navegador ensenya la portada
 tal com era quan en vas sortir, sense tornar-la a llegir, i la partida que
 acabaves de fer seguia dient PER FER (ho va veure l'usuari). Per això la

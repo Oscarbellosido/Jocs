@@ -435,6 +435,12 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
      `la lliga de la setmana: BOB ${pl('BOB')} (dos primers), TRA ${pl('TRA')} (un primer i un segon), ZZZ ${pl('ZZZ')} (hi ha jugat)`);
   ok(r.data.avui.gofra_dia && r.data.avui.gofra_dia.n === 'BOB' && r.data.avui.colles_dia.n === 'BOB' && r.data.avui.trencaclosques_dia === null,
      'i diu qui guanya avui cada partida del dia (per a la portada)');
+  {
+    const f = async n => ((await crida(envTg, 'GET', '/lliga?nom=' + n)).data.fets || []).sort().join(',');
+    const bob = await f('BOB'), zzz = await f('zzz'), cap = await f('NIN'), sense = r.data.fets;
+    ok(bob === 'colles_dia,gofra_dia' && zzz === 'colles_dia' && cap === '' && sense === undefined,
+       `amb les inicials, diu quines partides d'avui ja han fet, des d'on sigui (BOB: ${bob}; ZZZ: ${zzz}; NIN: ${cap || 'cap'})`);
+  }
   enviats.length = 0;
   await crida(envTg, 'POST', '/telegram', msg('/lliga'), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
   const tl = (missatges()[0] || { cos: {} }).cos.text || '';

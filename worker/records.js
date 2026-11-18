@@ -393,7 +393,7 @@ const NOM_DIARI = joc => (ANUNCIA_DIARI[joc] || [joc])[0];
 function sumaDies(dia, n) { return new Date(Date.parse(dia + 'T12:00:00Z') + n * 86400e3).toISOString().slice(0, 10); }
 // el dilluns de la setmana d'aquest dia
 function dillunsDe(dia) { return sumaDies(dia, -((new Date(dia + 'T12:00:00Z').getUTCDay() + 6) % 7)); }
-async function lliga(env, dilluns, fins) {
+async function lliga(env, dilluns, fins, nom) {
   const dies = [];
   for (let d = dilluns; d <= fins; d = sumaDies(d, 1)) dies.push(d);
   const jocs = Object.keys(DIARIS), feina = [];
@@ -416,7 +416,12 @@ async function lliga(env, dilluns, fins) {
   const classificacio = Object.values(punts).sort((a, b) => b.p - a.p || b.primers - a.primers || a.n.localeCompare(b.n));
   const avui = {};
   for (const { joc, dia, llista } of taules) if (dia === fins) avui[joc] = llista[0] || null;
-  return { setmana: dilluns, fins, classificacio, avui };
+  const r = { setmana: dilluns, fins, classificacio, avui };
+  // Les partides d'avui que unes inicials ja han fet, sigui des d'on sigui:
+  // la portada de l'ordinador deia PER FER a una Gofra feta al mobil.
+  if (nom) r.fets = taules.filter(({ dia, llista, jugat }) => dia === fins &&
+    (jugat.includes(nom) || llista.some(e => e.n === nom))).map(e => e.joc);
+  return r;
 }
 // ===== LES MEDALLES DE SEMPRE =====
 // Cada dilluns es tanca la setmana passada i el podi s'apunta per sempre al
@@ -706,7 +711,8 @@ export default {
     // la lliga de la setmana i, de cada partida del dia, qui guanya avui
     if (parts[0] === 'lliga' && request.method === 'GET') {
       const avui = diaMadrid(0);
-      const l = await lliga(env, dillunsDe(avui), avui);
+      const nom = url.searchParams.get('nom');
+      const l = await lliga(env, dillunsDe(avui), avui, nom ? netejaNom(nom) : null);
       l.palmares = medalles(await llegirPalmares(env));
       return json(l);
     }

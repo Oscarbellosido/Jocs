@@ -626,8 +626,10 @@ const Records = (() => {
     },
 
     // La lliga de la setmana i qui guanya avui cada partida del dia.
+    // Amb les inicials, també quines d'avui ja has fet (des d'on sigui).
     async lliga() {
-      return await crida('/lliga');
+      const n = nom();
+      return await crida('/lliga' + (n ? '?nom=' + encodeURIComponent(n) : ''));
     },
 
     // Qui va primer. Torna null si no s'hi pot connectar.

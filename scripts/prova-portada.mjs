@@ -42,8 +42,10 @@ for (const [w, h] of MIDES) {
   await ctx.route('**/jocs-records*/**', r => r.fulfill({
     status: 200, contentType: 'application/json',
     headers: { 'access-control-allow-origin': '*' },
-    body: JSON.stringify(/\/lliga$/.test(r.request().url())
+    body: JSON.stringify(/\/lliga(\?|$)/.test(r.request().url())
       ? { setmana: '2026-11-02', fins: '2026-11-02',
+          // la Sopa d'avui, feta amb aquestes inicials en un altre mobil (només si les demana)
+          fets: /nom=CRE/.test(r.request().url()) ? ['sopa_dia'] : [],
           classificacio: [{ n: 'BOB', p: 120 }, { n: 'TRA', p: 118 }, { n: 'MAR', p: 99 }, { n: 'CRE', p: 6 }],
           palmares: [{ n: 'BOB', copes: 3, plates: 1, bronzes: 0 }, { n: 'TRA', copes: 1, plates: 2, bronzes: 1 }, { n: 'MAR', copes: 0, plates: 1, bronzes: 2 },
             { n: 'AAA', copes: 0, plates: 0, bronzes: 2 }, { n: 'BBB', copes: 0, plates: 0, bronzes: 1 }, { n: 'CRE', copes: 0, plates: 0, bronzes: 1 }],
@@ -131,7 +133,7 @@ for (const [w, h] of MIDES) {
   if (r.tg) problemes.push('el botó de Telegram: ' + r.tg);
   const a = r.avui;
   if (JSON.stringify(a.joc) !== JSON.stringify(DIARIS)) problemes.push('a ELS JOCS D\'AVUI hi falten partides del dia: ' + a.joc.join(','));
-  if (a.est[0] !== '✓ FET' || a.est[3] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.fets !== '1 de 9 fets')
+  if (a.est[0] !== '✓ FET' || a.est[3] !== 'A MIG FER' || a.est[1] !== 'PER FER' || a.est[6] !== '✓ FET' || a.fets !== '2 de 9 fets')
     problemes.push('els estats de les partides del dia no quadren: ' + a.est.join(','));
   if (a.lid[0] !== 'WWW ★★★★★' || a.lid[5] !== 'WWW 3:20' || a.lid[4] !== 'WWW 6/6' || a.lid[1] !== 'WWW 3.400' || a.lid[6] !== 'WWW 3:20' || a.lid[7] !== '' || a.lid[8] !== 'WWW 3:20')
     problemes.push('qui guanya avui no surt bé: ' + a.lid.join(','));

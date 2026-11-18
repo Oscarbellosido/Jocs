@@ -422,7 +422,8 @@ posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
 // Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
-// desa en aquest mobil) i qui la guanya avui. A sota, la lliga de la
+// desa en aquest mobil i, amb connexio, al que el Worker sap de les teves
+// inicials, que l'hauras pogut fer en un altre lloc) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
 // Sense connexio, la llista surt igual, nomes sense qui guanya.
 (function(){
@@ -454,6 +455,8 @@ posaLiders();
     let fets=0;
     for(const [joc,nom,href,estat] of JOCS){
       let e=null;try{e=estat()}catch(err){}
+      // feta amb les teves inicials en un altre mobil o a l'ordinador
+      if(e!=='fet'&&lliga&&Array.isArray(lliga.fets)&&lliga.fets.includes(joc))e='fet';
       if(e==='fet')fets++;
       const li=document.createElement('li');
       li.innerHTML='<a href="'+href+'"><i class="est'+(e?' '+e:'')+'">'+(e==='fet'?'✓ FET':e==='mig'?'A MIG FER':'PER FER')+
@@ -499,7 +502,7 @@ posaLiders();
   function carregaLliga(){
     Records.lliga().then(l=>{
       if(!l||!Array.isArray(l.classificacio))return;    // sense connexio: res
-      lliga=l;pintaLliga(l);
+      lliga=l;pintaLlista();
     });
   }
   carregaLliga();
