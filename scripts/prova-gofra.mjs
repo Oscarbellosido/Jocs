@@ -250,6 +250,42 @@ diu(r.q === mig.q && r.cur === mig.cur, `una del dia a mig fer es troba igual en
   await ctx2.close();
 }
 
+// acabar-la sense cobertura: es guarda i s'envia sola quan torna la xarxa
+{
+  let senseXarxa = true;
+  const ctx3 = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  await ctx3.route('**/jocs-records*/**', r => {
+    if (senseXarxa) return r.abort('internetdisconnected');
+    const post = r.request().method() === 'POST';
+    if (post) { enviats.push(r.request().url()); cossos.push({ url: r.request().url(), ...JSON.parse(r.request().postData() || '{}') }); }
+    return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+      body: post ? JSON.stringify({ top: [{ n: 'TST', p: 5, t: 1 }], posicio: 1 }) : '[]' });
+  });
+  const q = await obre(ctx3);
+  await q.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); stats = { jugades: 0, guanyades: 0, estrelles: 0, ratxa: 0, millor: 0, ultim: '' }; obreDia(); });
+  await q.evaluate(RESOL);
+  await q.waitForTimeout(3500);
+  const s = await q.evaluate(() => ({ msg: document.getElementById('msg').textContent, pend: Records.pendents().map(x => x.joc), dia, env: JSON.parse(localStorage.getItem('gofra-' + dia)).env }));
+  diu(/s'enviarà sola/.test(s.msg) && s.pend.includes('gofra_dia/' + s.dia) && s.pend.includes('gofra'),
+    `acabant-la sense cobertura, diu que s'enviarà sola i queda guardada per enviar (${s.pend.join(', ')})`);
+  senseXarxa = false; enviats.length = 0;
+  const q2 = await obre(ctx3); await q2.waitForTimeout(2500);
+  const s2 = await q2.evaluate(() => Records.pendents().length);
+  diu(enviats.some(u => u.endsWith('/records/gofra_dia/' + s.dia)) && enviats.some(u => u.endsWith('/records/gofra')) && s2 === 0,
+    'tornant a obrir amb cobertura, s\'envia sola a les dues taules i ja no queda res per enviar');
+  // una d'avui acabada d'abans d'aquest arreglo (sense la marca d'enviada): s'envia en tornar-la a obrir, sense dir res
+  await q2.evaluate(() => { const d = JSON.parse(localStorage.getItem('gofra-' + dia)); delete d.env; localStorage.setItem('gofra-' + dia, JSON.stringify(d)); });
+  enviats.length = 0;
+  const q3 = await obre(ctx3); await q3.waitForTimeout(2500);
+  const s3 = await q3.evaluate(() => ({ env: JSON.parse(localStorage.getItem('gofra-' + dia)).env, dialeg: !!document.getElementById('rec-ok') }));
+  diu(enviats.some(u => u.endsWith('/records/gofra_dia/' + s.dia)) && s3.env === true && !s3.dialeg,
+    'la d\'avui feta abans de l\'arreglo s\'envia en obrir-la, sense demanar res, i ja no es torna a enviar');
+  enviats.length = 0;
+  const q4 = await obre(ctx3); await q4.waitForTimeout(2000);
+  diu(!enviats.some(u => /gofra_dia/.test(u)), 'i obrint-la una altra vegada, ja no s\'envia');
+  await ctx3.close();
+}
+
 diu(errors.length === 0, errors.length ? 'error de JavaScript: ' + errors[0] : 'cap error de JavaScript');
 console.log(malament ? `\n${malament} coses malament` : '\nLa Gofra, bé');
 await b.close();

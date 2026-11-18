@@ -37,6 +37,7 @@ const Records = (() => {
     'trencaclosques.html': ['2026-11-09T11:00Z', 'fotos de Taradell del 10 al 19 de novembre, i més peces a les fotos'],
     'impremta.html':      ['2026-11-10T21:50Z', '«acaba la partida» sempre a mà, i la del dia feta ja no es torna a començar sola'],
     'xifres.html':        ['2026-11-18T09:45Z', 'tic-tac els últims deu segons de cada ronda'],
+    'gofra.html':         ['2026-11-18T12:50Z', 'si l\'acabes sense cobertura, s\'envia sola a la taula quan en tornes a tenir'],
     'tresor.html':        ['2026-11-07T22:10Z', 'setze proves en lloc de deu, més difícils i amb només dues pistes'],
   };
   const DIES_NOVETAT = 14;
@@ -160,6 +161,49 @@ const Records = (() => {
   const avisFall = () => '<div style="color:#888;font-size:12px">' + (ultimFall === 'servidor'
     ? 'Aquest joc encara no és a la llista de rècords compartits.<br>El rècord s\'ha desat només en aquest mòbil.'
     : 'Sense connexió: rècord desat només aquí') + '</div>';
+
+  // Les puntuacions que no s'han pogut enviar per falta de cobertura es
+  // guarden aquí i s'envien soles més tard: en obrir qualsevol joc o la
+  // portada, i quan el mòbil torna a tenir xarxa. L'usuari va acabar la Gofra
+  // sense cobertura i no li va comptar per a la competició del dia. Si el
+  // servidor diu que no (un dia ja tancat, un joc que no coneix), es llença.
+  // Tornar a enviar la del dia no fa mal: el Worker només compta la primera
+  // de cada inicials.
+  const CLAU_PENDENTS = 'jocs-pendents', TRES_DIES = 3 * 864e5;
+  const pendents = () => { try { const l = JSON.parse(localStorage.getItem(CLAU_PENDENTS) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
+  const desaPendents = l => { try { localStorage.setItem(CLAU_PENDENTS, JSON.stringify(l.slice(-30))); } catch (e) { } };
+  function guardaPendent(joc, n, punts) {
+    if (!n) return;
+    const l = pendents().filter(x => !(x.joc === joc && x.n === n && x.punts <= punts));
+    if (!l.some(x => x.joc === joc && x.n === n)) l.push({ joc, n, punts, t: Date.now() });
+    desaPendents(l);
+  }
+  async function enviaPost(joc, n, punts) {
+    const r = await crida('/records/' + joc, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: n, punts }),
+    });
+    if (!r && ultimFall === 'xarxa') guardaPendent(joc, n, punts);
+    return r;
+  }
+  let reintentant = false;
+  async function reintenta() {
+    if (reintentant) return; reintentant = true;
+    try {
+      for (const x of pendents()) {
+        if (Date.now() - x.t > TRES_DIES) { desaPendents(pendents().filter(y => y !== x && !(y.joc === x.joc && y.n === x.n))); continue; }
+        const r = await crida('/records/' + x.joc, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nom: x.n, punts: x.punts }),
+        });
+        if (!r && ultimFall === 'xarxa') break;          // encara sense xarxa: ja ho tornarem a provar
+        desaPendents(pendents().filter(y => !(y.joc === x.joc && y.n === x.n && y.punts === x.punts)));
+      }
+    } finally { reintentant = false; }
+  }
+  setTimeout(reintenta, 1500);
+  addEventListener('online', () => setTimeout(reintenta, 1000));
+  const avisPendent = () => '<div style="color:#ffb05a;font-size:12px">Sense connexió: la partida s\'ha guardat i s\'enviarà sola a la taula quan tornis a tenir cobertura.</div>';
 
   const avisRepetida = () => '<div style="color:#ffb05a;font-size:12px">Avui ja hi havies jugat amb aquestes inicials,' +
     ' potser des d\'un altre mòbil. Només compta la primera partida del dia.</div>';
@@ -613,17 +657,18 @@ const Records = (() => {
         // ha inicials: el Worker t'apunta com a jugat pero no et posa a la
         // taula. (A la Gofra, qui no l'acabava no comptava ni com a jugat.)
         if (joc.includes('_dia/') && nom()) {
-          const r = await crida('/records/' + joc, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nom: nom(), punts: 0 }),
-          });
+          const r = await enviaPost(joc, nom(), 0);
+          if (!r && ultimFall === 'xarxa') return { html: avisPendent(), posicio: 0 };
           if (r && r.top) return { html: taulaHTML(r.top, null, joc) + (r.repetida ? avisRepetida() : ''), posicio: 0 };
         }
         return { html: taulaHTML(await crida('/records/' + joc), null, joc), posicio: 0 };
       }
 
       const actual = await crida('/records/' + joc);
-      if (actual === null) return { html: avisFall(), posicio: 0 };
+      if (actual === null) {
+        if (ultimFall === 'xarxa' && nom()) { guardaPendent(joc, nom(), punts); return { html: avisPendent(), posicio: 0 }; }
+        return { html: avisFall(), posicio: 0 };
+      }
 
       // A les partides del dia nomes compta la primera de cada inicials, encara
       // que la facis des d'un altre mobil: el Worker apunta qui ja hi ha jugat.
@@ -632,22 +677,16 @@ const Records = (() => {
       const hiEntra = actual.length < 10 || punts > actual[actual.length - 1].p;
       if (!hiEntra) {
         if (delDia && nom()) {
-          const r = await crida('/records/' + joc, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nom: nom(), punts }),
-          });
+          const r = await enviaPost(joc, nom(), punts);
+          if (!r && ultimFall === 'xarxa') return { html: taulaHTML(actual, null, joc) + avisPendent(), posicio: 0 };
           if (r && r.repetida) return { html: taulaHTML(actual, null, joc) + avisRepetida(), posicio: 0 };
         }
         return { html: taulaHTML(actual, null, joc), posicio: 0 };
       }
 
       const n = await demanaNom();
-      const res = await crida('/records/' + joc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom: n, punts }),
-      });
-      if (!res) return { html: taulaHTML(actual, null, joc) + avisFall(), posicio: 0 };
+      const res = await enviaPost(joc, n, punts);
+      if (!res) return { html: taulaHTML(actual, null, joc) + (ultimFall === 'xarxa' ? avisPendent() : avisFall()), posicio: 0 };
       if (res.repetida) return { html: taulaHTML(res.top, null, joc) + avisRepetida(), posicio: 0 };
       if (res.top && res.top.length) lideres[joc] = { n: res.top[0].n, p: res.top[0].p };
       return { html: taulaHTML(res.top, { n, p: punts, posicio: res.posicio }, joc), posicio: res.posicio };
@@ -668,12 +707,9 @@ const Records = (() => {
     async envia(joc, punts) {
       const n = nom();
       if (!n || !punts) return null;
-      return await crida('/records/' + joc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom: n, punts }),
-      });
+      return await enviaPost(joc, n, punts);
     },
+    pendents, reintenta,
 
     // per a les proves i per si algun joc vol saber si el so esta engegat
     so: () => soActiu,

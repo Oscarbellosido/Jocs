@@ -2074,6 +2074,17 @@ Regles que no s'han de trencar:
   el `records.js` ho posava tot al mateix sac i deia "sense connexió" a algú que
   hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del
   servidor (`'servidor'`) i el missatge diu la veritat.
+- **Una partida acabada sense cobertura es guarda i s'envia sola.** L'usuari
+  va acabar la Gofra del dia sense cobertura i no va comptar per a la
+  competició: el joc la donava per enviada i, tornant-hi, només la veia feta.
+  Ara, si l'enviament falla per la xarxa (no si el servidor diu que no), el
+  `records.js` l'apunta a `jocs-pendents` (amb les inicials, i la millor de
+  cada taula) i la torna a enviar en obrir qualsevol joc o la portada i quan
+  torna la connexió (`reintenta`). El missatge del final ho diu. Als tres
+  dies es llença; el Worker accepta les del dia fins a 60 hores després, i
+  com que només compta la primera de cada inicials, enviar-la dues vegades no
+  fa res. La Gofra, a més, apunta a la partida del dia si ja s'ha enviat
+  (`env`): les que es van acabar abans d'això, s'envien en tornar-les a obrir.
 
 ## El bot de Telegram
 

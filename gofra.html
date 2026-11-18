@@ -272,7 +272,7 @@ let stats=llegeix('gofra-stats',{jugades:0,guanyades:0,estrelles:0,ratxa:0,millo
 // i no la pots tornar a començar de zero.
 function desaDia(){
   if(mode!=='dia')return;
-  desa('gofra-'+dia,{cur:G.cur.map(f=>f.map(l=>l||'.').join('')).join(''),queden:G.queden,fi:G.fi||null,v:2});
+  desa('gofra-'+dia,{cur:G.cur.map(f=>f.map(l=>l||'.').join('')).join(''),queden:G.queden,fi:G.fi||null,v:2,env:!!G.env});
 }
 function obreDia(){
   mode='dia';dia=diaAvui();numero=numeroDe(dia);
@@ -281,9 +281,15 @@ function obreDia(){
   if(d&&d.cur&&d.cur.length===25){
     for(let i=0;i<25;i++){const f=Math.floor(i/5),k=i%5;if(!FORAT(f,k))G.cur[f][k]=d.cur[i]}
     // les desades quan n'hi havia 15 (sense v) en tenen cinc mes
-    G.queden=d.queden+(d.v?0:INTERCANVIS-15);G.fi=d.fi;
+    G.queden=d.queden+(d.v?0:INTERCANVIS-15);G.fi=d.fi;G.env=!!d.env;
   }
   comenca();
+  // Acabada abans que el joc apuntés si s'havia enviat (o sense cobertura,
+  // abans que els enviaments es guardessin per tornar-ho a provar): s'envia
+  // ara, en silenci. Si ja hi era, el Worker només en compta la primera.
+  if(G.fi&&!G.env){G.env=true;desaDia();const est=estrelles();
+    (async()=>{if(est>0){await Records.envia(JOC+'_dia/'+dia,est);await Records.envia(JOC,stats.estrelles)}
+      else if(Records.nom())await Records.fiPartida(JOC+'_dia/'+dia,0)})()}
   if(G.fi)setTimeout(finalPartida,400);
 }
 function obrePractica(){
@@ -399,7 +405,7 @@ async function finalPartida(){
       if(mode==='dia'&&G.nova)r=await Records.fiPartida(JOC+'_dia/'+dia,est);
       else r.html=Records.taulaHTML(await Records.llista(JOC+'_dia/'+diaAvui()));
       if(mode==='dia'&&G.nova&&est>0&&Records.nom())await Records.envia(JOC,stats.estrelles);
-      if(mode==='dia')G.nova=false;
+      if(mode==='dia'){G.nova=false;G.env=true;desaDia()}
       const sempre=Records.taulaHTML(await Records.llista(JOC));
       const titol=t2=>'<div style="color:#ffd27a;font-size:13px;margin-top:8px">'+t2+'</div>';
       const el=document.getElementById('taula');
