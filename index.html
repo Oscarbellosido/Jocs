@@ -171,6 +171,17 @@
   /* NOVA VERSIÓ: el mateix, en verd, quan un joc on ja havies jugat ha canviat
      (la llista és a records.js, NOVETATS). */
   a.btn .nou.nova { background: #1f9d5c; font-size: 0.62rem; letter-spacing: 0.04em; }
+  /* LLIGA: els jocs que compten per a la lliga de la setmana, que són els
+     d'ELS JOCS D'AVUI (la llista JOCS d'allà). Sempre hi és, a baix a la
+     dreta de la miniatura: a dalt, a 320 px, xocava amb NOVA VERSIÓ. */
+  a.btn .lliga {
+    /* va just després de la miniatura i, sense top ni bottom, queda on hauria
+       estat (a sota): pujant-lo la seva alçada, queda a la cantonada de baix */
+    position: absolute; right: 0.55rem; transform: translateY(calc(-100% - 0.3rem));
+    background: #e0b23a; color: #1a1205; font: bold 0.62rem monospace;
+    letter-spacing: 0.04em; padding: 2px 6px; border-radius: 4px;
+    box-shadow: 0 1px 5px #000c; font-style: normal;
+  }
   a.nou-joc.nova { border-color: #1f9d5c; background: #0c2a1c; color: #c8f5dc; }
   a.nou-joc.nova b { background: #1f9d5c; }
   .nou-mes { font: 0.7rem monospace; color: #8fc9a8; text-align: center; }
@@ -449,6 +460,12 @@ posaLiders();
     ['penjat_dia','EL PENJAT','penjat.html',()=>{const d=llegeix('penjat-'+avui);return !d?null:d.fi?'fet':(d.lletres&&d.lletres.length)?'mig':null},p=>p?'✓ '+(8-p/100)+' err.':'✗'],
     ['quadres_dia','ELS NOU QUADRES','quadres.html',()=>{const d=llegeix('quadres-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
   ];
+  // el rètol LLIGA a la fitxa de cada joc d'aquesta llista: són els que
+  // compten per a la lliga de la setmana (el Worker en té la mateixa llista)
+  for(const [,,href] of JOCS)document.querySelectorAll('a.btn[href="'+href+'"]').forEach(a=>{
+    if(a.querySelector('.lliga'))return;
+    const r=document.createElement('i');r.className='lliga';r.textContent='🏆 LLIGA';
+    r.title='Compta per a la lliga de la setmana';const im=a.querySelector('img');im.after(r)});
   const ul=document.getElementById('avui-llista');
   let lliga=null;
   function pintaLlista(){

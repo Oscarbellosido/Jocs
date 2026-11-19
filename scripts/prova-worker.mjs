@@ -435,6 +435,21 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
      `la lliga de la setmana: BOB ${pl('BOB')} (dos primers), TRA ${pl('TRA')} (un primer i un segon), ZZZ ${pl('ZZZ')} (hi ha jugat)`);
   ok(r.data.avui.gofra_dia && r.data.avui.gofra_dia.n === 'BOB' && r.data.avui.colles_dia.n === 'BOB' && r.data.avui.trencaclosques_dia === null,
      'i diu qui guanya avui cada partida del dia (per a la portada)');
+  // les que no surten a ELS JOCS D'AVUI no compten per a la lliga
+  store.set('joc:botifarra_dia:' + madrid(0), JSON.stringify([{ n: 'FOR', p: 300, t: 1 }]));
+  store.set('joc:caixa_dia:' + madrid(0), JSON.stringify([{ n: 'FOR', p: 900, t: 1 }]));
+  store.set('jugat:conquesta_dia:' + madrid(0), JSON.stringify(['FOR']));
+  {
+    const r2 = await crida(envTg, 'GET', '/lliga');
+    const l = r2.data.classificacio.find(e => e.n === 'FOR'), bob = r2.data.classificacio.find(e => e.n === 'BOB');
+    ok(!l && bob && bob.p === 20, 'la Botifarra, La Conquesta i La Caixa Forta no compten per a la lliga (només les d\'ELS JOCS D\'AVUI)');
+    const codiW = (await import('fs')).readFileSync(new URL('../worker/records.js', import.meta.url), 'utf8');
+    const codiP = (await import('fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const delWorker = JSON.parse(codiW.match(/const LLIGA = (\[[^\]]+\])/)[1].replace(/'/g, '"')).sort().join(',');
+    const avui = codiP.slice(codiP.indexOf('const JOCS=['), codiP.indexOf("const ul=document.getElementById('avui-llista')"));
+    const dePortada = [...avui.matchAll(/\['(\w+_dia)'/g)].map(m => m[1]).sort().join(',');
+    ok(delWorker === dePortada, `les partides que compten són les mateixes que surten a ELS JOCS D'AVUI (${delWorker.split(',').length})`);
+  }
   {
     const f = async n => ((await crida(envTg, 'GET', '/lliga?nom=' + n)).data.fets || []).sort().join(',');
     const bob = await f('BOB'), zzz = await f('zzz'), cap = await f('NIN'), sense = r.data.fets;
@@ -450,7 +465,7 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   netejaDies();
   // (al palmarès, GUA ja havia guanyat la setmana d'abans)
   store.set('lliga:palmares', JSON.stringify([{ s: mesDies(passada, -7), podi: [{ n: 'GUA', p: 30 }, { n: 'SEG', p: 20 }, { n: 'TRA', p: 10 }] }]));
-  store.set('joc:conquesta_dia:' + mesDies(passada, 2), JSON.stringify([{ n: 'GUA', p: 1500, t: 1 }, { n: 'SEG', p: 300, t: 2 }]));
+  store.set('joc:colles_dia:' + mesDies(passada, 2), JSON.stringify([{ n: 'GUA', p: 600, t: 1 }, { n: 'SEG', p: 300, t: 2 }]));
   store.set('joc:gofra_dia:' + mesDies(passada, 4), JSON.stringify([{ n: 'GUA', p: 5, t: 1 }]));
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/tetris');

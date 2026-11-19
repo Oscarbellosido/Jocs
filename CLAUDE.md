@@ -126,8 +126,13 @@ carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va per
 cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
 hi havia manera de saber d'una ullada quines et quedaven. **La Botifarra, L'Abecedari
 difícil, La Conquesta i La Caixa Forta no hi surten**: l'usuari els va voler treure de la llista. Les seves
-partides del dia segueixen existint i comptant per a la lliga; només no
-surten aquí. **No porta
+partides del dia segueixen existint, amb la seva taula, però **no compten
+per a la lliga**: l'usuari va voler que només comptessin les d'aquesta
+llista (`LLIGA` al Worker, que la prova compara amb la de la portada).
+**Les fitxes dels jocs que compten porten un rètol daurat 🏆 LLIGA** a baix
+a la dreta de la miniatura (`.lliga`, que es posa a partir d'aquesta mateixa
+llista `JOCS`). Va a baix perquè a dalt, a 320 px, xocava amb NOVA VERSIÓ.
+L'usuari ho va demanar per saber d'una ullada quins jocs entren a la lliga. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
@@ -1104,8 +1109,7 @@ i dibuix nostres: la combinació és la d'una caixa forta.
 - **La del dia és igual per a tothom** (`codiDe`, llavor `CAIXA-<n>`; la #1
   és la del 18 de novembre del 2026) i va a la taula del dia
   (`caixa_dia/<data>`): **1.000 punts al primer intent i 100 menys per cada
-  intent de més** (100 al desè); si no l'obres, 0, que també compta per a la
-  lliga. A la taula surt «5/10». I les **caixes obertes de sempre**
+  intent de més** (100 al desè); si no l'obres, 0. A la taula surt «5/10». I les **caixes obertes de sempre**
   (`caixa`, acumulades, cadascú una vegada). El bot diu cada matí qui la va
   guanyar. **No surt a ELS JOCS D'AVUI**: l'usuari no la hi va voler. Es desa a cada color (`caixa-<data>`, `caixa-practica`), amb la
   combinació escrita a dins.
@@ -2201,8 +2205,9 @@ grup («🆕 Hi ha un joc nou a la col·lecció: ...», amb un botó per jugar-h
 hi ha llista i es fa amb tots menys `ESTRENES` (la Sopa de Lletres i el
 Tresor, que van sortir abans que el bot sabés fer-ho). Sense grup, s'espera.
 
-**La lliga de la setmana** suma totes les partides del dia de dilluns a
-diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
+**La lliga de la setmana** suma les partides del dia d'ELS JOCS D'AVUI
+(`LLIGA`; la Botifarra, L'Abecedari difícil, La Conquesta i La Caixa Forta
+no hi compten) de dilluns a diumenge: a cada una, el primer s'emporta 10 punts, el segon 8, i 6, 5, 4, 3,
 2, 1, 1, 1 (`PUNTS_LLIGA`), i qui hi ha jugat sense entrar als 10 millors, 1
 (surt de `jugat:<joc>_dia:<data>`). **Fer 0 també és haver-hi jugat**: la
 Gofra sense acabar, cap colla, cap encert, la Botifarra sense punts... Abans
@@ -2210,7 +2215,7 @@ aquestes partides no s'enviaven i, a la lliga, era com si no hi haguessis
 jugat (l'usuari ho va preguntar per la Gofra). Ara `Records.fiPartida` les
 envia amb 0, sense demanar res, si ja hi ha inicials, i el Worker les apunta
 a `jugat:` però no a la taula. No es desa enlloc: es calcula cada vegada
-llegint les taules del dia (`lliga()`, 140 lectures del KV com a molt). En
+llegint les taules del dia (`lliga()`, 126 lectures del KV com a molt: 9 jocs × 7 dies × 2). En
 empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
 avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el
 dilluns**, la primera petició del dia anuncia qui va guanyar la setmana
@@ -2238,7 +2243,7 @@ fer-ho, l'ordre funciona igual.
 tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
 plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la
 primera petició del dia). Si en falta més d'una (el Worker no s'ha tocat en
-setmanes), en tanca una per petició, que cada una són fins a 140 lectures. La
+setmanes), en tanca una per petició, que cada una són fins a 126 lectures. La
 primera que compta és la del 26 d'octubre del 2026 (`PRIMERA_SETMANA`), la
 que el bot ja va anunciar. Si dues peticions alhora tanquen la mateixa
 setmana, en llegir-ho només compta un cop (`llegirPalmares`). A la portada

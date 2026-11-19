@@ -151,6 +151,34 @@ for (const [w, h] of MIDES) {
   await ctx.close();
 }
 
+// El rètol LLIGA: a les fitxes dels jocs d'ELS JOCS D'AVUI (els que compten
+// per a la lliga) i a cap altra, sense trepitjar el de NOU o NOVA VERSIÓ.
+for (const [w, h] of [[320, 568], [390, 844]]) {
+  const ctx = await b.newContext({ viewport: { width: w, height: h } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  await p.goto('file://' + resolve(ARREL, 'index.html'));
+  await p.waitForTimeout(400);
+  const r = await p.evaluate(() => {
+    const amb = [...document.querySelectorAll('a.btn')].filter(a => a.querySelector('.lliga'));
+    const jocs = amb.map(a => a.querySelector('.rec').dataset.joc).sort();
+    const toca = (x, y) => x.left < y.right && y.left < x.right && x.top < y.bottom && y.top < x.bottom;
+    const xoca = amb.filter(a => { const n = a.querySelector('.nou'); return n && toca(n.getBoundingClientRect(), a.querySelector('.lliga').getBoundingClientRect()); }).length;
+    // dins de la miniatura, a baix
+    const dins = amb.every(a => { const c = a.querySelector('img').getBoundingClientRect(), y = a.querySelector('.lliga').getBoundingClientRect();
+      return y.left >= c.left && y.right <= c.right && y.top >= c.top + c.height / 2 && y.bottom <= c.bottom; });
+    const ambNou = amb.filter(a => a.querySelector('.nou')).length;
+    return { jocs: jocs.join(','), xoca, dins, ambNou };
+  });
+  const esperat = DIARIS.map(j => j.replace('_dia', '')).sort().join(',');
+  const be = r.jocs === esperat && !r.xoca && r.dins && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} a ${w}px, el rètol LLIGA surt a les fitxes dels ${r.jocs.split(',').length} jocs que compten (${r.jocs}) i no trepitja el de NOU o NOVA VERSIÓ (${r.ambNou} en porten)` + (errors.length ? ' ' + errors[0] : ''));
+  await ctx.close();
+}
+
 // Tornant d'un joc amb el boto d'enrere del mobil, el navegador ensenya la
 // portada tal com era, sense tornar-la a llegir (avisa amb un «pageshow»
 // amb persisted). La partida que acabaves de fer ha de sortir com a feta.

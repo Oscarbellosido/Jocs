@@ -394,6 +394,12 @@ async function anunciaNous(env) {
 // que ja hi son: els jocs no han de fer res de nou. Cada dilluns, el primer
 // que obre un joc fa que el bot anunciï al grup qui va guanyar la setmana.
 const PUNTS_LLIGA = [10, 8, 6, 5, 4, 3, 2, 1, 1, 1];
+// Les partides que compten: les nou d'ELS JOCS D'AVUI de la portada. L'usuari
+// va voler que les que no hi surten (la Botifarra, L'Abecedari difícil, La
+// Conquesta i La Caixa Forta) no comptessin per al concurs. Si se'n treu o
+// se n'afegeix una a la portada, s'ha de canviar aquí (la prova ho mira).
+const LLIGA = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'colles_dia', 'poble_dia',
+  'trencaclosques_dia', 'sopa_dia', 'penjat_dia', 'quadres_dia'];
 const NOM_DIARI = joc => (ANUNCIA_DIARI[joc] || [joc])[0];
 function sumaDies(dia, n) { return new Date(Date.parse(dia + 'T12:00:00Z') + n * 86400e3).toISOString().slice(0, 10); }
 // el dilluns de la setmana d'aquest dia
@@ -401,7 +407,7 @@ function dillunsDe(dia) { return sumaDies(dia, -((new Date(dia + 'T12:00:00Z').g
 async function lliga(env, dilluns, fins, nom) {
   const dies = [];
   for (let d = dilluns; d <= fins; d = sumaDies(d, 1)) dies.push(d);
-  const jocs = Object.keys(DIARIS), feina = [];
+  const jocs = LLIGA, feina = [];
   for (const dia of dies) for (const joc of jocs) feina.push((async () => {
     const clau = joc + ':' + dia;
     const [llista, jugatRaw] = await Promise.all([llegir(env, clau), env.RECORDS.get('jugat:' + clau)]);
@@ -433,7 +439,7 @@ async function lliga(env, dilluns, fins, nom) {
 // palmares (`lliga:palmares`): la copa al primer, la plata i el bronze als
 // altres dos. Es fa amb o sense bot, a la primera peticio del dia, i una
 // setmana cada vegada (si en falta mes d'una, la seguent peticio fa la
-// seguent), que cada setmana son fins a 140 lectures. La primera que compta
+// seguent), que cada setmana son fins a 126 lectures. La primera que compta
 // es la del 26 d'octubre del 2026, la que el bot ja va anunciar.
 const PRIMERA_SETMANA = '2026-10-26';
 async function llegirPalmares(env) {
