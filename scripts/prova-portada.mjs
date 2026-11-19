@@ -170,12 +170,16 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
     const dins = amb.every(a => { const c = a.querySelector('img').getBoundingClientRect(), y = a.querySelector('.lliga').getBoundingClientRect();
       return y.left >= c.left && y.right <= c.right && y.top >= c.top + c.height / 2 && y.bottom <= c.bottom; });
     const ambNou = amb.filter(a => a.querySelector('.nou')).length;
-    return { jocs: jocs.join(','), xoca, dins, ambNou };
+    // la vora: daurada a les de la lliga, grisa a les altres
+    const vora = a => getComputedStyle(a).borderTopColor;
+    const totes = [...document.querySelectorAll('a.btn')];
+    const vores = amb.every(a => vora(a) === 'rgb(224, 178, 58)') && totes.filter(a => !a.querySelector('.lliga')).every(a => vora(a) === 'rgb(58, 58, 58)');
+    return { jocs: jocs.join(','), xoca, dins, ambNou, vores };
   });
   const esperat = DIARIS.map(j => j.replace('_dia', '')).sort().join(',');
-  const be = r.jocs === esperat && !r.xoca && r.dins && !errors.length;
+  const be = r.jocs === esperat && !r.xoca && r.dins && r.vores && !errors.length;
   if (!be) malament++;
-  console.log(`${be ? '✓' : '✗'} a ${w}px, el rètol LLIGA surt a les fitxes dels ${r.jocs.split(',').length} jocs que compten (${r.jocs}) i no trepitja el de NOU o NOVA VERSIÓ (${r.ambNou} en porten)` + (errors.length ? ' ' + errors[0] : ''));
+  console.log(`${be ? '✓' : '✗'} a ${w}px, el rètol LLIGA surt a les fitxes dels ${r.jocs.split(',').length} jocs que compten (${r.jocs}) i la vora daurada, i no trepitja el de NOU o NOVA VERSIÓ (${r.ambNou} en porten)` + (errors.length ? ' ' + errors[0] : ''));
   await ctx.close();
 }
 

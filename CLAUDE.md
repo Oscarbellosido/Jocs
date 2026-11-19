@@ -132,6 +132,8 @@ llista (`LLIGA` al Worker, que la prova compara amb la de la portada).
 **Les fitxes dels jocs que compten porten un rètol daurat 🏆 LLIGA** a baix
 a la dreta de la miniatura (`.lliga`, que es posa a partir d'aquesta mateixa
 llista `JOCS`). Va a baix perquè a dalt, a 320 px, xocava amb NOVA VERSIÓ.
+I **la vora de la fitxa també és daurada** (`.de-lliga`), en lloc de la grisa
+de les altres: l'usuari ho va demanar perquè es veiessin més.
 L'usuari ho va demanar per saber d'una ullada quins jocs entren a la lliga. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.

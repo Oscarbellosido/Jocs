@@ -173,7 +173,11 @@
   a.btn .nou.nova { background: #1f9d5c; font-size: 0.62rem; letter-spacing: 0.04em; }
   /* LLIGA: els jocs que compten per a la lliga de la setmana, que són els
      d'ELS JOCS D'AVUI (la llista JOCS d'allà). Sempre hi és, a baix a la
-     dreta de la miniatura: a dalt, a 320 px, xocava amb NOVA VERSIÓ. */
+     dreta de la miniatura: a dalt, a 320 px, xocava amb NOVA VERSIÓ. I la
+     vora de la fitxa també és daurada (.de-lliga): l'usuari ho va demanar. */
+  /* i la vora de la fitxa, daurada com el rètol, en lloc de grisa */
+  a.btn.de-lliga { border-color: #e0b23a; box-shadow: 0 0 8px #e0b23a44; }
+  a.btn.de-lliga:hover, a.btn.de-lliga:active { border-color: #ffd86b; box-shadow: 0 0 14px #ffd86b66; }
   a.btn .lliga {
     /* va just després de la miniatura i, sense top ni bottom, queda on hauria
        estat (a sota): pujant-lo la seva alçada, queda a la cantonada de baix */
@@ -463,6 +467,7 @@ posaLiders();
   // el rètol LLIGA a la fitxa de cada joc d'aquesta llista: són els que
   // compten per a la lliga de la setmana (el Worker en té la mateixa llista)
   for(const [,,href] of JOCS)document.querySelectorAll('a.btn[href="'+href+'"]').forEach(a=>{
+    a.classList.add('de-lliga');
     if(a.querySelector('.lliga'))return;
     const r=document.createElement('i');r.className='lliga';r.textContent='🏆 LLIGA';
     r.title='Compta per a la lliga de la setmana';const im=a.querySelector('img');im.after(r)});
