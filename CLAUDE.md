@@ -1,9 +1,9 @@
 # Jocs
 
-Vint-i-tres jocs clàssics dels salons recreatius i vint-i-quatre que no ho són, fets amb HTML i
+Vint-i-tres jocs clàssics dels salons recreatius i vint-i-cinc que no ho són, fets amb HTML i
 JavaScript sense cap llibreria. Cada joc és **un sol fitxer** autocontingut
 (menys els diccionaris del Garbuix i de La Impremta, que van a part a `dades/`;
-La Rotllana també fa servir el de La Impremta per a les extres). Pensat per jugar-hi al
+La Rotllana també fa servir el de La Impremta per a les extres, i L'Estel, el del Garbuix). Pensat per jugar-hi al
 mòbil, instal·lat com a aplicació.
 
 - Publicat a: https://oscarbellosido.github.io/Jocs/ (compte: la **J majúscula**)
@@ -53,7 +53,7 @@ sense (`/records blocs`) i també pel nom de sempre (`/records tetris`).
 Aquest és l'ordre en què surten a la portada: **per any de sortida**, del primer
 al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 
-### I vint-i-quatre que no són de saló
+### I vint-i-cinc que no són de saló
 
 | Fitxer | Joc | Any |
 |---|---|---|
@@ -81,6 +81,7 @@ al darrer. Si s'hi afegeix un joc, va al lloc que li toca per data, no al final.
 | `trencaclosques.html` | El Trencaclosques (el de tota la vida, també amb les teves fotos) | 2026 |
 | `poble.html` | El Poble del Dia (de l'estil del *Worldle*, amb els municipis) | 2026 |
 | `tresor.html` | El Tresor dels Templers (aventura de trencaclosques per Catalunya, setze proves) | 2026 |
+| `estel.html` | L'Estel (de l'estil del *Paraulògic*, amb un estel del dia) | 2026 |
 
 La portada és un museu de màquines recreatives ordenat per any: un joc del 2021
 al final de la fila trencaria la línia del temps. Per això la portada va partida
@@ -1085,6 +1086,59 @@ Coses que no s'han de desfer sense entendre-les:
   duren fins al 26 de desembre sense repetir-ne cap.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
+
+## L'Estel: set lletres i la del mig
+
+L'usuari va demanar «un Paraulògic». El *Paraulògic* (2022) és la versió
+catalana d'un joc d'un diari americà, d'una empresa viva: aquí és **inspirat
+en**, amb nom i dibuix nostres. Les set lletres van a les puntes d'un estel
+de sis puntes i la del mig, al centre.
+
+- **Fes paraules amb les set lletres; totes han de portar la del mig.** Les
+  altres, les que vulguis, i es poden repetir. De 3 lletres o més, i del
+  diccionari del Garbuix (`dades/paraules.txt`: noms, adjectius en masculí i
+  en femení i verbs en infinitiu, sense plurals ni conjugats). Sense accents;
+  la ç és una lletra a part. Es toquen les puntes (o s'escriu amb el teclat a
+  l'ordinador) i ENVIA, gros al mig; ESBORRA i BARREJA (només remena les de
+  fora) als costats.
+- **Punts**: 3 lletres, 1; 4, 2; de 5 amunt, tants com lletres. La **paraula
+  estel**, la que fa servir les set, 10 més (`puntsDe`).
+- **No s'acaba**: hi ha trams segons el tant per cent dels punts possibles
+  (`RANGS`: pols d'estel, espurna, estel, estrella, constel·lació, galàxia,
+  univers). L'estel dura tot el dia i hi pots tornar a estones.
+- **Taula del dia** (`estel_dia/<data>`), i **és l'única que es va
+  actualitzant**: el Worker hi deixa la millor de cada inicials en lloc de
+  només la primera (`ACTUALITZA`). Per no gastar escriptures del KV, els
+  punts només s'envien quan canvies de tram i quan surts de l'app
+  (`enviaPunts`), en silenci si ja hi ha inicials. El bot diu cada matí qui
+  va guanyar la d'ahir. **No surt a ELS JOCS D'AVUI ni compta per a la
+  lliga**: l'usuari encara no ho ha demanat.
+- **«les d'ahir»** ensenya totes les paraules de l'estel d'ahir i quines vas
+  trobar; **«pistes»**, quantes en falten per inicial i per llargada. Al grup
+  s'envien el tram i els punts, mai les paraules.
+- Es desa a cada paraula (`estel-<data>`). El #1 és el del 19 de novembre del
+  2026. L'explicació surt sola el primer cop (`estel-vist`).
+
+Coses que no s'han de desfer sense entendre-les:
+
+- **Els jocs de lletres dels primers 397 dies van escrits dins del joc**
+  (`DIES`: les set lletres i, al final, la del mig). La paraula estel ha de
+  ser corrent: triant-les de tot el diccionari, la del primer dia era
+  «opobalsam». Surten de les paraules del diccionari que són entre les
+  20.000 més dites (la llista de freqüències de subtítols), barrejades
+  sempre igual, amb una lletra del mig que en fa sortir de 30 a 110 (80 de
+  mitjana; amb plurals i conjugats en sortirien unes 300). Escrits, un canvi
+  al diccionari no canvia mai les lletres d'un dia ja jugat (sí quines
+  paraules valen). **Quan s'acabin (desembre del 2027)**, cada dia agafa vuit
+  jocs de lletres seus de tot el diccionari i el primer que surti bé: cal
+  afegir-ne més al final de `DIES` abans.
+- **Cap joc de lletres no es repeteix**: la prova en mira 500 dies.
+- **Les solucions es calculen al moment** (`solucions`), a partir del
+  diccionari: sense connexió i sense haver-lo desat, no es pot jugar, i ho
+  diu. Les paraules es mostren amb accents (`nomDe`) quan s'ha pogut baixar
+  `dades/formes.txt`, que es demana després.
+- **La P del teclat de l'ordinador s'escriu**: només fa pausa la P de
+  mentida del botó del marcador, com a L'Abecedari. La pausa tapa l'estel.
 
 ## La Caixa Forta: endevina la combinació
 
@@ -2119,7 +2173,8 @@ Regles que no s'han de trencar:
   mòbil ja no es podia). L'usuari va veure que si no, una mateixa persona la
   podia fer dues vegades. El Worker apunta qui ja hi ha jugat a
   `jugat:<joc>_dia:<data>` (a part de la taula, que només té els 10 millors)
-  i respon `repetida`; el `records.js` hi envia sempre la del dia, encara que
+  i respon `repetida` (menys a L'Estel, que dura tot el dia: allà es queda
+  la millor, `ACTUALITZA`); el `records.js` hi envia sempre la del dia, encara que
   no entri als 10, i si és repetida diu que només compta la primera. Amb
   unes altres inicials no es pot evitar: és una llista entre amics.
 - **Que el servidor digui que no, no és el mateix que no tenir connexió.** Abans
@@ -2448,6 +2503,13 @@ comproven el comportament.
   esborrar, la pista (que pregunta, +60 s), la pausa, desar i continuar,
   acabar-lo (va a la taula del dia una vegada), la pràctica i que hi capiga
   a 320 px.
+- `node scripts/prova-estel.mjs` — que l'estel del dia sigui igual per a
+  tothom, que cada dia sigui un altre joc de lletres amb la paraula estel i
+  prou paraules, els punts i els trams, i que es jugui tocant: paraules
+  bones, curtes, sense la del mig, inventades i repetides, la paraula estel,
+  els punts a la taula en canviar de tram, desar i continuar, barreja,
+  pistes, el teclat (i la P), la pausa, «les d'ahir» i que hi capiga a 320 px.
+  Serveix el repositori per http, com la del Garbuix.
 - `node scripts/prova-caixa.mjs` — les pistes de La Caixa Forta (també
   amb colors repetits), que la del dia sigui igual per a tothom, que totes
   les combinacions es puguin obrir a temps jugant amb cap, i que es jugui

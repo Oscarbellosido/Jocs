@@ -100,9 +100,14 @@ const DIARIS = {
   poble_dia:          1000,   // 1.000 al primer intent... 500 al sise; si no, 400 menys els km
   penjat_dia:          800,   // 800 sense cap error i 100 menys per error; penjat, 0
   quadres_dia:        3599,   // el sudoku: 3.600 menys els segons (i 30 per error i 60 per pista)
+  estel_dia:          3000,   // els punts de l'estel d'avui, que van pujant tot el dia
   caixa_dia:          1000,   // 1.000 al primer intent i 100 menys per cada intent de mes; si no s'obre, 0
 };
 const DIES_DIARI = 60;
+// Partides del dia que es van jugant a estones tot el dia: els punts pugen i
+// el joc els torna a enviar. Aquí no compta només la primera: es queda la
+// millor de cada inicials.
+const ACTUALITZA = new Set(['estel_dia']);
 const TOP = 10;
 
 // Per als missatges de Telegram: com es diu cada joc ("al Ram", "a les Boles")
@@ -301,6 +306,8 @@ const ANUNCIA_DIARI = {
     : 'el més a prop: a ' + (400 - p) + ' km (no el va trobar ningú)'],
   // Al Penjat, 800 punts sense cap error i 100 menys per cada error
   penjat_dia: ['El Penjat', 'penjat.html', p => 'la paraula amb ' + (8 - p / 100) + ((8 - p / 100) === 1 ? ' error' : ' errors')],
+  // A L'Estel, els punts que va arribar a fer en tot el dia
+  estel_dia: ["L'Estel", 'estel.html', p => xifra(p) + ' punts'],
   // A La Caixa Forta, 1.000 punts al primer intent i 100 menys per cada intent de mes
   caixa_dia: ['La Caixa Forta', 'caixa.html', p => 'la combinació al ' + ordinal(11 - p / 100) + ' intent'],
   conquesta_dia: ['La Conquesta', 'conquesta.html', p => xifra(p) + ' punts' + (p >= 1000 ? ' (va conquerir Catalunya a la ronda ' + (25 - (p - 1000) / 50) + ')' : '')],
@@ -311,7 +318,7 @@ const curt = (joc, p) => joc === 'gofra_dia' ? estrelles(p) : (joc === 'trencacl
   : joc === 'poble_dia' ? (p >= 500 ? (11 - p / 100) + '/6' : '✗ ' + (400 - p) + ' km')
   : joc === 'penjat_dia' ? (8 - p / 100) + ' err.' : joc === 'caixa_dia' ? (11 - p / 100) + '/10' : xifra(p);
 // «a La Impremta», pero «al Trencaclosques», «al Poble del Dia» i «als Nou Quadres»
-const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : nom.startsWith('Els ') ? 'als ' + nom.slice(4) : 'a ' + nom;
+const aJoc = nom => nom.startsWith('El ') ? 'al ' + nom.slice(3) : nom.startsWith('Els ') ? 'als ' + nom.slice(4) : nom.startsWith("L'") ? "a l'" + nom.slice(2) : 'a ' + nom;
 function diaMadrid(enrere = 0) {
   const d = new Date(Date.now() - enrere * 86400e3);
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d); }
@@ -674,8 +681,18 @@ async function diari(request, env, joc, dia) {
   const clauJugat = 'jugat:' + clau;
   let jugat = [];
   try { jugat = JSON.parse(await env.RECORDS.get(clauJugat) || '[]'); } catch {}
-  if (jugat.includes(entrada.n) || llista.some(e => e.n === entrada.n))
-    return json({ top: llista, posicio: 0, repetida: true });
+  const jaHi = jugat.includes(entrada.n) || llista.some(e => e.n === entrada.n);
+  if (jaHi && !ACTUALITZA.has(joc)) return json({ top: llista, posicio: 0, repetida: true });
+  if (jaHi) {
+    const seva = llista.find(e => e.n === entrada.n);
+    if (!punts || (seva && seva.p >= punts)) return json({ top: llista, posicio: seva ? llista.indexOf(seva) + 1 : 0 });
+    const nova = llista.filter(e => e.n !== entrada.n);
+    nova.push(entrada);
+    nova.sort((a, b) => b.p - a.p || a.t - b.t);
+    const ret = nova.slice(0, TOP);
+    await env.RECORDS.put('joc:' + clau, JSON.stringify(ret), { expirationTtl: DIES_DIARI * 86400 });
+    return json({ top: ret, posicio: ret.indexOf(entrada) + 1 });
+  }
   jugat.push(entrada.n);
   await env.RECORDS.put(clauJugat, JSON.stringify(jugat), { expirationTtl: DIES_DIARI * 86400 });
   if (!punts) return json({ top: llista, posicio: 0, jugat: true });

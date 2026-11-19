@@ -349,6 +349,17 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(!r.data.some(e => e.n === 'NOU'), 'partida del dia: qui ha quedat fora dels 10 millors...');
   r = await call('POST', '/records/gofra_dia/' + avui, { nom: 'NOU', punts: 5 });
   ok(r.data.repetida, '...tampoc no hi pot tornar a jugar per entrar-hi');
+  // L'Estel dura tot el dia: els punts van pujant i es queda la millor de cada inicials
+  await call('POST', '/records/estel_dia/' + avui, { nom: 'EST', punts: 12 });
+  await call('POST', '/records/estel_dia/' + avui, { nom: 'ALT', punts: 30 });
+  r = await call('POST', '/records/estel_dia/' + avui, { nom: 'EST', punts: 45 });
+  const r2 = await call('POST', '/records/estel_dia/' + avui, { nom: 'EST', punts: 20 });
+  const t3 = await call('GET', '/records/estel_dia/' + avui);
+  ok(!r.data.repetida && r.data.posicio === 1 && !r2.data.repetida && t3.data.length === 2
+     && t3.data[0].n === 'EST' && t3.data[0].p === 45 && t3.data[1].n === 'ALT',
+     "L'Estel: els punts del dia es van actualitzant (12 → 45), i amb menys es queda la millor");
+  r = await call('POST', '/records/estel_dia/' + avui, { nom: 'EST', punts: 3001 });
+  ok(r.status === 400, "L'Estel: més de 3.000 no pot ser");
 }
 
 // el podi de la partida del dia d'ahir, al grup, una sola vegada

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>L'Estel</title>
+<style>
+html,body{margin:0;height:100%;background:#0b1024;color:#fff;font-family:monospace;overflow:hidden}
+body{display:flex;align-items:flex-start;justify-content:center}
+#wrap{width:min(100vw,480px);height:100%;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
+#lider{flex:none;font-size:11px;color:#a9b6e8;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96%;min-height:14px}
+#rang{flex:none;width:94%;display:flex;align-items:center;gap:8px;padding:3px 0}
+#rang b{font-size:12px;color:#ffd96b;letter-spacing:.06em;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#barra{flex:1 1 auto;display:flex;gap:3px;align-items:center}
+#barra i{flex:1 1 0;height:7px;border-radius:4px;background:#26305a}
+#barra i.si{background:linear-gradient(90deg,#ffd96b,#ffb23a)}
+#trobades{flex:none;width:94%;box-sizing:border-box;max-height:58px;overflow:auto;font-size:12px;line-height:1.5;color:#c9d2f5;background:#141b3a;border:1px solid #2a3566;border-radius:8px;padding:4px 8px;margin:2px 0}
+#trobades .estel{color:#ffd96b;font-weight:bold}
+#trobades .cap{color:#6f7bab}
+#paraula{flex:none;height:38px;display:flex;align-items:center;justify-content:center;font:bold 26px monospace;letter-spacing:.08em;color:#fff;max-width:96%;overflow:hidden;white-space:nowrap}
+#paraula .c{color:#ffd96b}
+#paraula .no{color:#5a6390}
+#paraula .cursor{display:inline-block;width:2px;height:26px;background:#ffd96b;margin-left:3px;animation:parp 1s steps(1) infinite}
+@keyframes parp{50%{opacity:0}}
+#paraula.trem{animation:trem .3s}
+@keyframes trem{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+#screen{flex:1 1 auto;min-height:0;width:96%;display:flex;align-items:center;justify-content:center;position:relative}
+#estel{height:100%;max-width:100%;aspect-ratio:1;touch-action:none;user-select:none;-webkit-user-select:none}
+#estel .punta{cursor:pointer}
+#estel .punta polygon{fill:#1d2a63;stroke:#5d74d6;stroke-width:2;transition:fill .08s}
+#estel .punta.toc polygon{fill:#3a52b8}
+#estel .centre circle{fill:#e8b13a;stroke:#ffe39b;stroke-width:3;transition:fill .08s}
+#estel .centre.toc circle{fill:#ffcf5a}
+#estel text{font:bold 34px monospace;text-anchor:middle;dominant-baseline:central;fill:#f2f5ff;pointer-events:none}
+#estel .centre text{fill:#2a1a00;font-size:38px}
+#pausa{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(11,16,36,.97);font-size:22px;letter-spacing:.2em;color:#e0e6ff;z-index:3}
+#accions{flex:none;width:96%;max-width:380px;display:flex;gap:6px;margin-top:4px}
+button{font:bold 15px monospace;background:#1a2350;color:#e6eaff;border:1px solid #3c4a8a;border-radius:8px;height:44px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0}
+#accions button{flex:1 1 0;font-size:12px;color:#b5c0ee}
+#accions #b-envia{flex:2.2 1 0;font-size:16px;background:#e8b13a;border-color:#ffe39b;color:#2a1a00}
+#enllacos{flex:none;display:flex;gap:16px;justify-content:center;padding:6px 0 0;font-size:12px}
+#enllacos a{color:#a9b6e8;text-decoration:underline}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:17px;line-height:1.5;display:none;background:rgba(12,17,40,.98);border:1px solid #4a5aa8;border-radius:10px;padding:14px 16px;width:88%;max-width:400px;max-height:90%;overflow:auto;box-sizing:border-box;z-index:5}
+#msg small{display:block;margin-top:6px;font-size:13px}
+#msg .bt{display:block;font:bold 15px monospace;text-decoration:none;border-radius:8px;padding:12px 14px;margin:12px auto 0;max-width:280px}
+#msg .reptes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
+#msg table{margin:6px auto;border-collapse:collapse;font-size:13px}
+#msg td,#msg th{padding:2px 6px;text-align:center}
+#msg th{color:#a9b6e8;font-weight:normal}
+#msg .llista{font-size:13px;line-height:1.6;color:#c9d2f5;text-align:left;margin-top:8px}
+#msg .llista .no{color:#7380b5}
+#msg .llista .estel{color:#ffd96b}
+small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
+#back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>PUNTS <b id="score">0</b></span><span>PARAULES <b id="quantes">0</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
+  <div id="lider"></div>
+  <div id="rang"><b id="nomrang">POLS D'ESTEL</b><div id="barra"></div></div>
+  <div id="trobades"><span class="cap">encara no n'has trobat cap</span></div>
+  <div id="paraula"><span class="cursor"></span></div>
+  <div id="screen"><svg id="estel" viewBox="-150 -150 300 300"></svg><div id="pausa">PAUSA</div></div>
+  <div id="accions"><button id="b-esborra">ESBORRA</button><button id="b-envia">ENVIA</button><button id="b-barreja">BARREJA</button></div>
+  <div id="enllacos"><a href="#" id="l-pistes">pistes</a><a href="#" id="l-ahir">les d'ahir</a><a href="#" id="l-com">com vaig</a><a href="#" id="l-menu">com es juga</a></div>
+  <div id="msg"></div>
+  <small><b style="color:#ddd">Fes paraules amb les lletres de l'estel; totes han de portar la del mig.</b> de 3 lletres o més, i es poden repetir · pausa: P</small>
+</div>
+<script src="records.js"></script>
+<script>
+
+// ===== SO =====
+let AC=null,MG=null;
+function aInit(){
+  if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}catch(e){}
+}
+function tone(f,d,type='sine',vol=.2,slide=0,ret=0){
+  if(!AC)return;const t=AC.currentTime+ret,o=AC.createOscillator(),gn=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.linearRampToValueAtTime(f+slide,t+d);
+  gn.gain.setValueAtTime(vol,t);gn.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(gn);gn.connect(MG);o.start(t);o.stop(t+d+.02);
+}
+const so={
+  tecla(){aInit();tone(660,.04,'triangle',.06)},
+  be(n){aInit();for(let i=0;i<Math.min(4,n);i++)tone(660+i*110,.1,'triangle',.14,0,i*.06)},
+  estel(){aInit();[523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,.18,'triangle',.16,0,i*.07))},
+  mal(){aInit();tone(200,.18,'sawtooth',.07,-60)},
+  rang(){aInit();[784,988,1175].forEach((f,i)=>tone(f,.16,'sine',.16,0,i*.09))},
+};
+
+// ===== LES REGLES =====
+// Set lletres en un estel: la del mig ha de sortir a totes les paraules, i
+// les altres sis, si vols. Paraules de tres lletres o més, i les lletres es
+// poden repetir. Les paraules són les del diccionari (dades/paraules.txt:
+// noms, adjectius en masculí i en femení i verbs en infinitiu, sense
+// plurals ni formes conjugades), sense accents: la ç és una lletra a part.
+// ==REGLES==
+const ALFA='abcdefghijklmnopqrstuvwxyzç';
+const bitDe=c=>1<<ALFA.indexOf(c);
+const pla=s=>s.toLowerCase().replace(/·/g,'').replace(/[àá]/g,'a').replace(/[èé]/g,'e').replace(/[íïì]/g,'i').replace(/[òó]/g,'o').replace(/[úüù]/g,'u');
+function mascara(w){let m=0;for(const c of w){const i=ALFA.indexOf(c);if(i<0)return -1;m|=1<<i}return m}
+const bits=m=>{let n=0;while(m){m&=m-1;n++}return n};
+const lletresDe=m=>[...ALFA].filter((c,i)=>m&(1<<i));
+// 3 lletres, 1 punt; 4, 2; de 5 amunt, tants com lletres; i les que fan
+// servir les set lletres (la paraula estel), 10 més
+const puntsDe=(w,S)=>(w.length===3?1:w.length===4?2:w.length)+(mascara(w)===S?10:0);
+// Els trams (`RANGS`), per la part dels punts possibles que portes
+const RANGS=[[0,"POLS D'ESTEL"],[.03,'ESPURNA'],[.08,'ESTEL'],[.15,'ESTRELLA'],[.25,'CONSTEL·LACIÓ'],[.40,'GALÀXIA'],[.60,'UNIVERS']];
+function rangDe(punts,max){let r=0;RANGS.forEach(([f],i)=>{if(punts>=Math.ceil(f*max))r=i});return r}
+// el diccionari, indexat per les lletres que fa servir cada paraula
+function indexa(text){
+  const PER=new Map(),PANG=new Set();
+  for(const l of text.split('\n')){
+    if(!l||l[0]==='#')continue;
+    const w=pla(l.trim());
+    if(w.length<3)continue;
+    const m=mascara(w);if(m<0||bits(m)>7)continue;
+    let ll=PER.get(m);if(!ll)PER.set(m,ll=[]);ll.push(w);
+    if(bits(m)===7)PANG.add(m);
+  }
+  return {PER,MASKS:[...PER.keys()],PANG:[...PANG].sort((a,b)=>a-b)};
+}
+function solucions(D,S,c){
+  const b=bitDe(c),out=[];
+  for(const m of D.MASKS)if((m&~S)===0&&(m&b))out.push(...D.PER.get(m));
+  return out.sort();
+}
+function hashText(s){
+  let h=1779033703^s.length;
+  for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return (h^h>>>16)>>>0;
+}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+// L'estel de cada dia, igual per a tothom. La paraula estel (la que fa servir
+// les set lletres) ha de ser una paraula corrent: si fos «opobalsam», no la
+// trobaria ningú. Per això els jocs de lletres dels primers 397 dies ja van
+// escrits aquí (DIES, les set lletres i, al final, la del mig): surten de les
+// paraules del diccionari que són entre les 20.000 més dites (una llista de
+// freqüències de subtítols), barrejades sempre igual, i amb una lletra del
+// mig que en fa sortir de 30 a 110 paraules (80 de mitjana). Escrits a mà,
+// un canvi al diccionari no canvia mai l'estel d'un dia ja jugat.
+// Quan s'acabin (desembre del 2027), cada dia agafa vuit jocs de lletres seus
+// de tot el diccionari (sense els que ja han sortit), i el primer que surti bé.
+const MIN_PAR=30,MAX_PAR=110,RARES=bitDe('k')|bitDe('w')|bitDe('y');
+const DIES=`
+acefipse demnorsm aemqrsuq bceortub aejqrsuu adegisue agilntvv abijltuu deimnotm deilnpsl aenprsçn adgjorug
+ehilmosl dilostus adfintud eioprsxx acdeinxx celmopxo cemrstuc beloqruu cdinotut aimoprxx aefimoso acefitve
+aeimqtua acelntxx ahiorsth cfinosuf egiprstp aeijprtj acgimnpg abdituxi egimnrtg cdeorstd cgilopsp aeoprsxx
+abcefinb cdeirtud aehnosto aceiouvc diopstuo aeinqtue cfimnorf deiorsvv eioprsvv adeilmvv einortxx ailmotxx
+ceimnpsm aefgoruu einopsuo adlnorçn definrtf ahilmtuu acertuxx ceiopsxi adgiqruu acejnrsj acmostuu bcdeinon
+bceilnvv afiorsuu bcilmosm acdempsm acdeinuu aenqstuu aeintuvu ehiopsto aelmnsuu acejortj aeimprvv abdeftue
+acdeimoe begilrtb aeiqsuxu adioptuo aciprtvv demnortd aceprsvv eimorsuu acefprtf eilprsus ceiqrtuc ahimnorh
+ceinorxx deinptxx adeqrsuq abegintb celmoptp eiqrstuq aeilnsze eimnotvm aelmosuu celprsur dehnorso cdeginog
+egilprvi aeghosto aceinquu aenqrtuq einorsvv einostxo binrtuzt cimoprxr defilopd emprstus acfgimnf deioprvp
+acegmntg adeprsvv aeimntvv acilrsxx abejorsj deoprstd begimorg cdefnorn ceorsuçu abegostg abdemnom eijprtue
+acdeiouo biortuxi aegimtug abcdjmoo adeistuu bceilmom adilnuvu cimoprsp degimnun cilnosuu abejrtuj cdeiopxd
+aehirsth aeiqsuvi adefinsf abhiltuu abchiotb adeglmnd aeinquzn aiopstvv cemoprsm adhinrth acdeinvv beilqrue
+deipstup acgilnvv adegmosd deimnrtm aijnstuj acmoprvv aejnpstp aeinotvv dhimoprr ceiostvv ceilouvo ceinopsp
+demoprtd acdeisvv cdeimnoe acjnotun einrsuvu aehinoro agilmouu denoprsd cdenotud eilmptxe aeimptvv aeilqtuq
+acilouvu bdeilnre abcelptb deinrsvd aegmnptg adfgimrf acdnotuu deijoste ceinprsp ceilsuxi cdeioruu aeiqtuxx
+eimnprtp adginuvg cdnortun eioprsuu cdeirstd efgilrtf cefmnorm cegnorsg adeflstf cdinostd acefnosf efioprsf
+bhioprtt aeloprxx abeqstuu adfnoruu ablmntum aceiopxp ademostd acdnptvn acdeostd acdinouu aclmnouu defnorsd
+adlorsvv cemnosuc abdforuf ceijopre abelrtçç deioprup aefinruu cdefinod aimnqruq ahilmruu acdemnoe egiprsue
+adfrstuf acdmnotd befilprf adiltuzd acinqtuq behilorb aemntvçn bemnorve aegipstg cdioprud abenqruu acelmouu
+aegiqsui cdeimrsr deirstud aegintvv eopqrtuu dinortud abcdinub definorf cdeirsuu aelmprxx acefirvf aeginrxx
+abdiltxd cfilmorm aefjnrtj aejmntuu aenrtuvv acenotçe dginrstr celoruxu efilorxl cegnotuu cefinotf aceioquu
+defintut aegilmuu eilmptup abinotzb bceilnrl iorstuvu acdfinof abeipsub adgiruxx celnorun cdemorve abeorsvv
+adehisvv aeiqrsuq adginrvv beilnsvs acdfiruf adefipsp cdoprtut abeghiti cilmoprm eginoprg aceisvxa agijnoug
+aiopstuu aceflmnm acfinoçf adnqrtud aejnopsa ahimntuh eoprstuu acimotvv ahilosth mnorstur imoprstm ailnrtzz
+dimnrsum cginotuc cdinorud aempstum aimprtvv eiqrsuve acfnosuu eiqstuxs adejntuj aegnorvv afgiostg ahimnruu
+eioqstui bcegmorg eginrsun inorstuu abehnoro afnrstun beioprve cinostuu cdenorve ceinotxx bcehioxi ceinotvv
+adepstxx degintut cefinosf ilmnosun cdeirtvc eimprsuu cemnopte abcelpuu eimnoptp aefmnotf aceqstuu ejnotuvn
+aiopqrui aeilqruq bcejstuu afinstxf acimotuu bemnorsn efhimrsr cehlrsur alnotuvv ceimoptp cdirstud afiortvv
+aegjstuu adeijnrj cegorstg deimnptn adelnozl cdenprtt adeintxx abdgnuvu aemnprxn abeiruxu aimnotuu adelpsus
+aegiruxx dfnoprur bdeiorsb ioprstuu aeglstvv ceoprtuu acemnptp abeortxx ceinrsuu aegmntug abeimntb cefioprp
+acmnoptm adipstud ceilmopm aemoqtuo abdelsus acnoptup efinosun eiorstxx aemnstvm aeiqruxu cinorsuu aiortuzu
+efimnori abdiruxx eilopsxx ceinrtxx adenotzo aejlnprj denprtut eilostvv abenqtut aejnotvv acilnuvv denprsue
+cegortuu deijnsuu egioprtg deginrtg adehinse eilnotvv cejoprtp afimnosf beilopsp deiprsus abflosus cinortuu
+bchiopri
+`.trim().split(/\s+/);
+function ordreJocs(D){
+  if(D.ORDRE)return D.ORDRE;
+  const fets=new Set(DIES.map(t=>{let S=0;for(const ch of t.slice(0,7))S|=bitDe(ch);return S}));
+  const o=D.PANG.filter(S=>!(S&RARES)&&!fets.has(S)),r=mulberry(hashText('ESTEL'));
+  for(let i=o.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[o[i],o[j]]=[o[j],o[i]]}
+  return D.ORDRE=o;
+}
+function estelDe(D,n){
+  if(n>=1&&n<=DIES.length){
+    const t=DIES[n-1],c=t[7];let S=0;for(const ch of t.slice(0,7))S|=bitDe(ch);
+    return {S,c,lletres:lletresDe(S),sol:solucions(D,S,c)};
+  }
+  const m=n-DIES.length,O=ordreJocs(D),r=mulberry(hashText('ESTEL-'+n));
+  let millor=null;
+  for(let k=0;k<8;k++){
+    const S=O[(8*(m-1)+k)%O.length],ll=lletresDe(S);
+    const cs=ll.slice();for(let i=6;i>0;i--){const j=Math.floor(r()*(i+1));[cs[i],cs[j]]=[cs[j],cs[i]]}
+    for(const c of cs){
+      const sol=solucions(D,S,c);
+      if(sol.length>=MIN_PAR&&sol.length<=MAX_PAR)return {S,c,lletres:ll,sol};
+      if(!millor||Math.abs(sol.length-70)<Math.abs(millor.sol.length-70))millor={S,c,lletres:ll,sol};
+    }
+  }
+  return millor;
+}
+// ==FI REGLES==
+
+// ===== EL DIA =====
+const JOC='estel',taulaDia=d=>JOC+'_dia/'+d;
+function diaAvui(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+// el primer, el #1, és el del 19 de novembre del 2026
+const numeroDe=d=>Math.round((Date.parse(d+'T12:00:00Z')-Date.parse('2026-11-19T12:00:00Z'))/864e5)+1;
+const sumaDies=(d,k)=>new Date(Date.parse(d+'T12:00:00Z')+k*864e5).toISOString().slice(0,10);
+const llegeix=(k,def)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}};
+const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const xifra=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+
+let D=null,E=null,P=null,dia='',numero=0,paused=false,escrit='',ACC=new Map();
+// P: el que es desa (`estel-<data>`). Porta les lletres: si algun dia
+// canviés el diccionari, l'estel desat d'avui no canviaria.
+function desaP(){if(P)desa('estel-'+P.dia,P)}
+const maxPunts=()=>E.sol.reduce((a,w)=>a+puntsDe(w,E.S),0);
+const puntsP=()=>P.trobades.reduce((a,w)=>a+puntsDe(w,E.S),0);
+function preparaDia(){
+  dia=diaAvui();numero=numeroDe(dia);
+  const d=llegeix('estel-'+dia,null);
+  if(d&&d.v===1&&d.n===numero&&d.lletres){
+    // el desat mana: les mateixes lletres, encara que el diccionari canviï
+    const S=mascara(d.lletres);E={S,c:d.c,lletres:lletresDe(S),sol:solucions(D,S,d.c)};P=d;
+  }else{
+    E=estelDe(D,numero);
+    const altres=E.lletres.filter(x=>x!==E.c);
+    P={v:1,dia,n:numero,lletres:E.lletres.join(''),c:E.c,ordre:altres,trobades:[],env:0};
+    desaP();
+  }
+  carregaAccents();
+}
+
+// ===== L'ESTEL =====
+const $=id=>document.getElementById(id);
+function pintaEstel(){
+  const sv=$('estel');
+  if(!E){sv.innerHTML='<text x="0" y="0" style="font-size:14px;fill:#8a94c8">'+(D===false?'no s\'ha pogut carregar el diccionari':'carregant el diccionari...')+'</text>';return}
+  const pt=(r,a)=>[(r*Math.cos(a)).toFixed(1),(r*Math.sin(a)).toFixed(1)];
+  let h='';
+  P.ordre.forEach((l,k)=>{
+    const a=(-90+60*k)*Math.PI/180,d=30*Math.PI/180;
+    const [x1,y1]=pt(146,a),[x2,y2]=pt(56,a-d),[x3,y3]=pt(56,a+d),[tx,ty]=pt(98,a);
+    h+='<g class="punta" data-l="'+l+'"><polygon points="'+x1+','+y1+' '+x2+','+y2+' '+x3+','+y3+'"/><text x="'+tx+'" y="'+ty+'">'+l.toUpperCase()+'</text></g>';
+  });
+  h+='<g class="centre" data-l="'+P.c+'"><circle r="50"/><text x="0" y="1">'+P.c.toUpperCase()+'</text></g>';
+  sv.innerHTML=h;
+}
+$('estel').addEventListener('pointerdown',ev=>{
+  const g=ev.target.closest('[data-l]');if(!g)return;ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  g.classList.add('toc');setTimeout(()=>g.classList.remove('toc'),120);
+  escriu(g.dataset.l);
+});
+function escriu(l){
+  if(!E||!jugant())return;
+  if(escrit.length>=20)return;
+  escrit+=l;so.tecla();pintaParaula();
+}
+function pintaParaula(){
+  const el=$('paraula');
+  el.innerHTML=[...escrit].map(c=>'<span class="'+(c===P.c?'c':E.lletres.includes(c)?'':'no')+'">'+c.toUpperCase()+'</span>').join('')+'<span class="cursor"></span>';
+}
+const jugant=()=>E&&P&&!paused&&$('msg').style.display!=='block';
+let avisT=null,avisActiu=false;
+function avisa(t,color){avisActiu=true;$('lider').textContent=t;$('lider').style.color=color||'#ffd27a';clearTimeout(avisT);avisT=setTimeout(()=>{avisActiu=false;$('lider').style.color='';pintaLider()},2600)}
+function tremola(){const el=$('paraula');el.classList.remove('trem');void el.offsetWidth;el.classList.add('trem')}
+function envia(){
+  if(!jugant())return;
+  const w=escrit;if(!w)return;
+  let err=null;
+  if(w.length<3)err='Massa curta: han de tenir 3 lletres o més';
+  else if([...w].some(c=>!E.lletres.includes(c)))err='Hi ha una lletra que no és de l\'estel';
+  else if(!w.includes(P.c))err='Falta la lletra del mig: '+P.c.toUpperCase();
+  else if(P.trobades.includes(w))err='Aquesta ja la tens';
+  else if(!E.sol.includes(w))err='No és al diccionari';
+  if(err){avisa(err);so.mal();tremola();escrit='';setTimeout(pintaParaula,250);return}
+  const abans=rangDe(puntsP(),maxPunts());
+  P.trobades.push(w);desaP();
+  const p=puntsDe(w,E.S),estel=mascara(w)===E.S;
+  if(estel){so.estel();avisa('PARAULA ESTEL! '+nomDe(w).toUpperCase()+' · +'+p,'#ffd96b')}
+  else{so.be(p);avisa((p>=5?'Molt bé! ':'Bé! ')+nomDe(w).toUpperCase()+' · +'+p,'#9dff8a')}
+  escrit='';pintaTot();
+  const ara=rangDe(puntsP(),maxPunts());
+  if(ara>abans){setTimeout(()=>{so.rang();avisa('Ara ets '+RANGS[ara][1]+'!','#ffd96b')},900);enviaPunts(true)}
+  if(P.trobades.length===E.sol.length){setTimeout(()=>{avisa('LES TENS TOTES!','#ffd96b');enviaPunts(true);finalPartida()},1200)}
+}
+function esborra(){if(!jugant()||!escrit)return;escrit=escrit.slice(0,-1);pintaParaula()}
+function barreja(){
+  if(!jugant())return;
+  const o=P.ordre.slice();
+  for(let i=o.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[o[i],o[j]]=[o[j],o[i]]}
+  P.ordre=o;desaP();pintaEstel();
+}
+$('accions').addEventListener('pointerdown',ev=>{
+  const b=ev.target.closest('button');if(!b)return;ev.preventDefault();aInit();
+  if(paused){posaPausa(false);return}
+  if(b.id==='b-envia')envia();else if(b.id==='b-esborra')esborra();else if(b.id==='b-barreja')barreja();
+});
+
+// ===== EL QUE ES VEU =====
+// el nom ben escrit (amb accents), si ja ha arribat el diccionari de formes
+const nomDe=w=>ACC.get(w)||w;
+function carregaAccents(){
+  const vol=new Set(E.sol);
+  const ahir=estelAhir();if(ahir)ahir.sol.forEach(w=>vol.add(w));
+  fetch('dades/formes.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+    for(const l of t.split('\n')){if(!l||l[0]==='#')continue;const f=l.trim(),p=pla(f);if(vol.has(p)&&!ACC.has(p))ACC.set(p,f)}
+    pintaTot();
+  }).catch(()=>{});
+}
+function pintaTot(){
+  if(!E){pintaEstel();return}
+  const pts=puntsP(),max=maxPunts(),r=rangDe(pts,max);
+  $('score').textContent=xifra(pts);
+  $('quantes').textContent=P.trobades.length+'/'+E.sol.length;
+  $('nomrang').textContent=P.trobades.length===E.sol.length?'TOTES!':RANGS[r][1];
+  $('barra').innerHTML=RANGS.map((x,i)=>'<i class="'+(i<=r&&i>0?'si':'')+'" title="'+x[1]+'"></i>').slice(1).join('');
+  const tr=$('trobades');
+  tr.innerHTML=P.trobades.length?P.trobades.slice().sort((a,b)=>a.localeCompare(b,'ca')).map(w=>'<span class="'+(mascara(w)===E.S?'estel':'')+'">'+nomDe(w)+'</span>').join(' · '):'<span class="cap">encara no n\'has trobat cap</span>';
+  pintaEstel();pintaParaula();
+  Records.desaLocal(JOC,pts);
+  Records.marcador(taulaDia(dia),$('best'),pts);
+}
+let liderDia=null;
+function pintaLider(){
+  if(avisActiu)return;   // no esborra l'avís que hi ha ara mateix
+  $('lider').textContent='☀ #'+numero+' AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p)+' punts':'ningú');
+}
+async function refrescaLiders(){
+  try{liderDia=await Records.lider(taulaDia(diaAvui()))}catch(e){}
+  pintaLider();if(E)Records.marcador(taulaDia(dia),$('best'),puntsP());
+}
+
+// ===== LA TAULA =====
+// Els punts d'avui van pujant tot el dia: la taula del dia es va
+// actualitzant (el Worker hi deixa la millor de cada inicials). S'envien en
+// cada canvi de tram i en sortir de l'app, si n'hi ha de nous; no a cada
+// paraula, que el Worker gratuït té un límit d'escriptures cada dia.
+let enviant=false;
+async function enviaPunts(demana){
+  if(!P||enviant)return;
+  const pts=puntsP();if(pts<=P.env)return;
+  enviant=true;
+  try{
+    if(Records.nom()){const r=await Records.envia(taulaDia(P.dia),pts);if(r)P.env=pts}
+    else if(demana){await Records.fiPartida(taulaDia(P.dia),pts);if(Records.nom())P.env=pts}
+    desaP();refrescaLiders();
+  }catch(e){}finally{enviant=false}
+}
+
+// ===== PISTES, LES D'AHIR, COM VAIG =====
+function pistes(){
+  if(!E)return;
+  const falten=E.sol.filter(w=>!P.trobades.includes(w));
+  const llargs=[...new Set(falten.map(w=>Math.min(w.length,9)))].sort((a,b)=>a-b);
+  const inicials=[...new Set(falten.map(w=>w[0]))].sort((a,b)=>a.localeCompare(b,'ca'));
+  let t='<table><tr><th></th>'+llargs.map(l=>'<th>'+(l===9?'9+':l)+'</th>').join('')+'<th>tot</th></tr>';
+  for(const i of inicials){
+    const d=falten.filter(w=>w[0]===i);
+    t+='<tr><th>'+i.toUpperCase()+'</th>'+llargs.map(l=>{const n=d.filter(w=>Math.min(w.length,9)===l).length;return '<td style="color:'+(n?'#fff':'#3b4677')+'">'+(n||'·')+'</td>'}).join('')+'<td style="color:#ffd96b">'+d.length+'</td></tr>';
+  }
+  t+='</table>';
+  const estels=falten.filter(w=>mascara(w)===E.S).length;
+  msg('<div style="color:#ffd96b">PISTES</div><small>Quantes paraules et falten, per la lletra amb què comencen i per quantes lletres tenen.</small>'+
+    (falten.length?t:'<small>No te\'n falta cap!</small>')+
+    '<small style="color:#ffd96b">'+(estels?'Et falten '+estels+(estels===1?' paraula estel':' paraules estel')+' (les que fan servir les set lletres).':'Ja tens totes les paraules estel.')+'</small>'+
+    '<a href="#" class="bt" id="f-torna" style="color:#2a1a00;background:#e8b13a">TORNA A L\'ESTEL</a>');
+  potTancar=true;enllac('f-torna',hideMsg);
+}
+function estelAhir(){
+  if(!D)return null;
+  const ahir=sumaDies(diaAvui(),-1),n=numeroDe(ahir);if(n<1)return null;
+  const d=llegeix('estel-'+ahir,null);
+  if(d&&d.v===1&&d.lletres){const S=mascara(d.lletres);return {S,c:d.c,sol:solucions(D,S,d.c),trobades:d.trobades,n}}
+  const e=estelDe(D,n);return {...e,trobades:[],n};
+}
+function ahir(){
+  const a=estelAhir();
+  if(!a){msg('<div style="color:#ffd96b">LES D\'AHIR</div><small>L\'estel #1 és el d\'avui: ahir encara no n\'hi havia.</small><a href="#" class="bt" id="f-torna" style="color:#2a1a00;background:#e8b13a">TORNA A L\'ESTEL</a>');potTancar=true;enllac('f-torna',hideMsg);return}
+  const lletres=lletresDe(a.S).map(l=>l===a.c?'<b style="color:#ffd96b">'+l.toUpperCase()+'</b>':l.toUpperCase()).join(' ');
+  const tr=a.trobades.length;
+  msg('<div style="color:#ffd96b">LES D\'AHIR · #'+a.n+'</div><div style="letter-spacing:.2em;margin-top:4px">'+lletres+'</div>'+
+    '<small>'+a.sol.length+' paraules'+(tr?' · en vas trobar '+tr:'')+'. En gris, les que no vas trobar; en groc, les paraules estel.</small>'+
+    '<div class="llista">'+a.sol.map(w=>'<span class="'+(mascara(w)===a.S?'estel':a.trobades.includes(w)?'':'no')+'">'+nomDe(w)+'</span>').join(' · ')+'</div>'+
+    '<a href="#" class="bt" id="f-torna" style="color:#2a1a00;background:#e8b13a">TORNA A L\'ESTEL</a>');
+  potTancar=true;enllac('f-torna',hideMsg);
+}
+function textCompartir(){
+  const pts=puntsP(),r=rangDe(pts,maxPunts());
+  const estels=P.trobades.filter(w=>mascara(w)===E.S).length;
+  return 'L\'Estel #'+P.n+' · '+(P.trobades.length===E.sol.length?'TOTES!':RANGS[r][1])+'\n'+
+    '⭐ '+P.trobades.length+' de '+E.sol.length+' paraules · '+pts+' punts'+(estels?' · '+'🌟'.repeat(estels):'');
+}
+// també el fan servir les proves de tots els jocs: el quadre de com vas
+let enFinal=false;
+async function finalPartida(){
+  if(enFinal)return;enFinal=true;
+  try{
+    if(!E||!P){msg('<div style="color:#ffd96b">L\'ESTEL</div><small>'+(D===false?'no s\'ha pogut carregar el diccionari':'encara no hi has jugat')+'</small>'+Records.peuFinal('o toca per tancar'));potTancar=true;return}
+    enviaPunts(true);
+    const pts=puntsP(),max=maxPunts(),r=rangDe(pts,max),totes=P.trobades.length===E.sol.length;
+    const seg=RANGS[r+1];
+    const tx=textCompartir(),enl=location.href.split('#')[0];
+    msg('<div style="color:#ffd96b;letter-spacing:.08em">'+(totes?'LES TENS TOTES!':RANGS[r][1])+'</div>'+
+      '<small style="color:#c9d2f5">#'+P.n+' · '+P.trobades.length+' de '+E.sol.length+' paraules · <b style="color:#fff">'+xifra(pts)+' punts</b></small>'+
+      (seg&&!totes?'<small style="color:#a9b6e8">per a '+seg[1]+' te\'n falten '+(Math.ceil(seg[0]*max)-pts)+'</small>':'')+
+      '<small style="color:#7c88bb">L\'estel d\'avui dura tot el dia: hi pots tornar quan vulguis. Demà n\'hi haurà un altre.</small>'+
+      '<div class="reptes"><a target="_blank" rel="noopener" href="https://t.me/share/url?url='+encodeURIComponent(enl)+'&text='+encodeURIComponent(tx)+'">ENVIA A TELEGRAM</a>'+
+      '<a target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(tx+'\n'+enl)+'">A WHATSAPP</a></div>'+
+      '<div id="taula" style="margin:8px 0;color:#888;font-size:12px">…</div>'+
+      '<a href="#" class="bt" id="f-torna" style="color:#2a1a00;background:#e8b13a">TORNA A L\'ESTEL</a>'+Records.peuFinal('o toca per tancar'));
+    potTancar=true;enllac('f-torna',hideMsg);
+    const llista=await Records.llista(taulaDia(P.dia));
+    const el=$('taula');if(el)el.innerHTML='<div style="color:#ffd96b;font-size:13px">☀ LA D\'AVUI</div>'+Records.taulaHTML(llista,null,taulaDia(P.dia));
+  }finally{enFinal=false}
+}
+
+// ===== EL MENÚ: COM ES JUGA =====
+function menu(){
+  msg('<div style="color:#ffd96b;letter-spacing:.12em">L\'ESTEL</div>'+
+    '<small>Fes paraules amb les set lletres de l\'estel. <b style="color:#ffd96b">Totes han de portar la lletra del mig</b>; les altres, les que vulguis, i es poden repetir.</small>'+
+    '<small style="color:#c9d2f5">Han de tenir 3 lletres o més i ser al diccionari (noms, adjectius i verbs en infinitiu; sense plurals ni verbs conjugats). Sense accents: la ç és una lletra a part.</small>'+
+    '<small style="color:#c9d2f5">Punts: 3 lletres, 1; 4 lletres, 2; de 5 amunt, tants com lletres. La <b style="color:#ffd96b">paraula estel</b>, la que fa servir les set lletres, 10 més.</small>'+
+    '<small style="color:#a9b6e8">Els trams: '+RANGS.map(x=>x[1].toLowerCase()).join(' · ')+'.</small>'+
+    '<small style="color:#7c88bb">L\'estel és el mateix per a tothom i dura tot el dia: hi pots tornar a estones. Els punts van a la taula d\'avui.</small>'+
+    '<a href="#" class="bt" id="m-juga" style="color:#2a1a00;background:#e8b13a">☀ L\'ESTEL D\'AVUI ▸</a>'+
+    '<small style="color:#5f6a9a;margin-top:10px">Paraules del diccionari de Softcatalà (LGPL).</small>');
+  potTancar=true;enllac('m-juga',hideMsg);
+}
+function enllac(id,fn){const a=document.getElementById(id);if(a)a.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();aInit();fn()})}
+let potTancar=false;
+function msg(t){potTancar=false;const m=$('msg');m.innerHTML=t;m.style.display='block'}
+function hideMsg(){$('msg').style.display='none'}
+enllac('l-pistes',pistes);enllac('l-ahir',ahir);enllac('l-com',finalPartida);enllac('l-menu',menu);
+
+function posaPausa(v){paused=v;$('pausa').style.display=v?'flex':'none';if(paused)desaP()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){desaP();enviaPunts(false)}else if(E&&dia!==diaAvui()){preparaDia();pintaTot();refrescaLiders()}});
+addEventListener('pagehide',()=>{desaP();enviaPunts(false)});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// A l'ordinador s'escriu amb el teclat. La P de debò s'escriu: només fa
+// pausa la P de mentida que envia el botó de pausa del marcador.
+document.addEventListener('keydown',e=>{
+  aInit();
+  if((e.code==='KeyP'&&!e.isTrusted)||e.key==='Escape'){posaPausa(!paused);return}
+  if(paused||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='Enter'){e.preventDefault();envia()}
+  else if(e.key==='Backspace'){e.preventDefault();esborra()}
+  else if(e.key===' '){e.preventDefault();barreja()}
+  else if(e.key.length===1){const l=pla(e.key);if(ALFA.includes(l)){e.preventDefault();escriu(l)}}
+});
+$('pausa').addEventListener('pointerdown',ev=>{ev.preventDefault();posaPausa(false)});
+$('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&potTancar)hideMsg()});
+
+// ===== EN ENTRAR =====
+pintaEstel();refrescaLiders();
+if(!llegeix('estel-vist',false)){desa('estel-vist',true);menu()}
+fetch('dades/paraules.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+  D=indexa(t);preparaDia();pintaTot();refrescaLiders();
+}).catch(()=>{D=false;pintaEstel();avisa('No s\'ha pogut carregar el diccionari: cal connexió el primer cop')});
+
+// En entrar al joc, els records d'avui uns segons, com les màquines de debò.
+Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false});
+</script>
+</body>
+</html>
