@@ -374,6 +374,70 @@ const Records = (() => {
     else hud.insertBefore(b, hud.firstChild);
   }
 
+  // ---- el fons fosc o clar ----
+  // L'usuari ho va demanar al Trencaclosques (sobre el fons fosc costava de
+  // veure les peces) i després per a tots els jocs del dia i de paraules.
+  // Cada joc que el vol crida Records.tema(fn): surt un botó ◐ al marcador,
+  // al costat dels de pausa i so, i la tria val per a tots aquests jocs alhora
+  // (jocs-tema). El joc posa els seus colors clars a body.clar (i, si dibuixa
+  // en un llenç, els canvia a fn, que es crida en començar i a cada canvi).
+  let temaClar = false;
+  try { temaClar = localStorage.getItem('jocs-tema') === 'clar'; } catch (e) {}
+  // de seguida, que el fons no surti fosc un moment abans de tornar-se clar
+  // (als jocs que no tenen colors clars, la classe no fa res)
+  if (temaClar) document.documentElement.classList.add('clar');
+  const fnsTema = [];
+  function aplicaTema() {
+    document.documentElement.classList.toggle('clar', temaClar);
+    if (document.body) document.body.classList.toggle('clar', temaClar);
+    const b = document.getElementById('rec-tema');
+    if (b) { b.textContent = temaClar ? '☾' : '◐'; b.setAttribute('aria-label', temaClar ? 'Fons fosc' : 'Fons clar'); }
+    for (const f of fnsTema) { try { f(temaClar); } catch (e) {} }
+  }
+  function posaBotoTema() {
+    const hud = document.getElementById('hud') || document.getElementById('h');
+    if (!hud || document.getElementById('rec-tema')) return;
+    const b = document.createElement('button');
+    b.id = 'rec-tema';
+    b.type = 'button';
+    b.title = 'Fons fosc o clar';
+    // com els de pausa i so: la regla button{} del joc no l'ha de fer gros
+    b.setAttribute('style',
+      'width:auto;height:auto;min-width:0;box-sizing:content-box;line-height:1;' +
+      'font:11px monospace;background:transparent;color:#aaa;' +
+      'border:1px solid #555;border-radius:6px;padding:5px 5px;' +
+      'flex-shrink:0;cursor:pointer;font-family:monospace');
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      temaClar = !temaClar;
+      try { localStorage.setItem('jocs-tema', temaClar ? 'clar' : 'fosc'); } catch (e2) {}
+      aplicaTema();
+    });
+    const davant = document.getElementById('rec-so') || document.getElementById('rec-pausa') || hud.querySelector('#back');
+    if (davant && davant.parentNode === hud) hud.insertBefore(b, davant.nextSibling);
+    else hud.insertBefore(b, hud.firstChild);
+    aplicaTema();
+    ajusta();
+  }
+  // el que és igual a tots els jocs: la línia d'ajuda, el rècord groc del
+  // marcador (en groc sobre blanc no es llegeix) i els botonets de dalt
+  const CSS_CLAR =
+    'html.clar #wrap>small{color:#555!important}' +
+    'html.clar #wrap>small b{color:#222!important}' +
+    'html.clar #hud span[style*="#ff0"],html.clar #hud span[style*="#ff0"] b{color:#9a6400!important}' +
+    'html.clar #back,html.clar #rec-pausa,html.clar #rec-so,html.clar #rec-tema{color:#444!important;border-color:#999!important}';
+  function tema(fn) {
+    if (fn) fnsTema.push(fn);
+    if (!document.getElementById('rec-tema-css')) {
+      const s = document.createElement('style'); s.id = 'rec-tema-css'; s.textContent = CSS_CLAR;
+      (document.head || document.documentElement).appendChild(s);
+    }
+    const posa = () => { posaBotoTema(); aplicaTema(); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', posa, { once: true });
+    else posa();
+    return temaClar;
+  }
+
   // el boto del so, just despres del de pausa
   function posaBotoSo() {
     const hud = document.getElementById('hud') || document.getElementById('h');
@@ -618,7 +682,8 @@ const Records = (() => {
   }
 
   return {
-    novetats: NOVETATS, novetat, local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial,
+    novetats: NOVETATS, novetat, local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial, tema,
+    get clar() { return temaClar; },
 
     // Els 10 millors de tots els jocs de cop, per a la pagina principal.
     async tots() {

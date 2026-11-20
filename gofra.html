@@ -21,6 +21,11 @@ button.actiu{color:#ffd27a;border-color:#c98f3c;background:#241a0e}
 #msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt) */
+html.clar,html.clar body{background:#ece5d8;color:#2a2014}
+body.clar canvas{border-color:#d4c6ab;background:#f4eee3}
+body.clar button{background:#e4dccd;color:#3a3020;border-color:#b9aa8e}
+body.clar button.actiu{color:#8a5200;border-color:#c98f3c;background:#f6e6c4}
 </style>
 </head>
 <body>
@@ -458,11 +463,18 @@ function fitxa(l,col,px,py,mida=MIDA,opts={}){
   text(l.toUpperCase(),px+mida/2,py+mida*0.69,'#fff','bold '+Math.round(mida*0.55)+'px Georgia,serif');
 }
 
+// Els colors del fons i dels textos: el fosc de sempre o el clar (el botó ◐ de
+// dalt, que l'usuari va demanar). Les fitxes i la gofra són iguals als dos.
+const PAL={
+  fosc:{fons:'#17120c',or:'#ffd27a',suau:'#a08860',suau2:'#c9b28a',text:'#fff',alerta:'#ff9b8a',llegenda:'#bbb',barra:'rgba(0,0,0,.35)',pausa:'rgba(0,0,0,.75)'},
+  clar:{fons:'#f4eee3',or:'#9a5f08',suau:'#7d6845',suau2:'#7d6845',text:'#2a2014',alerta:'#c0392b',llegenda:'#555',barra:'rgba(150,110,50,.14)',pausa:'rgba(244,238,227,.88)'},
+};
+let C=PAL.fosc;
 function draw(){
-  x.fillStyle='#17120c';x.fillRect(0,0,W,H);
+  x.fillStyle=C.fons;x.fillRect(0,0,W,H);
   if(!G)return;
-  text('LA GOFRA',W/2,40,'#ffd27a','bold 26px Georgia,serif');
-  text(mode==='dia'?'#'+numero+' · '+nomDia(dia):'PRÀCTICA · no compta',W/2,66,'#a08860','13px monospace');
+  text('LA GOFRA',W/2,40,C.or,'bold 26px Georgia,serif');
+  text(mode==='dia'?'#'+numero+' · '+nomDia(dia):'PRÀCTICA · no compta',W/2,66,C.suau,'13px monospace');
   // la gofra: la pasta i els forats
   x.fillStyle='#c98f3c';rrect(X0-14,Y0-14,5*MIDA+4*ESP+28,5*MIDA+4*ESP+28,18);x.fill();
   x.strokeStyle='#e0a957';x.lineWidth=2;x.stroke();
@@ -490,33 +502,33 @@ function draw(){
   if(arr&&arr.mogut){fitxa(G.cur[arr.f][arr.k],col[arr.f][arr.k],arr.x-MIDA/2,arr.y-MIDA/2-8,MIDA+6,{alt:true})}
   // el que queda
   const yb=Y0+5*MIDA+4*ESP+50;
-  text(String(G.queden),W/2,yb+12,G.queden<=3&&!G.fi?'#ff9b8a':'#fff','bold 40px monospace');
-  text(G.queden===1?'INTERCANVI QUE ET QUEDA':'INTERCANVIS QUE ET QUEDEN',W/2,yb+36,'#a08860','12px monospace');
-  if(G.fi==='guanyat'){const e=estrelles();text('★'.repeat(e)+'☆'.repeat(5-e),W/2,yb+66,'#ffd27a','26px serif')}
-  else if(G.fi==='perdut')text('toca LA DEL DIA o PRÀCTICA',W/2,yb+64,'#a08860','12px monospace');
+  text(String(G.queden),W/2,yb+12,G.queden<=3&&!G.fi?C.alerta:C.text,'bold 40px monospace');
+  text(G.queden===1?'INTERCANVI QUE ET QUEDA':'INTERCANVIS QUE ET QUEDEN',W/2,yb+36,C.suau,'12px monospace');
+  if(G.fi==='guanyat'){const e=estrelles();text('★'.repeat(e)+'☆'.repeat(5-e),W/2,yb+66,C.or,'26px serif')}
+  else if(G.fi==='perdut')text('toca LA DEL DIA o PRÀCTICA',W/2,yb+64,C.suau,'12px monospace');
   else{
     // les estrelles que encara pots treure, i fins quan
     const fets=INTERCANVIS-G.queden,e=estrellesPer(fets),lim=TRAMS.find(([n])=>fets<=n)[0];
     const est='★'.repeat(e)+'☆'.repeat(5-e),ex=e===1?'si l\'acabes':'si l\'acabes amb '+lim+' fets o menys';
     x.font='18px serif';const w1=x.measureText(est).width;x.font='12px monospace';const w2=x.measureText(ex).width;
     const x0=W/2-(w1+8+w2)/2;
-    text(est,x0,yb+60,'#ffd27a','18px serif','left');
-    text(ex,x0+w1+8,yb+59,'#c9b28a','12px monospace','left');
+    text(est,x0,yb+60,C.or,'18px serif','left');
+    text(ex,x0+w1+8,yb+59,C.suau2,'12px monospace','left');
     // la llegenda, a sota de tot
     const ly=yb+72;
     [['v','al seu lloc'],['g','mal posada'],['x','d\'una altra']].forEach(([cl,t],i)=>{
-      const lx=24+i*134;fitxa('a',cl,lx,ly,22);text(t,lx+28,ly+16,'#bbb','11px monospace','left');
+      const lx=24+i*134;fitxa('a',cl,lx,ly,22);text(t,lx+28,ly+16,C.llegenda,'11px monospace','left');
     });
   }
   // qui mana a les dues taules, sempre a la vista
-  x.fillStyle='rgba(0,0,0,.35)';rrect(14,H-38,W-28,30,8);x.fill();
+  x.fillStyle=C.barra;rrect(14,H-38,W-28,30,8);x.fill();
   const ld=liderDia?liderDia.n+' '+'★'.repeat(liderDia.p):'ningú encara';
   const ls=liderSempre?liderSempre.n+' '+liderSempre.p+'★':'ningú encara';
-  text('☀ AVUI: '+ld,W/4+6,H-18,'#ffd27a','bold 12px monospace');
-  text('DE SEMPRE: '+ls,W*3/4-6,H-18,'#c9b28a','bold 12px monospace');
+  text('☀ AVUI: '+ld,W/4+6,H-18,C.or,'bold 12px monospace');
+  text('DE SEMPRE: '+ls,W*3/4-6,H-18,C.suau2,'bold 12px monospace');
   if(avisT>0&&avis){x.globalAlpha=Math.min(1,avisT*2);x.fillStyle='rgba(0,0,0,.85)';rrect(30,H-46,W-60,32,8);x.fill();
     text(avis,W/2,H-25,'#ffd27a','13px monospace');x.globalAlpha=1}
-  if(paused){x.fillStyle='rgba(0,0,0,.75)';x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,'#fff','bold 26px monospace')}
+  if(paused){x.fillStyle=C.pausa;x.fillRect(0,0,W,H);text('PAUSA',W/2,H/2,C.text,'bold 26px monospace')}
 }
 
 let last=performance.now();
@@ -594,6 +606,7 @@ refrescaLiders();
 obreDia();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
+Records.tema(clar=>{C=clar?PAL.clar:PAL.fosc});
 Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false,
   [['☀ LA GOFRA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ ESTRELLES DE SEMPRE',JOC]]);
 </script>

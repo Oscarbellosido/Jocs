@@ -104,9 +104,9 @@ El `scripts/prova-portada.mjs` comprova que hi hagi els dos títols i que cada
 apartat tingui els jocs que li toquen.
 
 **A dalt de tot, abans dels dos apartats, hi ha ELS JOCS D'AVUI** (`#avui`):
-les nou partides del dia (la Gofra, la Impremta, l'Abecedari, les
-Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat
-i els Nou Quadres), cadascuna
+les deu partides del dia (la Gofra, la Impremta, l'Abecedari, les
+Colles, el Poble del Dia, el Trencaclosques, la Sopa de Lletres, el Penjat,
+els Nou Quadres i L'Estel), cadascuna
 amb **✓ FET**, **A MIG FER** o **PER FER** i qui la guanya avui, i a sota **la
 lliga de la setmana** (el podi i on vas tu). L'estat es llegeix del que cada
 joc ja desa en aquest mòbil (`gofra-<data>`, `impremta-dia`, `conquesta-fi-<data>`...):
@@ -125,7 +125,10 @@ a l'app), i també es tornen a demanar qui guanya i qui mana a cada fitxa. Al
 navegador de les proves això no passa (allà la pàgina sempre es torna a
 carregar), i la prova de la portada ho simula amb aquell mateix avís. Hi va perquè
 cada dia n'hi ha nou, de partides del dia, escampades per la portada, i no
-hi havia manera de saber d'una ullada quines et quedaven. **La Botifarra, L'Abecedari
+hi havia manera de saber d'una ullada quines et quedaven. **L'Estel no
+s'acaba mai**: hi surt com a FET quan els teus punts ja són a la taula d'avui
+(`env` a `estel-<data>`, que es posa en canviar de tram o en sortir de l'app),
+i A MIG FER si hi has trobat paraules però encara no s'han enviat. **La Botifarra, L'Abecedari
 difícil, La Conquesta i La Caixa Forta no hi surten**: l'usuari els va voler treure de la llista. Les seves
 partides del dia segueixen existint, amb la seva taula, però **no compten
 per a la lliga**: l'usuari va voler que només comptessin les d'aquesta
@@ -1076,14 +1079,16 @@ Coses que no s'han de desfer sense entendre-les:
   dels temes que hi havia aquell dia, el primer de la barreja que encara no
   ha sortit en aquesta tanda.
 - **Els temes s'afegeixen al final, i `LOTS` diu des de quina sopa n'hi ha
-  quants** (`[[1,30],[7,52]]`: 30 fins a la #6, 52 des de la #7, l'11 de
-  novembre del 2026). Així els dies que ja s'han jugat no canvien: amb 30
+  quants** (`[[1,30],[7,52],[17,82]]`: 30 fins a la #6, 52 des de la #7, l'11 de
+  novembre del 2026, i 82 des de la #17, el 21 de novembre). Així els dies que ja s'han jugat no canvien: amb 30
   temes s'haurien començat a repetir el 5 de desembre, i afegint-ne sense
   més a la llista, la barreja hauria estat una altra i la sopa d'avui també.
   **Les paraules d'un tema que ja ha sortit no es toquen**: la sopa desada
   es torna a fer a partir del tema. Per afegir-ne més: temes nous al final i
-  una parella més a `LOTS`, amb el número de la sopa de l'endemà. Amb 52,
-  duren fins al 26 de desembre sense repetir-ne cap.
+  una parella més a `LOTS`, amb el número de la sopa de l'endemà. Amb 52
+  s'haurien acabat el 26 de desembre; amb els 30 de la tercera tanda
+  (l'hivern, Reis i cap d'any, els rius i les muntanyes de casa...), en
+  tenim fins al 25 de gener del 2027 sense repetir-ne cap.
 - **El missatge per al grup no diu cap paraula**: el tema, el temps i les
   pistes.
 
@@ -1111,8 +1116,9 @@ de sis puntes i la del mig, al centre.
   només la primera (`ACTUALITZA`). Per no gastar escriptures del KV, els
   punts només s'envien quan canvies de tram i quan surts de l'app
   (`enviaPunts`), en silenci si ja hi ha inicials. El bot diu cada matí qui
-  va guanyar la d'ahir. **No surt a ELS JOCS D'AVUI ni compta per a la
-  lliga**: l'usuari encara no ho ha demanat.
+  va guanyar la d'ahir. **Surt a ELS JOCS D'AVUI i compta per a la lliga**
+  (l'usuari ho va demanar l'endemà de fer-lo). Com que es va actualitzant, a
+  la lliga hi compta la millor puntuació del dia de cadascú.
 - **«les d'ahir»** ensenya totes les paraules de l'estel d'ahir i quines vas
   trobar; **«pistes»**, quantes en falten per inicial i per llargada. Al grup
   s'envien el tram i els punts, mai les paraules.
@@ -2282,7 +2288,7 @@ aquestes partides no s'enviaven i, a la lliga, era com si no hi haguessis
 jugat (l'usuari ho va preguntar per la Gofra). Ara `Records.fiPartida` les
 envia amb 0, sense demanar res, si ja hi ha inicials, i el Worker les apunta
 a `jugat:` però no a la taula. No es desa enlloc: es calcula cada vegada
-llegint les taules del dia (`lliga()`, 126 lectures del KV com a molt: 9 jocs × 7 dies × 2). En
+llegint les taules del dia (`lliga()`, 140 lectures del KV com a molt: 10 jocs × 7 dies × 2). En
 empat, mana qui ha guanyat més partides. `GET /lliga` la torna amb qui guanya
 avui cada partida (per a la portada), `/lliga` al grup l'ensenya, i **el
 dilluns**, la primera petició del dia anuncia qui va guanyar la setmana
@@ -2310,7 +2316,7 @@ fer-ho, l'ordre funciona igual.
 tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
 plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la
 primera petició del dia). Si en falta més d'una (el Worker no s'ha tocat en
-setmanes), en tanca una per petició, que cada una són fins a 126 lectures. La
+setmanes), en tanca una per petició, que cada una són fins a 140 lectures. La
 primera que compta és la del 26 d'octubre del 2026 (`PRIMERA_SETMANA`), la
 que el bot ja va anunciar. Si dues peticions alhora tanquen la mateixa
 setmana, en llegir-ho només compta un cop (`llegirPalmares`). A la portada
@@ -2336,6 +2342,21 @@ Per posar-lo en marxa (ho fa l'usuari, una sola vegada):
 Tots dos botons els posa el `records.js` sol, a `#hud` (o `#h`, a l'Asteroids).
 Cap joc no els ha de fer.
 
+- **Fons fosc o clar** (`◐`, i `☾` per tornar a fosc): només als jocs del
+  dia i de paraules que el demanen amb `Records.tema(fn)` (la Gofra, la
+  Impremta, l'Abecedari, les Colles, el Poble del Dia, la Sopa, el Penjat,
+  els Nou Quadres i L'Estel). L'usuari ho va demanar després de posar-lo al
+  Trencaclosques. **La tria val per a tots alhora** (`jocs-tema`) i es posa a
+  `html.clar` en carregar el `records.js`, que el fons no surti fosc un
+  moment. Cada joc té els seus colors clars a `body.clar` (i els del llenç, a
+  la `fn`, com la paleta `PAL` de la Gofra); el `records.js` hi posa els
+  comuns (la línia d'ajuda, `#wrap>small`, i el rècord groc del marcador,
+  que en groc sobre blanc no es llegeix). Els quadres de missatges queden
+  foscos. **No canvien els dibuixos que són escenes**: el bruixot de nit del
+  Penjat i la caixa de fusta de la Impremta. El Trencaclosques i el Garbuix
+  tenen el seu botó propi de fa més temps (`trencaclosques-tema`,
+  `garbuix-tema`). No es va anunciar com a NOVA VERSIÓ: l'usuari no ho va
+  voler, que eren massa jocs alhora. Ho mira el `scripts/prova-tema.mjs`.
 - **Pausa** (`❚❚`): dispara la tecla `P`, que la pausa de cada joc ja estava
   feta. Si el joc ja en porta un de seu (el Tetris), no n'hi posa un segon.
 - **So** (`🔊`/`🔇`): surt **quan el joc fa el primer soroll**, no abans, perquè
@@ -2555,6 +2576,10 @@ comproven el comportament.
   ben fet (43 comarques, veïnes que es corresponen, vegueries), que els daus i
   els reforços vagin com toca, que la batalla del dia sigui igual per a tothom,
   que la màquina no sigui ni regalada ni impossible, i que es jugui tocant.
+- `node scripts/prova-tema.mjs` — que els nou jocs amb fons clar tinguin el
+  botó ◐ al marcador (i que hi càpiga a 320 px), que en tocar-lo el fons es
+  torni clar i la línia d'ajuda es llegeixi, que la tria valgui per a tots i
+  es recordi, i que un altre toc el torni fosc.
 - `node scripts/prova-ajuda.mjs` — que tots els jocs tinguin la línia d'ajuda,
   que comenci dient l'objectiu i que es vegi sencera; i que la de l'Asteroid
   Belt marxi del camp quan comences a jugar.

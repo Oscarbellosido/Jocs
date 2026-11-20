@@ -32,6 +32,19 @@ button{font:bold 15px monospace;background:#2a2440;color:#ece6fa;border:1px soli
 #msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt): el dibuix del bruixot, de nit, no canvia */
+html.clar,html.clar body{background:#f1eef7;color:#1e1830}
+body.clar #lider{color:#5a4a86}
+body.clar #tema{color:#23802a}
+body.clar #c{box-shadow:0 1px 6px rgba(0,0,0,.25)}
+body.clar #pausa{background:rgba(241,238,247,.97);color:#1e1830}
+body.clar #paraula span{color:#1e1830;border-bottom-color:#8a7ab8}
+body.clar #paraula span.fix{color:#5a4a86}
+body.clar #paraula span.falta{color:#c0392b}
+body.clar button{background:#e2dcf0;color:#1e1830;border-color:#b6aad6}
+body.clar #teclat button.si{background:#cfeccf;border-color:#6fb07a;color:#1d6a28}
+body.clar #teclat button.no{background:#f1eef7;border-color:#ded8ea;color:#bab2cf}
+body.clar #teclat button.ample{color:#4a3c78;background:#ebe6f5}
 </style>
 </head>
 <body>
@@ -327,7 +340,7 @@ function dibuixa(t){
   }
   g.restore();
   if(P.errors===0&&!fi){g.fillStyle='rgba(255,255,255,.55)';g.font='10px monospace';g.textAlign='center';g.fillText('el bruixot espera...',150,120)}
-  if(paused){g.fillStyle='rgba(22,20,31,.96)';g.fillRect(0,0,EW,EH)}
+  if(paused){g.fillStyle=Records.clar?'rgba(241,238,247,.97)':'rgba(22,20,31,.96)';g.fillRect(0,0,EW,EH)}
 }
 function pintaTot(){
   if(!P)return;
@@ -471,6 +484,7 @@ refrescaLiders();
 menu();
 
 // En entrar al joc, els records uns segons, com les màquines de debò.
+Records.tema(()=>{brut=true});
 Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;brut=true},
   [['☀ LA D\'AVUI',taulaDia(diaAvui())],['★ PARAULES ENDEVINADES',JOC]]);
 </script>

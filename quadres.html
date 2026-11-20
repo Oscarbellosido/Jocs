@@ -36,6 +36,19 @@ button{font:bold 12px monospace;background:#111;color:#ddd;border:1px solid #555
 #msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt): la graella ja és de paper, canvia la resta */
+html.clar,html.clar body{background:#edf2f4;color:#16242c}
+body.clar #lider{color:#3d6576}
+body.clar #tema{color:#9a6200}
+body.clar #c{box-shadow:0 1px 6px rgba(0,0,0,.18)}
+body.clar #pausa{background:rgba(237,242,244,.98);color:#16242c}
+body.clar #teclat button{background:#dce6eb;color:#16242c;border-color:#b5c7d0}
+body.clar #teclat button i{color:#5a7686}
+body.clar #teclat.apunta button{color:#9a6200;border-color:#c9a24a}
+body.clar #pista{color:#8a5a00;background:#f6ecd0;border-color:#d9bd72}
+body.clar #pista.segur,body.clar #notes.on{color:#1a1200;background:#ffd77a;border-color:#e0b850}
+body.clar #notes,body.clar #esborra{color:#16242c;background:#dce6eb;border-color:#b5c7d0}
+body.clar #menu{color:#2e4656;background:#dce6eb;border-color:#b5c7d0}
 </style>
 </head>
 <body>
@@ -325,7 +338,7 @@ function dibuixa(){
   g.strokeStyle='#231c12';g.lineWidth=2.4;g.beginPath();
   for(let k=3;k<9;k+=3){g.moveTo(k*c,0);g.lineTo(k*c,m);g.moveTo(0,k*c);g.lineTo(m,k*c)}
   g.stroke();g.lineWidth=3;g.strokeRect(1.5,1.5,m-3,m-3);
-  if(paused){g.fillStyle='rgba(19,32,42,.98)';g.fillRect(0,0,m,m)}
+  if(paused){g.fillStyle=Records.clar?'rgba(237,242,244,.98)':'rgba(19,32,42,.98)';g.fillRect(0,0,m,m)}
 }
 // El teclat: nou botons, cadascun amb quants en falten per posar d'aquell
 // número. Quan ja hi són tots nou, s'apaga.
@@ -513,6 +526,7 @@ refrescaLiders();
 menu();
 
 // En entrar al joc, els records d'avui uns segons, com les maquines de debo.
+Records.tema(()=>{brut=true});
 Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false;brut=true},
   [['☀ EL D\'AVUI (temps)',taulaDia(diaAvui())]]);
 </script>

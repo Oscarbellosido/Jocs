@@ -54,6 +54,27 @@ button{font:bold 15px monospace;background:#1a2350;color:#e6eaff;border:1px soli
 #msg .llista .estel{color:#ffd96b}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt) */
+html.clar,html.clar body{background:#eef1fa;color:#18204a}
+body.clar #lider{color:#3f4f95}
+body.clar #rang b{color:#9a5f00}
+body.clar #barra i{background:#d3daf0}
+body.clar #trobades{color:#2a346a;background:#fff;border-color:#c5cdea}
+body.clar #trobades .estel{color:#9a5f00}
+body.clar #trobades .cap{color:#7a85b5}
+body.clar #paraula{color:#18204a}
+body.clar #paraula .c{color:#b06e00}
+body.clar #paraula .no{color:#a6aed0}
+body.clar #paraula .cursor{background:#b06e00}
+body.clar #estel .punta polygon{fill:#dfe5fb;stroke:#6f84d8}
+body.clar #estel .punta.toc polygon{fill:#b9c6f5}
+body.clar #estel text{fill:#18204a}
+body.clar #estel .centre text{fill:#2a1a00}
+body.clar #pausa{background:rgba(238,241,250,.97);color:#18204a}
+body.clar button{background:#dfe5fb;color:#18204a;border-color:#aab6e6}
+body.clar #accions button{color:#2a346a}
+body.clar #accions #b-envia{background:#e8b13a;border-color:#c98f2a;color:#2a1a00}
+body.clar #enllacos a{color:#3f4f95}
 </style>
 </head>
 <body>
@@ -275,7 +296,9 @@ function pintaParaula(){
 }
 const jugant=()=>E&&P&&!paused&&$('msg').style.display!=='block';
 let avisT=null,avisActiu=false;
-function avisa(t,color){avisActiu=true;$('lider').textContent=t;$('lider').style.color=color||'#ffd27a';clearTimeout(avisT);avisT=setTimeout(()=>{avisActiu=false;$('lider').style.color='';pintaLider()},2600)}
+// en clar, el groc i el verd clars no es llegeixen: els mateixos, més foscos
+const FOSCOS={'#ffd27a':'#9a5f00','#ffd96b':'#9a5f00','#9dff8a':'#23802a','#ff9b8a':'#c0392b'};
+function avisa(t,color){avisActiu=true;color=color||'#ffd27a';if(Records.clar)color=FOSCOS[color]||color;$('lider').textContent=t;$('lider').style.color=color;clearTimeout(avisT);avisT=setTimeout(()=>{avisActiu=false;$('lider').style.color='';pintaLider()},2600)}
 function tremola(){const el=$('paraula');el.classList.remove('trem');void el.offsetWidth;el.classList.add('trem')}
 function envia(){
   if(!jugant())return;
@@ -472,6 +495,7 @@ fetch('dades/paraules.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>
 }).catch(()=>{D=false;pintaEstel();avisa('No s\'ha pogut carregar el diccionari: cal connexió el primer cop')});
 
 // En entrar al joc, els records d'avui uns segons, com les màquines de debò.
+Records.tema();
 Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false});
 </script>
 </body>

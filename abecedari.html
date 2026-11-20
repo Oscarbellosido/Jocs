@@ -49,6 +49,23 @@ button{font:14px monospace;background:#111;color:#ddd;border:1px solid #555;bord
 #msg .fallades div{margin-top:5px}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt): les lletres de la roda són iguals */
+html.clar,html.clar body{background:#eef2fb;color:#141c36}
+body.clar #rellotge{color:#1f3a7a}
+body.clar #rellotge.poc{color:#c0392b}
+body.clar #mode,body.clar #compte{color:#4a5f96}
+body.clar #lletra{color:#b07800}
+body.clar #escrit{border-bottom-color:#7f93c9}
+body.clar #lider{color:#7a6442}
+body.clar #def{background:#fff;border-color:#c4cfeb;color:#141c36}
+body.clar #def.era{color:#c0392b}
+body.clar #def .nl{color:#1f5fae}
+body.clar #def.era b{color:#141c36}
+body.clar button{background:#e2e7f5;color:#141c36;border-color:#aab6d9}
+body.clar .k{background:#dbe2f4;border-color:#aab6d9;color:#141c36}
+body.clar .k:active{background:#b9c6ea}
+body.clar #passa{color:#1f5fae;border-color:#8fb0dc;background:#e3eefb}
+body.clar #respon{color:#1a1200;background:#f0b429;border-color:#d99a10}
 </style>
 </head>
 <body>
@@ -1773,7 +1790,7 @@ function pintaEscrit(){
   pintaCompte();
   const e=$('escrit');
   e.textContent=state==='revela'?R.respostes[R.cur].toUpperCase():(R.escrit.toUpperCase()||' ');
-  e.style.color=state==='revela'?'#ff8a7a':'#fff';
+  e.style.color=state==='revela'?(Records.clar?'#c0392b':'#ff8a7a'):(Records.clar?'#141c36':'#fff');
   e.style.textDecoration=state==='revela'?'line-through':'none';
 }
 function pinta(){
@@ -1802,15 +1819,15 @@ function pinta(){
 function pintaCompte(){
   const be=R.estat.filter(e=>e===1).length,mal=R.estat.filter(e=>e===2).length;
   const n=mode==='dificil'&&state==='joc'?' &nbsp; <span style="color:#c9a0ff">'+pla(R.escrit).length+'/'+lletresDe(R.lletres[R.cur])+'</span>':'';
-  $('compte').innerHTML='<span style="color:#7dd99a">✓ '+be+'</span> &nbsp; <span style="color:#ff8a7a">✗ '+mal+'</span>'+n;
+  $('compte').innerHTML='<span style="color:'+(Records.clar?'#1f7a3a':'#7dd99a')+'">✓ '+be+'</span> &nbsp; <span style="color:'+(Records.clar?'#c0392b':'#ff8a7a')+'">✗ '+mal+'</span>'+n;
 }
 function pintaRellotge(){const r=$('rellotge');r.textContent=mmss(R.temps);r.className=R.temps<30&&!R.fi?'poc':''}
 let avisT=0;
-function avisa(t){const l=$('lider');l.textContent=t;l.style.color='#ffb3a8';avisT=1.6}
+function avisa(t){const l=$('lider');l.textContent=t;l.style.color=Records.clar?'#c0392b':'#ffb3a8';avisT=1.6}
 let liderDia=null,liderSempre=null,liderDif=null;
 function pintaLider(){
   if(avisT>0)return;
-  const l=$('lider');l.style.color=mode==='dificil'?'#c9a0ff':'#c9b28a';
+  const l=$('lider');l.style.color=mode==='dificil'?(Records.clar?'#6a3fb5':'#c9a0ff'):(Records.clar?'#7a6442':'#c9b28a');
   l.textContent=mode==='dificil'?'◆ LA DIFÍCIL D\'AVUI: '+(liderDif?liderDif.n+' '+xifra(liderDif.p):'ningú')
     :'☀ AVUI: '+(liderDia?liderDia.n+' '+xifra(liderDia.p):'ningú')+'  ·  DE SEMPRE: '+(liderSempre?liderSempre.n+' '+liderSempre.p:'ningú');
 }
@@ -1882,6 +1899,7 @@ refrescaLiders();
 if(llegeix('abecedari-ultim','')==='dificil'&&comVaDif()==='mig')obreDificil();else obreDia();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
+Records.tema(()=>{if(R)pinta()});
 Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
   [['☀ LA RODA D\'AVUI',JOC+'_dia/'+diaAvui()],['◆ LA DIFÍCIL D\'AVUI',JOC+'_dificil_dia/'+diaAvui()],['★ ENCERTS DE SEMPRE',JOC]]);
 </script>

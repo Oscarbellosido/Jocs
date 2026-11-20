@@ -47,6 +47,20 @@ button{font:bold 14px monospace;background:#1d2a22;color:#e8f0dc;border:1px soli
 #msg .graella{font-size:17px;line-height:1.25;margin:8px 0 4px;white-space:pre}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt) */
+html.clar,html.clar body{background:#f1f4ee;color:#16241a}
+body.clar #lider{color:#4a6a44}
+body.clar #vista div{border-color:#c6d3c0;background:#fafcf8}
+body.clar #vista span{color:#5f7a62}
+body.clar .int{background:#e6ede2;border-color:#d0dcca;color:#16241a}
+body.clar .int .pc{color:#3a4a38}
+body.clar .int.be{background:#c8ecd0;border-color:#2e9e4f}
+body.clar #pista{color:#9a6200}
+body.clar #pausa{background:rgba(241,244,238,.96);color:#16241a}
+body.clar #escrit{color:#16241a;border-bottom-color:#b3c4ab}
+body.clar #escrit.buit,body.clar #suggeriments i{color:#5f7a62}
+body.clar button{background:#e2e9de;color:#16241a;border-color:#b3c4ab}
+body.clar #teclat button.ample{color:#c0392b}
 </style>
 </head>
 <body>
@@ -339,7 +353,7 @@ function updateHUD(){
 // ===== DIBUIX =====
 const $=id=>document.getElementById(id);
 let avisT=null,avisant=false;
-function avisa(t){$('pista').textContent=t;$('pista').style.color='#ffb3a8';avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaPista()},2000)}
+function avisa(t){$('pista').textContent=t;$('pista').style.color=Records.clar?'#c0392b':'#ffb3a8';avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaPista()},2000)}
 function pintaPista(){
   if(avisant||!R)return;
   const p=$('pista'),f=R.intents.length;p.style.color='';
@@ -350,7 +364,10 @@ function pintaPista(){
   else if(f>=pi)ps.push('comença per '+inicial(R.obj));
   p.textContent=ps.length?'PISTA: '+ps.join(' i '):'Intent '+(f+1)+' de '+INTENTS+(f?'':' · toca el mapa per veure els pobles d\'una zona');
 }
-function color(pc){return pc>=100?'#7dff9b':pc>=90?'#b7f06a':pc>=75?'#ffd27a':pc>=50?'#ff9a4a':'#ff6a5a'}
+function color(pc){return Records.clar?(pc>=100?'#1f8a35':pc>=90?'#5f9a12':pc>=75?'#b97c00':pc>=50?'#d0641a':'#c8362a')
+  :(pc>=100?'#7dff9b':pc>=90?'#b7f06a':pc>=75?'#ffd27a':pc>=50?'#ff9a4a':'#ff6a5a')}
+// el poble i el mapa en clar (el botó ◐ de dalt): els mateixos, amb tinta més fosca
+const encertat=()=>Records.clar?'#2e9e4f':'#7dff9b',daurat=()=>Records.clar?'#c9971f':'#e8c56a';
 function pintaIntents(){
   const c=$('intents');c.innerHTML='';
   for(let k=0;k<INTENTS;k++){
@@ -408,23 +425,23 @@ function dibuixaSilueta(){
   const e=Math.min((w-2*marge)/(x1-x0||1),(h-dalt-baix)/(y1-y0||1));
   const ox=(w-(x1-x0)*e)/2-x0*e,oy=dalt+(h-dalt-baix-(y1-y0)*e)/2-y0*e;
   cami(g,rs,(x,y)=>[ox+x*e,oy+y*e]);
-  g.fillStyle=R.fi?(R.encert?'#7dff9b':'#e8c56a'):'#e8c56a';g.fill('evenodd');
-  g.lineWidth=1.2*dpr;g.strokeStyle='#fff6';g.stroke();
+  g.fillStyle=R.fi&&R.encert?encertat():daurat();g.fill('evenodd');
+  g.lineWidth=1.2*dpr;g.strokeStyle=Records.clar?'#0004':'#fff6';g.stroke();
   // la regla: 1, 2, 5, 10, 20 o 50 km, la mes llarga que no passi d'un terç
   const pxKm=e/KM;let L=1;for(const v of [1,2,5,10,20,50])if(v*pxKm<=w/3)L=v;
-  const lx=8*dpr,ly=h-8*dpr;g.strokeStyle='#cfd8cc';g.lineWidth=2*dpr;g.beginPath();
+  const lx=8*dpr,ly=h-8*dpr,tinta=Records.clar?'#4a5a48':'#cfd8cc';g.strokeStyle=tinta;g.lineWidth=2*dpr;g.beginPath();
   g.moveTo(lx,ly-4*dpr);g.lineTo(lx,ly);g.lineTo(lx+L*pxKm,ly);g.lineTo(lx+L*pxKm,ly-4*dpr);g.stroke();
-  g.fillStyle='#cfd8cc';g.font=(10*dpr)+'px monospace';g.textBaseline='bottom';g.fillText(L+' km',lx+L*pxKm+4*dpr,ly+2*dpr);
+  g.fillStyle=tinta;g.font=(10*dpr)+'px monospace';g.textBaseline='bottom';g.fillText(L+' km',lx+L*pxKm+4*dpr,ly+2*dpr);
 }
 // El mapa: Catalunya feta dels 947 municipis (es pinta un sol cop, a part),
 // amb els intents a sobre. Amb la pista, la comarca s'il·lumina.
 let fons=null,fonsMida='';
 function geometria(w,h,dpr){const m=6*dpr,e=Math.min((w-2*m)/AMPLE,(h-2*m-12*dpr)/ALT);return {e,ox:(w-AMPLE*e)/2,oy:12*dpr+(h-12*dpr-ALT*e)/2}}
 function pintaFons(w,h,dpr){
-  const k=w+'x'+h;if(fons&&fonsMida===k)return;
+  const k=w+'x'+h+(Records.clar?'c':'f');if(fons&&fonsMida===k)return;
   fons=document.createElement('canvas');fons.width=w;fons.height=h;fonsMida=k;
   const g=fons.getContext('2d'),{e,ox,oy}=geometria(w,h,dpr);
-  g.fillStyle='#26352b';g.strokeStyle='#33473a';g.lineWidth=Math.max(.5,.4*dpr);
+  g.fillStyle=Records.clar?'#c4d4bb':'#26352b';g.strokeStyle=Records.clar?'#9cb092':'#33473a';g.lineWidth=Math.max(.5,.4*dpr);
   for(let i=0;i<N;i++){cami(g,anells(i),(x,y)=>[ox+x*e,oy+y*e]);g.fill('evenodd');g.stroke()}
 }
 function dibuixaMapa(){
@@ -433,12 +450,12 @@ function dibuixaMapa(){
   if(!R)return;
   const {e,ox,oy}=geometria(w,h,dpr),P=(x,y)=>[ox+x*e,oy+y*e];
   if(R.intents.length>=pistes()[0]||R.fi){
-    const c=comarca(R.obj);g.fillStyle=R.fi?'#3a5a3088':'#6a6a2a88';
+    const c=comarca(R.obj);g.fillStyle=Records.clar?(R.fi?'#3a8a4a55':'#c9a02a66'):(R.fi?'#3a5a3088':'#6a6a2a88');
     for(let i=0;i<N;i++)if(comarca(i)===c){cami(g,anells(i),P);g.fill('evenodd')}
   }
-  if(R.fi){cami(g,anells(R.obj),P);g.fillStyle=R.encert?'#7dff9b':'#e8c56a';g.fill('evenodd');
-    const [x,y]=P(...CENTRE[R.obj]);g.strokeStyle=R.encert?'#7dff9b':'#e8c56a';g.lineWidth=2*dpr;g.beginPath();g.arc(x,y,7*dpr,0,7);g.stroke()}
-  if(aprop&&!R.fi){const [x,y]=P(...aprop);g.strokeStyle='#fff';g.lineWidth=1.5*dpr;g.beginPath();
+  if(R.fi){cami(g,anells(R.obj),P);g.fillStyle=R.encert?encertat():daurat();g.fill('evenodd');
+    const [x,y]=P(...CENTRE[R.obj]);g.strokeStyle=R.encert?encertat():daurat();g.lineWidth=2*dpr;g.beginPath();g.arc(x,y,7*dpr,0,7);g.stroke()}
+  if(aprop&&!R.fi){const [x,y]=P(...aprop);g.strokeStyle=Records.clar?'#222':'#fff';g.lineWidth=1.5*dpr;g.beginPath();
     g.moveTo(x-6*dpr,y);g.lineTo(x+6*dpr,y);g.moveTo(x,y-6*dpr);g.lineTo(x,y+6*dpr);g.stroke()}
   g.font='bold '+(9*dpr)+'px monospace';g.textAlign='center';g.textBaseline='middle';
   R.intents.forEach((i,k)=>{if(i===R.obj)return;const [x,y]=P(...CENTRE[i]),pc=proximitat(i,R.obj);
@@ -503,6 +520,7 @@ refrescaLiders();
 obreDia();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
+Records.tema(()=>{if(typeof dibuixa==='function')dibuixa()});
 Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
   [['☀ EL D\'AVUI',JOC+'_dia/'+diaAvui()],['★ POBLES ENDEVINATS',JOC]]);
 </script>

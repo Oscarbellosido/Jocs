@@ -438,7 +438,7 @@ function posaLiders() {
 posaLiders();
 
 // ===== ELS JOCS D'AVUI =====
-// Les nou partides del dia, amb si ja l'has feta (ho mira al que cada joc
+// Les deu partides del dia, amb si ja l'has feta (ho mira al que cada joc
 // desa en aquest mobil i, amb connexio, al que el Worker sap de les teves
 // inicials, que l'hauras pogut fer en un altre lloc) i qui la guanya avui. A sota, la lliga de la
 // setmana: cada partida del dia dona punts (10 al primer, 8 al segon...).
@@ -464,6 +464,9 @@ posaLiders();
     ['sopa_dia','LA SOPA DE LLETRES','sopa.html',()=>{const d=llegeix('sopa-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
     ['penjat_dia','EL PENJAT','penjat.html',()=>{const d=llegeix('penjat-'+avui);return !d?null:d.fi?'fet':(d.lletres&&d.lletres.length)?'mig':null},p=>p?'✓ '+(8-p/100)+' err.':'✗'],
     ['quadres_dia','ELS NOU QUADRES','quadres.html',()=>{const d=llegeix('quadres-'+avui);return !d?null:d.fi?'fet':d.comencada?'mig':null},temps],
+    // L'Estel no s'acaba mai: és FET quan els teus punts ja són a la taula
+    // d'avui (els envia en canviar de tram i en sortir), i es poden millorar
+    ['estel_dia',"L'ESTEL",'estel.html',()=>{const d=llegeix('estel-'+avui);return !d||!(d.trobades&&d.trobades.length)?null:d.env>0?'fet':'mig'}],
   ];
   // el rètol LLIGA a la fitxa de cada joc d'aquesta llista: són els que
   // compten per a la lliga de la setmana (el Worker en té la mateixa llista)

@@ -50,6 +50,19 @@ button{font:bold 14px monospace;background:#111;color:#ddd;border:1px solid #555
 #msg .arxiu a{font:13px monospace;color:#e8dcc4;text-decoration:none;background:#1d1810;border:1px solid #6a5a3a;border-radius:6px;padding:7px 9px}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt) */
+html.clar,html.clar body{background:#f5f0e6;color:#2a2116}
+body.clar #lider{color:#7a6442}
+body.clar #estat{color:#2a2116}
+body.clar #errors{color:#7a6442}
+body.clar #errors i{border-color:#b9a47c}
+body.clar .p{background:#e8dcc0;box-shadow:inset 0 0 0 1px #cbb994}
+body.clar .p.sel{background:#5b4a86;color:#fff;box-shadow:none}
+body.clar #pausa{background:rgba(245,240,230,.96);color:#2a2116}
+body.clar button{background:#e8e0d0;color:#2a2116;border-color:#bfae8c}
+body.clar #barreja,body.clar #desmarca{color:#5a4a2e;border-color:#bfae8c;background:#ece4d4}
+body.clar #comprova{color:#1a1200;background:#f0b429;border-color:#d99a10}
+body.clar #comprova:disabled{background:#e4dccb;border-color:#d8ccb4;color:#a3967c}
 </style>
 </head>
 <body>
@@ -941,7 +954,7 @@ function updateHUD(){
 const $=id=>document.getElementById(id);
 const tile=i=>document.querySelector('.p[data-i="'+i+'"]');
 let avisT=null,avisant=false;
-function avisa(t){$('que').textContent=t;$('que').style.color='#ffb3a8';avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaQue()},2200)}
+function avisa(t){$('que').textContent=t;$('que').style.color=Records.clar?'#c0392b':'#ffb3a8';avisant=true;clearTimeout(avisT);avisT=setTimeout(()=>{avisant=false;pintaQue()},2200)}
 function pintaQue(){
   if(avisant)return;
   const q=$('que');q.style.color='';
@@ -1025,6 +1038,7 @@ obreDia();
 mesura();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
+Records.tema();
 Records.pantallaInicial(JOC,()=>paused=true,()=>{paused=false;pinta()},
   [['☀ LA D\'AVUI',JOC+'_dia/'+diaAvui()],['★ COLLES DE SEMPRE',JOC]]);
 </script>

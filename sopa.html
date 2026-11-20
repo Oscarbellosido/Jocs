@@ -30,6 +30,17 @@ button{font:bold 13px monospace;background:#111;color:#ddd;border:1px solid #555
 #msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt): la graella ja és de paper, canvia la resta */
+html.clar,html.clar body{background:#edf2f4;color:#16242c}
+body.clar #lider{color:#3d6576}
+body.clar #tema{color:#9a6200}
+body.clar #c{box-shadow:0 1px 6px rgba(0,0,0,.18)}
+body.clar #pausa{background:rgba(237,242,244,.97);color:#16242c}
+body.clar #paraules span{color:#16242c;background:#dce6eb}
+body.clar #paraules span.feta{color:#90a2ac;background:#e7eef1}
+body.clar #paraules span.amagada{color:#4f6e7e}
+body.clar #paraules span.vista{color:#9a6200}
+body.clar #menu{color:#2e4656;background:#dce6eb;border-color:#b5c7d0}
 </style>
 </head>
 <body>
@@ -122,13 +133,45 @@ const TEMES=[
   ['HERBES I ESPÈCIES','farigola romaní orenga julivert menta alfàbrega llorer sàlvia pebre canyella safrà comí anís all gingebre fonoll'],
   ['EL COTXE','volant roda motor fre embragatge maleter capó far mirall seient cinturó clàxon benzina matrícula parabrisa pedal marxa'],
   ["POBLES D'OSONA",'vic manlleu torelló taradell tona centelles seva balenyà gurb rupit viladrau tavertet orís sora malla vidrà montesquiu muntanyola espinelves'],
+  // --- afegits el 20 de novembre del 2026 (surten des de la #17, vegeu LOTS): amb
+  // 52 temes, el 26 de desembre ja s'haurien començat a repetir ---
+  ["L'HIVERN",'nevada gel fred bufanda guants abric estufa xemeneia llenya manta botes gorro trineu esquí ninot castanyes calefacció'],
+  ["REIS I CAP D'ANY",'raïm campanades xampany regal carbó camell patge carta cavalcada tortell corona fava mirra encens rei'],
+  ['FRUITS SECS','ametlla avellana nou castanya pinyó cacauet festuc pansa dàtil anacard orellana pruna albercoc'],
+  ['AL SUPERMERCAT','carro cistella caixa tiquet oferta prestatge passadís bossa preu targeta fruita cua rebaixa congelats xarcuteria peixateria'],
+  ['EL CAMP','tractor arada sembra collita blat ordi civada palla paller graner era sitja aixada rec hort fems'],
+  ['EL CIRC','pallasso trapezista domador lleó elefant carpa pista acròbata mag xou nas trampolí tambor corda monocicle'],
+  ['EL TEATRE','escenari teló actor actriu públic entrada butaca obra guió assaig vestuari director comèdia drama tragèdia'],
+  ['MESOS I ESTACIONS','gener febrer març abril maig juny juliol agost setembre octubre novembre desembre estiu hivern tardor primavera'],
+  ['A LA FLECA','barra pagès croissant xuixo coca ensaïmada magdalena panet llonguet brioix forn farina llevat massa crosta'],
+  ['LA FAMÍLIA','pare mare àvia filla germana oncle tia cosina nebot neboda néta sogre sogra padrina marit dona'],
+  ['ANIMALS DEL MAR','dofí balena tauró foca pop medusa estrella cranc tortuga orca pingüí morsa llagosta cavallet anguila rajada'],
+  ['GEOMETRIA','cercle quadrat triangle rombe cub esfera piràmide recta punt línia con cilindre prisma hexàgon diagonal'],
+  ['CARNESTOLTES','disfressa màscara confeti serpentina rua carrossa comparsa antifaç perruca pirata pallasso princesa sardina arlequí'],
+  ['BEGUDES','aigua suc llet cafè cava cervesa orxata refresc batut infusió xocolata granissat vermut cacau'],
+  ['AL JARDÍ','gespa flor test regadora mànega tisores rasclet aixada parterre tanca banc font gronxador caseta llavor rosa'],
+  ['EL TREN','via andana estació bitllet vagó locomotora revisor maquinista túnel pont horari retard parada passatger maleta xiulet'],
+  ["A L'AEROPORT",'avió pilot pista terminal maleta passaport porta vol hostessa control bitllet escala motor duana torre'],
+  ['RIUS DE CASA','ebre ter segre llobregat fluvià cardener besòs muga onyar noguera francolí gaià foix tordera daró ripoll'],
+  ['MUNTANYES DE CASA','montserrat montseny canigó pedraforca puigmal matagalls tibidabo montsant cadí puigsacalm comanegra bastiments carlit costabona tagamanent rocacorba'],
+  ["FESTES DE L'ANY",'nadal reis carnaval pasqua castanyada revetlla diada mona rosa llibre coca foguera aplec verbena'],
+  ['AL BAR','cambrer barra tapa cafè tallat cigaló got copa tassa cullereta sucre tovalló taula terrassa compte propina'],
+  ['A LA PERRUQUERIA','pinta raspall tisores assecador xampú tint serrell clenxa trena cua monyo rul·lo laca mirall navalla'],
+  ['AL BANY','sabó xampú esponja tovallola pinta raspall pasta dutxa banyera lavabo mirall vàter paper rentamans assecador'],
+  ['ANIMALS DE COMPANYIA','gos gat canari periquito hàmster conill tortuga peix cobai lloro fura iguana serp'],
+  ["A L'OFICINA",'paper bolígraf grapadora clip carpeta arxiu taula cadira ordinador telèfon agenda segell sobre calendari llapis'],
+  ['EMBOTITS','fuet botifarra pernil xoriço bull sobrassada mató secallona espetec bisbe donja cansalada llardons'],
+  ['EL FUTBOL','pilota porteria àrbitre gol penal córner falta camp defensa davanter xiulet targeta afició estadi equip lliga'],
+  ['EL MÓN','europa àfrica àsia amèrica oceania atlàntic pacífic índic àrtic antàrtida equador tròpic pol illa'],
+  ['VERBS DE MOVIMENT','córrer saltar caminar nedar volar pujar baixar girar ballar lliscar arrossegar rodolar trepitjar empènyer'],
+  ['A LA NEU','esquí pista telecadira trineu ninot bastons botes casc ulleres guants forfet raquetes allau cabana remuntador'],
 ];
 // Els temes es van afegint AL FINAL, i les paraules dels que ja hi són no es
 // toquen: la sopa de cada dia es torna a fer a partir del tema. LOTS diu des
 // de quina sopa n'hi ha quants: així els dies que ja s'han jugat no canvien.
 // Per afegir-ne més: temes nous al final i una parella més aquí, amb el
 // número de la sopa de l'endemà i quants temes hi ha en total.
-const LOTS=[[1,30],[7,52]];
+const LOTS=[[1,30],[7,52],[17,82]];
 const pla=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z]/g,'').toUpperCase();
 const N=10,PARAULES=10;
 const DIRS=[[1,0],[0,1],[1,1],[1,-1],[-1,0],[0,-1],[-1,-1],[-1,1]];
@@ -338,7 +381,7 @@ function dibuixa(){
   // les lletres
   g.fillStyle='#2a2218';g.font='bold '+Math.round(c*.56)+'px monospace';g.textAlign='center';g.textBaseline='middle';
   for(let y=0;y<N;y++)for(let x=0;x<N;x++)g.fillText(S.graella[y][x],(x+.5)*c,(y+.53)*c);
-  if(paused){g.fillStyle='rgba(19,32,42,.96)';g.fillRect(0,0,m,m)}
+  if(paused){g.fillStyle=Records.clar?'rgba(237,242,244,.97)':'rgba(19,32,42,.96)';g.fillRect(0,0,m,m)}
 }
 function pintaParaules(){
   const el=$('paraules');el.innerHTML='';
@@ -510,6 +553,7 @@ refrescaLiders();
 menu();
 
 // En entrar al joc, els records d'avui uns segons, com les maquines de debo.
+Records.tema(()=>{brut=true});
 Records.pantallaInicial(taulaDia(diaAvui()),()=>paused=true,()=>{paused=false;brut=true},
   [['☀ LA D\'AVUI (temps)',taulaDia(diaAvui())]]);
 </script>

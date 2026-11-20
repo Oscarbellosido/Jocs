@@ -27,6 +27,14 @@ button{font:14px monospace;background:#111;color:#fff;border:1px solid #777;bord
 #msg .reptes a{font:13px monospace;color:#fff;text-decoration:none;background:#111;border:1px solid #777;border-radius:8px;padding:8px 12px;white-space:nowrap}
 small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;padding:4px 0 6px}
 #back{background:transparent;border:1px solid #555;color:#aaa;font-size:12px;padding:4px 8px;border-radius:6px;font-family:monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;width:auto;height:auto}
+/* el fons clar (el botó ◐ de dalt): la caixa de la impremta, de fusta fosca, no canvia */
+html.clar,html.clar body{background:#ece5d8;color:#2a2014}
+body.clar canvas{border-color:#b9aa8e}
+body.clar button{background:#e4dccd;color:#2a2014;border-color:#a8977a}
+body.clar #b2{color:#8a5200;border-color:#c98f3c;background:#f6e6c4}
+body.clar #b1{color:#b03a2e;border-color:#d39a8a}
+body.clar #b3{color:#4a4030}
+body.clar #plega{color:#a0502a}
 </style>
 </head>
 <body>
@@ -1162,6 +1170,7 @@ document.getElementById('msg').addEventListener('click',e=>{
 (async()=>{try{liderDia=await Records.lider(JOC+'_dia/'+diaAvui());liderSempre=await Records.lider(JOC)}catch(e){}})();
 
 // En entrar al joc, els records uns segons, com les maquines de debo.
+Records.tema();
 Records.pantallaInicial(JOC,()=>paused=true,()=>paused=false,
   [['☀ LA PARTIDA D\'AVUI',JOC+'_dia/'+diaAvui()],['DE SEMPRE (partides lliures)',JOC]]);
 </script>
