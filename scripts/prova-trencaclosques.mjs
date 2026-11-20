@@ -186,9 +186,10 @@ diu(await p.evaluate(() => mode === 'foto' && G.fi && /no compten/.test(document
 await ctx.close();
 
 // ---------- 5b. els dies de foto ----------
-// Del #14 (7 de novembre del 2026) al #43 surten les fotos de l'usuari, una
+// Del #14 (7 de novembre del 2026) al #63 surten les fotos de l'usuari, una
 // cada dia: les apaïsades en un trencaclosques de 7 × 4, i les deu de Taradell
-// (#17 a #26), quadrades, de 6 × 6. Abans i després, els dibuixats.
+// (#17 a #26) i les vint del món (#44 a #63), quadrades, de 6 × 6. Abans i
+// després, els dibuixats.
 {
   const ctx2 = await b.newContext({ viewport: { width: 320, height: 568 }, hasTouch: true });
   await ctx2.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
@@ -198,9 +199,9 @@ await ctx.close();
   await p2.goto(URL_JOC);
   await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('jugador', 'TST'); }); await p2.reload(); await p2.waitForTimeout(500);
   await p2.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
-  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], avui: fotoDe(16)[0], tar: [17,26].map(n => fotoDe(n)[0]), darrer: fotoDe(43)[0], despres: fotoDe(44), menu: document.getElementById('msg').textContent }));
+  const dies = await p2.evaluate(() => ({ abans: fotoDe(13), primer: fotoDe(14)[0], avui: fotoDe(16)[0], tar: [17,26].map(n => fotoDe(n)[0]), parc: fotoDe(43)[0], mon: fotoDe(44)[0], darrer: fotoDe(63)[0], despres: fotoDe(64), menu: document.getElementById('msg').textContent }));
   diu(dies.avui === 'pedraforca' && dies.tar.join() === 'taradell-santa-llucia,taradell-torre-don-carles', 'les que ja havien sortit no canvien (el #16 és el Pedraforca) i les de Taradell van del #17 al #26');
-diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' && !dies.despres, 'les trenta fotos surten del #14 al #43, i abans i després els paisatges dibuixats');
+diu(!dies.abans && dies.primer === 'montserrat' && dies.parc === 'park-guell' && dies.mon === 'colosseu' && dies.darrer === 'burj-khalifa' && !dies.despres, 'les cinquanta fotos surten del #14 al #63 (les del món, després del park Güell), i abans i després els paisatges dibuixats');
   diu(/Montserrat/.test(dies.menu) && /28 peces/.test(dies.menu) && /feta amb IA/.test(dies.menu), 'el menú del #14 diu Montserrat, 28 peces i que la imatge és feta amb IA');
   await p2.click('#m-dia'); await p2.waitForTimeout(800);
   const f = await p2.evaluate(() => ({ cols: G.cols, files: G.files, w: IMG.width, h: IMG.height, n: G.n, que: document.getElementById('que').textContent,
@@ -225,6 +226,9 @@ diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' 
   // totes les de Taradell es poden baixar i són de 840 × 840
   const mides = await p2.evaluate(() => Promise.all(FOTOS.filter(f => f[0].startsWith('taradell-')).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth + 'x' + im.naturalHeight); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
   diu(mides.length === 10 && mides.every(m => m === '840x840'), 'les deu fotos de Taradell hi són, de 840 × 840 (' + [...new Set(mides)].join(', ') + ')');
+  // les vint del món (#44 a #63): quadrades, de 840 × 840 i 6 × 6
+  const mon = await p2.evaluate(() => Promise.all(FOTOS.slice(30).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(f[2] && f[2].join('x') === '6x6' && im.naturalWidth === 840 && im.naturalHeight === 840 ? 'bé' : f[0]); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
+  diu(mon.length === 20 && mon.every(x => x === 'bé'), 'les vint fotos del món hi són, de 840 × 840 i 6 × 6 (' + mon.filter(x => x !== 'bé').join(', ') + ')');
   // les apaïsades que encara no havien sortit es van retallar pels costats: 7 × 5 peces
   await p2.clock.setFixedTime(new Date('2026-11-20T10:00:00+01:00'));
   await p2.evaluate(() => localStorage.clear()); await p2.reload(); await p2.waitForTimeout(500);
@@ -235,7 +239,7 @@ diu(!dies.abans && dies.primer === 'montserrat' && dies.darrer === 'park-guell' 
     marc: L.fx >= 0 && L.fx + L.fw <= L.W && L.fy + L.fh <= L.sy, pw: Math.round(L.pw), ph: Math.round(L.ph) }));
   diu(/cap de Creus/.test(menuC) && /35 peces/.test(menuC) && c.n === 27 && c.cols === 7 && c.files === 5 && c.w === 784 && c.h === 560 && c.marc && Math.abs(c.pw - c.ph) <= 1 && c.pw >= 40,
     `el #27, el cap de Creus, és de 7 × 5 peces quadrades (${c.w} × ${c.h}, peces de ${c.pw} px) i hi cap a 320 px`);
-  const apaisades = await p2.evaluate(() => Promise.all(FOTOS.slice(13).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(f[2] && f[2].join('x') === '7x5' && im.naturalWidth === 784 && im.naturalHeight === 560 ? 'bé' : f[0]); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
+  const apaisades = await p2.evaluate(() => Promise.all(FOTOS.slice(13, 30).map(f => new Promise(ok => { const im = new Image(); im.onload = () => ok(f[2] && f[2].join('x') === '7x5' && im.naturalWidth === 784 && im.naturalHeight === 560 ? 'bé' : f[0]); im.onerror = () => ok('falta ' + f[0]); im.src = 'fotos/' + f[0] + '.jpg'; }))));
   diu(apaisades.length === 17 && apaisades.every(x => x === 'bé'), 'les disset apaïsades que queden són de 784 × 560 i de 7 × 5 (' + apaisades.filter(x => x !== 'bé').join(', ') + ')');
   await ctx2.close();
 }

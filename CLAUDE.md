@@ -1669,9 +1669,9 @@ trencaclosques. N'hi ha dos:
   tornava a sortir el d'ahir. Els sis primers (#1 a #6) es van quedar com
   eren, que el #6 ja s'estava jugant. El nom de l'escena surt al menú i a
   dalt del joc.
-- **Les fotos de l'usuari** (`FOTOS`, a `fotos/`): trenta imatges que va fer
-  amb una app d'IA (Gemini) i va pujar al repositori, en tres tandes de deu.
-  Surten una cada dia del #14 (7 de novembre del 2026) al #43 (6 de
+- **Les fotos de l'usuari** (`FOTOS`, a `fotos/`): cinquanta imatges que va
+  fer amb una app d'IA (Gemini) i va pujar al repositori, en quatre tandes.
+  Surten una cada dia del #14 (7 de novembre del 2026) al #63 (26 de
   desembre), i després tornen els dibuixats. **La tercera tanda és de
   Taradell** i l'usuari la va voler abans que la resta: va del #17 al #26
   (del 10 al 19 de novembre), just després de les tres que ja havien
@@ -1690,7 +1690,12 @@ trencaclosques. N'hi ha dos:
   a 784 × 560, i fan **7 × 5** (35, com el dibuixat). Les peces no es van fer
   més petites: a 320 px ja fan 43 px, i més petites costarien d'agafar amb el
   dit. Les tres primeres (#14 a #16) es van quedar de 7 × 4, que ja havien
-  sortit. Es baixen el dia que toca (`imatgeDia`, que per als
+  sortit. **La quarta tanda són vint llocs famosos del món** (el Colosseu,
+  Machu Picchu, la torre Eiffel...), també fetes amb IA i quadrades com les
+  de Taradell (retallades igual, a 840 × 840, i de 6 × 6 peces): van del #44
+  (7 de desembre) al #63 (26 de desembre), darrere del park Güell. L'usuari
+  les va pujar a l'arrel del repositori en PNG de 1.024 px; es van passar a
+  JPEG a `fotos/` (de 1,6 MB a uns 145 KB) i es van esborrar les PNG. Es baixen el dia que toca (`imatgeDia`, que per als
   dibuixats torna el `paisatge`) i el `sw.js` les desa; sense connexió i sense
   haver-la baixat, ho diu (`senseFoto`). El menú diu que és feta amb IA.
   **Per afegir-ne**, al final de `FOTOS`, que les que ja han sortit no canviïn
