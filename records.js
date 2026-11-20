@@ -34,7 +34,7 @@ const Records = (() => {
     'centipede.html':     ['2026-11-05T13:31Z', 'bolets de debò, un centpeus amb potes i un gnom'],
     'tetris.html':        ['2026-11-05T13:32Z', 'peces amb relleu'],
     'sopa.html':          ['2026-11-10T10:25Z', 'no et diu les paraules, i 22 temes nous: bolets, l\'espai, pobles d\'Osona...'],
-    'trencaclosques.html': ['2026-11-09T11:00Z', 'fotos de Taradell del 10 al 19 de novembre, i més peces a les fotos'],
+    'trencaclosques.html': ['2026-11-20T10:12Z', 'pots triar el fons fosc o clar (botó ◐), per veure millor les peces'],
     'impremta.html':      ['2026-11-10T21:50Z', '«acaba la partida» sempre a mà, i la del dia feta ja no es torna a començar sola'],
     'xifres.html':        ['2026-11-18T09:45Z', 'tic-tac els últims deu segons de cada ronda'],
     'gofra.html':         ['2026-11-18T12:50Z', 'si l\'acabes sense cobertura, s\'envia sola a la taula quan en tornes a tenir'],

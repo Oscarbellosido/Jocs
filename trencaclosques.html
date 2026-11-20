@@ -11,7 +11,9 @@ body{display:flex;align-items:flex-start;justify-content:center}
 #hud{flex:none;width:96%;display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;font-size:12px;gap:4px}
 #lider{flex:none;font-size:11px;color:#c9b28a;padding:2px 0;white-space:nowrap;overflow:hidden;max-width:96%}
 #estat{flex:none;width:94%;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#e8dcc4;padding:2px 0 4px;gap:8px;min-height:1.5em}
-#peces{white-space:nowrap;color:#b9a888}
+#peces{white-space:nowrap;color:#b9a888;margin-left:auto}
+#tema{flex:none;height:26px;font-size:11px;padding:0 8px;color:#c9b28a;background:#1d1810;border-color:#4a3e2a}
+body.clar #tema{color:#2a2016;background:#efe8da;border-color:#efe8da}
 #screen{flex:1 1 auto;min-height:0;width:100%;position:relative}
 #c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
 #controls{flex:none;display:flex;gap:8px;margin-top:6px;align-items:center;justify-content:center;width:94%}
@@ -37,7 +39,7 @@ small{flex:none;max-width:94%;font-size:11px;color:#aaa;text-align:center;paddin
 <div id="wrap">
   <div id="hud"><button id="back" onclick="location.href='index.html'">← Tornar</button><span>TEMPS <b id="score">0:00</b></span><span style="color:#ff0"><b id="best">—</b></span></div>
   <div id="lider"></div>
-  <div id="estat"><span id="que"></span><span id="peces"></span></div>
+  <div id="estat"><span id="que"></span><span id="peces"></span><button id="tema" aria-label="Fons fosc o clar">◐ CLAR</button></div>
   <div id="screen"><canvas id="c"></canvas></div>
   <div id="controls"><button id="model">👁 MODEL</button><button id="vores">VORES PRIMER</button><button id="menu">MENÚ</button></div>
   <div id="msg"></div>
@@ -666,32 +668,49 @@ function slotRect(k){k%=L.porPag;const col=k%L.perFila,fila=Math.floor(k/L.perFi
   const x0=L.fl+4+col*(L.slot+6)+((L.W-2*L.fl-8)-L.perFila*(L.slot+6)+6)/2;return [x0,L.sy+6+fila*(L.slot+6),L.slot,L.slot]}
 const pagines=()=>Math.max(1,Math.ceil(G.safata.length/L.porPag));
 
+// ===== EL FONS: FOSC O CLAR =====
+// L'usuari ho va demanar: amb el fons fosc costava de veure les peces (les
+// fosques, sobretot les de nit). Només canvia la taula, el marc i la safata;
+// la resta de la pantalla queda igual. Es recorda per a la propera vegada.
+const TEMES={
+  fosc:{taula:'#3a2a1c',marc:'#24190f',safata:'#24190f',vora:'#6a5a3a',fletxa:'#e8c27a',suau:'#9a8a6a',text:'#e8dcc4',boto:'◐ CLAR'},
+  clar:{taula:'#e9e3d6',marc:'#ffffff',safata:'#f6f2ea',vora:'#b3a283',fletxa:'#8a6420',suau:'#7a6a4e',text:'#3a2a1c',boto:'◐ FOSC'},
+};
+let tema='fosc';
+try{if(localStorage.getItem('trencaclosques-tema')==='clar')tema='clar'}catch(e){}
+function posaTema(t){
+  tema=t;document.body.classList.toggle('clar',t==='clar');
+  $('tema').textContent=TEMES[t].boto;brut=true;
+  try{localStorage.setItem('trencaclosques-tema',t)}catch(e){}
+}
+
 // ===== EL DIBUIX =====
 function dibuixa(){
   if(!brut)return;brut=false;
   const {W,H,dpr}=L;X.setTransform(dpr,0,0,dpr,0,0);
-  // la taula, de fusta
-  X.fillStyle='#3a2a1c';X.fillRect(0,0,W,H);
+  const T=TEMES[tema];
+  // la taula, de fusta (o clara)
+  X.fillStyle=T.taula;X.fillRect(0,0,W,H);
   if(!G||!IMG)return;
-  if(paused){X.fillStyle='#e8dcc4';X.font='bold 22px monospace';X.textAlign='center';X.fillText('PAUSA',W/2,H/2);return}
+  if(paused){X.fillStyle=T.text;X.font='bold 22px monospace';X.textAlign='center';X.fillText('PAUSA',W/2,H/2);return}
   // el marc
-  X.fillStyle='#24190f';X.fillRect(L.fx,L.fy,L.fw,L.fh);
-  X.strokeStyle='#6a5a3a';X.lineWidth=2;X.strokeRect(L.fx-1,L.fy-1,L.fw+2,L.fh+2);
+  X.fillStyle=T.marc;X.fillRect(L.fx,L.fy,L.fw,L.fh);
+  X.strokeStyle=T.vora;X.lineWidth=2;X.strokeRect(L.fx-1,L.fy-1,L.fw+2,L.fh+2);
   if(model||G.fi){X.globalAlpha=G.fi?1:.32;X.drawImage(IMG,L.fx,L.fy,L.fw,L.fh);X.globalAlpha=1}
   const {t,pw,ph}=L,pinta=(p,x,y,s=1)=>X.drawImage(p.cv,x-t*s,y-t*s,(pw+2*t)*s,(ph+2*t)*s);
   // les encaixades, i despres les que son per la taula (l'ultima tocada, a sobre)
   if(!G.fi)for(const p of G.peces)if(p.e==='l'){const [x,y]=casa(p);pinta(p,x,y)}
   for(const i of G.z){const p=G.peces[i];if(p.e==='t'&&p!==drag?.p){const [x,y]=posDe(p);pinta(p,x,y)}}
   // la safata
-  X.fillStyle='#24190f';X.fillRect(0,L.sy,W,L.sh);X.fillStyle='#6a5a3a';X.fillRect(0,L.sy,W,2);
+  X.fillStyle=T.safata;X.fillRect(0,L.sy,W,L.sh);X.fillStyle=T.vora;X.fillRect(0,L.sy,W,2);
   const pag=Math.min(L.pag,pagines()-1),tros=G.safata.slice(pag*L.porPag,(pag+1)*L.porPag);
   tros.forEach((i,k)=>{const p=G.peces[i],[x,y,s]=slotRect(k),esc=s/(Math.max(pw,ph)+2*t);
     pinta(p,x+(s-pw*esc)/2,y+(s-ph*esc)/2,esc)});
   // les fletxes, nomes si hi ha mes d'una pagina
-  if(pagines()>1){X.fillStyle='#e8c27a';X.font='bold 22px monospace';X.textAlign='center';X.textBaseline='middle';
+  if(pagines()>1){X.fillStyle=T.fletxa;X.font='bold 22px monospace';X.textAlign='center';X.textBaseline='middle';
     X.globalAlpha=pag>0?1:.25;X.fillText('◀',L.fl/2+2,L.sy+L.sh/2);X.globalAlpha=pag<pagines()-1?1:.25;X.fillText('▶',W-L.fl/2-2,L.sy+L.sh/2);X.globalAlpha=1;
-    X.font='10px monospace';X.fillStyle='#9a8a6a';X.fillText((pag+1)+'/'+pagines(),L.fl/2+2,L.sy+L.sh/2+20)}
-  if(!G.safata.length&&!G.fi){X.fillStyle='#776a52';X.font='12px monospace';X.textAlign='center';X.textBaseline='middle';X.fillText('la safata és buida',W/2,L.sy+L.sh/2)}
+    X.font='10px monospace';X.fillStyle=T.suau;X.fillText((pag+1)+'/'+pagines(),L.fl/2+2,L.sy+L.sh/2+20)}
+  if(!G.safata.length&&!G.fi){X.fillStyle=T.suau;X.font='12px monospace';X.textAlign='center';X.textBaseline='middle';X.fillText('la safata és buida',W/2,L.sy+L.sh/2)}
   // la que portes, a sobre de tot i amb ombra
   if(drag){X.save();X.shadowColor='rgba(0,0,0,.55)';X.shadowBlur=12;X.shadowOffsetY=6;pinta(drag.p,drag.x,drag.y);X.restore()}
   pintaEstat();
@@ -828,11 +847,13 @@ boto($('vores'),()=>{sndAgafa();if(!jugant())return;const vora=i=>{const p=G.pec
   if(!n){avisa('Ja no queden peces de vora');return}
   G.safata=[...G.safata.filter(vora),...G.safata.filter(i=>!vora(i))];L.pag=0;brut=true;desaPartida();avisa(n===1?'Queda 1 peça de vora':'Les '+n+' de vora, al davant')});
 boto($('menu'),()=>{sndDeixa();desaPartida();menu()});
+boto($('tema'),()=>{sndAgafa();posaTema(tema==='clar'?'fosc':'clar')});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{aInit();if(e.code==='KeyP'||e.key==='Escape'){posaPausa(!paused);return}});
 document.getElementById('msg').addEventListener('click',e=>{if(!e.target.closest('a')&&G&&G.fi)hideMsg()});
 
 mesura();
+posaTema(tema);
 refrescaLiders();
 menu();
 

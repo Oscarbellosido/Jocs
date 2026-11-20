@@ -1734,13 +1734,18 @@ Coses que no s'han de desfer sense entendre-les:
   taula, i `taulaHTML` i el marcador ho fan servir. Al Worker, `temps()`.
 - **El rellotge només corre mentre jugues**: no amb el menú obert, ni en
   pausa, ni si surts de l'app. Es desa cada dos segons i a cada peça.
+- **El fons es pot triar fosc o clar** (el botonet ◐ de dalt a la dreta, al
+  costat de les peces que portes). L'usuari ho va demanar: sobre el fons
+  fosc costava de veure les peces. Només canvia la taula, el marc i la
+  safata (`TEMES`); la resta de la pantalla queda igual. Es recorda
+  (`trencaclosques-tema`).
 
 El `scripts/prova-trencaclosques.mjs` mira que el paisatge surti igual per a
 tothom, que totes les peces encaixin amb les veïnes, i que es jugui amb el
 dit de debò (arrossegant): treure de la safata, encaixar, deixar per la
 taula i tornar a moure, tornar a la safata, les vores, el model, desar i
-continuar, acabar-lo (i que la taula digui el temps), i fer-ne un amb una
-foto, que no s'apunta enlloc.
+continuar, acabar-lo (i que la taula digui el temps), fer-ne un amb una
+foto, que no s'apunta enlloc, i el fons fosc o clar.
 
 ## El Temple: aventura per caselles
 

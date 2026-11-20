@@ -252,6 +252,32 @@ for (const [w, h] of [[320, 568], [360, 640], [390, 844]]) {
   await ctx.close();
 }
 
+// ---------- el fons fosc o clar ----------
+// L'usuari ho va demanar: amb el fons fosc costava de veure les peces.
+{
+  const { ctx, p } = await obre(320, 568);
+  await p.click('#m-dia'); await p.waitForTimeout(300);
+  // el color amb què es pinta la taula (la foto del dia embruta el llenç i no es pot llegir)
+  const color = () => p.evaluate(() => { const orig = X.fillRect; let c = null;
+    X.fillRect = function (...a) { if (c === null) c = X.fillStyle; return orig.apply(this, a); };
+    brut = true; dibuixa(); X.fillRect = orig; return [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16)); });
+  const fosc = await color();
+  const b0 = await p.locator('#tema').boundingBox();
+  await p.tap('#tema'); await p.waitForTimeout(150);
+  const clar = await color();
+  const r = await p.evaluate(() => ({ tema, desat: localStorage.getItem('trencaclosques-tema'), text: document.getElementById('tema').textContent }));
+  await p.reload(); await p.waitForTimeout(500);
+  await p.evaluate(() => document.querySelectorAll('body > div[style*="position: fixed"]').forEach(d => { if (d.id !== 'msg') d.remove(); }));
+  await p.click('#m-dia'); await p.waitForTimeout(300);
+  const tornat = await p.evaluate(() => tema), clar2 = await color();
+  await p.tap('#tema'); await p.waitForTimeout(150);
+  const fosc2 = await color();
+  diu(fosc[0] < 80 && clar[0] > 200 && r.tema === 'clar' && r.desat === 'clar' && r.text.includes('FOSC') && tornat === 'clar' && clar2[0] > 200 && fosc2[0] < 80
+    && b0 && b0.x >= 0 && b0.x + b0.width <= 320 && b0.height >= 24,
+    `el botó ◐ posa el fons clar (de rgb(${fosc}) a rgb(${clar})), es recorda en tornar-hi, i un altre toc el torna fosc; a 320 px hi cap`);
+  await ctx.close();
+}
+
 diu(!errors.length, 'cap error de JavaScript' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await b.close();
 console.log(malament ? `\n${malament} coses malament` : '\nTot bé');
