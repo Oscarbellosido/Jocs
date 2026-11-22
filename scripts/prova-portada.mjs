@@ -254,6 +254,26 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   be = recorda && cl.join() === ORDRE.map(x => x[0]).join() && mo.join() === MODERNS.map(x => x[0]).join() && !(await ids('#jugats a.btn')).length && !errors.length;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} es recorda en tornar-hi, i PER ANY ho torna tot al seu lloc` + (errors.length ? ' ' + errors[0] : ''));
+  // JOCS D'AVUI: a dalt els deu que compten per a la lliga, primer els que et
+  // queden (aquí la Gofra ja és feta i va l'última, amb un ✓), i la resta per any
+  await p.evaluate(() => { const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+    localStorage.setItem('gofra-' + d, JSON.stringify({ fi: { estrelles: 4 }, queden: 8, v: 2 })); });
+  await p.reload(); await p.waitForTimeout(300);
+  await p.click('#ordre button[data-ordre="avui"]');
+  const av = await ids('#avuijocs a.btn'), resta = (await ids('#classics a.btn')).length + (await ids('#moderns a.btn')).length;
+  const va = await p.evaluate(() => ({ fet: document.querySelector('#avuijocs a.btn[href="gofra.html"] .cops')?.textContent,
+    filera: new Set([...document.querySelectorAll('#ordre button')].map(b => Math.round(b.getBoundingClientRect().top))).size,
+    titol: document.getElementById('titol-avui').offsetParent !== null, seccions: [...document.querySelectorAll('h2.seccio')].every(h => h.offsetParent !== null),
+    scroll: document.documentElement.scrollWidth > innerWidth + 1 }));
+  await p.reload(); await p.waitForTimeout(300);
+  const recordaAvui = (await ids('#avuijocs a.btn')).length;
+  await p.click('#ordre button[data-ordre="any"]');
+  const tornen = (await ids('#avuijocs a.btn')).length === 0 && (await ids('#moderns a.btn')).join() === MODERNS.map(x => x[0]).join();
+  const esperatAvui = [...DIARIS.filter(j => j !== 'gofra_dia'), 'gofra_dia'].map(j => j.replace('_dia', '')).join();
+  be = av.join() === esperatAvui && va.fet === '✓' && resta === ORDRE.length + MODERNS.length - DIARIS.length && va.filera === 1 && va.titol && va.seccions
+    && !va.scroll && recordaAvui === DIARIS.length && tornen && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} JOCS D'AVUI: a dalt els ${av.length} de la lliga, primer els que et queden i la Gofra feta l'última amb ✓ (${av.slice(0, 3).join(', ')}... ${av.at(-1)}), la resta per any, els tres botons en una filera a 320 px, es recorda i PER ANY ho torna tot` + (errors.length ? ' ' + errors[0] : ''));
   await ctx.close();
 }
 

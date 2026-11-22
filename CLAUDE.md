@@ -171,7 +171,15 @@ JUGATS no fa passar davant (`.nou:not(.nova)`).
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un
 amb quantes vegades (12×), i els altres darrere per any. L'usuari ho va
-demanar. **Ho compta el joc mateix en obrir-se** (el `records.js`, a
+demanar. **I una tercera, JOCS D'AVUI** (`#avuijocs`, títol `#titol-avui`, que
+també va demanar l'usuari): a dalt, les fitxes dels deu que compten per a la
+lliga, primer els que encara et queden avui (en l'ordre de la llista d'ELS
+JOCS D'AVUI) i després els fets, amb un ✓; a sota, la resta al seu apartat
+de sempre. L'estat el llegeix de la llista de dalt, i es torna a ordenar
+quan aquesta canvia (un `MutationObserver`: quan el Worker diu que n'has fet
+alguna en un altre mòbil, o tornant enrere d'un joc). Amb tres botons, a
+380 px o menys «ORDRE:» no surt (`.etq`), que si no el tercer baixava de
+filera. **Ho compta el joc mateix en obrir-se** (el `records.js`, a
 `jocs-obertes`, per nom de fitxer i amb l'hora de l'última vegada), i no si
 el tornes a carregar o hi tornes enrere. Al principi ho comptava la portada en
 tocar la fitxa (`jocs-jugats`, que es segueix sumant), però l'usuari va fer
