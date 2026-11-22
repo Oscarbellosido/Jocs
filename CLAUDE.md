@@ -2347,6 +2347,12 @@ Per posar-lo en marxa (ho fa l'usuari, una sola vegada):
 
 ## El marcador de dalt: pausa i so
 
+**Cap joc no té el quadre de color en tocar.** El navegador del mòbil pinta
+un rectangle blavós a sobre del que toques, i de vegades s'hi queda: a
+L'Estel en sortia un de gros a sobre d'una punta de l'estel (ho va veure
+l'usuari). El `records.js` posa `-webkit-tap-highlight-color:transparent` a
+tot arreu en carregar-se, i així val per a tots els jocs i la portada.
+
 Tots dos botons els posa el `records.js` sol, a `#hud` (o `#h`, a l'Asteroids).
 Cap joc no els ha de fer.
 

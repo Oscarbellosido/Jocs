@@ -374,6 +374,17 @@ const Records = (() => {
     else hud.insertBefore(b, hud.firstChild);
   }
 
+  // ---- sense el quadre de color en tocar ----
+  // El navegador del mòbil pinta un quadre blavós a sobre del que toques, i
+  // de vegades s'hi queda: a L'Estel, tocant una punta, sortia un rectangle
+  // gros a sobre de l'estel (ho va veure l'usuari). Cap joc no el necessita:
+  // els botons ja canvien de color sols.
+  try {
+    const s = document.createElement('style');
+    s.textContent = '*{-webkit-tap-highlight-color:transparent}';
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) {}
+
   // ---- el fons fosc o clar ----
   // L'usuari ho va demanar al Trencaclosques (sobre el fons fosc costava de
   // veure les peces) i després per a tots els jocs del dia i de paraules.
