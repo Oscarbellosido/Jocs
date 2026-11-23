@@ -39,6 +39,7 @@ const Records = (() => {
     'xifres.html':        ['2026-11-18T09:45Z', 'tic-tac els últims deu segons de cada ronda'],
     'gofra.html':         ['2026-11-18T12:50Z', 'si l\'acabes sense cobertura, s\'envia sola a la taula quan en tornes a tenir'],
     'tresor.html':        ['2026-11-07T22:10Z', 'setze proves en lloc de deu, més difícils i amb només dues pistes'],
+    'abecedari.html':     ['2026-11-23T22:46Z', 'el femení també val: «infermera» per «infermer»'],
   };
   const DIES_NOVETAT = 14;
   // Torna [data, text] si el joc té una novetat que encara no has vist: no

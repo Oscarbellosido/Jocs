@@ -927,6 +927,14 @@ Coses que no s'han de desfer sense entendre-les:
   i no es poden copiar. Les respostes són paraules del diccionari, escrites com
   toca, que és com s'ensenyen al final; si n'hi ha una altra de bona, va
   darrere d'una barra (`zoo/zoològic`).
+- **El femení també val** (`FEMENI`): si la definició no diu si és home o
+  dona («Persona que cuida els malalts»), «infermera» és tan bona com
+  «infermer». L'usuari ho va trobar a faltar. Hi ha les persones, els
+  adjectius («Que no canvia d'idea»: tossut o tossuda) i uns quants animals
+  (gat, gata). No hi són els que la definició ja diu en masculí («Home que
+  regna», «Nen o noi»). Al final de la roda s'ensenya el masculí, i a la
+  difícil el compte de lletres és el del masculí. Si s'afegeix una persona
+  a les definicions, s'ha d'afegir aquí el seu femení.
 - **De fàcil a difícil dins de la roda**, que és el que va demanar l'usuari:
   de la A a la G paraules de tota la vida (abella, cadira, gat), de la H a la
   P una mica menys, i de la Q a la Z les difícils (quiròfan, sextant,

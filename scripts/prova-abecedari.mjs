@@ -59,6 +59,13 @@ diu(dades.comenca && dades.conte, 'diu «COMENÇA PER» o «CONTÉ LA» segons l
 diu(await p.evaluate(() => esBona('canco', { resp: 'cançó', alts: [] }) && esBona('INTELLIGENT', { resp: 'intel·ligent', alts: [] }) &&
   esBona('zigzag', POOLS.Z.find(q => q.resp === 'ziga-zaga')) && !esBona('canso', { resp: 'cançó', alts: [] })),
   'no cal posar accents ni la ç ni la l·l: «canco» val per «cançó»');
+diu(await p.evaluate(() => {
+  const totes = [...ORDRE.flatMap(L => POOLS[L]), ...ORDRE.flatMap(L => POOLS_D[L])], resp = new Set(totes.map(q => pla(q.resp)));
+  const q = r => totes.find(x => x.resp === r);
+  return Object.keys(FEMENI).every(m => resp.has(m)) && Object.values(FEMENI).every(f => !resp.has(pla(f))) &&
+    esBona('infermera', q('infermer')) && esBona('metgessa', q('metge')) && esBona('TOSSUDA', q('tossut')) &&
+    esBona('infermer', q('infermer')) && !esBona('reina', q('rei')) && !esBona('infermeres', q('infermer'));
+}), 'el femení també val («infermera» per «infermer»), però no quan la definició diu home («reina» per «rei»)');
 
 // ---------- 2. la roda del dia ----------
 const roda = await p.evaluate(() => {

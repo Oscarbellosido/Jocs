@@ -1513,7 +1513,27 @@ const POOLS=llegeixPools(DEFINICIONS),POOLS_D=llegeixPools(DIFICILS);
 const pla=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
 // a la dificil es diu quantes lletres te: la l·l en son dues i la ç, una
 const lletresDe=p=>pla(p.resp).length;
-const esBona=(escrit,p)=>[p.resp,...p.alts].some(r=>pla(r)===pla(escrit));
+// El femeni també val quan la definicio no diu si és home o dona: «Persona
+// que cuida els malalts» és infermer i també infermera (l'usuari ho va
+// trobar a faltar). No hi són els que la definició ja diu en masculí («Home
+// que regna», «Nen o noi»), ni els que no canvien (astronauta, jove).
+const FEMENI=Object.fromEntries(`amic amiga,alcalde alcaldessa,avorrit avorrida,bomber bombera,cuiner cuinera,
+forçut forçuda,vençut vençuda,dolent dolenta,dur dura,fosc fosca,enginyer enginyera,gegant geganta,heroi heroïna,
+infermer infermera,jutge jutgessa,jugador jugadora,jubilat jubilada,jueu jueva,joier joiera,jardiner jardinera,
+lladre lladra,lleuger lleugera,mestre mestra,metge metgessa,nàufrag nàufraga,necessari necessària,notari notària,
+nan nana,pallasso pallassa,pastor pastora,quec queca,quiet quieta,quixotesc quixotesca,regidor regidora,
+sacerdot sacerdotessa,senzill senzilla,usurer usurera,usuari usuària,vampir vampira,vanitós vanitosa,veí veïna,
+veterinari veterinària,venedor venedora,xafarder xafardera,xamós xamosa,xiroi xiroia,ronyós ronyosa,
+manyac manyaga,ufanós ufanosa,zelós zelosa,gat gata,gos gossa,lleó lleona,conill conilla,elefant elefanta,
+llop lloba,tigre tigressa,ruc ruca,camell camella,ànec ànega,ós óssa,
+avantpassat avantpassada,dissortat dissortada,encisador encisadora,gasiu gasiva,hortolà hortolana,
+híbrid híbrida,ingenu ingènua,iracund iracunda,ingrat ingrata,impertèrrit impertèrrita,indòmit indòmita,
+incaut incauta,juganer juganera,jornaler jornalera,matusser matussera,poruc poruga,picapedrer picapedrera,
+quintà quintana,sorneguer sorneguera,sorrut sorruda,serraller serrallera,saurí saurina,sobtat sobtada,
+tossut tossuda,vilatà vilatana,ranci rància,vitalici vitalícia,orat orada,cofoi cofoia,astorat astorada,
+feixuc feixuga,nimi nímia,quirúrgic quirúrgica,eixorc eixorca,llòbrec llòbrega,nítid nítida,oblic oblíqua,
+ubèrrim ubèrrima,untuós untuosa,virolat virolada`.split(',').map(p=>p.trim().split(' ')).map(([m,f])=>[pla(m),f]));
+const esBona=(escrit,p)=>[p.resp,...p.alts,FEMENI[pla(p.resp)]||''].some(r=>r&&pla(r)===pla(escrit));
 // «Comença per la A» o, si no hi comença, «Conté la Ç»
 const comencaPer=(L,p)=>L!=='Ç'&&pla(p.resp)[0]===pla(L);
 
