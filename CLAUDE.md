@@ -167,6 +167,14 @@ l'ordinador no l'havia obert mai. Ara surt a tothom que no l'ha obert des del
 canvi. A MÉS
 JUGATS no fa passar davant (`.nou:not(.nova)`).
 
+**Qui hi entra per primer cop no veu cap d'aquests avisos.** L'usuari ho va
+veure: obrint la col·lecció en un aparell nou, a dalt sortia una paret de
+JOC NOU i NOVA VERSIÓ, quan per a ell tot és nou. El `records.js` apunta
+quan hi vas entrar per primer cop (`jocs-primer`) i només avisa dels jocs
+posats i dels canvis fets després. Qui ja hi jugava d'abans (té
+`jocs-obertes`, `jocs-aparell`, inicials o algun rècord) compta com d'abans
+de tot (0), i ho segueix veient tot com fins ara.
+
 **L'ordre es pot triar** (`#ordre`, a sota d'ELS JOCS D'AVUI): **PER ANY**,
 que és el museu de sempre amb els dos apartats, o **MÉS JUGATS**, una sola
 graella (`#jugats`, títol `h2.jugats`) amb els que més obres primer, cada un

@@ -375,14 +375,17 @@ try{
 // Telegram també ho diu al grup.
 function pintaNous(){
   const DIES=21,MAX_NOVES=3,avui=Date.now(),caixa=document.getElementById('novetats');
-  let oberts={},vells={};
+  // qui hi entra per primer cop no veu cap joc com a NOU: només els que surten
+  // després (jocs-primer, el posa el records.js)
+  let oberts={},vells={},primer=0;
+  try{primer=+localStorage.getItem('jocs-primer')||0}catch(e){}
   try{oberts=JSON.parse(localStorage.getItem('jocs-obertes')||'{}')}catch(e){}
   try{vells=JSON.parse(localStorage.getItem('jocs-jugats')||'{}')}catch(e){}
   caixa.innerHTML='';
   const noves=[];
   document.querySelectorAll('a.btn').forEach(a=>{
     const href=a.getAttribute('href'),id=a.querySelector('.rec').dataset.joc,nom=a.querySelector('span').textContent;
-    const dn=(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5,nou=!!a.dataset.nou&&dn>=0&&dn<DIES&&!oberts[href]&&!vells[id]&&!vells[href];
+    const dn=(avui-Date.parse(a.dataset.nou+'T00:00:00'))/864e5,nou=!!a.dataset.nou&&dn>=0&&dn<DIES&&Date.parse(a.dataset.nou+'T00:00:00')>=primer&&!oberts[href]&&!vells[id]&&!vells[href];
     // NOVA VERSIÓ: si ja hi havies jugat abans del canvi i encara no l'has tornat a obrir.
     let nv=null;
     try{nv=!nou&&typeof Records!=='undefined'&&Records.novetat?Records.novetat(href,oberts[href]&&oberts[href].t,avui):null}catch(e){}

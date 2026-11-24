@@ -288,6 +288,15 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   await p.clock.setFixedTime(new Date('2026-11-06T12:00:00'));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
   await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(200);
+  // qui hi entra per primer cop en aquest aparell no veu cap avís: tot li és nou
+  const primera = await p.evaluate(() => ({ primer: +localStorage.getItem('jocs-primer'), avis: document.getElementById('novetats').hidden,
+    retols: document.querySelectorAll('a.btn .nou').length }));
+  let be0 = primera.primer > 0 && primera.avis && primera.retols === 0;
+  if (!be0) malament++;
+  console.log(`${be0 ? '✓' : '✗'} el primer cop que s'hi entra en un aparell no surt cap JOC NOU ni NOVA VERSIÓ (${primera.retols} rètols)`);
+  // a partir d'aquí, algú que ja hi jugava d'abans
+  await p.evaluate(() => localStorage.setItem('jocs-primer', String(Date.parse('2026-10-01T00:00:00'))));
+  await p.reload(); await p.waitForTimeout(200);
   const mira = () => p.evaluate(() => ({
     nous: [...document.querySelectorAll('a.btn .nou:not(.nova)')].map(r => r.closest('a').getAttribute('href')).sort().join(),
     avis: document.getElementById('novetats').hidden ? '' : [...document.querySelectorAll('#novetats a.nou-joc:not(.nova)')].map(a => a.getAttribute('href')).sort().join(),
@@ -379,6 +388,15 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   be = toast && /^NOVA VERSIÓ/.test(toast.t) && toast.t.toLowerCase().includes(X.text.toLowerCase()) && toast.cap && !toast2 && !m.noves.includes(X.f) && !m.avis.includes(X.f) && !errors.length;
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} en obrir-lo, el rètol diu què ha canviat, i només la primera vegada (${toast && toast.t})` + (errors.length ? ' ' + errors[0] : ''));
+  // un aparell nou, el mateix dia: ni a la portada ni en obrir el joc
+  await p.evaluate(() => localStorage.clear());
+  await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(200);
+  const nou = await p.evaluate(() => ({ avis: document.getElementById('novetats').hidden, retols: document.querySelectorAll('a.btn .nou').length }));
+  await p.goto('file://' + resolve(ARREL, actius[1].f)); await p.waitForTimeout(600);
+  const toastNou = await p.evaluate(() => !!document.getElementById('nova-versio'));
+  be = nou.avis && nou.retols === 0 && !toastNou;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} en un aparell nou no diu NOVA VERSIÓ enlloc, ni a la portada ni dins del joc`);
   // quinze dies després de la novetat més recent
   await p.clock.setFixedTime(new Date(NOV[0].d + 15 * 864e5));
   await p.reload(); await p.waitForTimeout(200);

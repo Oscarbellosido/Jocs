@@ -42,11 +42,29 @@ const Records = (() => {
     'abecedari.html':     ['2026-11-23T22:46Z', 'el femení també val: «infermera» per «infermer»'],
   };
   const DIES_NOVETAT = 14;
+  // ---- qui hi entra per primer cop ----
+  // Qui obre la col·lecció per primer cop en un aparell no ha de veure JOC
+  // NOU ni NOVA VERSIÓ: per a ell tot és nou, i la llista de dalt era una
+  // paret d'avisos (ho va veure l'usuari). Es recorda quan hi vas entrar
+  // (jocs-primer) i només s'avisa del que ha sortit o canviat després. Qui
+  // ja hi havia jugat abans que això existís (té jocs-obertes, jocs-aparell,
+  // inicials o algun rècord desat) compta com d'abans de tot (0).
+  let primer = 0;
+  try {
+    const v = localStorage.getItem('jocs-primer');
+    if (v !== null) primer = +v || 0;
+    else {
+      const vell = Object.keys(localStorage).some(k => /^(jocs-obertes|jocs-jugats|jocs-aparell|jugador|best_)/.test(k));
+      primer = vell ? 0 : Date.now();
+      localStorage.setItem('jocs-primer', String(primer));
+    }
+  } catch (e) { }
   // Torna [data, text] si el joc té una novetat que encara no has vist: no
   // l'has obert des del canvi ('ultima' és l'última vegada que el vas obrir).
   function novetat(f, ultima, ara) {
     const n = NOVETATS[f]; if (!n) return null;
     const d = Date.parse(n[0]); ara = ara || Date.now();
+    ultima = Math.max(ultima || 0, primer);
     if (!(ara - d < DIES_NOVETAT * 864e5) || ara < d || (ultima && ultima >= d)) return null;
     return n;
   }
@@ -694,7 +712,7 @@ const Records = (() => {
   }
 
   return {
-    novetats: NOVETATS, novetat, local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial, tema,
+    novetats: NOVETATS, novetat, get primer() { return primer; }, local, desaLocal, nom, marcador, migra, panell, peuFinal, pantallaInicial, tema,
     get clar() { return temaClar; },
 
     // Els 10 millors de tots els jocs de cop, per a la pagina principal.
