@@ -1,5 +1,14 @@
 import worker from '../worker/records.js';
 
+// Les proves de la lliga de sempre fan servir el dia d'avui. Del 30 de
+// novembre al 27 de desembre del 2026 hi ha el concurs de Nadal i la lliga
+// descansa: si es passen aquells dies, es fan com si fos el 24 de novembre
+// (el concurs es prova a part, més avall, posant el rellotge a cada dia).
+const ARA = Date.now;
+{ const d = new Date().toISOString().slice(0, 10);
+  if (d >= '2026-11-30' && d <= '2026-12-27') { const des = Date.parse('2026-11-24T12:00:00Z') - ARA(); Date.now = () => ARA() + des; } }
+const RELLOTGE = Date.now;
+
 // KV de mentida, per provar sense desplegar res
 const store = new Map(), meta = new Map();
 let escriptures = 0;
@@ -570,6 +579,89 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   ok(/1\.\s+Els Blocs\s+4/.test(t) && /Gofra\s+2/.test(t) && /Sopa de Lletres\s+1/.test(t) && !/index/.test(t), '/visites diu els més jugats per quanta gent hi ha entrat, i la portada no hi surt');
   store.delete('telegram:xat');
   for (const k of [...store.keys()]) if (k.startsWith('visita:')) { store.delete(k); meta.delete(k); }
+}
+
+// ===== EL CONCURS DE NADAL =====
+{
+  const posa = dia => { Date.now = () => Date.parse(dia + 'T11:00:00Z'); };
+  const net = () => { for (const k of [...store.keys()]) if (/^(joc|jugat):\w+_dia:|^nadal:|^telegram:anunciat:|^lliga:/.test(k)) store.delete(k); };
+  const posaTaula = (joc, dia, noms) => store.set('joc:' + joc + ':' + dia, JSON.stringify(noms.map((n, i) => ({ n, p: 100 - i, t: i }))));
+  const nadals = () => missatges().filter(x => /🎄/.test(x.cos.text));
+  const tg = async t => { enviats.length = 0; await crida(envTg, 'POST', '/telegram', msg(t), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+    return (missatges()[0] || { cos: {} }).cos.text || ''; };
+  net();
+  store.set('telegram:xat', '-1001');
+  store.set('lliga:palmares', JSON.stringify([{ s: '2026-11-23', podi: [{ n: 'GUA', p: 30 }] }]));
+
+  // el dilluns 30 de novembre: la setmana no té lliga, i demà comença el concurs
+  posa('2026-11-30');
+  r = await crida(envTg, 'GET', '/lliga');
+  ok(r.data.mode === 'previ' && r.data.classificacio.length === 0 && 'poble_dia' in r.data.avui && Object.keys(r.data.avui).length === 10,
+     'el dilluns 30 de novembre no hi ha lliga: la portada diu que demà comença el concurs de Nadal (i la llista té els 10 jocs)');
+
+  // durant el concurs: només els sis jocs, sumats de l'1 al dia d'avui
+  posaTaula('gofra_dia', '2026-12-01', ['BOB', 'ANA']);
+  posaTaula('poble_dia', '2026-12-01', ['ANA']);              // no és del concurs
+  posaTaula('estel_dia', '2026-12-02', ['ANA', 'BOB']);
+  store.set('jugat:sopa_dia:2026-12-02', JSON.stringify(['ZZZ']));
+  posaTaula('colles_dia', '2026-12-10', ['BOB', 'ANA', 'CAR']);
+  posa('2026-12-10');
+  r = await crida(envTg, 'GET', '/lliga?nom=CAR');
+  const pt = n => (r.data.classificacio.find(e => e.n === n) || {}).p;
+  ok(r.data.mode === 'nadal' && r.data.nadal.dia === 10 && r.data.nadal.dies === 24 && pt('BOB') === 28 && pt('ANA') === 26 && pt('CAR') === 6 && pt('ZZZ') === 1,
+     `del 1 al 24 de desembre, la classificació és la del concurs de Nadal (dia ${r.data.nadal.dia}): BOB ${pt('BOB')}, ANA ${pt('ANA')}, CAR ${pt('CAR')}, ZZZ ${pt('ZZZ')}; el Poble del Dia no hi compta`);
+  ok(Object.keys(r.data.avui).sort().join() === 'abecedari_dia,colles_dia,estel_dia,gofra_dia,penjat_dia,sopa_dia' && r.data.fets.join() === 'colles_dia',
+     'i a la llista d\'avui només hi ha els sis jocs del concurs');
+  const cau = JSON.parse(store.get('nadal:2026:suma') || '{}');
+  posaTaula('penjat_dia', '2026-12-09', ['ZZZ']);             // una d'ahir, enviada tard
+  r = await crida(envTg, 'GET', '/lliga');
+  ok(cau.fins === '2026-12-07' && pt('ZZZ') === 11 && pt('BOB') === 28,
+     'els dies que ja no poden canviar es desen sumats (fins al 7), i els tres últims es tornen a llegir (una d\'ahir enviada tard compta)');
+  let t = await tg('/nadal');
+  ok(/concurs de Nadal<\/b> \(dia 10 de 24\)/.test(t) && /1\.\s+BOB\s+28 punts/.test(t), '/nadal al grup diu com va el concurs');
+  t = await tg('/lliga');
+  ok(/concurs de Nadal/.test(t) && !/lliga de la setmana<\/b>/.test(t), 'i /lliga, mentre dura, també ensenya el concurs');
+
+  // les setmanes del concurs no tenen lliga: ni medalles ni anunci del dilluns
+  posa('2026-12-07');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  let pal = JSON.parse(store.get('lliga:palmares'));
+  ok(pal.length === 2 && pal[1].s === '2026-11-30' && pal[1].pausa && !pal[1].podi.length && !missatges().some(x => /lliga de la setmana/.test(x.cos.text)),
+     'la setmana del 30 de novembre es tanca sense podi, i el dilluns el bot no anuncia cap lliga');
+
+  // el dia 25: el concurs es tanca, el bot anuncia qui l'ha guanyat (un sol cop) i la copa de Nadal va a les medalles
+  posaTaula('abecedari_dia', '2026-12-24', ['BOB', 'ANA']);
+  posa('2026-12-25');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  const fin = JSON.parse(store.get('nadal:2026:final') || '{}'), an = nadals()[0];
+  ok(fin.top && fin.top[0].n === 'BOB' && fin.top[0].p === 38 && fin.top[1].n === 'ANA' && fin.top[1].p === 34,
+     `el dia 25 el concurs es tanca per sempre: BOB ${fin.top && fin.top[0].p}, ANA ${fin.top && fin.top[1].p}`);
+  ok(an && /concurs de Nadal<\/b> l'ha guanyat <b>BOB<\/b> amb 38 punts \(3 partides guanyades\)/.test(an.cos.text) && /🥈 <b>ANA<\/b>/.test(an.cos.text) && /dilluns 28/.test(an.cos.text),
+     'i el bot anuncia al grup qui l\'ha guanyat, amb el podi');
+  enviats.length = 0;
+  await crida(envTg, 'GET', '/records/tetris');
+  ok(!nadals().length, 'i només un cop');
+  posaTaula('gofra_dia', '2026-12-24', ['CAR']);              // enviada tard: el concurs ja és tancat
+  r = await crida(envTg, 'GET', '/lliga');
+  ok(r.data.mode === 'final' && r.data.classificacio[0].n === 'BOB' && !r.data.classificacio.some(e => e.n === 'CAR' && e.p > 6) && Object.keys(r.data.avui).length === 10 &&
+     r.data.palmares[0].n === 'BOB' && r.data.palmares[0].nadals === 1,
+     'del 25 al 27, la portada ensenya la classificació final (que ja no canvia), i BOB té la copa de Nadal, a davant de tot de les medalles');
+
+  // el dilluns 28 torna la lliga de la setmana
+  posa('2026-12-28');
+  enviats.length = 0;
+  for (let i = 0; i < 4; i++) await crida(envTg, 'GET', '/records/tetris');
+  pal = JSON.parse(store.get('lliga:palmares'));
+  r = await crida(envTg, 'GET', '/lliga');
+  ok(!r.data.mode && r.data.setmana === '2026-12-28' && pal.length === 5 && pal.slice(1).every(e => e.pausa) && !missatges().some(x => /lliga de la setmana/.test(x.cos.text)),
+     'el dilluns 28 torna la lliga de la setmana, i les quatre setmanes del concurs no tenen podi');
+  t = await tg('/lliga');
+  ok(/lliga (de la|d'aquesta) setmana/.test(t) && /BOB\s+🎄1/.test(t), 'i a les medalles de sempre hi surt la copa de Nadal 🎄');
+  Date.now = RELLOTGE;
+  net();
+  store.delete('telegram:xat');
 }
 
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix

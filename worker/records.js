@@ -412,18 +412,18 @@ const NOM_DIARI = joc => (ANUNCIA_DIARI[joc] || [joc])[0];
 function sumaDies(dia, n) { return new Date(Date.parse(dia + 'T12:00:00Z') + n * 86400e3).toISOString().slice(0, 10); }
 // el dilluns de la setmana d'aquest dia
 function dillunsDe(dia) { return sumaDies(dia, -((new Date(dia + 'T12:00:00Z').getUTCDay() + 6) % 7)); }
-async function lliga(env, dilluns, fins, nom) {
-  const dies = [];
-  for (let d = dilluns; d <= fins; d = sumaDies(d, 1)) dies.push(d);
-  const jocs = LLIGA, feina = [];
-  for (const dia of dies) for (const joc of jocs) feina.push((async () => {
-    const clau = joc + ':' + dia;
-    const [llista, jugatRaw] = await Promise.all([llegir(env, clau), env.RECORDS.get('jugat:' + clau)]);
-    let jugat = [];
-    try { jugat = JSON.parse(jugatRaw || '[]'); } catch {}
-    return { joc, dia, llista, jugat };
-  })());
-  const taules = await Promise.all(feina), punts = {};
+// una partida del dia d'un dia: la taula (els 10 millors) i qui hi ha jugat
+async function llegeixDia(env, joc, dia) {
+  const clau = joc + ':' + dia;
+  const [llista, jugatRaw] = await Promise.all([llegir(env, clau), env.RECORDS.get('jugat:' + clau)]);
+  let jugat = [];
+  try { jugat = JSON.parse(jugatRaw || '[]'); } catch {}
+  return { joc, dia, llista, jugat };
+}
+const llegeixDies = (env, dies, jocs) => Promise.all(dies.flatMap(dia => jocs.map(joc => llegeixDia(env, joc, dia))));
+function diesEntre(des, fins) { const d = []; for (let x = des; x <= fins; x = sumaDies(x, 1)) d.push(x); return d; }
+// els punts de lliga de cadascú: 10 al primer de cada partida, 8 al segon...
+function suma(taules, punts = {}) {
   const apunta = (n, p, primer) => {
     const e = punts[n] || (punts[n] = { n, p: 0, partides: 0, primers: 0 });
     e.p += p; e.partides++; if (primer) e.primers++;
@@ -432,15 +432,106 @@ async function lliga(env, dilluns, fins, nom) {
     llista.forEach((e, i) => apunta(e.n, PUNTS_LLIGA[i] || 1, i === 0));
     for (const n of jugat) if (!llista.some(e => e.n === n)) apunta(n, 1, false);
   }
-  const classificacio = Object.values(punts).sort((a, b) => b.p - a.p || b.primers - a.primers || a.n.localeCompare(b.n));
-  const avui = {};
-  for (const { joc, dia, llista } of taules) if (dia === fins) avui[joc] = llista[0] || null;
-  const r = { setmana: dilluns, fins, classificacio, avui };
-  // Les partides d'avui que unes inicials ja han fet, sigui des d'on sigui:
-  // la portada de l'ordinador deia PER FER a una Gofra feta al mobil.
-  if (nom) r.fets = taules.filter(({ dia, llista, jugat }) => dia === fins &&
-    (jugat.includes(nom) || llista.some(e => e.n === nom))).map(e => e.joc);
+  return punts;
+}
+const ordena = punts => Object.values(punts).sort((a, b) => b.p - a.p || b.primers - a.primers || a.n.localeCompare(b.n));
+// De les partides d'avui: qui guanya cadascuna (per a la portada) i, amb unes
+// inicials, quines ja han fet, sigui des d'on sigui: la portada de
+// l'ordinador deia PER FER a una Gofra feta al mobil.
+function estatAvui(taules, nom) {
+  const r = { avui: {} };
+  for (const { joc, llista } of taules) r.avui[joc] = llista[0] || null;
+  if (nom) r.fets = taules.filter(({ llista, jugat }) => jugat.includes(nom) || llista.some(e => e.n === nom)).map(e => e.joc);
   return r;
+}
+async function lliga(env, dilluns, fins, nom) {
+  const taules = await llegeixDies(env, diesEntre(dilluns, fins), LLIGA);
+  return { setmana: dilluns, fins, classificacio: ordena(suma(taules)), ...estatAvui(taules.filter(t => t.dia === fins), nom) };
+}
+
+// ===== EL CONCURS DE NADAL =====
+// L'usuari el va voler de l'1 al 24 de desembre, amb sis jocs de paraules, i
+// puntuat com la lliga: cada dia, a cada joc, el primer 10 punts, el segon 8...
+// i 1 per haver-hi jugat. Mentre dura, la lliga de la setmana s'atura: el
+// dilluns 30 de novembre (una setmana d'un dia) i del 25 al 27 de desembre
+// (de divendres a diumenge) no compten per a res, i la lliga torna el dilluns
+// 28. Tot va sol per la data: no cal tocar res el dia 1 ni el dia 25.
+// El dia 25, la primera petició tanca el concurs (nadal:<any>:final, per
+// sempre), el bot n'anuncia el podi i el guanyador s'emporta la copa de
+// Nadal a les medalles. Per a l'any que ve, canviar les dates.
+const NADAL = { any: 2026, des: '2026-12-01', fins: '2026-12-24',
+  jocs: ['gofra_dia', 'abecedari_dia', 'colles_dia', 'sopa_dia', 'penjat_dia', 'estel_dia'] };
+const PAUSA_LLIGA = { des: '2026-11-30', fins: '2026-12-27' };
+const enPausa = dia => dia >= PAUSA_LLIGA.des && dia <= PAUSA_LLIGA.fins;
+// 'lliga' (com sempre), 'previ' (el 30 de novembre), 'nadal' (de l'1 al 24) o 'final' (del 25 al 27)
+const modeDe = dia => !enPausa(dia) ? 'lliga' : dia < NADAL.des ? 'previ' : dia <= NADAL.fins ? 'nadal' : 'final';
+const CLAU_NADAL = 'nadal:' + NADAL.any;
+async function llegeixFinal(env) {
+  try { const f = JSON.parse(await env.RECORDS.get(CLAU_NADAL + ':final') || 'null'); return f && Array.isArray(f.top) ? f : null; } catch { return null; }
+}
+// La classificació fins a un dia. Són fins a 24 dies × 6 jocs × 2 lectures, i
+// la portada la demana cada vegada que s'obre: per això els dies que ja no
+// poden canviar (el Worker accepta les del dia fins a 60 hores després) es
+// desen sumats un cop al dia (nadal:<any>:suma), i només es llegeixen els
+// tres últims.
+async function classificaNadal(env, fins, avui) {
+  const tall = sumaDies(avui, -3) < fins ? sumaDies(avui, -3) : fins;
+  let punts = {};
+  if (tall >= NADAL.des) {
+    let cau = null;
+    try { cau = JSON.parse(await env.RECORDS.get(CLAU_NADAL + ':suma') || 'null'); } catch {}
+    if (cau && cau.fins === tall && cau.punts) punts = cau.punts;
+    else {
+      punts = suma(await llegeixDies(env, diesEntre(NADAL.des, tall), NADAL.jocs));
+      await env.RECORDS.put(CLAU_NADAL + ':suma', JSON.stringify({ fins: tall, punts }));
+    }
+  }
+  const des = tall >= NADAL.des ? sumaDies(tall, 1) : NADAL.des;
+  return ordena(suma(await llegeixDies(env, diesEntre(des, fins), NADAL.jocs), JSON.parse(JSON.stringify(punts))));
+}
+// el dia 25 (o el primer dia que algú hi entri després), es tanca per sempre
+async function tancaNadal(env) {
+  const avui = diaMadrid(0);
+  if (avui <= NADAL.fins || await env.RECORDS.get(CLAU_NADAL + ':final')) return;
+  const c = ordena(suma(await llegeixDies(env, diesEntre(NADAL.des, NADAL.fins), NADAL.jocs)));
+  await env.RECORDS.put(CLAU_NADAL + ':final', JSON.stringify({ any: NADAL.any, top: c.slice(0, 10) }));
+}
+// el que torna GET /lliga mentre dura la pausa
+async function lligaNadal(env, avui, nom) {
+  const mode = modeDe(avui);
+  const jocsAvui = mode === 'nadal' ? NADAL.jocs : LLIGA;
+  const r = { mode, nadal: { des: NADAL.des, fins: NADAL.fins, dies: diesEntre(NADAL.des, NADAL.fins).length, torna: sumaDies(PAUSA_LLIGA.fins, 1) },
+    ...estatAvui(await llegeixDies(env, [avui], jocsAvui), nom) };
+  if (mode === 'previ') r.classificacio = [];
+  else if (mode === 'nadal') { r.nadal.dia = diesEntre(NADAL.des, avui).length; r.classificacio = await classificaNadal(env, avui, avui); }
+  else { const f = await llegeixFinal(env); r.classificacio = f ? f.top : await classificaNadal(env, NADAL.fins, avui); }
+  return r;
+}
+function textNadal(mode, c, dia) {
+  const llista = c.slice(0, 10).map((e, i) => (i + 1 + '.').padEnd(4) + esc(e.n) + '  ' + e.p + ' punts').join('\n');
+  const regla = '\n\nCada dia, a cada joc (la Gofra, l\'Abecedari, les Quatre Colles, la Sopa de Lletres, el Penjat i l\'Estel): el primer 10 punts, el segon 8, el tercer 6... i 1 per haver-hi jugat.';
+  if (mode === 'previ') return '🎄 Demà comença el <b>concurs de Nadal</b>, de l\'1 al 24 de desembre.' + regla + '\n\nMentre dura, la lliga de la setmana descansa.';
+  if (mode === 'nadal') return '🎄 <b>El concurs de Nadal</b> (dia ' + dia + ' de 24)\n' + (c.length ? llista : 'Encara no hi ha jugat ningú.') + regla;
+  return '🎄 <b>El concurs de Nadal</b>: la classificació final\n' + (c.length ? llista : 'No hi va jugar ningú.') +
+    '\n\nLa lliga de la setmana torna el dilluns ' + Number(sumaDies(PAUSA_LLIGA.fins, 1).slice(8)) + '.';
+}
+async function anunciaNadal(env) {
+  if (!env.TELEGRAM_TOKEN) return;
+  const avui = diaMadrid(0);
+  if (avui <= NADAL.fins || avui > sumaDies(NADAL.fins, 7)) return;
+  const xat = await env.RECORDS.get('telegram:xat');
+  if (!xat) return;
+  const f = await llegeixFinal(env);
+  if (!f || !f.top.length) return;
+  if (!await reclama(env, 'telegram:anunciat:nadal', String(NADAL.any))) return;
+  const g = f.top[0];
+  const podi = f.top.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + e.p + ' punts').join('\n');
+  const text = '🎄 El <b>concurs de Nadal</b> l\'ha guanyat <b>' + esc(g.n) + '</b> amb ' + g.p + ' punts' +
+    (g.primers ? ' (' + g.primers + (g.primers === 1 ? ' partida guanyada' : ' partides guanyades') + ')' : '') + '! 🏆\n\n' + podi +
+    '\n\nMoltes gràcies a tothom per jugar-hi, i bon Nadal! La copa de Nadal 🎄 queda apuntada a les medalles de sempre. ' +
+    'La lliga de la setmana torna el dilluns ' + Number(sumaDies(PAUSA_LLIGA.fins, 1).slice(8)) + '.';
+  await telegram(env, 'sendMessage', { chat_id: xat, text, parse_mode: 'HTML', disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[{ text: '🎮 Els jocs', url: WEB }]] } });
 }
 // ===== LES MEDALLES DE SEMPRE =====
 // Cada dilluns es tanca la setmana passada i el podi s'apunta per sempre al
@@ -464,33 +555,39 @@ async function tancaSetmana(env) {
   const ultima = llista.length ? llista[llista.length - 1].s : sumaDies(PRIMERA_SETMANA, -7);
   if (ultima >= passada) return;
   const s = sumaDies(ultima, 7);
-  const l = await lliga(env, s, sumaDies(s, 6));
-  llista.push({ s, podi: l.classificacio.slice(0, 3).map(e => ({ n: e.n, p: e.p })) });
+  // les setmanes del concurs de Nadal no tenen lliga: es tanquen sense podi
+  if (enPausa(s)) llista.push({ s, podi: [], pausa: true });
+  else {
+    const l = await lliga(env, s, sumaDies(s, 6));
+    llista.push({ s, podi: l.classificacio.slice(0, 3).map(e => ({ n: e.n, p: e.p })) });
+  }
   await env.RECORDS.put('lliga:palmares', JSON.stringify(llista));
 }
 // el palmares de cadascu: copes (primer), plates i bronzes
-function medalles(llista) {
+// i, a davant de tot, les copes de Nadal (nadals: els concursos tancats)
+function medalles(llista, nadals = []) {
   const m = {};
-  for (const { podi } of llista) (podi || []).forEach((e, i) => {
-    const t = m[e.n] || (m[e.n] = { n: e.n, copes: 0, plates: 0, bronzes: 0 });
-    t[['copes', 'plates', 'bronzes'][i]]++;
-  });
-  return Object.values(m).sort((a, b) => b.copes - a.copes || b.plates - a.plates || b.bronzes - a.bronzes || a.n.localeCompare(b.n));
+  const de = n => m[n] || (m[n] = { n, nadals: 0, copes: 0, plates: 0, bronzes: 0 });
+  for (const { podi } of llista) (podi || []).forEach((e, i) => { de(e.n)[['copes', 'plates', 'bronzes'][i]]++; });
+  for (const f of nadals) if (f && f.top && f.top[0]) de(f.top[0].n).nadals++;
+  return Object.values(m).sort((a, b) => b.nadals - a.nadals || b.copes - a.copes || b.plates - a.plates || b.bronzes - a.bronzes || a.n.localeCompare(b.n));
 }
-const textMedalles = t => [t.copes && '🏆' + t.copes, t.plates && '🥈' + t.plates, t.bronzes && '🥉' + t.bronzes].filter(Boolean).join(' ');
+const medallesDe = async env => medalles(await llegirPalmares(env), [await llegeixFinal(env)].filter(Boolean));
+const textMedalles = t => [t.nadals && '🎄' + t.nadals, t.copes && '🏆' + t.copes, t.plates && '🥈' + t.plates, t.bronzes && '🥉' + t.bronzes].filter(Boolean).join(' ');
 
 async function anunciaLliga(env) {
   if (!env.TELEGRAM_TOKEN) return;
   const xat = await env.RECORDS.get('telegram:xat');
   if (!xat) return;
   const passada = sumaDies(dillunsDe(diaMadrid(0)), -7);
+  if (enPausa(passada)) return;           // les setmanes del concurs de Nadal no tenen lliga
   const marca = 'telegram:anunciat:lliga';
   if (!await reclama(env, marca, passada)) return;
   const l = await lliga(env, passada, sumaDies(passada, 6));
   if (!l.classificacio.length) return;
   const g = l.classificacio[0];
   const podi = l.classificacio.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + e.p + ' punts').join('\n');
-  const meu = medalles(await llegirPalmares(env)).find(t => t.n === g.n);
+  const meu = (await medallesDe(env)).find(t => t.n === g.n);
   const copes = meu && meu.copes > 1 ? '\n\n🏆 És la seva copa número ' + meu.copes + '.' : '';
   const text = '🏆 La <b>lliga de la setmana</b> la guanya <b>' + esc(g.n) + '</b> amb ' + g.p + ' punts' +
     (g.primers ? ' (' + g.primers + (g.primers === 1 ? ' partida del dia guanyada' : ' partides del dia guanyades') + ')' : '') + '.\n\n' + podi +
@@ -572,6 +669,7 @@ const AJUDA =
   '/records — qui mana a cada joc\n' +
   '/records ram — la taula d\'un joc\n' +
   '/lliga — la classificació de la setmana\n' +
+  '/nadal — com va el concurs de Nadal (de l\'1 al 24 de desembre)\n' +
   '/visites — quanta gent hi juga, avui i aquesta setmana\n' +
   '/avui — com van les partides del dia (La Impremta, La Gofra, L\'Abecedari, la seva difícil, La Conquesta, Les Quatre Colles, El Trencaclosques, La Botifarra, El Poble del Dia i La Sopa de Lletres)\n\n' +
   'Al xat privat amb mi, el botó «Jocs» obre tota la col·lecció.';
@@ -607,9 +705,19 @@ async function ordre(env, msg) {
     return respon('Les partides del dia, com van avui:\n\n' + parts.join('\n\n'));
   }
   if (o === 'visites') return respon(await textVisites(env));
+  if (o === 'nadal' || (o === 'lliga' && modeDe(diaMadrid(0)) !== 'lliga')) {
+    const avui = diaMadrid(0), mode = modeDe(avui);
+    if (mode !== 'lliga') {
+      const l = await lligaNadal(env, avui);
+      return respon(textNadal(mode, l.classificacio, l.nadal.dia));
+    }
+    const f = await llegeixFinal(env);
+    return respon(f ? textNadal('final', f.top).replace(/\n\nLa lliga de la setmana torna[^]*$/, '')
+      : '🎄 El concurs de Nadal serà de l\'1 al 24 de desembre, amb la Gofra, l\'Abecedari, les Quatre Colles, la Sopa de Lletres, el Penjat i l\'Estel.');
+  }
   if (o === 'lliga') {
     const avui = diaMadrid(0);
-    const pal = medalles(await llegirPalmares(env));
+    const pal = await medallesDe(env);
     return respon(textLliga(await lliga(env, dillunsDe(avui), avui)) + (pal.length
       ? '\n\n🏆 <b>Les medalles de sempre</b>\n' + pal.slice(0, 10).map(t => esc(t.n) + '  ' + textMedalles(t)).join('\n') : ''));
   }
@@ -642,6 +750,7 @@ async function activa(env, origen) {
     { command: 'records', description: 'qui mana a cada joc, o la taula d\'un joc' },
     { command: 'avui', description: 'com van les partides del dia' },
     { command: 'lliga', description: 'la classificació de la setmana' },
+    { command: 'nadal', description: 'com va el concurs de Nadal' },
     { command: 'visites', description: 'quanta gent hi juga' },
     { command: 'aqui', description: 'avisa en aquest xat dels rècords nous' },
     { command: 'prou', description: 'deixa d\'avisar' },
@@ -711,8 +820,9 @@ export default {
     // el podi d'ahir, si encara no s'ha avisat (despres de respondre), els jocs nous
     // i, els dilluns, la setmana passada al palmares (amb bot o sense)
     {
-      const a = tancaSetmana(env).catch(() => {}).then(() => env.TELEGRAM_TOKEN &&
+      const a = tancaNadal(env).catch(() => {}).then(() => tancaSetmana(env)).catch(() => {}).then(() => env.TELEGRAM_TOKEN &&
         anunciaAhir(env).catch(() => {}).then(() => anunciaLliga(env)).catch(() => {})
+          .then(() => anunciaNadal(env)).catch(() => {})
           .then(() => anunciaNous(env))).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(a); else await a;
     }
@@ -741,8 +851,10 @@ export default {
     if (parts[0] === 'lliga' && request.method === 'GET') {
       const avui = diaMadrid(0);
       const nom = url.searchParams.get('nom');
-      const l = await lliga(env, dillunsDe(avui), avui, nom ? netejaNom(nom) : null);
-      l.palmares = medalles(await llegirPalmares(env));
+      const n = nom ? netejaNom(nom) : null;
+      // del 30 de novembre al 27 de desembre, el concurs de Nadal en lloc de la lliga
+      const l = modeDe(avui) === 'lliga' ? await lliga(env, dillunsDe(avui), avui, n) : await lligaNadal(env, avui, n);
+      l.palmares = await medallesDe(env);
       return json(l);
     }
 

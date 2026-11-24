@@ -33,6 +33,11 @@ const DIARIS = ['gofra_dia', 'impremta_dia', 'abecedari_dia', 'colles_dia', 'pob
 const MIDES = [[320, 568], [360, 640], [390, 844], [412, 915], [768, 1024], [1280, 800]];
 
 const b = await chromium.launch();
+// Les proves de sempre fan servir el dia d'avui. Del 30 de novembre al 27 de
+// desembre del 2026 hi ha el concurs de Nadal (la llista d'avui i la lliga
+// canvien): si es passen aquells dies, es fan com si fos el 24 de novembre.
+const AVUI_REAL = new Date().toISOString().slice(0, 10);
+const foraNadal = async p => { if (AVUI_REAL >= '2026-11-30' && AVUI_REAL <= '2026-12-27') await p.clock.setFixedTime(new Date('2026-11-24T12:00:00')); };
 let malament = 0;
 
 for (const [w, h] of MIDES) {
@@ -53,6 +58,7 @@ for (const [w, h] of MIDES) {
       : Object.fromEntries([...ORDRE, ...MODERNS].map(([joc]) => [joc, [{ n: 'CRE', p: 188400, t: 1 }]]))),
   }));
   const p = await ctx.newPage();
+  await foraNadal(p);
   // aquest mobil ja ha fet la Gofra d'avui i te les Colles a mig fer
   await p.addInitScript(() => {
     const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
@@ -157,6 +163,7 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   const ctx = await b.newContext({ viewport: { width: w, height: h } });
   await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
   const p = await ctx.newPage();
+  await foraNadal(p);
   const errors = [];
   p.on('pageerror', e => errors.push(String(e)));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
@@ -190,6 +197,7 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
   const p = await ctx.newPage();
+  await foraNadal(p);
   const errors = [];
   p.on('pageerror', e => errors.push(String(e)));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
@@ -216,6 +224,7 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   const ctx = await b.newContext({ viewport: { width: 320, height: 568 } });
   await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
   const p = await ctx.newPage();
+  await foraNadal(p);
   const errors = [];
   p.on('pageerror', e => errors.push(String(e)));
   await p.goto('file://' + resolve(ARREL, 'index.html'));
@@ -405,6 +414,83 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   if (!be) malament++;
   console.log(`${be ? '✓' : '✗'} al cap de dues setmanes, ja no diu NOVA VERSIÓ`);
   await ctx.close();
+}
+
+// EL CONCURS DE NADAL: de l'1 al 24 de desembre, a la llista d'avui només hi
+// ha els seus sis jocs, les seves fitxes porten 🎄 NADAL i en lloc de la lliga
+// hi ha la classificació del concurs; el 30 de novembre avisa que comença, i
+// del 25 al 27 ensenya el resultat final. Les dates i els jocs han de ser els
+// mateixos que al Worker.
+{
+  const codiW = readFileSync(resolve(ARREL, 'worker/records.js'), 'utf8'), codiP = readFileSync(resolve(ARREL, 'index.html'), 'utf8');
+  const nw = codiW.match(/const NADAL = \{ any: \d+, des: '([\d-]+)', fins: '([\d-]+)',\s*jocs: \[([^\]]+)\] \}/);
+  const pw = codiW.match(/const PAUSA_LLIGA = \{ des: '([\d-]+)', fins: '([\d-]+)' \}/);
+  const np = codiP.match(/const NADAL=\{des:'([\d-]+)',fins:'([\d-]+)',pausa:'([\d-]+)',torna:'([\d-]+)',\s*jocs:"([^"]+)"/);
+  const jw = nw && [...nw[3].matchAll(/'(\w+)'/g)].map(x => x[1]).join(' ');
+  let be = nw && pw && np && nw[1] === np[1] && nw[2] === np[2] && pw[1] === np[3] && jw === np[5];
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} el concurs de Nadal té les mateixes dates i els mateixos jocs a la portada i al Worker (${jw})`);
+  const DE_NADAL = (jw || '').split(' ');
+  const mira = async (dia, resposta, w = 320) => {
+    const ctx = await b.newContext({ viewport: { width: w, height: 640 } });
+    await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify(/\/lliga(\?|$)/.test(r.request().url()) ? resposta : {}) }));
+    const p = await ctx.newPage();
+    const errors = []; p.on('pageerror', e => errors.push(String(e)));
+    await p.clock.setFixedTime(new Date(dia + 'T12:00:00'));
+    await p.addInitScript(() => { localStorage.setItem('jugador', 'CRE'); localStorage.setItem('jocs-primer', '0'); });
+    await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({
+      llista: [...document.querySelectorAll('#avui-llista li a')].map(a => a.getAttribute('href').replace('.html', '')),
+      fets: document.getElementById('avui-fets').textContent,
+      retols: [...document.querySelectorAll('a.btn .lliga')].map(r => r.textContent + ':' + r.closest('a').getAttribute('href').replace('.html', '')),
+      caixa: document.getElementById('lliga').hidden ? '' : document.getElementById('lliga').textContent,
+      scroll: document.documentElement.scrollWidth > innerWidth + 1,
+    }));
+    await p.click('#ordre button[data-ordre="avui"]');
+    r.primers = await p.evaluate(() => [...document.querySelectorAll('#avuijocs a.btn')].map(a => a.getAttribute('href').replace('.html', '')));
+    r.errors = errors;
+    await ctx.close();
+    return r;
+  };
+  const pal = [{ n: 'BOB', nadals: 1, copes: 2, plates: 0, bronzes: 0 }, { n: 'CRE', nadals: 0, copes: 0, plates: 1, bronzes: 0 }];
+  const avui6 = Object.fromEntries(DE_NADAL.map(j => [j, { n: 'WWW', p: j === 'gofra_dia' ? 5 : 300 }]));
+  const nad = { mode: 'nadal', nadal: { des: '2026-12-01', fins: '2026-12-24', dies: 24, dia: 10, torna: '2026-12-28' }, avui: avui6, fets: [],
+    classificacio: [{ n: 'BOB', p: 140 }, { n: 'ANA', p: 131 }, { n: 'CAR', p: 99 }, { n: 'CRE', p: 40 }], palmares: pal };
+  for (const w of [320, 390]) {
+    const r = await mira('2026-12-10', nad, w);
+    const llista = DE_NADAL.map(j => j.replace('_dia', ''));
+    be = r.llista.join() === llista.join() && r.fets === '0 de 6 fets' && r.retols.length === 6 && r.retols.every(t => /^🎄 NADAL:/.test(t)) &&
+      r.retols.map(t => t.split(':')[1]).sort().join() === [...llista].sort().join() &&
+      /CONCURS DE NADAL/.test(r.caixa) && /dia 10 de 24/.test(r.caixa) && /BOB 140/.test(r.caixa) && /Tu, CRE: 4t amb 40 punts/.test(r.caixa) &&
+      /Queden 14 dies/.test(r.caixa) && /BOB 🎄1 🏆2/.test(r.caixa) && !r.scroll && r.primers.slice(0, 6).sort().join() === [...llista].sort().join() && !r.errors.length;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} a ${w}px, del 1 al 24 de desembre: la llista d'avui només té els 6 jocs del concurs (${r.llista.join(', ')}), amb 🎄 NADAL a les seves fitxes, i a sota el CONCURS DE NADAL amb el podi, on vas tu, quants dies queden i la copa de Nadal a les medalles` + (r.errors.length ? ' ' + r.errors[0] : ''));
+  }
+  {
+    const r = await mira('2026-12-24', { ...nad, nadal: { ...nad.nadal, dia: 24 } });
+    be = /Avui és l'últim dia!/.test(r.caixa);
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} el dia 24 diu que és l'últim dia`);
+  }
+  {
+    const r = await mira('2026-11-30', { mode: 'previ', nadal: nad.nadal, avui: {}, classificacio: [], palmares: pal });
+    be = r.llista.length === 10 && /DEMÀ COMENÇA EL CONCURS DE NADAL/.test(r.caixa) && /la lliga descansa/.test(r.caixa) && r.retols.every(t => /^🏆 LLIGA/.test(t)) && !r.errors.length;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} el 30 de novembre, la llista té els 10 de sempre i diu que demà comença el concurs`);
+  }
+  {
+    const r = await mira('2026-12-25', { mode: 'final', nadal: nad.nadal, avui: {}, classificacio: nad.classificacio, palmares: pal });
+    be = r.llista.length === 10 && /RESULTAT FINAL/.test(r.caixa) && /BOB 140/.test(r.caixa) && /torna el dilluns 28/.test(r.caixa) && r.retols.every(t => /^🏆 LLIGA/.test(t)) && !r.errors.length;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} del 25 al 27 de desembre, la llista torna a tenir els 10 i a sota hi ha el resultat final del concurs`);
+  }
+  {
+    const r = await mira('2026-12-28', { setmana: '2026-12-28', fins: '2026-12-28', avui: {}, classificacio: [], palmares: pal });
+    be = r.llista.length === 10 && /LLIGA DE LA SETMANA/.test(r.caixa) && !/NADAL/.test(r.caixa) && /BOB 🎄1/.test(r.caixa);
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} el dilluns 28 torna la lliga de la setmana (i la copa de Nadal es queda a les medalles)`);
+  }
 }
 
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);

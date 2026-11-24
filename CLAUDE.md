@@ -2320,6 +2320,43 @@ passada amb el podi (`anunciaLliga`, marcat a `telegram:anunciat:lliga` abans
 d'enviar, com els de cada matí). És dilluns i no diumenge al vespre perquè el
 Worker no té rellotge: tot ho engega la primera visita del dia.
 
+**El concurs de Nadal** (de l'1 al 24 de desembre del 2026). L'usuari el va
+voler amb sis jocs de paraules (la Gofra, l'Abecedari, les Quatre Colles, la
+Sopa de Lletres, el Penjat i l'Estel) i puntuat **com la lliga** (10, 8, 6...
+i 1 per haver-hi jugat, cada dia a cada joc). **Va sol per la data**: no cal
+tocar res el dia 1 ni el dia 25. Al Worker, `NADAL` (dates i jocs) i
+`PAUSA_LLIGA`; a la portada, `NADAL` amb les mateixes dates i jocs (la prova
+de la portada les compara). Com va:
+
+- **La lliga de la setmana descansa del 30 de novembre al 27 de desembre**
+  (`modeDe`): el dilluns 30 hauria estat una setmana d'un dia, i del 25 al
+  27, de divendres a diumenge. L'usuari ho va triar. Les quatre setmanes es
+  tanquen al palmarès sense podi (`pausa: true`) i el dilluns el bot no
+  anuncia cap lliga. Torna el dilluns 28.
+- **`GET /lliga` porta `mode`**: `previ` (el 30 de novembre: la portada diu
+  que demà comença), `nadal` (de l'1 al 24: la classificació del concurs, i
+  `nadal.dia`) i `final` (del 25 al 27: el resultat final). Fora d'aquests
+  dies no porta `mode` i és la lliga de sempre.
+- **Durant el concurs, a ELS JOCS D'AVUI només hi ha els seus sis jocs**
+  (`DEL_DIA`), i les seves fitxes porten **🎄 NADAL** en lloc de 🏆 LLIGA.
+  El quadre de sota diu el dia (dia 10 de 24), el podi, on vas tu i quants
+  dies queden, amb una vora vermella. Els altres jocs es poden seguir
+  jugant, però no compten per a res.
+- **La classificació es desa sumada fins a tres dies enrere**
+  (`nadal:2026:suma`), que són 24 dies × 6 jocs × 2 lectures i la portada la
+  demana cada vegada que s'obre. Els tres últims es tornen a llegir perquè
+  el Worker accepta les del dia fins a 60 hores després.
+- **El dia 25, la primera petició tanca el concurs per sempre**
+  (`tancaNadal`, `nadal:2026:final`) i el bot n'anuncia el podi
+  (`anunciaNadal`, una sola vegada). El guanyador s'emporta **la copa de
+  Nadal 🎄**, que surt a davant de tot de les medalles de sempre (`nadals`).
+  Les del dia 24 enviades més tard ja no hi compten.
+- Al grup, **`/nadal`** diu com va (i `/lliga`, mentre dura, també). Perquè
+  surti a la llista d'ordres cal tornar a obrir `…/telegram/activa`.
+- **Per a l'any que ve**, canviar les dates a `NADAL` i `PAUSA_LLIGA` (al
+  Worker) i a `NADAL` (a la portada), i la clau (`nadal:<any>`) ja canvia
+  sola amb l'any.
+
 **Quanta gent hi juga** (`/visites` al grup). L'usuari ho va demanar. Cada
 aparell té un número a l'atzar (`jocs-aparell`, al `records.js`) que no diu qui
 és, i el primer cop que obre cada joc (o la portada) en un dia ho envia al Worker
