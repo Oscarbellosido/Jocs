@@ -142,6 +142,20 @@ L'usuari ho va demanar per saber d'una ullada quins jocs entren a la lliga. **No
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
 la prova i el codi que recorda l'últim joc obert els compten.
 
+**De l'1 de desembre al 6 de gener, la portada va de Nadal** (cada any, sol
+per la data de Madrid: `html.nadal-deco`, que posa el codi de just després
+del títol). L'usuari ho va demanar per al concurs de Nadal i que durés fins a
+Reis. Hi ha **neu que cau** (`#neu`, un llenç per sobre de tot amb
+`pointer-events:none`, que no es pot tocar ni tapa cap botó; uns 30
+fotogrames per segon i s'atura si l'app no es veu), **una garlanda de
+llumetes** damunt del títol (`.garlanda`, dotze bombetes que fan
+pampallugues), **un barret de Pare Noel a la J** (`.nadal-j`, el títol
+segueix dient el mateix) i, al quadre del concurs, **el vesc i una estrella**
+penjats de la ratlla vermella. **Si el mòbil té les animacions desactivades,
+no neva** i les llums no fan pampallugues. Els jocs no es toquen. La prova de
+la portada ho mira (dates, que no surti de la pantalla, que els botons es
+puguin tocar amb la neu al damunt).
+
 **Els jocs nous s'avisen.** L'usuari va demanar que, quan surti un joc nou,
 s'avisi d'alguna manera. La fitxa porta `data-nou="<data>"` (el dia que es
 va posar) i, mentre no l'hagis obert en aquest mòbil i no faci tres setmanes

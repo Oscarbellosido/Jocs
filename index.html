@@ -283,10 +283,81 @@
   a.btn em .cops { flex: none; color: #ffd27a; font-style: normal; }
   /* .games porta display:grid, que manaria sobre l'atribut hidden */
   [hidden] { display: none !important; }
+  /* NADAL: de l'1 de desembre al 6 de gener, cada any (html.nadal-deco, el
+     posa el codi de sota del títol): neu que cau, una garlanda de llumetes
+     damunt del títol, un barret a la J i, al quadre del concurs, el vesc i
+     una estrella penjats de la ratlla. L'usuari ho va demanar. Si el mòbil
+     té les animacions desactivades, no neva i les llums no fan pampallugues. */
+  html.nadal-deco body { padding-top: calc(2.3rem + env(safe-area-inset-top)); }
+  html.nadal-deco h1 { position: relative; }
+  .garlanda { position: absolute; left: -12px; right: -12px; top: -1.9rem; height: 1.6rem; pointer-events: none; }
+  .garlanda svg { width: 100%; height: 100%; overflow: visible; }
+  .garlanda .b { animation: brilla 1.8s ease-in-out infinite; }
+  @keyframes brilla { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .nadal-j { position: relative; display: inline-block; }
+  .nadal-j svg { position: absolute; left: -0.3em; top: -0.66em; width: 1.05em; height: auto; transform: rotate(-16deg); pointer-events: none; }
+  html.nadal-deco .avui .lliga.nadal { position: relative; }
+  html.nadal-deco .avui .lliga.nadal::after { content: ""; position: absolute; right: 6px; top: -15px; width: 34px; height: 27px;
+    background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 32%22%3E%3Cpath d=%22M20 14C10 4 2 10 4 18c6 2 12 0 16-4z%22 fill=%22%233fa34d%22/%3E%3Cpath d=%22M20 14C30 4 38 10 36 18c-6 2-12 0-16-4z%22 fill=%22%232e8b3e%22/%3E%3Cpath d=%22M20 15l-7-10 7 4 7-4z%22 fill=%22%23d62828%22/%3E%3Ccircle cx=%2216.5%22 cy=%2218%22 r=%223%22 fill=%22%23f6f6f6%22/%3E%3Ccircle cx=%2223.5%22 cy=%2218%22 r=%223%22 fill=%22%23f6f6f6%22/%3E%3Ccircle cx=%2220%22 cy=%2222.5%22 r=%223%22 fill=%22%23ececec%22/%3E%3C/svg%3E") no-repeat center / contain; }
+  html.nadal-deco .avui .lliga.nadal::before { content: ""; position: absolute; left: 50%; top: -10px; width: 18px; height: 18px; transform: translateX(-50%);
+    background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Cpath d=%22M10 1l2.6 5.6 6.1.7-4.5 4.2 1.2 6L10 14.5 4.6 17.5l1.2-6L1.3 7.3l6.1-.7z%22 fill=%22%23ffd34d%22 stroke=%22%23c8961c%22 stroke-width=%22.8%22/%3E%3C/svg%3E") no-repeat center / contain; }
+  @media (prefers-reduced-motion: reduce) { .garlanda .b { animation: none; } }
 </style>
 </head>
 <body>
   <h1>★ JOCS ★ <span class="by">by CRE</span></h1>
+<script>
+// NADAL: la decoració de la portada, de l'1 de desembre al 6 de gener (hora
+// de Madrid), cada any. Va just després del títol perquè surti de seguida.
+(function(){
+  let d;try{d=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Madrid'}).format(new Date())}catch(e){d=new Date().toISOString().slice(0,10)}
+  const mes=+d.slice(5,7),dia=+d.slice(8,10);
+  if(!(mes===12||(mes===1&&dia<=6)))return;
+  document.documentElement.classList.add('nadal-deco');
+  const h1=document.querySelector('h1');
+  // el barret de Pare Noel, a la J
+  const t=h1.firstChild;
+  if(t&&t.nodeType===3&&t.data.indexOf('J')>=0){
+    const j=t.splitText(t.data.indexOf('J'));j.splitText(1);
+    const s=document.createElement('span');s.className='nadal-j';j.replaceWith(s);s.appendChild(j);
+    s.insertAdjacentHTML('beforeend','<svg viewBox="0 0 32 28" aria-hidden="true"><path d="M5 21C8 9 15 3 25 4c3 1 2 4 0 5-4 2-3 7-2 12z" fill="#d62828"/><rect x="2" y="19" width="24" height="7" rx="3.5" fill="#fff"/><circle cx="26.5" cy="6" r="3.6" fill="#fff"/></svg>');
+  }
+  // la garlanda de llumetes: un fil que fa quatre arcs i tres bombetes a cada arc
+  const COL=['#ff4d4d','#ffd34d','#4dff88','#4db8ff'];let bom='';
+  for(let a=0;a<4;a++)for(const f of[0.25,0.5,0.75]){
+    const i=a*3+[0.25,0.5,0.75].indexOf(f),x=a*75+f*75,y=6+40*f*(1-f),c=COL[i%4];
+    bom+='<rect x="'+(x-1.6)+'" y="'+(y-1)+'" width="3.2" height="3" fill="#2a4a30"/>'+
+      '<ellipse class="b" cx="'+x+'" cy="'+(y+5.5)+'" rx="3.4" ry="4.6" fill="'+c+'" style="animation-delay:'+(-(i*0.37)%1.8).toFixed(2)+'s;filter:drop-shadow(0 0 3px '+c+')"/>';
+  }
+  h1.insertAdjacentHTML('afterbegin','<span class="garlanda" aria-hidden="true"><svg viewBox="0 0 300 30" preserveAspectRatio="none">'+
+    '<path d="M0 6Q37.5 26 75 6T150 6T225 6T300 6" fill="none" stroke="#2f6b3a" stroke-width="1.6"/>'+bom+'</svg></span>');
+  // la neu: poca, lenta i per sobre de tot, però sense tapar res (no es pot tocar)
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  addEventListener('DOMContentLoaded',()=>{
+    const c=document.createElement('canvas');c.id='neu';c.setAttribute('aria-hidden','true');
+    c.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3';
+    document.body.appendChild(c);
+    const x=c.getContext('2d');let W=0,H=0,flocs=[];
+    const nou=(dalt)=>{const r=0.8+Math.random()*1.9;return{x:Math.random()*W,y:dalt?-5:Math.random()*H,r,v:10+r*11,f:Math.random()*6.3,a:0.35+Math.random()*0.5}};
+    const mida=()=>{const dp=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;c.width=W*dp;c.height=H*dp;x.setTransform(dp,0,0,dp,0,0);
+      const n=Math.round(Math.min(70,Math.max(24,W*H/9000)));while(flocs.length<n)flocs.push(nou(false));flocs.length=n};
+    mida();addEventListener('resize',mida);
+    let abans=0;
+    const pas=ara=>{
+      requestAnimationFrame(pas);
+      if(document.hidden||ara-abans<33)return;            // uns 30 fotogrames per segon n'hi ha prou
+      const dt=Math.min(0.1,(ara-abans)/1000);abans=ara;
+      x.clearRect(0,0,W,H);
+      for(const k of flocs){
+        k.y+=k.v*dt;k.f+=dt*0.9;const px=k.x+Math.sin(k.f)*8;
+        if(k.y>H+5)Object.assign(k,nou(true));
+        x.globalAlpha=k.a;x.beginPath();x.arc(px,k.y,k.r,0,6.283);x.fillStyle='#fff';x.fill();
+      }
+    };
+    requestAnimationFrame(pas);
+  });
+})();
+</script>
   <a class="tg" id="tg" href="https://t.me/jocs_carles_bot" target="_blank" rel="noopener" hidden>🏆 RÈCORDS AL MOMENT A TELEGRAM</a>
   <div class="novetats" id="novetats" hidden></div>
   <details class="avui" id="avui" open>

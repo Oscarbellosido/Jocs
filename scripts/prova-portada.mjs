@@ -493,6 +493,46 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   }
 }
 
+// LA DECORACIÓ DE NADAL: de l'1 de desembre al 6 de gener, neu, una garlanda
+// de llumetes, el barret a la J i el vesc al quadre del concurs; i que no
+// faci nosa (la neu no es pot tocar) ni surti de la pantalla.
+{
+  const mira = async (dia, opcions = {}) => {
+    const ctx = await b.newContext({ viewport: { width: 320, height: 640 }, ...opcions });
+    await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
+    const p = await ctx.newPage();
+    const errors = []; p.on('pageerror', e => errors.push(String(e)));
+    await p.clock.setFixedTime(new Date(dia + 'T12:00:00'));
+    await p.goto('file://' + resolve(ARREL, 'index.html')); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({
+      deco: document.documentElement.classList.contains('nadal-deco'),
+      bombetes: document.querySelectorAll('.garlanda .b').length,
+      barret: !!document.querySelector('h1 .nadal-j svg'),
+      neu: !!document.getElementById('neu'),
+      titol: document.querySelector('h1').textContent.replace(/\s+/g, ' ').trim(),
+      dins: (() => { const g = document.querySelector('.garlanda'); if (!g) return true; const c = g.getBoundingClientRect(); return c.top >= 0 && c.left >= 0 && c.right <= innerWidth; })(),
+      scroll: document.documentElement.scrollWidth > innerWidth + 1,
+    }));
+    // la neu és per sobre de tot, però els botons es poden seguir tocant
+    await p.click('#ordre button[data-ordre="jugats"]', { timeout: 2000 }).then(() => r.toca = true).catch(() => r.toca = false);
+    r.errors = errors;
+    await ctx.close();
+    return r;
+  };
+  let r = await mira('2026-12-10');
+  let be = r.deco && r.bombetes === 12 && r.barret && r.neu && r.titol === '★ JOCS ★ by CRE' && r.dins && !r.scroll && r.toca && !r.errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} el 10 de desembre la portada va de Nadal: neu, garlanda de ${r.bombetes} llumetes i el barret a la J, sense sortir de la pantalla a 320 px i sense tapar els botons` + (r.errors.length ? ' ' + r.errors[0] : ''));
+  r = await mira('2026-12-10', { reducedMotion: 'reduce' });
+  be = r.deco && !r.neu && r.bombetes === 12;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} si el mòbil té les animacions desactivades, no neva (la garlanda hi és, quieta)`);
+  const dies = { '2026-11-30': false, '2026-12-01': true, '2027-01-06': true, '2027-01-07': false };
+  const fets = [];
+  for (const [d, vol] of Object.entries(dies)) { const x = await mira(d); fets.push(d + ' ' + (x.deco ? 'sí' : 'no')); if (x.deco !== vol) malament++; }
+  console.log(`${fets.every((f, i) => f.endsWith(Object.values(dies)[i] ? 'sí' : 'no')) ? '✓' : '✗'} la decoració va de l'1 de desembre al 6 de gener (${fets.join(', ')})`);
+}
+
 console.log(malament ? `\n${malament} de ${MIDES.length} mides malament` : `\nles ${MIDES.length} mides, be`);
 await b.close();
 process.exit(malament ? 1 : 0);
