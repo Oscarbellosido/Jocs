@@ -538,6 +538,10 @@ posaLiders();
   const NADAL={des:'2026-12-01',fins:'2026-12-24',pausa:'2026-11-30',torna:'2026-12-28',
     jocs:"gofra_dia abecedari_dia colles_dia sopa_dia penjat_dia estel_dia".split(' ')};
   const esNadal=avui>=NADAL.des&&avui<=NADAL.fins;
+  // l'ordre dels jocs (més avall) també ho ha de saber: durant el concurs,
+  // els seus sis jocs van primer
+  window.CONCURS_NADAL=esNadal;
+  if(esNadal)document.getElementById('titol-avui').innerHTML='🎄 EL CONCURS DE NADAL <i>primer els que et queden</i>';
   // estat: 'fet', 'mig' o null (per fer)
   const JOCS=[
     ['gofra_dia','LA GOFRA','gofra.html',()=>{const d=llegeix('gofra-'+avui);return !d?null:d.fi?'fet':d.queden<20?'mig':null},p=>'★'.repeat(p)+'☆'.repeat(Math.max(0,5-p))],
@@ -656,9 +660,15 @@ posaLiders();
 // dels jocs que compten per a la lliga, primer els que encara no has fet avui
 // (en l'ordre de la llista d'ELS JOCS D'AVUI) i després els fets, amb un ✓; i
 // a sota, la resta al seu apartat de sempre, per any.
+// Durant el concurs de Nadal, el llistat comença pels seus sis jocs (l'ordre
+// JOCS D'AVUI), que la gent no els hagi de buscar: ho va demanar l'usuari. Si
+// algú en tria un altre durant el concurs, es recorda a part
+// (jocs-ordre-nadal), i en acabar el concurs torna el que tenia de sempre.
 (function(){
   const llegeix=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
   const desa=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+  const CLAU_ORDRE=window.CONCURS_NADAL?'jocs-ordre-nadal':'jocs-ordre';
+  const ordreDesat=()=>llegeix(CLAU_ORDRE)||(window.CONCURS_NADAL?'avui':null);
   const fitxes=[...document.querySelectorAll('a.btn')];
   // on era cada fitxa, per tornar-la al seu lloc
   const lloc=new Map(fitxes.map(a=>[a,a.parentNode]));
@@ -718,15 +728,15 @@ posaLiders();
   }
   document.getElementById('ordre').addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
-    desa('jocs-ordre',b.dataset.ordre);posa(b.dataset.ordre);
+    desa(CLAU_ORDRE,b.dataset.ordre);posa(b.dataset.ordre);
   });
-  const ara=llegeix('jocs-ordre');
+  const ara=ordreDesat();
   if(ara==='jugats'||ara==='avui')posa(ara);
   // tornant enrere des d'un joc, el compte i el que ja has fet han canviat
   // (la llista d'ELS JOCS D'AVUI es repinta abans, que el seu avís va primer)
-  addEventListener('pageshow',e=>{const o=llegeix('jocs-ordre');if(e.persisted&&(o==='jugats'||o==='avui'))posa(o)});
+  addEventListener('pageshow',e=>{const o=ordreDesat();if(e.persisted&&(o==='jugats'||o==='avui'))posa(o)});
   // quan el Worker diu que n'has fet alguna en un altre mòbil, la llista canvia
-  new MutationObserver(()=>{if(llegeix('jocs-ordre')==='avui')posa('avui')}).observe(document.getElementById('avui-llista'),{childList:true});
+  new MutationObserver(()=>{if(ordreDesat()==='avui')posa('avui')}).observe(document.getElementById('avui-llista'),{childList:true});
 })();
 </script>
 </body>

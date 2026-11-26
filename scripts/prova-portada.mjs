@@ -447,8 +447,15 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
       caixa: document.getElementById('lliga').hidden ? '' : document.getElementById('lliga').textContent,
       scroll: document.documentElement.scrollWidth > innerWidth + 1,
     }));
+    // sense tocar res: quin ordre surt i quines fitxes van primer
+    r.inicial = await p.evaluate(() => ({ ordre: document.querySelector('#ordre button[aria-pressed="true"]').dataset.ordre,
+      titol: document.getElementById('titol-avui').hidden ? '' : document.getElementById('titol-avui').textContent,
+      primers: [...document.querySelectorAll('#avuijocs a.btn')].map(a => a.getAttribute('href').replace('.html', '')) }));
     await p.click('#ordre button[data-ordre="avui"]');
     r.primers = await p.evaluate(() => [...document.querySelectorAll('#avuijocs a.btn')].map(a => a.getAttribute('href').replace('.html', '')));
+    // si durant el concurs tries PER ANY, es recorda a part i no toca la tria de sempre
+    await p.click('#ordre button[data-ordre="any"]');
+    r.desat = await p.evaluate(() => [localStorage.getItem('jocs-ordre-nadal'), localStorage.getItem('jocs-ordre')]);
     r.errors = errors;
     await ctx.close();
     return r;
@@ -466,6 +473,18 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
       /Queden 14 dies/.test(r.caixa) && /BOB 🎄1 🏆2/.test(r.caixa) && !r.scroll && r.primers.slice(0, 6).sort().join() === [...llista].sort().join() && !r.errors.length;
     if (!be) malament++;
     console.log(`${be ? '✓' : '✗'} a ${w}px, del 1 al 24 de desembre: la llista d'avui només té els 6 jocs del concurs (${r.llista.join(', ')}), amb 🎄 NADAL a les seves fitxes, i a sota el CONCURS DE NADAL amb el podi, on vas tu, quants dies queden i la copa de Nadal a les medalles` + (r.errors.length ? ' ' + r.errors[0] : ''));
+  }
+  {
+    const r = await mira('2026-12-10', nad);
+    const llista = DE_NADAL.map(j => j.replace('_dia', ''));
+    be = r.inicial.ordre === 'avui' && /CONCURS DE NADAL/.test(r.inicial.titol) && r.inicial.primers.slice(0, 6).sort().join() === [...llista].sort().join() &&
+      r.desat[0] === '"any"' && r.desat[1] === null;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} durant el concurs, el llistat de jocs comença pels 6 del concurs sense haver de tocar res (${r.inicial.primers.slice(0, 6).join(', ')}), i si algú tria PER ANY es recorda només mentre dura`);
+    const r2 = await mira('2026-12-28', { setmana: '2026-12-28', fins: '2026-12-28', avui: {}, classificacio: [], palmares: [] });
+    be = r2.inicial.ordre === 'any' && !r2.inicial.titol;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} acabat el concurs, el llistat torna a sortir com abans (${r2.inicial.ordre})`);
   }
   {
     const r = await mira('2026-12-24', { ...nad, nadal: { ...nad.nadal, dia: 24 } });

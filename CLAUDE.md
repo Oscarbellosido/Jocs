@@ -2356,6 +2356,12 @@ de la portada les compara). Com va:
   El quadre de sota diu el dia (dia 10 de 24), el podi, on vas tu i quants
   dies queden, amb una vora vermella. Els altres jocs es poden seguir
   jugant, però no compten per a res.
+- **I el llistat de jocs comença pels sis del concurs**: durant el concurs,
+  l'ordre que surt sense tocar res és JOCS D'AVUI (`window.CONCURS_NADAL`),
+  amb el títol 🎄 EL CONCURS DE NADAL, que la gent no els hagi de buscar
+  (l'usuari ho va demanar). Si algú tria un altre ordre durant el concurs,
+  es recorda a part (`jocs-ordre-nadal`), i acabat el concurs torna el de
+  sempre (`jocs-ordre`), que no s'ha tocat.
 - **La classificació es desa sumada fins a tres dies enrere**
   (`nadal:2026:suma`), que són 24 dies × 6 jocs × 2 lectures i la portada la
   demana cada vegada que s'obre. Els tres últims es tornen a llegir perquè
