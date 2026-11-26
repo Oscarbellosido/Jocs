@@ -106,15 +106,39 @@ const Records = (() => {
   // i el bot ho compta. Només una vegada per joc i dia: el servei gratuït
   // deixa poques escriptures al dia, i els rècords també en gasten. Si falla
   // (sense connexió), es tornarà a provar la propera vegada que s'obri.
-  try {
-    const f = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
-    if (/^[a-z_]+$/.test(f) && /^https?:$/.test(location.protocol)) {
+  const aparell = () => {
+    try {
       let a = localStorage.getItem('jocs-aparell');
       if (!/^[a-z0-9]{8,24}$/.test(a || '')) {
         const b = new Uint8Array(8); crypto.getRandomValues(b);
         a = [...b].map(x => (x % 36).toString(36)).join('') + Date.now().toString(36).slice(-4);
         localStorage.setItem('jocs-aparell', a);
       }
+      return a;
+    } catch (e) { return ''; }
+  };
+  // Quan es va obrir aquest joc per primer cop avui en aquest mòbil
+  // (jocs-obert): amb la partida del dia s'envia quants segons fa, que una
+  // partida feta massa de pressa vol dir que ja se sabia la solució
+  // (/trampes al bot). Tornant-hi a estones, compta des de la primera.
+  const DIA_AVUI = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date()); } catch (e) { return ''; } })();
+  const FITXER = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
+  try {
+    let o = JSON.parse(localStorage.getItem('jocs-obert') || '{}');
+    if (!o || o.d !== DIA_AVUI || typeof o.t !== 'object') o = { d: DIA_AVUI, t: {} };
+    if (!o.t[FITXER]) { o.t[FITXER] = Date.now(); localStorage.setItem('jocs-obert', JSON.stringify(o)); }
+  } catch (e) { }
+  const segonsObert = () => {
+    try {
+      const o = JSON.parse(localStorage.getItem('jocs-obert') || '{}');
+      const t = o && o.t && o.t[FITXER];
+      return t ? Math.round((Date.now() - t) / 1000) : null;
+    } catch (e) { return null; }
+  };
+  try {
+    const f = FITXER;
+    if (/^[a-z_]+$/.test(f) && /^https?:$/.test(location.protocol)) {
+      const a = aparell();
       const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
       let v = {}; try { v = JSON.parse(localStorage.getItem('jocs-visites') || '{}'); } catch (e) { }
       if (v.d !== dia || !Array.isArray(v.j)) v = { d: dia, j: [] };
@@ -191,18 +215,20 @@ const Records = (() => {
   const CLAU_PENDENTS = 'jocs-pendents', TRES_DIES = 3 * 864e5;
   const pendents = () => { try { const l = JSON.parse(localStorage.getItem(CLAU_PENDENTS) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
   const desaPendents = l => { try { localStorage.setItem(CLAU_PENDENTS, JSON.stringify(l.slice(-30))); } catch (e) { } };
-  function guardaPendent(joc, n, punts) {
+  function guardaPendent(joc, n, punts, s) {
     if (!n) return;
     const l = pendents().filter(x => !(x.joc === joc && x.n === n && x.punts <= punts));
-    if (!l.some(x => x.joc === joc && x.n === n)) l.push({ joc, n, punts, t: Date.now() });
+    if (!l.some(x => x.joc === joc && x.n === n)) l.push({ joc, n, punts, s, t: Date.now() });
     desaPendents(l);
   }
   async function enviaPost(joc, n, punts) {
+    // a les del dia hi va el número del mòbil i quanta estona fa que és obert (/trampes)
+    const dia = /_dia\//.test(joc), s = dia ? segonsObert() : null;
     const r = await crida('/records/' + joc, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom: n, punts }),
+      body: JSON.stringify(dia ? { nom: n, punts, a: aparell(), s } : { nom: n, punts }),
     });
-    if (!r && ultimFall === 'xarxa') guardaPendent(joc, n, punts);
+    if (!r && ultimFall === 'xarxa') guardaPendent(joc, n, punts, s);
     return r;
   }
   let reintentant = false;
@@ -213,7 +239,7 @@ const Records = (() => {
         if (Date.now() - x.t > TRES_DIES) { desaPendents(pendents().filter(y => y !== x && !(y.joc === x.joc && y.n === x.n))); continue; }
         const r = await crida('/records/' + x.joc, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nom: x.n, punts: x.punts }),
+          body: JSON.stringify(/_dia\//.test(x.joc) ? { nom: x.n, punts: x.punts, a: aparell(), s: x.s == null ? null : x.s } : { nom: x.n, punts: x.punts }),
         });
         if (!r && ultimFall === 'xarxa') break;          // encara sense xarxa: ja ho tornarem a provar
         desaPendents(pendents().filter(y => !(y.joc === x.joc && y.n === x.n && y.punts === x.punts)));

@@ -705,6 +705,15 @@ async function ordre(env, msg) {
     return respon('Les partides del dia, com van avui:\n\n' + parts.join('\n\n'));
   }
   if (o === 'visites') return respon(await textVisites(env));
+  if (o === 'trampes') {
+    // nomes en privat, i nomes a qui porta el concurs: el primer que ho demana
+    if (msg.chat.type !== 'private') return respon('Això només ho explico en privat. 🤫');
+    const vigilant = await env.RECORDS.get('telegram:vigilant');
+    if (vigilant && vigilant !== String(xat)) return respon('Això només ho pot veure qui porta el concurs.');
+    if (!vigilant) await env.RECORDS.put('telegram:vigilant', String(xat));
+    return respon((vigilant ? '' : 'A partir d\'ara, això només t\'ho diré a tu.\n\n') +
+      await textTrampes(env, /^ahir$/i.test(resta[0] || '') ? 1 : 0));
+  }
   if (o === 'nadal' || (o === 'lliga' && modeDe(diaMadrid(0)) !== 'lliga')) {
     const avui = diaMadrid(0), mode = modeDe(avui);
     if (mode !== 'lliga') {
@@ -765,6 +774,107 @@ async function activa(env, origen) {
     '<li>Al xat privat amb el bot hi ha el botó <b>Jocs</b>, que obre tota la col·lecció dins de Telegram.</li></ol>');
 }
 
+// ---- les trampes (/trampes) ----
+// L'usuari va preguntar si es podia saber si algu feia trampes al concurs.
+// Les respostes buscades al diccionari no les veu ningu, pero dues coses si
+// que deixen rastre, i de cada partida del dia (la primera de cada inicials)
+// se n'apunta prou per veure-les, a vigila:<joc>_dia:<data>:
+//  - jugar-la dues vegades amb inicials diferents: la primera per saber la
+//    solucio, la segona per fer-la be. Es veu si les dues venen del mateix
+//    mobil (el numero a l'atzar de jocs-aparell, que no diu qui es) o de la
+//    mateixa connexio en poca estona. De la connexio no es guarda l'adreca:
+//    nomes un resum de 8 lletres que canvia cada dia, que serveix per veure
+//    si dues partides son de la mateixa i prou.
+//  - fer-la massa de pressa, que es el que passa quan ja saps la solucio:
+//    el records.js envia quants segons fa que es va obrir el joc avui en
+//    aquell mobil (o, als jocs pel temps, ja ho diuen els punts).
+// Son pistes, no proves: dues persones de casa poden fer servir el mateix
+// mobil o la mateixa wifi. Per aixo nomes ho diu al xat privat de qui porta
+// el concurs (el primer que ho demana, a telegram:vigilant), mai al grup.
+const PEL_TEMPS = { sopa_dia: 60, quadres_dia: 150, trencaclosques_dia: 120 };   // menys segons que aixo: massa
+const RAPID = {                       // [a partir d'aquests punts, en menys d'aquests segons]
+  gofra_dia: [5, 60],                 // les 5 estrelles en menys d'un minut
+  abecedari_dia: [2000, 100],         // 20 encerts o mes en menys d'un minut i 40
+  abecedari_dificil_dia: [2000, 180],
+  colles_dia: [600, 40],              // les 4 colles sense cap error en menys de 40 s
+  penjat_dia: [800, 20],              // sense cap error en menys de 20 s
+  poble_dia: [1000, 20],              // al primer intent en menys de 20 s
+};
+const MATEIXA_ESTONA = 3600e3;        // la mateixa connexio amb inicials diferents, en menys d'una hora
+
+function massaRapid(joc, p, s) {
+  if (joc in PEL_TEMPS) return p > 0 && 3600 - p < PEL_TEMPS[joc] ? 3600 - p : null;
+  const r = RAPID[joc];
+  return r && p >= r[0] && Number.isFinite(s) && s < r[1] ? s : null;
+}
+
+async function connexio(request, env, dia) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (!ip) return '';
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + '|' + dia + '|' + (env.TELEGRAM_TOKEN || 'jocs')));
+  return [...new Uint8Array(b)].slice(0, 4).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function apuntaVigila(request, env, clau, dia, entrada, cos) {
+  const a = /^[a-z0-9]{8,24}$/.test(cos.a || '') ? cos.a : '';
+  const s = cos.s != null && cos.s !== '' && Number.isFinite(Number(cos.s)) ? Math.max(0, Math.round(Number(cos.s))) : null;
+  const k = 'vigila:' + clau;
+  let l = [];
+  try { l = JSON.parse(await env.RECORDS.get(k) || '[]'); } catch {}
+  l.push({ n: entrada.n, p: entrada.p, t: entrada.t, a, c: await connexio(request, env, dia), s });
+  await env.RECORDS.put(k, JSON.stringify(l.slice(-200)), { expirationTtl: DIES_DIARI * 86400 });
+}
+
+const horaMadrid = t => { try { return new Intl.DateTimeFormat('ca', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(t)); } catch { return new Date(t).toISOString().slice(11, 16); } };
+const durada = s => s < 60 ? s + ' s' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
+// el que ha vist de cada joc un dia: una llista de linies, o cap
+function sospites(joc, l) {
+  const out = [], qui = e => '<b>' + esc(e.n) + '</b> (' + curt(joc, e.p) + ', ' + horaMadrid(e.t) + ')';
+  const vistos = new Set();
+  const grups = (camp) => {
+    const g = {};
+    for (const e of l) if (e[camp]) (g[e[camp]] = g[e[camp]] || []).push(e);
+    return Object.values(g).filter(x => new Set(x.map(e => e.n)).size > 1);
+  };
+  for (const g of grups('a')) {
+    out.push('📱 el mateix mòbil: ' + g.map(qui).join(' → '));
+    g.forEach(e => vistos.add(e));
+  }
+  for (const g of grups('c')) {
+    // nomes les que van una darrere l'altra en poca estona, i no ja dites
+    const o = g.slice().sort((x, y) => x.t - y.t), tros = [];
+    for (let i = 0; i < o.length; i++) {
+      const prop = (i > 0 && o[i].t - o[i - 1].t < MATEIXA_ESTONA) || (i + 1 < o.length && o[i + 1].t - o[i].t < MATEIXA_ESTONA);
+      if (prop) tros.push(o[i]);
+    }
+    if (new Set(tros.map(e => e.n)).size > 1 && !tros.every(e => vistos.has(e)))
+      out.push('📶 la mateixa connexió en poca estona: ' + tros.map(qui).join(' → '));
+  }
+  for (const e of l) {
+    const r = massaRapid(joc, e.p, e.s);
+    if (r !== null) out.push('⚡ <b>' + esc(e.n) + '</b>: ' + curt(joc, e.p) + (joc in PEL_TEMPS ? '' : ' en ' + durada(r) + ' des que va obrir el joc'));
+  }
+  return out;
+}
+
+async function textTrampes(env, enrere) {
+  const dia = diaMadrid(enrere);
+  const jocs = modeDe(dia) === 'nadal' ? NADAL.jocs : LLIGA;
+  const parts = [];
+  for (const joc of jocs) {
+    let l = [];
+    try { l = JSON.parse(await env.RECORDS.get('vigila:' + joc + ':' + dia) || '[]'); } catch {}
+    const s = sospites(joc, l);
+    if (s.length) parts.push('<b>' + esc(NOM_DIARI(joc)) + '</b>\n' + s.join('\n'));
+  }
+  return '🕵️ <b>Trampes ' + (enrere ? "d'ahir" : "d'avui") + '</b> (' + dia + ')\n\n' +
+    (parts.length ? parts.join('\n\n') : 'No hi he vist res d\'estrany. 👍') +
+    '\n\n<i>Són pistes, no proves: dues persones de casa poden jugar amb el mateix mòbil o la mateixa wifi. ' +
+    '📱 mateix mòbil · 📶 mateixa connexió, inicials diferents en menys d\'una hora · ⚡ massa de pressa per no saber-ho d\'abans.</i>' +
+    (enrere ? '' : '\nPer veure les d\'ahir: /trampes ahir');
+}
+
 // Una partida del dia. Nomes s'hi pot apuntar el mateix dia (amb un dia de
 // marge per les hores de diferencia): les dels dies passats ja estan tancades.
 async function diari(request, env, joc, dia) {
@@ -805,6 +915,7 @@ async function diari(request, env, joc, dia) {
   }
   jugat.push(entrada.n);
   await env.RECORDS.put(clauJugat, JSON.stringify(jugat), { expirationTtl: DIES_DIARI * 86400 });
+  try { await apuntaVigila(request, env, clau, dia, entrada, cos); } catch {}
   if (!punts) return json({ top: llista, posicio: 0, jugat: true });
   llista.push(entrada);
   llista.sort((a, b) => b.p - a.p || a.t - b.t);

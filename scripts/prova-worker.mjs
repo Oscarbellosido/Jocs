@@ -664,6 +664,69 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
   store.delete('telegram:xat');
 }
 
+// ===== LES TRAMPES (/trampes) =====
+{
+  const posa = (dia, h = '10:00') => { Date.now = () => Date.parse(dia + 'T' + h + ':00Z'); };
+  const net = () => { for (const k of [...store.keys()]) if (/^(joc|jugat|vigila):\w+_dia:|^telegram:vigilant$|^nadal:|^telegram:anunciat:|^lliga:/.test(k)) store.delete(k); };
+  const priv = (text, chat) => ({ update_id: 1, message: { message_id: 1, text, chat: { id: chat, type: 'private' } } });
+  const parla = async (text, chat, privat = true) => { enviats.length = 0;
+    await crida(envTg, 'POST', '/telegram', privat ? priv(text, chat) : msg(text, chat), { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+    return (missatges()[0] || { cos: {} }).cos.text || ''; };
+  const juga = (joc, dia, cos, ip) => crida(envTg, 'POST', '/records/' + joc + '/' + dia, cos, ip ? { 'CF-Connecting-IP': ip } : {});
+  net();
+  posa('2026-12-10', '09:00');
+  const D = '2026-12-10';
+  // XYZ fa la Gofra per veure la solució, i després la fa ABC al mateix mòbil
+  await juga('gofra_dia', D, { nom: 'XYZ', punts: 1, a: 'mobil0001', s: 300 }, '1.2.3.4');
+  posa(D, '09:05');
+  await juga('gofra_dia', D, { nom: 'ABC', punts: 5, a: 'mobil0001', s: 400 }, '1.2.3.4');
+  // la mateixa wifi en poca estona, mòbils diferents
+  await juga('colles_dia', D, { nom: 'QQQ', punts: 100, a: 'mobil0002', s: 200 }, '5.6.7.8');
+  posa(D, '09:20');
+  await juga('colles_dia', D, { nom: 'RRR', punts: 600, a: 'mobil0003', s: 500 }, '5.6.7.8');
+  // la mateixa wifi però amb hores de diferència: normal
+  await juga('penjat_dia', D, { nom: 'MMM', punts: 500, a: 'mobil0004', s: 90 }, '9.9.9.9');
+  posa(D, '15:00');
+  await juga('penjat_dia', D, { nom: 'NNN', punts: 600, a: 'mobil0005', s: 90 }, '9.9.9.9');
+  // massa de pressa: l'Abecedari sencer en 50 s, i una sopa en 41 s
+  await juga('abecedari_dia', D, { nom: 'LLL', punts: 2600, a: 'mobil0006', s: 50 }, '7.7.7.7');
+  await juga('sopa_dia', D, { nom: 'SSS', punts: 3600 - 41, a: 'mobil0007', s: 600 }, '8.8.8.8');
+  // i una partida bona i normal, que no ha de sortir
+  await juga('sopa_dia', D, { nom: 'OKK', punts: 3600 - 300, a: 'mobil0008', s: 400 }, '6.6.6.6');
+  // repetir les mateixes inicials no s'apunta dues vegades
+  await juga('gofra_dia', D, { nom: 'ABC', punts: 5, a: 'mobil0009', s: 10 }, '4.4.4.4');
+  const v = JSON.parse(store.get('vigila:gofra_dia:' + D));
+  ok(v.length === 2 && v[1].n === 'ABC' && v[1].a === 'mobil0001' && v[1].s === 400 && /^[0-9a-f]{8}$/.test(v[1].c) && v[0].c === v[1].c,
+     'cada partida del dia apunta el mòbil, els segons i un resum de la connexió (la repetida, no)');
+  ok(!store.get('vigila:gofra_dia:' + D).includes('1.2.3.4'), 'de la connexió no es guarda l\'adreça, només un resum');
+  // sense els camps nous (el records.js vell) també va
+  r = await juga('gofra_dia', D, { nom: 'VEL', punts: 3 });
+  ok(r.status === 200 && JSON.parse(store.get('vigila:gofra_dia:' + D)).at(-1).a === '', 'una partida sense mòbil ni segons (el records.js d\'abans) entra igual');
+
+  // al grup no ho diu
+  let t = await parla('/trampes', -1001, false);
+  ok(/en privat/.test(t) && !/XYZ/.test(t) && !store.has('telegram:vigilant'), '/trampes al grup: no diu res, només que és en privat');
+  // el primer que ho demana en privat es queda de vigilant
+  t = await parla('/trampes', 777);
+  ok(store.get('telegram:vigilant') === '777' && /només t'ho diré a tu/.test(t), '/trampes en privat: el primer que ho demana és qui ho veurà');
+  ok(/📱 el mateix mòbil: <b>XYZ<\/b>.*<b>ABC<\/b>/.test(t), 'el mateix mòbil amb dues inicials: surt (' + (t.match(/📱.*/) || [''])[0] + ')');
+  ok(/📶 la mateixa connexió en poca estona: <b>QQQ<\/b>.*<b>RRR<\/b>/.test(t), 'la mateixa connexió en menys d\'una hora: surt');
+  ok(!/MMM|NNN/.test(t), 'la mateixa connexió amb hores de diferència: no surt');
+  ok(/⚡ <b>LLL<\/b>.* en 50 s/.test(t) && /⚡ <b>SSS<\/b>: 0:41/.test(t), 'massa de pressa (l\'Abecedari en 50 s, la sopa en 0:41): surt');
+  ok(!/OKK/.test(t) && !/⚡ <b>ABC/.test(t), 'les partides normals no surten');
+  ok(/Són pistes, no proves/.test(t), 'diu que són pistes, no proves');
+  t = await parla('/trampes', 888);
+  ok(/només el pot veure|només ho pot veure/.test(t) && !/XYZ/.test(t), 'un altre que ho demana en privat: no veu res');
+  // l'endemà, /trampes ahir
+  posa('2026-12-11');
+  t = await parla('/trampes', 777);
+  ok(/No hi he vist res/.test(t), 'l\'endemà, el dia d\'avui encara és net');
+  t = await parla('/trampes ahir', 777);
+  ok(/d'ahir/.test(t) && /XYZ/.test(t), '/trampes ahir: les d\'ahir');
+  Date.now = RELLOTGE;
+  net();
+}
+
 // cada joc té el seu nom i el seu fitxer, i el fitxer existeix
 const fsm = await import('fs');
 const codi = fsm.readFileSync(fitxerWorker, 'utf8');

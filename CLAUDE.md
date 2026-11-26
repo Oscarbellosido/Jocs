@@ -2393,6 +2393,33 @@ Telegram per dins compten com a aparells diferents. Perquè `/visites` surti a
 la llista d'ordres del bot cal tornar a obrir `…/telegram/activa`; sense
 fer-ho, l'ordre funciona igual.
 
+**Les trampes** (`/trampes`, al xat privat amb el bot). L'usuari va
+preguntar si es podia saber si algú feia trampes al concurs. Buscar les
+respostes al diccionari no ho veu ningú, però dues coses deixen rastre, i de
+cada partida del dia (la primera de cada inicials) el Worker n'apunta prou
+per veure-les (`vigila:<joc>_dia:<data>`, 60 dies, una escriptura més per
+partida):
+
+- **Jugar-la dues vegades amb inicials diferents** (la primera per saber la
+  solució): 📱 si les dues venen del mateix mòbil (`jocs-aparell`, que el
+  `records.js` ara també envia amb les partides del dia) i 📶 si venen de la
+  mateixa connexió en menys d'una hora. **De la connexió no es guarda
+  l'adreça**: només un resum de 8 lletres que canvia cada dia (`connexio`),
+  que serveix per saber si dues són de la mateixa i prou.
+- ⚡ **Fer-la massa de pressa**, que és el que passa quan ja saps la solució:
+  el `records.js` envia quants segons fa que es va obrir aquell joc per
+  primer cop avui en aquell mòbil (`jocs-obert`, `s`), i el Worker té un
+  límit per joc (`RAPID`: les 5 estrelles de la Gofra en menys d'un minut...).
+  Als jocs pel temps ja ho diuen els punts (`PEL_TEMPS`: una sopa en menys
+  d'un minut...).
+
+**Són pistes, no proves**: dues persones de casa poden jugar amb el mateix
+mòbil o la mateixa wifi, i el missatge ho diu. Per això **mai no ho diu al
+grup**: al grup, `/trampes` només contesta que és en privat, i en privat
+només ho veu **el primer que ho demana** (`telegram:vigilant`), que ha de ser
+l'usuari. No surt a la llista d'ordres ni a l'ajuda. `/trampes ahir`, les
+d'ahir. Només hi ha dades des que es va enganxar el Worker amb això.
+
 **Les medalles de sempre** (el palmarès): cada dilluns, la setmana passada es
 tanca i el seu podi s'apunta per sempre a `lliga:palmares` (copa al primer,
 plata i bronze als altres dos), **amb bot o sense** (`tancaSetmana`, a la

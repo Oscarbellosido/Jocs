@@ -102,6 +102,8 @@ diu(!g.comparteix.toUpperCase().includes(g.w.toUpperCase()) && /🟥🟥⬜/.tes
 const dia = enviats.find(e => /\/records\/penjat_dia\/2026-11-10$/.test(e.url)), sempre = enviats.find(e => /\/records\/penjat$/.test(e.url));
 diu(dia && dia.punts === 600 && dia.nom === 'TST', `a la taula d'avui: 600 punts amb 2 errors (${dia && dia.punts})`);
 diu(sempre && sempre.punts === 1, `i a la de sempre, 1 paraula endevinada (${sempre && sempre.punts})`);
+diu(dia && /^[a-z0-9]{8,24}$/.test(dia.a || '') && Number.isInteger(dia.s) && dia.s >= 0 && sempre && !('a' in sempre),
+   `la d'avui porta el número del mòbil i quants segons fa que és obert (/trampes al bot); la de sempre, no (${dia && dia.a}, ${dia && dia.s} s)`);
 // tornant-hi, no es torna a apuntar
 enviats.length = 0;
 await p.reload(); await p.waitForTimeout(400);
