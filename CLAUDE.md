@@ -2359,8 +2359,10 @@ de la portada les compara). Com va:
   dies no porta `mode` i és la lliga de sempre.
 - **Durant el concurs, a ELS JOCS D'AVUI només hi ha els seus sis jocs**
   (`DEL_DIA`), i les seves fitxes porten **🎄 NADAL** en lloc de 🏆 LLIGA.
-  El quadre de sota diu el dia (dia 10 de 24), el podi, on vas tu i quants
-  dies queden, amb una vora vermella. Els altres jocs es poden seguir
+  El quadre de sota diu el dia (dia 10 de 24), **els 10 primers** (en dues
+  columnes, `ol.deu`, amb tu ressaltat; l'usuari els va voler veure tots),
+  on vas tu i quants dies queden, amb una vora vermella. L'anunci del dia 25
+  al grup també porta fins al desè. Els altres jocs es poden seguir
   jugant, però no compten per a res.
 - **I el llistat de jocs comença pels sis del concurs**: durant el concurs,
   l'ordre que surt sense tocar res és JOCS D'AVUI (`window.CONCURS_NADAL`),

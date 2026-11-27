@@ -640,6 +640,8 @@ ok(missatges().length === 0, 'després de /prou, un rècord ja no avisa');
      `el dia 25 el concurs es tanca per sempre: BOB ${fin.top && fin.top[0].p}, ANA ${fin.top && fin.top[1].p}`);
   ok(an && /concurs de Nadal<\/b> l'ha guanyat <b>BOB<\/b> amb 38 punts \(3 partides guanyades\)/.test(an.cos.text) && /🥈 <b>ANA<\/b>/.test(an.cos.text) && /dilluns 28/.test(an.cos.text),
      'i el bot anuncia al grup qui l\'ha guanyat, amb el podi');
+  ok(an && /🥉 <b>ZZZ<\/b>/.test(an.cos.text) && /\n4\.\s+<b>CAR<\/b> 6 punts/.test(an.cos.text),
+     'i, a sota del podi, la resta fins al desè (4. CAR)');
   enviats.length = 0;
   await crida(envTg, 'GET', '/records/tetris');
   ok(!nadals().length, 'i només un cop');

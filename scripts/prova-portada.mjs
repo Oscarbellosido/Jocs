@@ -446,6 +446,8 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
       retols: [...document.querySelectorAll('a.btn .lliga')].map(r => r.textContent + ':' + r.closest('a').getAttribute('href').replace('.html', '')),
       caixa: document.getElementById('lliga').hidden ? '' : document.getElementById('lliga').textContent,
       scroll: document.documentElement.scrollWidth > innerWidth + 1,
+      deu: [...document.querySelectorAll('#lliga ol.deu li')].map(li => ({ t: li.textContent, jo: li.classList.contains('jo'),
+        tallat: li.scrollWidth > li.clientWidth + 1, fora: li.getBoundingClientRect().right > innerWidth })),
     }));
     // sense tocar res: quin ordre surt i quines fitxes van primer
     r.inicial = await p.evaluate(() => ({ ordre: document.querySelector('#ordre button[aria-pressed="true"]').dataset.ordre,
@@ -485,6 +487,23 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
     be = r2.inicial.ordre === 'any' && !r2.inicial.titol;
     if (!be) malament++;
     console.log(`${be ? '✓' : '✗'} acabat el concurs, el llistat torna a sortir com abans (${r2.inicial.ordre})`);
+  }
+  {
+    // els 10 primers (l'usuari ho va demanar), amb noms i punts llargs a 320 px
+    const dotze = 'BOB ANA CAR DAN EVA FER GIL HUG IVO CRE JOR KIM'.split(' ').map((n, i) => ({ n, p: 140 - i * 11 }));
+    for (const w of [320, 390]) {
+      const r = await mira('2026-12-10', { ...nad, classificacio: dotze }, w);
+      const jo = r.deu.filter(x => x.jo);
+      be = r.deu.length === 10 && /🥇 BOB 140/.test(r.deu[0].t) && /🥉 CAR/.test(r.deu[2].t) && /^4\. DAN/.test(r.deu[3].t) && /^10\. CRE 41/.test(r.deu[9].t) &&
+        jo.length === 1 && /CRE/.test(jo[0].t) && !/JOR|KIM/.test(r.caixa) && /Tu, CRE: 10è amb 41 punts/.test(r.caixa) &&
+        !r.deu.some(x => x.tallat || x.fora) && !r.scroll && !r.errors.length;
+      if (!be) malament++;
+      console.log(`${be ? '✓' : '✗'} a ${w}px, el concurs de Nadal ensenya els 10 primers (${r.deu.map(x => x.t).join(' · ')}), amb tu ressaltat, sense tallar res`);
+    }
+    const r = await mira('2026-12-25', { mode: 'final', nadal: nad.nadal, avui: {}, classificacio: dotze.slice(0, 10).filter(e => e.n !== 'CRE'), palmares: pal });
+    be = r.deu.length === 9 && /Tu, CRE: no surts entre els 10 primers/.test(r.caixa) && !r.errors.length;
+    if (!be) malament++;
+    console.log(`${be ? '✓' : '✗'} al resultat final, si no ets entre els 10, ho diu així (i no «encara no hi ets»)`);
   }
   {
     const r = await mira('2026-12-24', { ...nad, nadal: { ...nad.nadal, dia: 24 } });

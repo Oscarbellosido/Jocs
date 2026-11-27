@@ -525,7 +525,8 @@ async function anunciaNadal(env) {
   if (!f || !f.top.length) return;
   if (!await reclama(env, 'telegram:anunciat:nadal', String(NADAL.any))) return;
   const g = f.top[0];
-  const podi = f.top.slice(0, 3).map((e, i) => MEDALLES[i] + ' <b>' + esc(e.n) + '</b> ' + e.p + ' punts').join('\n');
+  // el podi i, a sota, fins al desè (l'usuari va voler veure els 10 primers)
+  const podi = f.top.slice(0, 10).map((e, i) => (MEDALLES[i] || (i + 1 + '.').padEnd(4)) + ' <b>' + esc(e.n) + '</b> ' + e.p + ' punts').join('\n');
   const text = '🎄 El <b>concurs de Nadal</b> l\'ha guanyat <b>' + esc(g.n) + '</b> amb ' + g.p + ' punts' +
     (g.primers ? ' (' + g.primers + (g.primers === 1 ? ' partida guanyada' : ' partides guanyades') + ')' : '') + '! 🏆\n\n' + podi +
     '\n\nMoltes gràcies a tothom per jugar-hi, i bon Nadal! La copa de Nadal 🎄 queda apuntada a les medalles de sempre. ' +

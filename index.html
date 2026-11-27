@@ -264,6 +264,11 @@
   /* el concurs de Nadal: la mateixa caixa, amb vora vermella i verda */
   .avui .lliga.nadal { border-top: 2px dashed #c8383f; }
   .avui .lliga.nadal > b:first-child { color: #ff9aa0; }
+  .avui .lliga ol.deu { list-style: none; margin: 0.25rem 0; padding: 0; columns: 2; column-gap: 0.8rem; }
+  .avui .lliga ol.deu li { break-inside: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
+  .avui .lliga ol.deu li i { font-style: normal; display: inline-block; min-width: 1.6em; color: #8a9aac; }
+  .avui .lliga ol.deu li span { color: #ffd27a; }
+  .avui .lliga ol.deu li.jo { color: #9fdcff; font-weight: bold; }
   .avui .lliga .dia { color: #8fd6a4; font-size: 0.7rem; letter-spacing: 0.06em; }
   .avui .pal { margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px dashed #2c3a4f; }
   /* com van ordenats els jocs: per any (tots, com un museu) o els que mes
@@ -607,16 +612,18 @@ posaLiders();
     const pos=jo?c.findIndex(e=>e.n===jo):-1;
     const esc=t=>String(t).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
     const podi=buit=>'<div class="podi">'+(c.length?c.slice(0,3).map((e,i)=>['🥇','🥈','🥉'][i]+' '+esc(e.n)+' '+e.p).join('  '):buit)+'</div>';
-    const tu=jo?'<div class="tu">'+(pos>=0?'Tu, '+esc(jo)+': '+ordinal(pos+1)+' amb '+c[pos].p+' punts':'Tu, '+esc(jo)+': encara no hi ets')+'</div>':'';
+    const tu=jo?'<div class="tu">'+(pos>=0?'Tu, '+esc(jo)+': '+ordinal(pos+1)+' amb '+c[pos].p+' punts':'Tu, '+esc(jo)+': '+(l.mode==='final'?'no surts entre els 10 primers':'encara no hi ets'))+'</div>':'';
+    // al concurs de Nadal, els 10 primers (l'usuari ho va demanar), en dues columnes
+    const deu=buit=>c.length?'<ol class="deu">'+c.slice(0,10).map((e,i)=>'<li'+(e.n===jo?' class="jo"':'')+'><i>'+(['🥇','🥈','🥉'][i]||(i+1)+'.')+'</i> '+esc(e.n)+' <span>'+e.p+'</span></li>').join('')+'</ol>':'<div class="podi">'+buit+'</div>';
     const regla='Cada dia, a cada joc: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi.';
     const n=l.nadal||{},dies=n.dies||24,dia=n.dia||0,queden=dies-dia;
     box.classList.toggle('nadal',!!l.mode);
     // el concurs de Nadal (el Worker diu quin moment és: previ, nadal o final)
     if(l.mode==='previ')box.innerHTML='<b>🎄 DEMÀ COMENÇA EL CONCURS DE NADAL</b><div class="podi">De l\'1 al 24 de desembre, amb la Gofra, l\'Abecedari, les Quatre Colles, la Sopa de Lletres, el Penjat i l\'Estel.</div>'+
       '<small>'+regla+' Aquesta setmana la lliga descansa.</small>'+medalles(l.palmares,jo,esc);
-    else if(l.mode==='nadal')box.innerHTML='<b>🎄 CONCURS DE NADAL</b> <span class="dia">dia '+dia+' de '+dies+'</span>'+podi('Encara no hi ha jugat ningú: comença ara!')+tu+
+    else if(l.mode==='nadal')box.innerHTML='<b>🎄 CONCURS DE NADAL</b> <span class="dia">dia '+dia+' de '+dies+'</span>'+deu('Encara no hi ha jugat ningú: comença ara!')+tu+
       '<small>'+regla+' '+(queden>1?'Queden '+queden+' dies.':queden===1?'Demà és l\'últim dia!':'Avui és l\'últim dia!')+' El dia de Nadal el bot dirà qui l\'ha guanyat.</small>'+medalles(l.palmares,jo,esc);
-    else if(l.mode==='final')box.innerHTML='<b>🎄 CONCURS DE NADAL · RESULTAT FINAL</b>'+podi('No hi va jugar ningú.')+tu+
+    else if(l.mode==='final')box.innerHTML='<b>🎄 CONCURS DE NADAL · RESULTAT FINAL</b>'+deu('No hi va jugar ningú.')+tu+
       '<small>Moltes gràcies a tothom i bon Nadal! La lliga de la setmana torna el dilluns 28.</small>'+medalles(l.palmares,jo,esc);
     else box.innerHTML='<b>LLIGA DE LA SETMANA</b>'+podi('Encara no hi ha jugat ningú: comença ara!')+tu+
       '<small>Cada partida del dia: el primer, 10 punts; el segon, 8; el tercer, 6... i 1 per jugar-hi. Dilluns el bot diu qui l\'ha guanyada.</small>'+
