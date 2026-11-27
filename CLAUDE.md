@@ -2231,6 +2231,12 @@ Regles que no s'han de trencar:
   la millor, `ACTUALITZA`); el `records.js` hi envia sempre la del dia, encara que
   no entri als 10, i si és repetida diu que només compta la primera. Amb
   unes altres inicials no es pot evitar: és una llista entre amics.
+- **A les partides del dia, qui no té inicials les ha de posar sempre**,
+  encara que no faci rècord (`fiPartida`, quadre LA PARTIDA D'AVUI). Abans
+  només es demanaven si entraves als 10 millors, i qui no les tenia posades
+  i no feia rècord (o feia 0) no enviava res: a la lliga i al concurs de
+  Nadal no li comptava ni el punt per haver-hi jugat, i no se sabia qui era.
+  Ho va veure l'usuari.
 - **Que el servidor digui que no, no és el mateix que no tenir connexió.** Abans
   el `records.js` ho posava tot al mateix sac i deia "sense connexió" a algú que
   hi estava connectat. Ara distingeix la xarxa (`ultimFall = 'xarxa'`) del

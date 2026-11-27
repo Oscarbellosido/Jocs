@@ -128,6 +128,24 @@ const zero = enviats.find(e => /\/records\/penjat_dia\/2026-11-11$/.test(e.url))
 diu(zero && zero.punts === 0 && !enviats.some(e => /\/records\/penjat$/.test(e.url)), 'perdent, s\'envia 0 a la d\'avui (compta per a la lliga) i res a la de sempre');
 await ctx.close();
 
+// ---------- perdre sense inicials: les demana igual ----------
+// Abans, sense inicials i sense rècord no s'enviava res, i a la lliga (i al
+// concurs de Nadal) no et comptava ni el punt per haver-hi jugat.
+({ ctx, p } = await obre('2026-11-12'));
+await p.evaluate(() => { localStorage.removeItem('jugador'); });
+await p.click('#m-dia'); await p.waitForTimeout(200);
+ll = await lletres(p);
+enviats.length = 0;
+for (let i = 0; i < 7; i++) await toca(p, ll.no[i]);
+for (let k = 0; k < 40 && !await p.$('#rec-ok'); k++) await p.waitForTimeout(100);
+const quadre = await p.evaluate(() => { const b = document.getElementById('rec-ok'); return b ? b.closest('div[style*="fixed"]').textContent : ''; });
+diu(/LA PARTIDA D'AVUI/.test(quadre) && /classificació/.test(quadre), 'perdent sense inicials, surt el quadre que les demana per a la classificació');
+await p.fill('#rec-nom', 'nou'); await p.click('#rec-ok'); await p.waitForTimeout(800);
+const z2 = enviats.find(e => /\/records\/penjat_dia\/2026-11-12$/.test(e.url));
+diu(z2 && z2.nom === 'NOU' && z2.punts === 0 && await p.evaluate(() => localStorage.getItem('jugador')) === 'NOU',
+   'i la partida s\'envia amb aquelles inicials (0 punts, que compta com a jugada), i queden desades');
+await ctx.close();
+
 // ---------- desar i continuar ----------
 ({ ctx, p } = await obre('2026-11-12'));
 await p.click('#m-dia'); await p.waitForTimeout(200);

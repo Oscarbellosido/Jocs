@@ -269,7 +269,7 @@ const Records = (() => {
   const desaNom = n => localStorage.setItem('jugador', n);
 
   // ---- finestreta per demanar les inicials ----
-  function demanaNom() {
+  function demanaNom(titol = 'RÈCORD!', text = 'Entres a la taula dels 10 millors') {
     return new Promise(resolve => {
       const fons = document.createElement('div');
       fons.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;' +
@@ -277,8 +277,8 @@ const Records = (() => {
       fons.innerHTML =
         '<div style="text-align:center;color:#fff;border:1px solid #666;border-radius:10px;' +
         'padding:20px 24px;background:#000;max-width:80%">' +
-        '<div style="color:#ff0;font-size:18px;margin-bottom:4px">RÈCORD!</div>' +
-        '<div style="font-size:13px;color:#aaa;margin-bottom:14px">Entres a la taula dels 10 millors</div>' +
+        '<div style="color:#ff0;font-size:18px;margin-bottom:4px">' + titol + '</div>' +
+        '<div style="font-size:13px;color:#aaa;margin-bottom:14px">' + text + '</div>' +
         '<input id="rec-nom" maxlength="3" autocomplete="off" ' +
         'style="width:110px;height:auto;box-sizing:content-box;font:bold 30px monospace;' +
         'text-align:center;text-transform:uppercase;' +
@@ -774,6 +774,15 @@ const Records = (() => {
     // entre els 10 millors, demana les inicials. Torna el HTML de la taula.
     async fiPartida(joc, punts) {
       desaLocal(joc, punts);
+      // A les partides del dia, qui no té inicials les ha de posar encara que
+      // no faci rècord: si no, no s'enviava res i a la lliga (i al concurs de
+      // Nadal) no li comptava ni el punt per haver-hi jugat. Ho va veure
+      // l'usuari.
+      let jaDemanat = false;
+      if (joc.includes('_dia/') && !nom()) {
+        jaDemanat = true;
+        await demanaNom('LA PARTIDA D\'AVUI', 'Posa les teves inicials perquè et compti a la classificació.<br>Posa sempre les mateixes.');
+      }
       if (!punts) {
         // A les partides del dia, fer 0 tambe es haver-hi jugat, i a la lliga
         // de la setmana aixo val un punt. S'envia, sense demanar res, si ja hi
@@ -807,7 +816,7 @@ const Records = (() => {
         return { html: taulaHTML(actual, null, joc), posicio: 0 };
       }
 
-      const n = await demanaNom();
+      const n = jaDemanat ? nom() : await demanaNom();
       const res = await enviaPost(joc, n, punts);
       if (!res) return { html: taulaHTML(actual, null, joc) + (ultimFall === 'xarxa' ? avisPendent() : avisFall()), posicio: 0 };
       if (res.repetida) return { html: taulaHTML(res.top, null, joc) + avisRepetida(), posicio: 0 };
