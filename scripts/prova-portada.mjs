@@ -217,6 +217,34 @@ for (const [w, h] of [[320, 568], [390, 844]]) {
   await ctx.close();
 }
 
+// Tornant d'un joc, la portada ha de sortir des de dalt de tot (ELS JOCS
+// D'AVUI), i no a mig llistat on era la fitxa del joc que has obert.
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 700 } });
+  await ctx.route('**/jocs-records*/**', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
+  const p = await ctx.newPage();
+  await foraNadal(p);
+  const errors = [];
+  p.on('pageerror', e => errors.push(String(e)));
+  const URL_P = 'file://' + resolve(ARREL, 'index.html');
+  await p.goto(URL_P); await p.waitForTimeout(300);
+  const fitxa = p.locator('a.btn[href="tetris.html"]');
+  await fitxa.scrollIntoViewIfNeeded();
+  const avall = await p.evaluate(() => scrollY);
+  await fitxa.click(); await p.waitForTimeout(500);
+  await p.goBack(); await p.waitForTimeout(600);
+  const enrere = await p.evaluate(() => scrollY);
+  await p.goto(URL_P); await p.waitForTimeout(600);          // el botó ← MENÚ del joc
+  const menu = await p.evaluate(() => scrollY);
+  await p.evaluate(() => scrollTo(0, 3000)); await p.waitForTimeout(100);
+  await p.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))); await p.waitForTimeout(100);
+  const persistit = await p.evaluate(() => scrollY);
+  const be = avall > 500 && enrere === 0 && menu === 0 && persistit === 0 && !errors.length;
+  if (!be) malament++;
+  console.log(`${be ? '✓' : '✗'} tornant d'un joc (amb el botó d'enrere, amb ← MENÚ o amb la pàgina tal com era), la portada surt des de dalt de tot (${avall} → ${enrere}, ${menu}, ${persistit})` + (errors.length ? ' ' + errors[0] : ''));
+  await ctx.close();
+}
+
 // L'ordre: per any (tots, el museu) o els que mes jugues primer. Es compta
 // cada joc que obres des de la portada, i els que ja tenien record compten
 // com a jugats un cop. Tornant a PER ANY, tot torna al seu lloc.

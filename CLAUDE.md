@@ -116,7 +116,11 @@ sense noms. **Les fetes en un altre lloc també surten com a fetes**: la
 portada demana `/lliga?nom=<inicials>` i el Worker hi afegeix `fets`, les
 partides d'avui on aquelles inicials ja són a la taula o a `jugat:`. L'usuari
 ho va demanar: feia la Gofra al mòbil i a l'ordinador li deia PER FER. Cal
-el Worker nou; amb el vell, `fets` no hi és i només mana el que hi ha desat. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant
+el Worker nou; amb el vell, `fets` no hi és i només mana el que hi ha desat. Es pot plegar, i es recorda (`jocs-avui-plegat`). **Tornant d'un joc, la
+portada surt sempre des de dalt de tot**, on hi ha aquesta llista: abans
+recordava l'últim joc obert i et deixava a mig llistat, amb aquella fitxa al
+mig, i l'usuari va preferir que comencés pel principi (`aDalt`, i
+`history.scrollRestoration` a `manual`). **Tornant
 d'un joc amb el botó d'enrere del mòbil**, el navegador ensenya la portada
 tal com era quan en vas sortir, sense tornar-la a llegir, i la partida que
 acabaves de fer seguia dient PER FER (ho va veure l'usuari). Per això la
@@ -140,7 +144,7 @@ I **la vora de la fitxa també és daurada** (`.de-lliga`), en lloc de la grisa
 de les altres: l'usuari ho va demanar perquè es veiessin més.
 L'usuari ho va demanar per saber d'una ullada quins jocs entren a la lliga. **No porta
 `h2.seccio` ni `a.btn`**: són els noms dels dos apartats i de les fitxes, i
-la prova i el codi que recorda l'últim joc obert els compten.
+la prova i el codi que ordena les fitxes (MÉS JUGATS, JOCS D'AVUI) els compten.
 
 **De l'1 de desembre al 6 de gener, la portada va de Nadal** (cada any, sol
 per la data de Madrid: `html.nadal-deco`, que posa el codi de just després
@@ -2272,8 +2276,7 @@ exactament igual que abans i no envia res a ningú.
   bot i **mai al grup**: la web és pública, i amb l'enllaç d'invitació del grup
   qualsevol desconegut s'hi podria apuntar. Quan ja jugues des de dins de
   Telegram no surt, que no té sentit. És `a.tg` i no `a.btn`, perquè `a.btn` el
-  porten les fitxes dels jocs i el fa servir el codi que recorda l'últim joc
-  obert. El `scripts/prova-portada.mjs` comprova que es vegi, que porti al bot i
+  porten les fitxes dels jocs i el fa servir el codi que les ordena. El `scripts/prova-portada.mjs` comprova que es vegi, que porti al bot i
   que el text hi càpiga a totes les mides.
 
 Com està fet, i per què:

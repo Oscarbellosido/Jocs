@@ -135,7 +135,7 @@
   @media (min-width: 560px) { h2.seccio { max-width: 760px; } }
   @media (min-width: 900px) { h2.seccio { max-width: 1020px; } }
   /* El boto del bot de Telegram. NO es "a.btn": aquell nom el porten les
-     fitxes dels jocs i el fa servir el codi que recorda l'ultim joc obert. */
+     fitxes dels jocs i el fa servir el codi que les ordena. */
   a.tg {
     display: inline-block;
     max-width: calc(100% - 2rem);
@@ -198,8 +198,8 @@
   }
   /* ELS JOCS D'AVUI: les partides del dia, si ja les has fet i qui guanya.
      No porta h2.seccio ni a.btn: aquells noms son dels dos apartats de jocs
-     i de les seves fitxes (la prova de la portada i el codi de l'ultim joc
-     obert els compten). */
+     i de les seves fitxes (la prova de la portada i el codi que ordena les
+     fitxes els compten). */
   details.avui {
     width: calc(100% - 1.6rem);
     max-width: 430px;
@@ -490,26 +490,16 @@ function pintaNous(){
 pintaNous();
 addEventListener('pageshow',e=>{if(e.persisted)pintaNous()});
 
-(function(){
-  const CLAU='jocs-ultim';
-  const enllacos=[...document.querySelectorAll('a.btn')];
-  enllacos.forEach(a=>a.addEventListener('click',()=>{
-    try{sessionStorage.setItem(CLAU,a.getAttribute('href'))}catch(e){}
-  }));
-  let href=null;
-  try{href=sessionStorage.getItem(CLAU)}catch(e){}
-  if(!href)return;
-  const fitxa=enllacos.find(a=>a.getAttribute('href')===href);
-  if(!fitxa)return;
-  const hiVa=()=>fitxa.scrollIntoView({block:'center'});
-  hiVa();
-  // per si les imatges encara no hi eren i tot s'ha mogut, ho torna a
-  // ajustar en acabar de carregar, pero no si ja has tocat la pantalla
-  let hasTocat=false;
-  ['wheel','touchstart','keydown'].forEach(ev=>
-    addEventListener(ev,()=>hasTocat=true,{passive:true,once:true}));
-  addEventListener('load',()=>{if(!hasTocat)hiVa()});
-})();
+// Tornant d'un joc, la portada surt sempre des de dalt de tot, on hi ha ELS
+// JOCS D'AVUI. Abans recordava l'últim joc obert i et deixava amb aquella
+// fitxa al mig de la pantalla, a mig llistat, i l'usuari va preferir que
+// comencés sempre pel principi. Ni el navegador no ha de tornar on eres
+// (scrollRestoration), ni tampoc quan la treu tal com era amb el botó
+// d'enrere (pageshow amb persisted).
+try{history.scrollRestoration='manual'}catch(e){}
+const aDalt=()=>{if(!location.hash)scrollTo(0,0)};
+aDalt();
+addEventListener('pageshow',e=>{if(e.persisted)aDalt()});
 
 // qui mana a cada joc, en una sola consulta (i un altre cop si tornes
 // enrere des d'un joc, que potser acabes de fer un record)
